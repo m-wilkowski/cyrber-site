@@ -1,0 +1,37 @@
+baseURL = 'https://cyrber.pl/'
+languageCode = 'pl-pl'
+title = 'Cyrber - Cyberbezpieczeństwo i Testy Penetracyjne'
+theme = 'PaperMod'
+
+[params]
+  description = "Profesjonalne usługi z zakresu testów penetracyjnych, audytów bezpieczeństwa i cyberhigieny dla firm."
+  author = "Michał Wilkowski"
+  ShowReadingTime = true
+  ShowShareButtons = false
+  ShowPostNavLinks = true
+  ShowBreadCrumbs = true
+  ShowCodeCopyButtons = true
+
+[params.homeInfoParams]
+  Title = "Bezpieczeństwo IT dla Twojej firmy"
+  Content = "Specjalizuję się w testach penetracyjnych, audytach bezpieczeństwa i wdrożeniach rozwiązań SIEM/SOAR. Pomagam firmom identyfikować i eliminować zagrożenia zanim staną się problemem."
+
+[[menu.main]]
+  name = "Usługi"
+  url = "/uslugi/"
+  weight = 10
+
+[[menu.main]]
+  name = "O mnie"
+  url = "/o-mnie/"
+  weight = 20
+
+[[menu.main]]
+  name = "Blog"
+  url = "/blog/"
+  weight = 30
+
+[[menu.main]]
+  name = "Kontakt"
+  url = "/kontakt/"
+  weight = 40

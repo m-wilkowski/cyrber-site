@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Cyrber - Cyberbezpieczeństwo i Testy Penetracyjne</title>
+    <link>http://localhost:1313/</link>
+    <description>Recent content on Cyrber - Cyberbezpieczeństwo i Testy Penetracyjne</description>
+    <generator>Hugo -- 0.147.8</generator>
+    <language>pl-pl</language>
+    <lastBuildDate>Wed, 01 Jan 2025 00:00:00 +0000</lastBuildDate>
+    <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Kontakt</title>
+      <link>http://localhost:1313/kontakt/</link>
+      <pubDate>Wed, 01 Jan 2025 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/kontakt/</guid>
+      <description>&lt;h2 id=&#34;skontaktuj-się&#34;&gt;Skontaktuj się&lt;/h2&gt;
+&lt;p&gt;Chętnie omówię szczegóły projektu i dopasuję ofertę do potrzeb Twojej organizacji.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Email:&lt;/strong&gt; &lt;a href=&#34;mailto:kontakt@cyrber.pl&#34;&gt;kontakt@cyrber.pl&lt;/a&gt;&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;czas-odpowiedzi&#34;&gt;Czas odpowiedzi&lt;/h2&gt;
+&lt;p&gt;Na zapytania odpowiadam zazwyczaj w ciągu 24 godzin w dni robocze.&lt;/p&gt;
+&lt;h2 id=&#34;zakres-geograficzny&#34;&gt;Zakres geograficzny&lt;/h2&gt;
+&lt;p&gt;Realizuję projekty na terenie całej Polski. Możliwa praca zdalna oraz wizyty u klienta w zależności od charakteru projektu.&lt;/p&gt;
+&lt;h2 id=&#34;nda&#34;&gt;NDA&lt;/h2&gt;
+&lt;p&gt;W razie potrzeby chętnie podpiszę umowę o zachowaniu poufności przed rozpoczęciem rozmów o projekcie.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>O mnie</title>
+      <link>http://localhost:1313/o-mnie/</link>
+      <pubDate>Wed, 01 Jan 2025 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/o-mnie/</guid>
+      <description>&lt;p&gt;Jestem specjalistą z zakresu cyberbezpieczeństwa z doświadczeniem w testach penetracyjnych, red team oraz wdrożeniach rozwiązań SIEM/SOAR.&lt;/p&gt;
+&lt;h2 id=&#34;doświadczenie&#34;&gt;Doświadczenie&lt;/h2&gt;
+&lt;p&gt;Obecnie pracuję jako presales engineer w EMCA Software, gdzie odpowiadam za wdrożenia i szkolenia z zakresu Energy Logserver - polskiego rozwiązania SIEM/SOAR opartego o Elastic Stack. Prowadzę implementacje dla klientów z sektora publicznego i prywatnego, od samorządów po duże przedsiębiorstwa.&lt;/p&gt;
+&lt;p&gt;Równolegle realizuję projekty z zakresu testów penetracyjnych i audytów bezpieczeństwa, specjalizując się w:&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Usługi</title>
+      <link>http://localhost:1313/uslugi/</link>
+      <pubDate>Wed, 01 Jan 2025 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/uslugi/</guid>
+      <description>&lt;h2 id=&#34;testy-penetracyjne&#34;&gt;Testy penetracyjne&lt;/h2&gt;
+&lt;p&gt;Kompleksowe testy bezpieczeństwa aplikacji webowych, infrastruktury sieciowej i systemów wewnętrznych. Identyfikuję podatności zanim zrobią to atakujący.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Zakres:&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Testy aplikacji webowych (OWASP Top 10)&lt;/li&gt;
+&lt;li&gt;Audyty infrastruktury sieciowej&lt;/li&gt;
+&lt;li&gt;Testy wewnętrzne i zewnętrzne&lt;/li&gt;
+&lt;li&gt;Social engineering i phishing&lt;/li&gt;
+&lt;li&gt;Bezpieczeństwo API&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;audyty-bezpieczeństwa&#34;&gt;Audyty bezpieczeństwa&lt;/h2&gt;
+&lt;p&gt;Przegląd i ocena stanu bezpieczeństwa infrastruktury IT, polityk bezpieczeństwa i procedur w organizacji.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Zakres:&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Audyt konfiguracji systemów i sieci&lt;/li&gt;
+&lt;li&gt;Przegląd polityk bezpieczeństwa&lt;/li&gt;
+&lt;li&gt;Ocena zgodności z regulacjami (RODO, NIS2)&lt;/li&gt;
+&lt;li&gt;Analiza logów i incydentów&lt;/li&gt;
+&lt;li&gt;Rekomendacje naprawcze&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;wdrożenia-siemsoar&#34;&gt;Wdrożenia SIEM/SOAR&lt;/h2&gt;
+&lt;p&gt;Implementacja i konfiguracja rozwiązań do monitoringu bezpieczeństwa i automatyzacji odpowiedzi na incydenty.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>
