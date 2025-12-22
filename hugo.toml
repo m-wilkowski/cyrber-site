@@ -13,6 +13,11 @@ ShowBreadCrumbs = true
 ShowCodeCopyButtons = true
 defaultTheme = "dark"
 
+[params.label]
+text = "Cyrber"
+icon = "/logo.jpg"
+iconHeight = 300
+
 [params.homeInfoParams]
 Title = "Bezpieczeństwo IT dla Twojej firmy"
 Content = "Specjalizuję się w testach penetracyjnych, audytach bezpieczeństwa i wdrożeniach rozwiązań SIEM/SOAR. Pomagam firmom identyfikować i eliminować zagrożenia zanim staną się problemem."
