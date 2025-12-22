@@ -1,43 +1,38 @@
-cat > ~/Projects/cyrber-site/hugo.toml << 'EOF'
-baseURL = 'https://cyrber.pl/'
-languageCode = 'pl-pl'
-title = 'Cyrber - Cyberbezpieczeństwo i Testy Penetracyjne'
-theme = 'PaperMod'
+baseURL = "https://cyrber.pl/"
+languageCode = "pl-pl"
+title = "Cyrber - Cyberbezpieczeństwo i Testy Penetracyjne"
+theme = "PaperMod"
 
 [params]
-  description = "Profesjonalne usługi z zakresu testów penetracyjnych, audytów bezpieczeństwa i cyberhigieny dla firm."
-  author = "Michał Wilkowski"
-  ShowReadingTime = true
-  ShowShareButtons = false
-  ShowPostNavLinks = true
-  ShowBreadCrumbs = true
-  ShowCodeCopyButtons = true
-  defaultTheme = "dark"
+description = "Profesjonalne usługi z zakresu testów penetracyjnych, audytów bezpieczeństwa i cyberhigieny dla firm."
+author = "Michał Wilkowski"
+ShowReadingTime = true
+ShowShareButtons = false
+ShowPostNavLinks = true
+ShowBreadCrumbs = true
+ShowCodeCopyButtons = true
+defaultTheme = "dark"
 
 [params.homeInfoParams]
-  Title = "Bezpieczeństwo IT dla Twojej firmy"
-  Content = "Specjalizuję się w testach penetracyjnych, audytach bezpieczeństwa i wdrożeniach rozwiązań SIEM/SOAR. Pomagam firmom identyfikować i eliminować zagrożenia zanim staną się problemem."
-
-[params.assets]
-  disableFingerprinting = false
+Title = "Bezpieczeństwo IT dla Twojej firmy"
+Content = "Specjalizuję się w testach penetracyjnych, audytach bezpieczeństwa i wdrożeniach rozwiązań SIEM/SOAR. Pomagam firmom identyfikować i eliminować zagrożenia zanim staną się problemem."
 
 [[menu.main]]
-  name = "Usługi"
-  url = "/uslugi/"
-  weight = 10
+name = "Usługi"
+url = "/uslugi/"
+weight = 10
 
 [[menu.main]]
-  name = "O mnie"
-  url = "/o-mnie/"
-  weight = 20
+name = "O mnie"
+url = "/o-mnie/"
+weight = 20
 
 [[menu.main]]
-  name = "Blog"
-  url = "/blog/"
-  weight = 30
+name = "Blog"
+url = "/blog/"
+weight = 30
 
 [[menu.main]]
-  name = "Kontakt"
-  url = "/kontakt/"
-  weight = 40
-EOF
+name = "Kontakt"
+url = "/kontakt/"
+weight = 40
