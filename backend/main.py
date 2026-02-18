@@ -115,6 +115,7 @@ async def scan_pdf(task_id: str):
 from modules.gobuster_scan import scan as gobuster_scan
 from modules.whatweb_scan import scan as whatweb_scan
 from modules.testssl_scan import scan as testssl_scan
+from modules.sqlmap_scan import scan as sqlmap_scan
 
 @app.get("/scan/gobuster")
 async def run_gobuster(target: str = Query(...)):
@@ -127,6 +128,10 @@ async def run_whatweb(target: str = Query(...)):
 @app.get("/scan/testssl")
 async def run_testssl(target: str = Query(...)):
     return testssl_scan(target)
+
+@app.get("/scan/sqlmap")
+async def run_sqlmap(target: str = Query(...)):
+    return sqlmap_scan(target)
 
 from modules.webhook import WazuhAlert, extract_target
 

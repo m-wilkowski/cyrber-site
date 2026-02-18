@@ -5,6 +5,7 @@ from modules.nuclei_scan import scan as nuclei_scan
 from modules.whatweb_scan import scan as whatweb_scan
 from modules.gobuster_scan import scan as gobuster_scan
 from modules.testssl_scan import scan as testssl_scan
+from modules.sqlmap_scan import scan as sqlmap_scan
 from modules.llm_analyze import analyze_scan_results
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
@@ -32,18 +33,21 @@ def full_scan_task(target: str):
     whatweb = whatweb_scan(target)
     gobuster = gobuster_scan(target)
     testssl = testssl_scan(target)
+    sqlmap = sqlmap_scan(target)
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
         "nuclei": nuclei,
         "whatweb": whatweb,
         "gobuster": gobuster,
-        "testssl": testssl
+        "testssl": testssl,
+        "sqlmap": sqlmap
     }
     result = analyze_scan_results(scan_data)
     result["whatweb"] = whatweb
     result["gobuster"] = gobuster
     result["testssl"] = testssl
+    result["sqlmap"] = sqlmap
     save_scan(task_id, target, result)
     send_scan_notification(target, task_id, result)
     return result
