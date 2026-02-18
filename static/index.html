@@ -510,6 +510,50 @@ footer {
 }
 .btn-pdf:hover { background: linear-gradient(140deg, #501a1a, #300e0e); box-shadow: 0 0 10px rgba(255,68,68,.3); }
 
+
+.btn-agent {
+  background: linear-gradient(140deg, #1a0a2e, #2d0f5e);
+  border: 1px solid #9b59b6;
+  color: #c39bd3;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .2em;
+  padding: 0 28px;
+  height: 52px;
+  cursor: pointer;
+  transition: all .3s;
+  white-space: nowrap;
+}
+.btn-agent:hover {
+  border-color: #c39bd3;
+  color: #e8d5f5;
+  box-shadow: 0 0 20px rgba(155,89,182,.4);
+}
+.btn-agent:disabled { opacity: .4; cursor: not-allowed; }
+
+.scan-mode-badge {
+  display: inline-block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .2em;
+  padding: 2px 8px;
+  border: 1px solid;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.badge-agent { color: #9b59b6; border-color: #9b59b6; }
+
+.agent-steps {
+  margin-top: 12px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: rgba(155,89,182,.7);
+  display: none;
+}
+.agent-step.done { color: rgba(155,89,182,.5); }
+.agent-step.active { color: #c39bd3; }
+
 </style>
 </head>
 <body>
@@ -534,7 +578,9 @@ footer {
         placeholder="192.168.1.1  |  example.com  |  10.0.0.0/24"
         autocomplete="off" spellcheck="false">
       <button class="btn" id="scanBtn" onclick="startScan()">INITIATE SCAN</button>
+      <button class="btn-agent" id="agentBtn" onclick="startAgentScan()">AGENT SCAN</button>
     </div>
+    <div class="agent-steps" id="agentSteps"></div>
     <div class="status-bar">
       <div class="dot" id="dot"></div>
       <span id="stxt">System ready. Enter target to begin reconnaissance.</span>
@@ -814,6 +860,85 @@ function loadScanDetail(taskId) {
 }
 
 window.addEventListener('load', function() { loadHistory(); });
+
+
+function startAgentScan() {
+  var target = document.getElementById('targetInput').value.trim();
+  if (!target) { alert('Enter target first'); return; }
+
+  document.getElementById('agentBtn').disabled = true;
+  document.getElementById('scanBtn').disabled = true;
+  document.getElementById('agentSteps').style.display = 'block';
+  document.getElementById('agentSteps').innerHTML = '<div class="agent-step active">AGENT INITIALIZING...</div>';
+
+  setSt('Agent mode: autonomous reconnaissance started', 'scan');
+  showProgress(true);
+  clearLog();
+  log('AGENT MODE ACTIVATED');
+  log('Target: ' + target);
+  log('Claude AI will autonomously decide which scanners to use...');
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('pdfBtn').style.display = 'none';
+
+  fetch(API + '/agent/start?target=' + encodeURIComponent(target))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      log('Task ID: ' + d.task_id);
+      window._lastTaskId = d.task_id;
+      pollAgentStatus(d.task_id, target);
+    })
+    .catch(function(e) {
+      setSt('Agent error: ' + e.message, 'error');
+      resetAgentButtons();
+    });
+}
+
+function pollAgentStatus(taskId, target) {
+  fetch(API + '/scan/status/' + taskId)
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.status === 'completed') {
+        log('Agent completed assessment');
+        showProgress(false);
+        var res = d.result;
+        if (res && res.steps) {
+          var stepsHtml = '';
+          res.steps.forEach(function(s) {
+            var label = s.tool.replace(/_scan$/, '').replace('_', ' ').toUpperCase();
+            stepsHtml += '<div class="agent-step done">✓ ' + label + (s.target ? ' → ' + s.target : '') + '</div>';
+          });
+          document.getElementById('agentSteps').innerHTML = stepsHtml;
+        }
+        renderResults(res, 0);
+        document.getElementById('scanMeta').innerHTML =
+          'TARGET: ' + target +
+          ' <span class="scan-mode-badge badge-agent">AGENT</span><br>' +
+          'FINDINGS: ' + (res.findings_count || 0) +
+          '<br>STEPS: ' + (res.steps ? res.steps.length : 0);
+        if (window._lastTaskId) {
+          var pb = document.getElementById('pdfBtn');
+          pb.href = API + '/scans/' + window._lastTaskId + '/pdf';
+          pb.style.display = 'inline-block';
+        }
+        resetAgentButtons();
+        loadHistory();
+      } else if (d.status === 'failed') {
+        setSt('Agent failed: ' + (d.error || 'unknown'), 'error');
+        showProgress(false);
+        resetAgentButtons();
+      } else {
+        setTimeout(function() { pollAgentStatus(taskId, target); }, 5000);
+      }
+    })
+    .catch(function() {
+      setTimeout(function() { pollAgentStatus(taskId, target); }, 5000);
+    });
+}
+
+function resetAgentButtons() {
+  document.getElementById('agentBtn').disabled = false;
+  document.getElementById('scanBtn').disabled = false;
+}
 
 </script>
 </body>
