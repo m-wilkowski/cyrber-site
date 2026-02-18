@@ -8,6 +8,7 @@ from modules.testssl_scan import scan as testssl_scan
 from modules.sqlmap_scan import scan as sqlmap_scan
 from modules.llm_analyze import analyze_scan_results
 from modules.exploit_chains import generate_exploit_chains
+from modules.false_positive_filter import filter_false_positives
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
 
@@ -31,6 +32,7 @@ def full_scan_task(target: str):
     task_id = full_scan_task.request.id
     nmap = nmap_scan(target)
     nuclei = nuclei_scan(target)
+    nuclei_filtered = filter_false_positives(nuclei, target)
     whatweb = whatweb_scan(target)
     gobuster = gobuster_scan(target)
     testssl = testssl_scan(target)
@@ -38,7 +40,7 @@ def full_scan_task(target: str):
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
-        "nuclei": nuclei,
+        "nuclei": nuclei_filtered,
         "whatweb": whatweb,
         "gobuster": gobuster,
         "testssl": testssl,
@@ -49,6 +51,8 @@ def full_scan_task(target: str):
     result["gobuster"] = gobuster
     result["testssl"] = testssl
     result["sqlmap"] = sqlmap
+    result["nuclei"] = nuclei_filtered
+    result["fp_filter"] = nuclei_filtered.get("fp_filter", {})
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})
     save_scan(task_id, target, result)
