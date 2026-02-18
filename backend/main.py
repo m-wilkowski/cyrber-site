@@ -140,3 +140,8 @@ from modules.tasks import agent_scan_task
 async def agent_start(target: str = Query(...)):
     task = agent_scan_task.delay(target)
     return {"task_id": task.id, "status": "started", "target": target, "mode": "agent"}
+
+@app.get("/dashboard")
+async def dashboard():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/dashboard.html")
