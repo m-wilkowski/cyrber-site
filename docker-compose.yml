@@ -31,6 +31,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       CYRBER_USER: ${CYRBER_USER:-admin}
       CYRBER_PASS: ${CYRBER_PASS:-cyrber2024}
+      OLLAMA_URL: http://host.docker.internal:11434
     depends_on:
       db:
         condition: service_healthy
@@ -47,6 +48,7 @@ services:
       DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
       REDIS_URL: redis://redis:6379/0
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OLLAMA_URL: http://host.docker.internal:11434
     depends_on:
       db:
         condition: service_healthy
@@ -61,6 +63,7 @@ services:
       DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
       REDIS_URL: redis://redis:6379/0
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OLLAMA_URL: http://host.docker.internal:11434
     depends_on:
       db:
         condition: service_healthy
