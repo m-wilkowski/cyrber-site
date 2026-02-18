@@ -9,6 +9,7 @@ from pydantic import BaseModel
 import sys
 import os
 import secrets
+import ipaddress
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modules.nmap_scan import scan as nmap_scan
@@ -205,10 +206,22 @@ class MultiTargetScan(BaseModel):
 async def multi_scan(request: Request, body: MultiTargetScan):
     if not body.targets:
         raise HTTPException(status_code=400, detail="targets list is empty")
-    if len(body.targets) > 20:
-        raise HTTPException(status_code=400, detail="max 20 targets per request")
+
+    expanded = []
+    for t in body.targets:
+        try:
+            network = ipaddress.ip_network(t, strict=False)
+            if network.num_addresses > 256:
+                raise HTTPException(status_code=400, detail=f"CIDR {t} too large, max /24")
+            expanded.extend([str(ip) for ip in network.hosts()])
+        except ValueError:
+            expanded.append(t)
+
+    if len(expanded) > 254:
+        raise HTTPException(status_code=400, detail="max 254 targets per request")
+
     tasks = []
-    for target in body.targets:
+    for target in expanded:
         task = full_scan_task.delay(target)
         tasks.append({"task_id": task.id, "target": target, "status": "started"})
     return {"count": len(tasks), "tasks": tasks}
