@@ -133,3 +133,10 @@ async def generic_webhook(payload: dict):
         "task_id": task.id,
         "trigger": "webhook"
     }
+
+from modules.tasks import agent_scan_task
+
+@app.get("/agent/start")
+async def agent_start(target: str = Query(...)):
+    task = agent_scan_task.delay(target)
+    return {"task_id": task.id, "status": "started", "target": target, "mode": "agent"}

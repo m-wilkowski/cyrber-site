@@ -41,3 +41,12 @@ def full_scan_task(target: str):
     result["testssl"] = testssl
     save_scan(task_id, target, result)
     return result
+
+from modules.agent import run_agent
+
+@celery_app.task
+def agent_scan_task(target: str):
+    task_id = agent_scan_task.request.id
+    result = run_agent(target)
+    save_scan(task_id, target, result)
+    return result

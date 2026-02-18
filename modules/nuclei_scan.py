@@ -2,7 +2,7 @@ import subprocess
 import json
 import os
 
-NUCLEI_PATH = os.path.expanduser("~/go/bin/nuclei")
+NUCLEI_PATH = os.environ.get("NUCLEI_PATH", "/usr/local/bin/nuclei")
 
 def scan(target: str, tags: str = "apache,ssh,linux,php,mysql") -> dict:
     result = subprocess.run(
