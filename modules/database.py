@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -6,11 +6,9 @@ import os
 import json
 import time
 from dotenv import load_dotenv
-
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
@@ -29,6 +27,16 @@ class Scan(Base):
     ports = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
+
+class Schedule(Base):
+    __tablename__ = "schedules"
+    id = Column(Integer, primary_key=True, index=True)
+    target = Column(String, nullable=False)
+    interval_hours = Column(Integer, nullable=False)
+    enabled = Column(Boolean, default=True)
+    last_run = Column(DateTime)
+    next_run = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 def init_db(retries=10, delay=3):
     for i in range(retries):
@@ -102,5 +110,78 @@ def get_scan_by_task_id(task_id: str):
             "created_at": s.created_at.isoformat() if s.created_at else None,
             "completed_at": s.completed_at.isoformat() if s.completed_at else None,
         }
+    finally:
+        db.close()
+
+def add_schedule(target: str, interval_hours: int):
+    from datetime import timedelta
+    db = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        schedule = Schedule(
+            target=target,
+            interval_hours=interval_hours,
+            next_run=now,
+        )
+        db.add(schedule)
+        db.commit()
+        db.refresh(schedule)
+        return {"id": schedule.id, "target": schedule.target, "interval_hours": schedule.interval_hours, "next_run": schedule.next_run.isoformat()}
+    finally:
+        db.close()
+
+def get_schedules():
+    db = SessionLocal()
+    try:
+        schedules = db.query(Schedule).order_by(Schedule.created_at.desc()).all()
+        return [
+            {
+                "id": s.id,
+                "target": s.target,
+                "interval_hours": s.interval_hours,
+                "enabled": s.enabled,
+                "last_run": s.last_run.isoformat() if s.last_run else None,
+                "next_run": s.next_run.isoformat() if s.next_run else None,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+            }
+            for s in schedules
+        ]
+    finally:
+        db.close()
+
+def delete_schedule(schedule_id: int):
+    db = SessionLocal()
+    try:
+        schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+        if not schedule:
+            return False
+        db.delete(schedule)
+        db.commit()
+        return True
+    finally:
+        db.close()
+
+def get_due_schedules():
+    db = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        schedules = db.query(Schedule).filter(
+            Schedule.enabled == True,
+            Schedule.next_run <= now
+        ).all()
+        return schedules
+    finally:
+        db.close()
+
+def update_schedule_run(schedule_id: int):
+    from datetime import timedelta
+    db = SessionLocal()
+    try:
+        schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+        if schedule:
+            now = datetime.utcnow()
+            schedule.last_run = now
+            schedule.next_run = now + timedelta(hours=schedule.interval_hours)
+            db.commit()
     finally:
         db.close()

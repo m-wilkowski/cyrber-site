@@ -29,6 +29,8 @@ services:
       DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
       REDIS_URL: redis://redis:6379/0
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      CYRBER_USER: ${CYRBER_USER:-admin}
+      CYRBER_PASS: ${CYRBER_PASS:-cyrber2024}
     depends_on:
       db:
         condition: service_healthy
@@ -41,6 +43,20 @@ services:
   worker:
     build: .
     command: celery -A modules.tasks worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
+      REDIS_URL: redis://redis:6379/0
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: on-failure
+
+  beat:
+    build: .
+    command: celery -A modules.tasks beat --loglevel=info
     environment:
       DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
       REDIS_URL: redis://redis:6379/0

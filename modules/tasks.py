@@ -6,7 +6,7 @@ from modules.whatweb_scan import scan as whatweb_scan
 from modules.gobuster_scan import scan as gobuster_scan
 from modules.testssl_scan import scan as testssl_scan
 from modules.llm_analyze import analyze_scan_results
-from modules.database import save_scan
+from modules.database import save_scan, get_due_schedules, update_schedule_run
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
@@ -16,16 +16,21 @@ celery_app = Celery(
     backend=REDIS_URL
 )
 
+celery_app.conf.beat_schedule = {
+    "check-schedules-every-minute": {
+        "task": "modules.tasks.run_due_schedules",
+        "schedule": 60.0,
+    },
+}
+
 @celery_app.task
 def full_scan_task(target: str):
     task_id = full_scan_task.request.id
-
     nmap = nmap_scan(target)
     nuclei = nuclei_scan(target)
     whatweb = whatweb_scan(target)
     gobuster = gobuster_scan(target)
     testssl = testssl_scan(target)
-
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -34,7 +39,6 @@ def full_scan_task(target: str):
         "gobuster": gobuster,
         "testssl": testssl
     }
-
     result = analyze_scan_results(scan_data)
     result["whatweb"] = whatweb
     result["gobuster"] = gobuster
@@ -50,3 +54,12 @@ def agent_scan_task(target: str):
     result = run_agent(target)
     save_scan(task_id, target, result)
     return result
+
+@celery_app.task
+def run_due_schedules():
+    schedules = get_due_schedules()
+    for schedule in schedules:
+        full_scan_task.delay(schedule.target)
+        update_schedule_run(schedule.id)
+    return {"triggered": len(schedules)}
+

@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse, Response
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from pydantic import BaseModel
 import sys
 import os
 import secrets
@@ -86,6 +87,7 @@ async def scan_status(task_id: str):
         return {"task_id": task_id, "status": task.state}
 
 from modules.database import init_db, get_scan_history, get_scan_by_task_id
+from modules.database import add_schedule, get_schedules, delete_schedule
 from modules.pdf_report import generate_report
 
 init_db()
@@ -168,3 +170,24 @@ async def agent_start(request: Request, target: str = Query(...)):
 @app.get("/dashboard")
 async def dashboard():
     return FileResponse("static/dashboard.html")
+
+class ScheduleCreate(BaseModel):
+    target: str
+    interval_hours: int
+
+@app.post("/schedules")
+async def create_schedule(schedule: ScheduleCreate):
+    if schedule.interval_hours < 1:
+        raise HTTPException(status_code=400, detail="interval_hours must be >= 1")
+    return add_schedule(schedule.target, schedule.interval_hours)
+
+@app.get("/schedules")
+async def list_schedules():
+    return get_schedules()
+
+@app.delete("/schedules/{schedule_id}")
+async def remove_schedule(schedule_id: int):
+    ok = delete_schedule(schedule_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    return {"status": "deleted", "id": schedule_id}
