@@ -85,3 +85,19 @@ async def scan_pdf(task_id: str):
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=cyrber_{scan['target']}_{task_id[:8]}.pdf"}
     )
+
+from modules.gobuster_scan import scan as gobuster_scan
+from modules.whatweb_scan import scan as whatweb_scan
+from modules.testssl_scan import scan as testssl_scan
+
+@app.get("/scan/gobuster")
+async def run_gobuster(target: str = Query(...)):
+    return gobuster_scan(target)
+
+@app.get("/scan/whatweb")
+async def run_whatweb(target: str = Query(...)):
+    return whatweb_scan(target)
+
+@app.get("/scan/testssl")
+async def run_testssl(target: str = Query(...)):
+    return testssl_scan(target)
