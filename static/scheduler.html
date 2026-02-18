@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYRBER — Scheduler</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:    #080c18;
+    --navy2:   #0c1220;
+    --navy3:   #101828;
+    --accent:  #4a8fd4;
+    --accent2: #2d6aa0;
+    --border:  rgba(74,143,212,.25);
+    --text:    #e8eef8;
+    --muted:   #8a9bb5;
+    --danger:  #e05555;
+    --success: #4caf7d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--navy); color: var(--text); font-family: 'Share Tech Mono', monospace; min-height: 100vh; }
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px; height: 56px;
+    background: rgba(8,12,24,.92);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+  }
+  nav .logo { font-family: Orbitron, sans-serif; font-size: 18px; font-weight: 900; letter-spacing: .15em; color: var(--text); }
+  nav .links { display: flex; gap: 4px; }
+  nav a { font-size: 11px; letter-spacing: .15em; color: var(--muted); text-decoration: none; padding: 6px 14px; border: 1px solid transparent; }
+  nav a.active { color: var(--accent); border-color: rgba(74,143,212,.4); }
+  nav a:hover { color: var(--accent); }
+
+  .container { max-width: 900px; margin: 40px auto; padding: 0 24px; }
+  h1 { font-family: Orbitron, sans-serif; font-size: 20px; letter-spacing: .2em; color: var(--accent); margin-bottom: 32px; }
+
+  .card {
+    background: var(--navy2);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .card h2 { font-size: 11px; letter-spacing: .2em; color: var(--muted); margin-bottom: 20px; }
+
+  .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+  label { font-size: 10px; letter-spacing: .15em; color: var(--muted); }
+  input {
+    background: var(--navy3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    width: 100%;
+  }
+  input:focus { border-color: var(--accent); }
+
+  .btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .15em;
+    padding: 10px 24px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn:hover { background: rgba(74,143,212,.15); }
+  .btn-danger { border-color: var(--danger); color: var(--danger); }
+  .btn-danger:hover { background: rgba(224,85,85,.15); }
+
+  .msg { font-size: 12px; padding: 10px 14px; margin-top: 12px; border-left: 3px solid var(--accent); background: rgba(74,143,212,.08); }
+  .msg.error { border-color: var(--danger); background: rgba(224,85,85,.08); color: var(--danger); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; font-size: 10px; letter-spacing: .15em; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 12px; border-bottom: 1px solid rgba(74,143,212,.08); vertical-align: middle; }
+  tr:hover td { background: rgba(74,143,212,.04); }
+  .badge { display: inline-block; font-size: 9px; letter-spacing: .1em; padding: 3px 8px; border: 1px solid; }
+  .badge-on { border-color: var(--success); color: var(--success); }
+  .badge-off { border-color: var(--muted); color: var(--muted); }
+  .empty { color: var(--muted); font-size: 12px; text-align: center; padding: 32px; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">CYRBER</div>
+  <div class="links">
+    <a href="/ui">SCAN</a>
+    <a href="/dashboard">DASHBOARD</a>
+    <a href="/scheduler" class="active">SCHEDULER</a>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>SCHEDULED SCANS</h1>
+
+  <div class="card">
+    <h2>// NOWY HARMONOGRAM</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>TARGET (IP / HOSTNAME)</label>
+        <input type="text" id="target" placeholder="192.168.1.1 lub example.com">
+      </div>
+      <div class="form-group" style="max-width:180px">
+        <label>INTERWAŁ (GODZINY)</label>
+        <input type="number" id="interval" value="24" min="1">
+      </div>
+      <button class="btn" onclick="addSchedule()">+ DODAJ</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <div class="card">
+    <h2>// AKTYWNE HARMONOGRAMY</h2>
+    <div id="schedules-list"><div class="empty">Ładowanie...</div></div>
+  </div>
+</div>
+
+<script>
+async function fetchSchedules() {
+  try {
+    const r = await fetch('/schedules', {headers: {'Authorization': 'Basic ' + btoa(getCreds())}});
+    const data = await r.json();
+    renderSchedules(data);
+  } catch(e) {
+    document.getElementById('schedules-list').innerHTML = '<div class="empty">Błąd ładowania</div>';
+  }
+}
+
+function getCreds() {
+  return (localStorage.getItem('cyrber_creds') || 'admin:cyrber2024');
+}
+
+function renderSchedules(schedules) {
+  const el = document.getElementById('schedules-list');
+  if (!schedules.length) {
+    el.innerHTML = '<div class="empty">Brak harmonogramów</div>';
+    return;
+  }
+  el.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>TARGET</th>
+          <th>INTERWAŁ</th>
+          <th>STATUS</th>
+          <th>OSTATNI SKAN</th>
+          <th>NASTĘPNY SKAN</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${schedules.map(s => `
+          <tr>
+            <td>${s.target}</td>
+            <td>co ${s.interval_hours}h</td>
+            <td><span class="badge ${s.enabled ? 'badge-on' : 'badge-off'}">${s.enabled ? 'AKTYWNY' : 'WYŁĄCZONY'}</span></td>
+            <td>${s.last_run ? s.last_run.replace('T', ' ').slice(0,16) : '—'}</td>
+            <td>${s.next_run ? s.next_run.replace('T', ' ').slice(0,16) : '—'}</td>
+            <td><button class="btn btn-danger" onclick="deleteSchedule(${s.id})">USUŃ</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function addSchedule() {
+  const target = document.getElementById('target').value.trim();
+  const interval = parseInt(document.getElementById('interval').value);
+  const msg = document.getElementById('msg');
+
+  if (!target) { showMsg('Podaj target', true); return; }
+  if (!interval || interval < 1) { showMsg('Interwał minimum 1 godzina', true); return; }
+
+  try {
+    const r = await fetch('/schedules', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa(getCreds())
+      },
+      body: JSON.stringify({target, interval_hours: interval})
+    });
+    if (r.ok) {
+      showMsg(`Harmonogram dodany: ${target} co ${interval}h`);
+      document.getElementById('target').value = '';
+      fetchSchedules();
+    } else {
+      const err = await r.json();
+      showMsg(err.detail || 'Błąd', true);
+    }
+  } catch(e) {
+    showMsg('Błąd połączenia', true);
+  }
+}
+
+async function deleteSchedule(id) {
+  if (!confirm('Usunąć harmonogram?')) return;
+  try {
+    const r = await fetch(`/schedules/${id}`, {
+      method: 'DELETE',
+      headers: {'Authorization': 'Basic ' + btoa(getCreds())}
+    });
+    if (r.ok) fetchSchedules();
+  } catch(e) {}
+}
+
+function showMsg(text, isError = false) {
+  const el = document.getElementById('msg');
+  el.className = 'msg' + (isError ? ' error' : '');
+  el.textContent = text;
+  setTimeout(() => el.textContent = '', 4000);
+}
+
+fetchSchedules();
+setInterval(fetchSchedules, 30000);
+</script>
+</body>
+</html>

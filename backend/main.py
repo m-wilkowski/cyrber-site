@@ -177,6 +177,10 @@ async def agent_start(request: Request, target: str = Query(...)):
 async def dashboard():
     return FileResponse("static/dashboard.html")
 
+@app.get("/scheduler")
+async def scheduler():
+    return FileResponse("static/scheduler.html")
+
 class ScheduleCreate(BaseModel):
     target: str
     interval_hours: int
