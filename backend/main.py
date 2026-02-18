@@ -70,3 +70,18 @@ async def scans_history(limit: int = 20):
 @app.get("/scans/{task_id}")
 async def scan_detail(task_id: str):
     return get_scan_by_task_id(task_id)
+
+from fastapi.responses import Response
+from modules.pdf_report import generate_report
+
+@app.get("/scans/{task_id}/pdf")
+async def scan_pdf(task_id: str):
+    scan = get_scan_by_task_id(task_id)
+    if not scan:
+        return {"error": "Scan not found"}
+    pdf_bytes = generate_report(scan)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=cyrber_{scan['target']}_{task_id[:8]}.pdf"}
+    )
