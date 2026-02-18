@@ -35,6 +35,8 @@ services:
       redis:
         condition: service_healthy
     restart: on-failure
+    volumes:
+      - ./static:/app/static
 
   worker:
     build: .
