@@ -1,7 +1,10 @@
-from fastapi import FastAPI, Query, Depends, HTTPException, status
+from fastapi import FastAPI, Query, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import sys
 import os
 import secrets
@@ -13,6 +16,7 @@ from modules.llm_analyze import analyze_scan_results
 from modules.tasks import full_scan_task
 
 security = HTTPBasic()
+limiter = Limiter(key_func=get_remote_address)
 
 CYRBER_USER = os.getenv("CYRBER_USER", "admin")
 CYRBER_PASS = os.getenv("CYRBER_PASS", "cyrber2024")
@@ -29,6 +33,8 @@ def require_auth(credentials: HTTPBasicCredentials = Depends(security)):
     return credentials.username
 
 app = FastAPI(title="CYRBER API", version="0.1.0", dependencies=[Depends(require_auth)])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -62,7 +68,8 @@ async def run_analyze(target: str = Query(...)):
     return analyze_scan_results(scan_data)
 
 @app.get("/scan/start")
-async def scan_start(target: str = Query(...)):
+@limiter.limit("5/minute")
+async def scan_start(request: Request, target: str = Query(...)):
     task = full_scan_task.delay(target)
     return {"task_id": task.id, "status": "started", "target": target}
 
@@ -79,6 +86,7 @@ async def scan_status(task_id: str):
         return {"task_id": task_id, "status": task.state}
 
 from modules.database import init_db, get_scan_history, get_scan_by_task_id
+from modules.pdf_report import generate_report
 
 init_db()
 
@@ -89,9 +97,6 @@ async def scans_history(limit: int = 20):
 @app.get("/scans/{task_id}")
 async def scan_detail(task_id: str):
     return get_scan_by_task_id(task_id)
-
-from fastapi.responses import Response
-from modules.pdf_report import generate_report
 
 @app.get("/scans/{task_id}/pdf")
 async def scan_pdf(task_id: str):
@@ -124,7 +129,8 @@ async def run_testssl(target: str = Query(...)):
 from modules.webhook import WazuhAlert, extract_target
 
 @app.post("/webhook/wazuh")
-async def wazuh_webhook(alert: WazuhAlert):
+@limiter.limit("30/minute")
+async def wazuh_webhook(request: Request, alert: WazuhAlert):
     target = extract_target(alert)
     if not target:
         return {"status": "ignored", "reason": "no valid target extracted"}
@@ -138,8 +144,8 @@ async def wazuh_webhook(alert: WazuhAlert):
     }
 
 @app.post("/webhook/generic")
-async def generic_webhook(payload: dict):
-    """Generic webhook - akceptuje dowolny JSON z polem 'target' lub 'ip'"""
+@limiter.limit("30/minute")
+async def generic_webhook(request: Request, payload: dict):
     target = payload.get("target") or payload.get("ip") or payload.get("host")
     if not target:
         return {"status": "ignored", "reason": "no target field in payload"}
@@ -154,7 +160,8 @@ async def generic_webhook(payload: dict):
 from modules.tasks import agent_scan_task
 
 @app.get("/agent/start")
-async def agent_start(target: str = Query(...)):
+@limiter.limit("3/minute")
+async def agent_start(request: Request, target: str = Query(...)):
     task = agent_scan_task.delay(target)
     return {"task_id": task.id, "status": "started", "target": target, "mode": "agent"}
 
