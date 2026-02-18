@@ -1,15 +1,34 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import sys
 import os
+import secrets
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modules.nmap_scan import scan as nmap_scan
 from modules.nuclei_scan import scan as nuclei_scan
 from modules.llm_analyze import analyze_scan_results
 from modules.tasks import full_scan_task
 
-app = FastAPI(title="CYRBER API", version="0.1.0")
+security = HTTPBasic()
+
+CYRBER_USER = os.getenv("CYRBER_USER", "admin")
+CYRBER_PASS = os.getenv("CYRBER_PASS", "cyrber2024")
+
+def require_auth(credentials: HTTPBasicCredentials = Depends(security)):
+    ok_user = secrets.compare_digest(credentials.username.encode(), CYRBER_USER.encode())
+    ok_pass = secrets.compare_digest(credentials.password.encode(), CYRBER_PASS.encode())
+    if not (ok_user and ok_pass):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+app = FastAPI(title="CYRBER API", version="0.1.0", dependencies=[Depends(require_auth)])
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -109,7 +128,6 @@ async def wazuh_webhook(alert: WazuhAlert):
     target = extract_target(alert)
     if not target:
         return {"status": "ignored", "reason": "no valid target extracted"}
-
     task = full_scan_task.delay(target)
     return {
         "status": "scan_started",
@@ -125,7 +143,6 @@ async def generic_webhook(payload: dict):
     target = payload.get("target") or payload.get("ip") or payload.get("host")
     if not target:
         return {"status": "ignored", "reason": "no target field in payload"}
-
     task = full_scan_task.delay(target)
     return {
         "status": "scan_started",
@@ -143,5 +160,4 @@ async def agent_start(target: str = Query(...)):
 
 @app.get("/dashboard")
 async def dashboard():
-    from fastapi.responses import FileResponse
     return FileResponse("static/dashboard.html")
