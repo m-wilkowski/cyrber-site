@@ -25,6 +25,7 @@ class Scan(Base):
     recommendations = Column(Text)
     top_issues = Column(Text)
     ports = Column(Text)
+    raw_data = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
 
@@ -65,6 +66,7 @@ def save_scan(task_id: str, target: str, result: dict):
         scan.summary = analysis.get("summary")
         scan.recommendations = analysis.get("recommendations")
         scan.top_issues = json.dumps(analysis.get("top_issues", []), ensure_ascii=False)
+        scan.raw_data = json.dumps(result, ensure_ascii=False)
         scan.completed_at = datetime.utcnow()
         db.commit()
     finally:
@@ -97,7 +99,7 @@ def get_scan_by_task_id(task_id: str):
         s = db.query(Scan).filter(Scan.task_id == task_id).first()
         if not s:
             return None
-        return {
+        base = {
             "id": s.id,
             "task_id": s.task_id,
             "target": s.target,
@@ -110,6 +112,12 @@ def get_scan_by_task_id(task_id: str):
             "created_at": s.created_at.isoformat() if s.created_at else None,
             "completed_at": s.completed_at.isoformat() if s.completed_at else None,
         }
+        if s.raw_data:
+            raw = json.loads(s.raw_data)
+            for key in ["ports", "nuclei", "gobuster", "whatweb", "testssl", "sqlmap", "exploit_chains"]:
+                if key in raw:
+                    base[key] = raw[key]
+        return base
     finally:
         db.close()
 

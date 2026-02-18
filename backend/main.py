@@ -90,6 +90,7 @@ async def scan_status(task_id: str):
 from modules.database import init_db, get_scan_history, get_scan_by_task_id
 from modules.database import add_schedule, get_schedules, delete_schedule
 from modules.pdf_report import generate_report
+from modules.exploit_chains import generate_exploit_chains
 
 init_db()
 
@@ -112,6 +113,16 @@ async def scan_pdf(task_id: str):
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=cyrber_{scan['target']}_{task_id[:8]}.pdf"}
     )
+
+@app.get("/scans/{task_id}/chains")
+async def scan_chains(task_id: str):
+    scan = get_scan_by_task_id(task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    if scan.get("exploit_chains"):
+        return {"target": scan["target"], "exploit_chains": scan["exploit_chains"], "cached": True}
+    chains = generate_exploit_chains(scan)
+    return chains
 
 from modules.gobuster_scan import scan as gobuster_scan
 from modules.whatweb_scan import scan as whatweb_scan
