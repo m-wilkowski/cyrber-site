@@ -1,9 +1,10 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Float
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 import os
 import json
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,7 +17,6 @@ Base = declarative_base()
 
 class Scan(Base):
     __tablename__ = "scans"
-
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(String, unique=True, index=True)
     target = Column(String, nullable=False)
@@ -25,13 +25,23 @@ class Scan(Base):
     findings_count = Column(Integer, default=0)
     summary = Column(Text)
     recommendations = Column(Text)
-    top_issues = Column(Text)  # JSON
-    ports = Column(Text)       # JSON
+    top_issues = Column(Text)
+    ports = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
 
-def init_db():
-    Base.metadata.create_all(bind=engine)
+def init_db(retries=10, delay=3):
+    for i in range(retries):
+        try:
+            Base.metadata.create_all(bind=engine)
+            print("Database initialized successfully")
+            return
+        except Exception as e:
+            if i < retries - 1:
+                print(f"DB not ready, retrying in {delay}s... ({i+1}/{retries})")
+                time.sleep(delay)
+            else:
+                raise e
 
 def save_scan(task_id: str, target: str, result: dict):
     db = SessionLocal()

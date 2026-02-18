@@ -101,3 +101,35 @@ async def run_whatweb(target: str = Query(...)):
 @app.get("/scan/testssl")
 async def run_testssl(target: str = Query(...)):
     return testssl_scan(target)
+
+from modules.webhook import WazuhAlert, extract_target
+
+@app.post("/webhook/wazuh")
+async def wazuh_webhook(alert: WazuhAlert):
+    target = extract_target(alert)
+    if not target:
+        return {"status": "ignored", "reason": "no valid target extracted"}
+
+    task = full_scan_task.delay(target)
+    return {
+        "status": "scan_started",
+        "target": target,
+        "task_id": task.id,
+        "trigger": "wazuh_alert",
+        "rule_id": alert.rule_id
+    }
+
+@app.post("/webhook/generic")
+async def generic_webhook(payload: dict):
+    """Generic webhook - akceptuje dowolny JSON z polem 'target' lub 'ip'"""
+    target = payload.get("target") or payload.get("ip") or payload.get("host")
+    if not target:
+        return {"status": "ignored", "reason": "no target field in payload"}
+
+    task = full_scan_task.delay(target)
+    return {
+        "status": "scan_started",
+        "target": target,
+        "task_id": task.id,
+        "trigger": "webhook"
+    }

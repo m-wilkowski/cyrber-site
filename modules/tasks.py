@@ -6,15 +6,15 @@ from modules.whatweb_scan import scan as whatweb_scan
 from modules.gobuster_scan import scan as gobuster_scan
 from modules.testssl_scan import scan as testssl_scan
 from modules.llm_analyze import analyze_scan_results
-from modules.database import init_db, save_scan
+from modules.database import save_scan
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 celery_app = Celery(
     "cyrber",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0"
+    broker=REDIS_URL,
+    backend=REDIS_URL
 )
-
-init_db()
 
 @celery_app.task
 def full_scan_task(target: str):

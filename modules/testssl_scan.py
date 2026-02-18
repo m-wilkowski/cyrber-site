@@ -4,7 +4,7 @@ import os
 import tempfile
 import socket
 
-TESTSSL = os.path.expanduser("~/testssl.sh/testssl.sh")
+TESTSSL = os.environ.get("TESTSSL_PATH", os.path.expanduser("~/testssl.sh/testssl.sh"))
 
 def scan(target: str) -> dict:
     host = target.replace("https://", "").replace("http://", "").split("/")[0]
