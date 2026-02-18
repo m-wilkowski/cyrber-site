@@ -58,3 +58,15 @@ async def scan_status(task_id: str):
         return {"task_id": task_id, "status": "failed", "error": str(task.info)}
     else:
         return {"task_id": task_id, "status": task.state}
+
+from modules.database import init_db, get_scan_history, get_scan_by_task_id
+
+init_db()
+
+@app.get("/scans")
+async def scans_history(limit: int = 20):
+    return get_scan_history(limit)
+
+@app.get("/scans/{task_id}")
+async def scan_detail(task_id: str):
+    return get_scan_by_task_id(task_id)

@@ -398,6 +398,101 @@ footer {
   color: rgba(74,143,212,.18);
   letter-spacing: .22em;
 }
+
+/* ── HISTORY ── */
+.hist-panel {
+  background: rgba(12,18,32,.75);
+  border: 1px solid var(--border2);
+  padding: 24px;
+  position: relative;
+  backdrop-filter: blur(6px);
+}
+
+.hist-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.btn-sm {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .2em;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-sm:hover { border-color: var(--accent); background: rgba(74,143,212,.08); }
+
+.hist-count {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: rgba(74,143,212,.4);
+}
+
+.hist-list { display: flex; flex-direction: column; gap: 8px; }
+
+.hist-empty {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: rgba(74,143,212,.25);
+  padding: 20px 0;
+  text-align: center;
+}
+
+.hist-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  transition: all .2s;
+  background: rgba(8,12,24,.5);
+}
+
+.hist-item:hover { border-color: var(--border); background: rgba(74,143,212,.05); }
+
+.hist-target {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: var(--white);
+}
+
+.hist-date {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: rgba(74,143,212,.4);
+  white-space: nowrap;
+}
+
+.hist-findings {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: rgba(74,143,212,.5);
+  white-space: nowrap;
+}
+
+.hist-risk {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .15em;
+  padding: 3px 10px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.hist-risk.NISKIE, .hist-risk.LOW { color:var(--green); border-color:var(--green); }
+.hist-risk.SREDNIE, .hist-risk.MEDIUM { color:var(--yellow); border-color:var(--yellow); }
+.hist-risk.WYSOKIE, .hist-risk.HIGH { color:var(--orange); border-color:var(--orange); }
+.hist-risk.KRYTYCZNE, .hist-risk.CRITICAL { color:var(--red); border-color:var(--red); }
+
 </style>
 </head>
 <body>
@@ -460,6 +555,20 @@ footer {
     <div class="card">
       <div class="card-lbl">REMEDIATION RECOMMENDATIONS</div>
       <div class="rec" id="rec"></div>
+    </div>
+  </div>
+
+  
+  <div class="divider"></div>
+
+  <div class="hist-panel">
+    <div class="panel-label">SCAN HISTORY</div>
+    <div class="hist-controls">
+      <button class="btn-sm" onclick="loadHistory()">REFRESH</button>
+      <span class="hist-count" id="histCount"></span>
+    </div>
+    <div id="histList" class="hist-list">
+      <div class="hist-empty">No scans recorded yet.</div>
     </div>
   </div>
 
@@ -610,6 +719,70 @@ function renderResults(res, elapsed) {
 document.getElementById('tgt').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') startScan();
 });
+
+function loadHistory() {
+  fetch(API + '/scans')
+    .then(function(r) { return r.json(); })
+    .then(function(data) { renderHistory(data); })
+    .catch(function(e) { console.error('History error:', e); });
+}
+
+function renderHistory(scans) {
+  var el = document.getElementById('histList');
+  var countEl = document.getElementById('histCount');
+  countEl.textContent = scans.length + ' scan(s) on record';
+  if (!scans.length) {
+    el.innerHTML = '<div class="hist-empty">No scans recorded yet.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  scans.forEach(function(s) {
+    var item = document.createElement('div');
+    item.className = 'hist-item';
+    item.onclick = function() { loadScanDetail(s.task_id); };
+    var date = s.completed_at ? new Date(s.completed_at).toLocaleString('pl-PL') : 'pending';
+    var risk = s.risk_level || 'N/A';
+    var riskClass = risk.toUpperCase()
+      .replace(/Ą/g,'A').replace(/Ć/g,'C').replace(/Ę/g,'E')
+      .replace(/Ł/g,'L').replace(/Ń/g,'N').replace(/Ó/g,'O')
+      .replace(/Ś/g,'S').replace(/Ź/g,'Z').replace(/Ż/g,'Z')
+      .replace(/ą/g,'A').replace(/ć/g,'C').replace(/ę/g,'E')
+      .replace(/ł/g,'L').replace(/ń/g,'N').replace(/ó/g,'O')
+      .replace(/ś/g,'S').replace(/ź/g,'Z').replace(/ż/g,'Z');
+    item.innerHTML =
+      '<div class="hist-target">' + s.target + '</div>' +
+      '<div class="hist-date">' + date + '</div>' +
+      '<div class="hist-findings">' + (s.findings_count || 0) + ' findings</div>' +
+      '<div class="hist-risk ' + riskClass + '">' + risk + '</div>';
+    el.appendChild(item);
+  });
+}
+
+function loadScanDetail(taskId) {
+  fetch(API + '/scans/' + taskId)
+    .then(function(r) { return r.json(); })
+    .then(function(s) {
+      if (!s) return;
+      var fakeResult = {
+        target: s.target,
+        findings_count: s.findings_count,
+        analysis: {
+          summary: s.summary,
+          risk_level: s.risk_level,
+          top_issues: s.top_issues || [],
+          recommendations: s.recommendations
+        },
+        nuclei: { findings: [] }
+      };
+      renderResults(fakeResult, 0);
+      document.getElementById('scanMeta').innerHTML =
+        'TARGET: ' + s.target + '<br>FINDINGS: ' + s.findings_count +
+        '<br>DATE: ' + (s.completed_at ? new Date(s.completed_at).toLocaleString('pl-PL') : 'N/A');
+    });
+}
+
+window.addEventListener('load', function() { loadHistory(); });
+
 </script>
 </body>
 </html>
