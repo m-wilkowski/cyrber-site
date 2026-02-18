@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+# Wazuh custom integration dla CYRBER
+# Umieść w: /var/ossec/integrations/cyrber
+# Nadaj uprawnienia: chmod 750 cyrber; chown root:wazuh cyrber
+
+import sys
+import json
+import requests
+import os
+
+CYRBER_URL = os.getenv("CYRBER_URL", "http://cyrber-host:8000")
+
+def main(args):
+    alert_file = args[1]
+    with open(alert_file) as f:
+        alert = json.load(f)
+
+    agent = alert.get("agent", {})
+    rule = alert.get("rule", {})
+    data = alert.get("data", {})
+
+    payload = {
+        "agent_ip": agent.get("ip"),
+        "agent_name": agent.get("name"),
+        "rule_id": str(rule.get("id", "")),
+        "rule_description": rule.get("description", ""),
+        "data": data
+    }
+
+    try:
+        resp = requests.post(
+            f"{CYRBER_URL}/webhook/wazuh",
+            json=payload,
+            timeout=10
+        )
+        print(f"CYRBER response: {resp.status_code} {resp.text}")
+    except Exception as e:
+        print(f"CYRBER integration error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main(sys.argv)

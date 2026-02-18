@@ -1,0 +1,15 @@
+<!-- Dodaj do sekcji <ossec_config> w /var/ossec/etc/ossec.conf -->
+
+<integration>
+  <name>cyrber</name>
+  <hook_url>http://CYRBER_HOST:8000/webhook/wazuh</hook_url>
+  <level>7</level>
+  <alert_format>json</alert_format>
+</integration>
+
+<integration>
+  <name>cyrber</name>
+  <hook_url>http://CYRBER_HOST:8000/webhook/wazuh</hook_url>
+  <rule_id>5710,5711,31151,31152</rule_id>
+  <alert_format>json</alert_format>
+</integration>
