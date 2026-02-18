@@ -446,7 +446,7 @@ footer {
 
 .hist-item {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: 1fr auto auto auto auto;
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
@@ -493,6 +493,23 @@ footer {
 .hist-risk.WYSOKIE, .hist-risk.HIGH { color:var(--orange); border-color:var(--orange); }
 .hist-risk.KRYTYCZNE, .hist-risk.CRITICAL { color:var(--red); border-color:var(--red); }
 
+
+.btn-pdf {
+  background: linear-gradient(140deg, #3a1a1a, #200e0e);
+  border: 1px solid #ff4444;
+  color: #ff8888;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .15em;
+  padding: 3px 12px;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-pdf:hover { background: linear-gradient(140deg, #501a1a, #300e0e); box-shadow: 0 0 10px rgba(255,68,68,.3); }
+
 </style>
 </head>
 <body>
@@ -529,6 +546,11 @@ footer {
   </div>
 
   <div class="results" id="res">
+    
+    <div style="text-align:right; margin-bottom: 16px;">
+      <a class="btn-pdf" id="pdfBtn" href="#" target="_blank" style="display:none; font-size:11px; padding:6px 18px;">⬇ DOWNLOAD PDF REPORT</a>
+    </div>
+
     <div class="risk-row">
       <div>
         <div class="risk-lbl">THREAT LEVEL</div>
@@ -619,6 +641,7 @@ function startScan() {
     .then(function(r) { return r.json(); })
     .then(function(d) {
       log('Task ID: ' + d.task_id);
+      window._lastTaskId = d.task_id;
       log('Background scan running. Polling for results...');
       pollTimer = setInterval(function() { pollStatus(d.task_id); }, 3000);
     })
@@ -711,6 +734,12 @@ function renderResults(res, elapsed) {
   }, 800);
 
   setSt('Reconnaissance complete  ·  ' + res.findings_count + ' findings  ·  Risk: ' + risk, 'done');
+  // Set PDF button if task_id available
+  if (window._lastTaskId) {
+    var pb = document.getElementById('pdfBtn');
+    pb.href = API + '/scans/' + window._lastTaskId + '/pdf';
+    pb.style.display = 'inline-block';
+  }
   document.getElementById('res').classList.add('on');
   document.getElementById('scanBtn').disabled = false;
   document.getElementById('res').scrollIntoView({ behavior: 'smooth' });
@@ -749,11 +778,13 @@ function renderHistory(scans) {
       .replace(/ą/g,'A').replace(/ć/g,'C').replace(/ę/g,'E')
       .replace(/ł/g,'L').replace(/ń/g,'N').replace(/ó/g,'O')
       .replace(/ś/g,'S').replace(/ź/g,'Z').replace(/ż/g,'Z');
+    var pdfUrl = API + '/scans/' + s.task_id + '/pdf';
     item.innerHTML =
       '<div class="hist-target">' + s.target + '</div>' +
       '<div class="hist-date">' + date + '</div>' +
       '<div class="hist-findings">' + (s.findings_count || 0) + ' findings</div>' +
-      '<div class="hist-risk ' + riskClass + '">' + risk + '</div>';
+      '<div class="hist-risk ' + riskClass + '">' + risk + '</div>' +
+      '<a class="btn-pdf" href="' + pdfUrl + '" target="_blank" onclick="event.stopPropagation()">PDF</a>';
     el.appendChild(item);
   });
 }
@@ -774,6 +805,7 @@ function loadScanDetail(taskId) {
         },
         nuclei: { findings: [] }
       };
+      window._lastTaskId = taskId;
       renderResults(fakeResult, 0);
       document.getElementById('scanMeta').innerHTML =
         'TARGET: ' + s.target + '<br>FINDINGS: ' + s.findings_count +
