@@ -91,6 +91,7 @@ from modules.database import init_db, get_scan_history, get_scan_by_task_id
 from modules.database import add_schedule, get_schedules, delete_schedule
 from modules.pdf_report import generate_report
 from modules.exploit_chains import generate_exploit_chains
+from modules.hacker_narrative import generate_hacker_narrative
 
 init_db()
 
@@ -123,6 +124,16 @@ async def scan_chains(task_id: str):
         return {"target": scan["target"], "exploit_chains": scan["exploit_chains"], "cached": True}
     chains = generate_exploit_chains(scan)
     return chains
+
+@app.get("/scans/{task_id}/narrative")
+async def scan_narrative(task_id: str):
+    scan = get_scan_by_task_id(task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    if scan.get("hacker_narrative"):
+        return {"target": scan["target"], **scan["hacker_narrative"], "cached": True}
+    narrative = generate_hacker_narrative(scan)
+    return narrative
 
 from modules.gobuster_scan import scan as gobuster_scan
 from modules.whatweb_scan import scan as whatweb_scan

@@ -9,6 +9,7 @@ from modules.sqlmap_scan import scan as sqlmap_scan
 from modules.llm_analyze import analyze_scan_results
 from modules.exploit_chains import generate_exploit_chains
 from modules.false_positive_filter import filter_false_positives
+from modules.hacker_narrative import generate_hacker_narrative
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
 
@@ -47,6 +48,7 @@ def full_scan_task(target: str):
         "sqlmap": sqlmap
     }
     result = analyze_scan_results(scan_data)
+    result["ports"] = nmap.get("ports", [])
     result["whatweb"] = whatweb
     result["gobuster"] = gobuster
     result["testssl"] = testssl
@@ -55,6 +57,8 @@ def full_scan_task(target: str):
     result["fp_filter"] = nuclei_filtered.get("fp_filter", {})
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})
+    narrative = generate_hacker_narrative(result)
+    result["hacker_narrative"] = narrative
     save_scan(task_id, target, result)
     send_scan_notification(target, task_id, result)
     return result
@@ -67,6 +71,8 @@ def agent_scan_task(target: str):
     result = run_agent(target)
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})
+    narrative = generate_hacker_narrative(result)
+    result["hacker_narrative"] = narrative
     save_scan(task_id, target, result)
     send_scan_notification(target, task_id, result)
     return result
@@ -78,4 +84,3 @@ def run_due_schedules():
         full_scan_task.delay(schedule.target)
         update_schedule_run(schedule.id)
     return {"triggered": len(schedules)}
-
