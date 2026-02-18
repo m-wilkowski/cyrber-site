@@ -191,3 +191,19 @@ async def remove_schedule(schedule_id: int):
     if not ok:
         raise HTTPException(status_code=404, detail="Schedule not found")
     return {"status": "deleted", "id": schedule_id}
+
+class MultiTargetScan(BaseModel):
+    targets: list[str]
+
+@app.post("/scan/multi")
+@limiter.limit("3/minute")
+async def multi_scan(request: Request, body: MultiTargetScan):
+    if not body.targets:
+        raise HTTPException(status_code=400, detail="targets list is empty")
+    if len(body.targets) > 20:
+        raise HTTPException(status_code=400, detail="max 20 targets per request")
+    tasks = []
+    for target in body.targets:
+        task = full_scan_task.delay(target)
+        tasks.append({"task_id": task.id, "target": target, "status": "started"})
+    return {"count": len(tasks), "tasks": tasks}
