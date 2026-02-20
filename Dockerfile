@@ -56,6 +56,15 @@ RUN pip install dnsrecon --break-system-packages || \
     pip install -r /opt/dnsrecon/requirements.txt && \
     ln -s /opt/dnsrecon/dnsrecon.py /usr/local/bin/dnsrecon && \
     chmod +x /opt/dnsrecon/dnsrecon.py
+# amass
+RUN AMASS_VERSION=$(curl -s https://api.github.com/repos/owasp-amass/amass/releases/latest \
+    | grep tag_name | cut -d'"' -f4) && \
+    curl -L "https://github.com/owasp-amass/amass/releases/latest/download/amass_Linux_amd64.zip" \
+    -o /tmp/amass.zip && \
+    unzip /tmp/amass.zip -d /tmp/amass && \
+    mv /tmp/amass/amass_Linux_amd64/amass /usr/local/bin/amass && \
+    chmod +x /usr/local/bin/amass && \
+    rm -rf /tmp/amass /tmp/amass.zip
 # wordlist
 RUN mkdir -p /usr/share/wordlists/dirb && \
     curl -L https://raw.githubusercontent.com/v0re/dirb/master/wordlists/common.txt \

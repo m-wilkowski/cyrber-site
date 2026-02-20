@@ -1885,6 +1885,46 @@ function renderExtended(res) {
     h+=mkSec(dnsTitle,dc,dns.zone_transfer);
   }
 
+  // AMASS — SUBDOMAIN ENUMERATION
+  var am=res.amass||{};
+  if(am.target&&!am.skipped&&am.total_count>0){
+    var amc='';
+    // Info grid
+    amc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px">';
+    amc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL SUBDOMAINS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+am.total_count+'</div></div>';
+    amc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">UNIQUE IPs</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(am.ip_addresses||[]).length+'</div></div>';
+    amc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">ASNs</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(am.asns||[]).length+'</div></div>';
+    amc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SOURCES</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(am.sources||[]).length+'</div></div>';
+    amc+='</div>';
+    // Sources badges
+    var amSrc=am.sources||[];
+    if(amSrc.length){
+      amc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">DATA SOURCES</div>';
+      amc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      amSrc.forEach(function(s){amc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid var(--purple);color:var(--purple);background:rgba(155,89,182,.06)">'+s+'</span>';});
+      amc+='</div>';
+    }
+    // Subdomains list
+    var amSubs=am.subdomains||[];
+    if(amSubs.length){
+      amc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">DISCOVERED SUBDOMAINS ('+amSubs.length+')</div>';
+      amc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      amSubs.slice(0,100).forEach(function(s){amc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--accent2);background:rgba(74,143,212,.04)">'+s+'</span>';});
+      if(amSubs.length>100) amc+='<span style="font-size:10px;color:rgba(184,204,236,.35);padding:3px 10px">... i '+(amSubs.length-100)+' więcej</span>';
+      amc+='</div>';
+    }
+    // IP addresses
+    var amIps=am.ip_addresses||[];
+    if(amIps.length){
+      amc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">IP ADDRESSES ('+amIps.length+')</div>';
+      amc+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+      amIps.slice(0,50).forEach(function(ip){amc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--white);background:rgba(74,143,212,.06)">'+ip+'</span>';});
+      if(amIps.length>50) amc+='<span style="font-size:10px;color:rgba(184,204,236,.35);padding:3px 10px">... i '+(amIps.length-50)+' więcej</span>';
+      amc+='</div>';
+    }
+    h+=mkSec('// AMASS — SUBDOMAIN ENUMERATION ('+am.total_count+' subdomains)',amc,false);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];
@@ -1985,7 +2025,7 @@ function loadScanDetail(taskId) {
       censys:s.censys||null, ipinfo:s.ipinfo||null,
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
-      nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, mitre:s.mitre||null,
+      nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -2230,7 +2270,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','censys','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','censys','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

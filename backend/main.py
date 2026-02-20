@@ -217,6 +217,7 @@ from modules.exploitdb_scan import exploitdb_scan
 from modules.nvd_scan import nvd_scan
 from modules.whois_scan import whois_scan
 from modules.dnsrecon_scan import dnsrecon_scan
+from modules.amass_scan import amass_scan
 
 @app.get("/scan/gobuster")
 async def run_gobuster(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -295,6 +296,10 @@ async def run_whois(target: str = Query(...), user: str = Depends(get_current_us
 @app.get("/scan/dnsrecon")
 async def run_dnsrecon(target: str = Query(...), user: str = Depends(get_current_user)):
     return dnsrecon_scan(target)
+
+@app.get("/scan/amass")
+async def run_amass(target: str = Query(...), user: str = Depends(get_current_user)):
+    return amass_scan(target)
 
 from modules.webhook import WazuhAlert, extract_target
 

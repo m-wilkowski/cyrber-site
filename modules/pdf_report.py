@@ -369,6 +369,36 @@ def _dnsrecon_html(dnsrecon: dict) -> str:
         html = "<p class='muted'>Brak danych DNS.</p>"
     return html
 
+def _amass_html(amass: dict) -> str:
+    if not amass or amass.get("skipped") or not amass.get("total_count"):
+        return "<p class='muted'>Brak danych Amass.</p>"
+    html = ""
+    # Stats
+    html += f"<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>SUBDOMAINS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{amass.get('total_count',0)}</span></div>"
+    html += f"<div><span class='muted'>UNIQUE IPs</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{len(amass.get('ip_addresses',[]))}</span></div>"
+    html += f"<div><span class='muted'>ASNs</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{len(amass.get('asns',[]))}</span></div>"
+    html += f"<div><span class='muted'>SOURCES</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{len(amass.get('sources',[]))}</span></div>"
+    html += "</div>"
+    # Sources
+    sources = amass.get("sources", [])
+    if sources:
+        src_html = " ".join(f"<span style='color:#9b59b6;font-size:10px;border:1px solid rgba(155,89,182,.4);padding:2px 6px;margin:2px'>{s}</span>" for s in sources)
+        html += f"<div style='margin-bottom:12px'><span class='muted'>SOURCES:</span> {src_html}</div>"
+    # Subdomains
+    subs = amass.get("subdomains", [])
+    if subs:
+        subs_html = " ".join(f"<span class='mono' style='font-size:10px;color:#7ab3e8'>{s}</span>" for s in subs[:50])
+        extra = f" <span class='muted'>... i {len(subs)-50} więcej</span>" if len(subs) > 50 else ""
+        html += f"<div class='muted' style='margin-bottom:4px'>SUBDOMAINS ({len(subs)})</div><div>{subs_html}{extra}</div>"
+    # IPs
+    ips = amass.get("ip_addresses", [])
+    if ips:
+        ips_html = " ".join(f"<span class='mono' style='font-size:10px'>{ip}</span>" for ip in ips[:30])
+        extra = f" <span class='muted'>... i {len(ips)-30} więcej</span>" if len(ips) > 30 else ""
+        html += f"<div class='muted' style='margin:10px 0 4px'>IP ADDRESSES ({len(ips)})</div><div>{ips_html}{extra}</div>"
+    return html
+
 def _mitre_html(mitre: dict) -> str:
     techniques = mitre.get("techniques", [])
     if not techniques:
@@ -419,6 +449,7 @@ def generate_report(scan_data: dict) -> bytes:
     whois = scan_data.get("whois", {})
     mitre = scan_data.get("mitre", {})
     dnsrecon = scan_data.get("dnsrecon", {})
+    amass = scan_data.get("amass", {})
 
     color = _risk_color(risk)
 
@@ -598,6 +629,11 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// DNSRECON — DNS RECONNAISSANCE</div>
   {_dnsrecon_html(dnsrecon)}
+</div>
+
+<div class="section">
+  <div class="section-title">// AMASS — SUBDOMAIN ENUMERATION ({amass.get('total_count', 0)} subdomains)</div>
+  {_amass_html(amass)}
 </div>
 
 <div class="section">
