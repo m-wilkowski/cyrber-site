@@ -1,10 +1,6 @@
-import os
 import json
-import anthropic
-from dotenv import load_dotenv
-load_dotenv()
+from modules.llm_provider import get_provider
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 def analyze_scan_results(scan_data: dict) -> dict:
     target = scan_data.get("target", "unknown")
@@ -45,14 +41,11 @@ Odpowiedz w formacie JSON:
   "recommendations": "..."
 }}"""
 
-    # Próbuj Claude najpierw
+    provider = get_provider()
+
     try:
-        message = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        response_text = message.content[0].text
+        response_text = provider.chat(prompt)
+
         try:
             clean = response_text.strip()
             if clean.startswith("```"):
@@ -61,38 +54,35 @@ Odpowiedz w formacie JSON:
                     clean = clean[4:]
             analysis = json.loads(clean.strip())
         except json.JSONDecodeError:
-            analysis = {"raw_analysis": response_text}
+            # Try extracting JSON from anywhere in the response
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
+            if start != -1 and end > start:
+                try:
+                    analysis = json.loads(response_text[start:end])
+                except json.JSONDecodeError:
+                    analysis = {"raw_analysis": response_text}
+            else:
+                analysis = {"raw_analysis": response_text}
 
         return {
             "target": target,
             "findings_count": len(findings),
             "analysis": analysis,
-            "llm_provider": "claude"
+            "llm_provider": provider.name
         }
 
-    except Exception as claude_err:
-        print(f"[llm_analyze] Claude failed: {claude_err}, trying Ollama...")
+    except Exception as e:
+        print(f"[llm_analyze] {provider.name} failed: {e}")
 
-    # Fallback na Ollamę
-    try:
-        from modules.llm_ollama import analyze_scan_results_ollama, is_ollama_available
-        if is_ollama_available():
-            result = analyze_scan_results_ollama(scan_data)
-            return result
-        else:
-            raise Exception("Ollama not available")
-    except Exception as ollama_err:
-        print(f"[llm_analyze] Ollama failed: {ollama_err}")
-
-    # Ostateczny fallback
-    return {
-        "target": target,
-        "findings_count": len(findings),
-        "analysis": {
-            "risk_level": "NIEZNANE",
-            "summary": "Analiza LLM niedostępna.",
-            "top_issues": [],
-            "recommendations": ""
-        },
-        "llm_provider": "none"
-    }
+        return {
+            "target": target,
+            "findings_count": len(findings),
+            "analysis": {
+                "risk_level": "NIEZNANE",
+                "summary": "Analiza LLM niedostępna.",
+                "top_issues": [],
+                "recommendations": ""
+            },
+            "llm_provider": "none"
+        }

@@ -21,6 +21,20 @@ services:
       timeout: 5s
       retries: 5
 
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    profiles:
+      - ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build: .
     ports:
@@ -28,10 +42,13 @@ services:
     environment:
       DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
       REDIS_URL: redis://redis:6379/0
+      LLM_PROVIDER: ${LLM_PROVIDER:-claude}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-mistral}
       CYRBER_USER: ${CYRBER_USER:-admin}
       CYRBER_PASS: ${CYRBER_PASS:-cyrber2024}
-      OLLAMA_URL: http://host.docker.internal:11434
     depends_on:
       db:
         condition: service_healthy
@@ -47,8 +64,11 @@ services:
     environment:
       DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
       REDIS_URL: redis://redis:6379/0
+      LLM_PROVIDER: ${LLM_PROVIDER:-claude}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      OLLAMA_URL: http://host.docker.internal:11434
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-mistral}
     depends_on:
       db:
         condition: service_healthy
@@ -62,8 +82,11 @@ services:
     environment:
       DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
       REDIS_URL: redis://redis:6379/0
+      LLM_PROVIDER: ${LLM_PROVIDER:-claude}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      OLLAMA_URL: http://host.docker.internal:11434
+      CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-mistral}
     depends_on:
       db:
         condition: service_healthy
@@ -73,3 +96,4 @@ services:
 
 volumes:
   pgdata:
+  ollama_data:

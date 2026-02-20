@@ -1,6 +1,11 @@
 import subprocess
 import re
 
+ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mKGJHF]')
+
+def strip_ansi(text: str) -> str:
+    return ANSI_ESCAPE.sub('', text)
+
 def scan(target: str, wordlist: str = "/usr/share/wordlists/dirb/common.txt") -> dict:
     url = target if target.startswith("http") else f"http://{target}"
     try:
@@ -10,10 +15,9 @@ def scan(target: str, wordlist: str = "/usr/share/wordlists/dirb/common.txt") ->
         )
         findings = []
         for line in result.stdout.splitlines():
-            line = line.strip()
+            line = strip_ansi(line).strip()
             if not line:
                 continue
-            # Format: /path (Status: 200) [Size: 1234]
             m = re.match(r'^(\S+)\s+\(Status:\s*(\d+)\)(?:\s+\[Size:\s*(\d+)\])?', line)
             if m:
                 findings.append({

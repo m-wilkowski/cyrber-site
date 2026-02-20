@@ -1,13 +1,6 @@
-import os
 import json
 import requests
-import anthropic
-from dotenv import load_dotenv
-load_dotenv()
-
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+from modules.llm_provider import get_provider
 
 
 def _retest_finding(finding: dict, target: str) -> bool:
@@ -82,23 +75,25 @@ Odpowiedz TYLKO w JSON:
   ]
 }}"""
 
+    provider = get_provider()
+
     try:
-        message = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        response_text = message.content[0].text
+        response_text = provider.chat(prompt, max_tokens=1024)
         clean = response_text.strip()
         if clean.startswith("```"):
             clean = clean.split("```")[1]
             if clean.startswith("json"):
                 clean = clean[4:]
-        validation = json.loads(clean.strip())
+        try:
+            validation = json.loads(clean.strip())
+        except json.JSONDecodeError:
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
+            validation = json.loads(response_text[start:end])
         real_indices = {r["index"] for r in validation["results"] if r["is_real"]}
         return [f for i, f in enumerate(findings) if i in real_indices]
     except Exception as e:
-        print(f"[fp_filter] LLM validation failed: {e}")
+        print(f"[fp_filter] {provider.name} validation failed: {e}")
         return findings
 
 

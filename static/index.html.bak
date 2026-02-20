@@ -4,21 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CYRBER</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
 :root {
   --navy:    #080c18;
   --navy2:   #0c1220;
   --navy3:   #101828;
-  --panel:   #0a1020;
   --accent:  #4a8fd4;
   --accent2: #7ab3e8;
-  --purple:  #9b59b6;
-  --silver:  #8a9bb5;
-  --white:   #e8eef8;
-  --border:  rgba(74,143,212,.18);
+  --silver:  #b8ccec;
+  --white:   #e8f0fc;
+  --border:  rgba(74,143,212,0.22);
   --border2: rgba(74,143,212,0.10);
   --red:     #ff4444;
   --yellow:  #f5c518;
@@ -30,9 +27,9 @@
 
 body {
   background: var(--navy);
-  color: var(--white);
+  color: var(--silver);
   font-family: 'Rajdhani', sans-serif;
-  font-size: 15px;
+  font-size: 16px;
   min-height: 100vh;
   overflow-x: hidden;
 }
@@ -62,10 +59,10 @@ body::after {
   z-index: 0;
 }
 
-.wrapper {
-  max-width: 1440px;
+.wrap {
+  max-width: 1060px;
   margin: 0 auto;
-  padding: 0 clamp(16px, 2vw, 24px) 80px;
+  padding: 0 24px 80px;
   position: relative;
   z-index: 1;
 }
@@ -557,246 +554,10 @@ footer {
 .agent-step.done { color: rgba(155,89,182,.5); }
 .agent-step.active { color: #c39bd3; }
 
-
-.res-section{background:rgba(12,18,32,.75);border:1px solid var(--border2);margin-bottom:10px;backdrop-filter:blur(6px)}
-.res-section-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;cursor:pointer;user-select:none;transition:background .15s}
-.res-section-hdr:hover{background:rgba(74,143,212,.04)}
-.res-section-hdr.open{border-bottom:1px solid var(--border2)}
-.res-section-title{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.3em;color:var(--accent)}
-.res-section-arrow{font-size:11px;color:var(--silver);transition:transform .2s}
-.res-section-hdr.open .res-section-arrow{transform:rotate(90deg)}
-.res-section-body{padding:16px 20px;display:none}
-.res-section-body.open{display:block}
-.narr-text{font-size:14px;line-height:1.9;font-style:italic;color:var(--silver);border-left:3px solid var(--accent);padding-left:16px;margin-bottom:14px}
-.narr-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
-.nst{background:rgba(74,143,212,.06);border:1px solid var(--border2);padding:10px 14px}
-.nst-lbl{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.25em;color:rgba(184,204,236,.5);margin-bottom:4px}
-.nst-val{font-size:13px;font-weight:600;color:var(--white)}
-.nst-val.red{color:var(--red)}.nst-val.grn{color:var(--green)}
-.exec-box{background:rgba(74,143,212,.05);border:1px solid var(--border2);padding:12px 16px;font-size:13px;line-height:1.7;color:var(--silver)}
-.chain-blk{background:rgba(74,143,212,.04);border:1px solid rgba(74,143,212,.2);padding:14px 16px;margin-bottom:10px}
-.chain-blk:last-child{margin-bottom:0}
-.chain-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px}
-.chain-nm{font-size:14px;font-weight:600;color:var(--white)}
-.chain-badge{font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:700}
-.chain-meta{font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(184,204,236,.45);margin-bottom:10px}
-.ch-step{padding:7px 0;border-bottom:1px solid rgba(74,143,212,.07)}
-.ch-step:last-of-type{border-bottom:none}
-.ch-sn{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)}
-.ch-act{font-size:13px;color:var(--white);margin:2px 0}
-.ch-vuln{font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(184,204,236,.45)}
-.ch-res{font-size:11px;color:var(--green);margin-top:3px}
-.chain-final{font-size:12px;color:var(--orange);margin-top:8px;font-weight:600}
-.chain-biz{font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(184,204,236,.45);margin-top:4px}
-.dt{width:100%;border-collapse:collapse;font-size:12px}
-.dt th{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);text-align:left;padding:6px 10px;border-bottom:1px solid var(--border)}
-.dt td{padding:7px 10px;border-bottom:1px solid rgba(74,143,212,.06);color:var(--silver)}
-.dt td:first-child{color:var(--white);font-family:'Share Tech Mono',monospace}
-.dt tr:hover td{background:rgba(74,143,212,.04)}
-.sqli-box{display:flex;align-items:center;gap:16px;border:1px solid;padding:12px 16px}
-.sqli-status{font-size:14px;font-weight:700;letter-spacing:.05em}
-.fp-bar{display:flex;gap:14px;align-items:center;background:rgba(61,220,132,.06);border:1px solid rgba(61,220,132,.2);padding:7px 14px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--green);margin-bottom:10px}
-
-/* ── NAV (dashboard pattern) ── */
-nav {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32px;
-  height: 56px;
-  background: rgba(8,12,24,.92);
-  border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(12px);
-}
-
-.nav-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 18px;
-  font-weight: 900;
-  letter-spacing: .15em;
-  color: var(--white);
-  text-decoration: none;
-}
-
-.nav-brand span {
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--accent);
-  letter-spacing: .3em;
-  display: block;
-  margin-top: -2px;
-}
-
-.nav-links { display: flex; gap: 4px; }
-
-.nav-link {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 11px;
-  letter-spacing: .15em;
-  color: var(--silver);
-  text-decoration: none;
-  padding: 6px 14px;
-  border: 1px solid transparent;
-  transition: all .2s;
-}
-
-.nav-link:hover { color: var(--accent); border-color: var(--border); }
-.nav-link.active { color: var(--accent); border-color: var(--accent); }
-
-/* ── PDF ROW (moved from inline) ── */
-.pdf-row {
-  text-align: right;
-  margin-bottom: 16px;
-}
-
-.btn-pdf.pdf-main {
-  font-size: 11px;
-  padding: 6px 18px;
-}
-
-/* ── RESPONSIVE ── */
-@media (max-width: 768px) {
-  .input-row {
-    flex-direction: column;
-  }
-
-  .btn, .btn-agent {
-    width: 100%;
-    text-align: center;
-  }
-
-  .narr-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .hist-item {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .hist-target {
-    grid-column: 1 / -1;
-  }
-
-  nav {
-    padding: 0 16px;
-  }
-
-  .nav-link {
-    font-size: 10px;
-    padding: 5px 10px;
-    letter-spacing: .1em;
-  }
-
-  .nav-brand {
-    font-size: 15px;
-  }
-
-  .risk-row {
-    flex-direction: column;
-  }
-
-  .meta {
-    text-align: left;
-  }
-}
-
-@media (max-width: 480px) {
-  .hero {
-    padding: 32px 0 20px;
-  }
-
-  .logo-wrap {
-    width: 120px;
-    height: 120px;
-  }
-
-  .logo-img {
-    width: 120px;
-    height: 120px;
-  }
-
-  .ring {
-    width: 132px;
-    height: 132px;
-  }
-
-  .ring2 {
-    width: 148px;
-    height: 148px;
-  }
-
-  .brand {
-    font-size: 28px;
-  }
-
-  .nav-brand span {
-    display: none;
-  }
-
-  .panel {
-    padding: 18px 14px 14px;
-  }
-
-  .card {
-    padding: 16px;
-  }
-
-  .wrapper {
-    padding: 0 12px 40px;
-  }
-
-  .hist-item {
-    grid-template-columns: 1fr;
-    gap: 6px;
-    padding: 10px 12px;
-  }
-
-  .hist-target {
-    grid-column: auto;
-  }
-
-  .dt th, .dt td {
-    font-size: 10px;
-    padding: 5px 6px;
-  }
-
-  .tagline {
-    font-size: 9px;
-    letter-spacing: .25em;
-  }
-
-  .summary {
-    font-size: 13px;
-  }
-
-  .rec {
-    font-size: 12px;
-  }
-
-  footer {
-    font-size: 8px;
-  }
-}
-
 </style>
 </head>
 <body>
-<nav>
-  <a class="nav-brand" href="/ui">CYRBER<span>AUTONOMOUS RECON</span></a>
-  <div class="nav-links">
-    <a class="nav-link active" href="/ui">SCAN</a>
-    <a class="nav-link" href="/dashboard">DASHBOARD</a>
-    <a class="nav-link" href="/scheduler">SCHEDULER</a>
-  </div>
-</nav>
-<div class="wrapper">
+<div class="wrap">
 
   <div class="hero">
     <div class="logo-wrap">
@@ -806,6 +567,9 @@ nav {
     </div>
     <div class="brand">CYRBER</div>
     <div class="tagline">Autonomous Security Reconnaissance Platform</div>
+    <div style="text-align:center;margin-top:12px">
+      <a href="/dashboard" style="font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.25em;color:#4a8fd4;text-decoration:none;border:1px solid rgba(74,143,212,.3);padding:5px 16px">DASHBOARD ↗</a>
+    </div>
   </div>
 
   <div class="divider"></div>
@@ -832,8 +596,8 @@ nav {
 
   <div class="results" id="res">
     
-    <div class="pdf-row">
-      <a class="btn-pdf pdf-main" id="pdfBtn" href="#" target="_blank" style="display:none">⬇ DOWNLOAD PDF REPORT</a>
+    <div style="text-align:right; margin-bottom: 16px;">
+      <a class="btn-pdf" id="pdfBtn" href="#" target="_blank" style="display:none; font-size:11px; padding:6px 18px;">⬇ DOWNLOAD PDF REPORT</a>
     </div>
 
     <div class="risk-row">
@@ -841,7 +605,7 @@ nav {
         <div class="risk-lbl">THREAT LEVEL</div>
         <div class="risk-badge" id="rb">—</div>
       </div>
-      <div class="meta" id="scanMeta"></div>
+      <div class="meta" id="meta"></div>
     </div>
 
     <div class="card">
@@ -863,8 +627,6 @@ nav {
       <div class="card-lbl">REMEDIATION RECOMMENDATIONS</div>
       <div class="rec" id="rec"></div>
     </div>
-
-    <div id="extSections"></div>
   </div>
 
   
@@ -907,25 +669,6 @@ function setSt(txt, cls) {
   document.getElementById('stxt').textContent = txt;
   var d = document.getElementById('dot');
   d.className = 'dot' + (cls ? ' ' + cls : '');
-}
-
-function showProgress(on) {
-  var pw = document.getElementById('pw');
-  var pf = document.getElementById('pf');
-  if (on) {
-    pw.classList.add('on');
-    pf.classList.add('sweep');
-  } else {
-    pw.classList.remove('on');
-    pf.classList.remove('sweep');
-    pf.style.width = '0';
-  }
-}
-
-function clearLog() {
-  var el = document.getElementById('log');
-  el.innerHTML = '';
-  el.style.display = 'none';
 }
 
 function startScan() {
@@ -983,129 +726,72 @@ function pollStatus(tid) {
 
 function renderResults(res, elapsed) {
   var a = res.analysis || {};
-  var risk = (a.risk_level || 'N/A');
-  var riskKey = risk.toUpperCase()
-    .replace(/Ą/g,'A').replace(/Ć/g,'C').replace(/Ę/g,'E').replace(/Ł/g,'L')
-    .replace(/Ń/g,'N').replace(/Ó/g,'O').replace(/Ś/g,'S').replace(/Ź/g,'Z')
-    .replace(/Ż/g,'Z').replace(/ą/g,'A').replace(/ć/g,'C').replace(/ę/g,'E')
-    .replace(/ł/g,'L').replace(/ń/g,'N').replace(/ó/g,'O').replace(/ś/g,'S')
-    .replace(/ź/g,'Z').replace(/ż/g,'Z');
+  var risk = a.risk_level || 'N/A';
+
   var rb = document.getElementById('rb');
   rb.textContent = risk;
-  rb.className = 'risk-badge ' + riskKey;
-  var metaEl = document.getElementById('meta') || document.getElementById('scanMeta');
-  if(metaEl) metaEl.innerHTML = 'TARGET: '+res.target+'<br>FINDINGS: '+(res.findings_count||0)+(elapsed?'<br>TIME: '+elapsed+'s':'');
+  rb.className = 'risk-badge ' + risk.toUpperCase().replace('Ę', 'E').replace('Ó', 'O');
+
+  document.getElementById('meta').innerHTML =
+    'TARGET: ' + res.target + '<br>FINDINGS: ' + res.findings_count + '<br>TIME: ' + elapsed + 's';
+
   document.getElementById('sum').textContent = a.summary || '—';
+
   var ul = document.getElementById('iss');
   ul.innerHTML = '';
-  (a.top_issues||[]).forEach(function(iss,i){
-    var li=document.createElement('li');
-    li.innerHTML='<span class="inum">'+String(i+1).padStart(2,'0')+'</span><span>'+iss+'</span>';
+  var issues = a.top_issues || [];
+  issues.forEach(function(iss, i) {
+    var li = document.createElement('li');
+    var num = document.createElement('span');
+    num.className = 'inum';
+    num.textContent = String(i + 1).padStart(2, '0');
+    var txt = document.createElement('span');
+    txt.textContent = iss;
+    li.appendChild(num);
+    li.appendChild(txt);
     ul.appendChild(li);
   });
+
   var sevrow = document.getElementById('sevrow');
   sevrow.innerHTML = '';
-  var findings = (res.nuclei&&res.nuclei.findings)||[];
-  var sc={high:0,medium:0,low:0,info:0};
-  findings.forEach(function(f){var s=(f.info&&f.info.severity)||'info';if(sc[s]!==undefined)sc[s]++;else sc.info++;});
-  var hasAny=false;
-  Object.keys(sc).forEach(function(s){if(sc[s]>0){hasAny=true;var sp=document.createElement('span');sp.className='sev '+s;sp.textContent=s.toUpperCase()+': '+sc[s];sevrow.appendChild(sp);}});
-  if(!hasAny) sevrow.innerHTML='<span class="sev info">TOTAL: '+(res.findings_count||0)+'</span>';
-  document.getElementById('rec').textContent = a.recommendations || '—';
-  var pf=document.getElementById('pf');
-  pf.classList.remove('sweep');pf.style.width='100%';
-  setTimeout(function(){document.getElementById('pw').classList.remove('on');pf.style.width='0';},800);
-  setSt('Reconnaissance complete · '+(res.findings_count||0)+' findings · Risk: '+risk,'done');
-  if(window._lastTaskId){var pb=document.getElementById('pdfBtn');pb.href=API+'/scans/'+window._lastTaskId+'/pdf';pb.style.display='inline-block';}
-  renderExtended(res);
-  document.getElementById('res').classList.add('on');
-  document.getElementById('scanBtn').disabled=false;
-  document.getElementById('res').scrollIntoView({behavior:'smooth'});
-}
-
-function mkSec(title,content,open){
-  return '<div class="res-section"><div class="res-section-hdr"'+(open?' data-open="1"':'')+'><div class="res-section-title">'+title+'</div><div class="res-section-arrow">›</div></div><div class="res-section-body'+(open?' open':'')+'">'+content+'</div></div>';
-}
-
-function renderExtended(res) {
-  var ext=document.getElementById('extSections');
-  if(!ext) return;
-  var h='';
-  if(res.fp_filter&&res.fp_filter.original_count>0)
-    h+='<div class="fp-bar">FILTRACJA FP: '+res.fp_filter.filtered_count+' / '+res.fp_filter.original_count+' · usunięto '+res.fp_filter.removed+' fałszywych alarmów</div>';
-
-  var nd=res.hacker_narrative||{};
-  var narr=nd.narrative||res.narrative||'';
-  if(narr){
-    var nh='<div class="narr-text">'+narr.replace(/\n/g,'<br>').replace(/\*\*/g,'')+'</div>';
-    nh+='<div class="narr-stats">';
-    if(nd.time_to_compromise) nh+='<div class="nst"><div class="nst-lbl">CZAS PRZEJĘCIA</div><div class="nst-val">'+nd.time_to_compromise+'</div></div>';
-    if(nd.potential_loss)     nh+='<div class="nst"><div class="nst-lbl">POTENCJALNA STRATA</div><div class="nst-val red">'+nd.potential_loss+'</div></div>';
-    if(nd.fix_cost)           nh+='<div class="nst"><div class="nst-lbl">KOSZT NAPRAWY</div><div class="nst-val grn">'+nd.fix_cost+'</div></div>';
-    nh+='</div>';
-    if(nd.executive_summary) nh+='<div class="exec-box">'+nd.executive_summary+'</div>';
-    h+=mkSec('// PERSPEKTYWA HAKERA',nh,true);
-  }
-
-  var chains=(res.exploit_chains&&res.exploit_chains.chains)||[];
-  if(chains.length){
-    var IC={KRYTYCZNY:'#ff4444',WYSOKI:'#ff8c00',ŚREDNI:'#f5c518'};
-    var ch='';
-    chains.forEach(function(c){
-      var col=IC[c.impact]||'#4a8fd4';
-      ch+='<div class="chain-blk"><div class="chain-hdr"><span class="chain-nm">'+c.name+'</span><span class="chain-badge" style="color:'+col+'">'+c.impact+' · '+c.probability+'%</span></div>';
-      ch+='<div class="chain-meta">Czas: '+c.total_time+' · Priorytet: '+c.remediation_priority+'</div>';
-      (c.steps||[]).forEach(function(s){
-        ch+='<div class="ch-step"><div class="ch-sn">KROK '+s.step+'</div><div class="ch-act">'+s.action+'</div><div class="ch-vuln">'+s.vulnerability+' · '+s.time+'</div><div class="ch-res">→ '+s.result+'</div></div>';
-      });
-      ch+='<div class="chain-final">Dostęp końcowy: '+c.final_access+'</div><div class="chain-biz">'+c.business_impact+'</div></div>';
-    });
-    h+=mkSec('// ŁAŃCUCHY EXPLOITÓW ('+chains.length+')',ch,true);
-  }
-
-  var ports=res.ports||[];
-  if(ports.length){
-    var pt='<table class="dt"><thead><tr><th>PORT</th><th>SERVICE</th><th>VERSION</th><th>STATE</th></tr></thead><tbody>';
-    ports.forEach(function(p){pt+='<tr><td>'+p.port+'</td><td>'+p.service+'</td><td>'+(p.version||'—')+'</td><td>'+p.state+'</td></tr>';});
-    h+=mkSec('// OTWARTE PORTY ('+ports.length+')',pt+'</tbody></table>',false);
-  }
-
-  var gf=(res.gobuster&&res.gobuster.findings)||[];
-  if(gf.length){
-    var gb='<table class="dt"><thead><tr><th>ŚCIEŻKA</th><th>STATUS</th><th>ROZMIAR</th></tr></thead><tbody>';
-    gf.slice(0,30).forEach(function(f){gb+='<tr><td>'+f.path+'</td><td>'+f.status+'</td><td>'+(f.size||'—')+'</td></tr>';});
-    if(gf.length>30) gb+='<tr><td colspan="3" style="color:rgba(184,204,236,.35);font-size:10px">... i '+(gf.length-30)+' więcej</td></tr>';
-    h+=mkSec('// KATALOGI — GOBUSTER ('+gf.length+')',gb+'</tbody></table>',false);
-  }
-
-  if(res.sqlmap){
-    var vuln=res.sqlmap.vulnerable;
-    var sc2=vuln?'#ff4444':'#3ddc84';
-    var sl=vuln?'PODATNY NA SQL INJECTION':'BRAK SQL INJECTION';
-    var sb='<div class="sqli-box" style="border-color:'+sc2+'40;background:'+sc2+'0a"><div class="sqli-status" style="color:'+sc2+'">'+sl+'</div>';
-    if(res.sqlmap.injectable_params&&res.sqlmap.injectable_params.length) sb+='<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:var(--silver)">Parametry: '+res.sqlmap.injectable_params.join(', ')+'</div>';
-    sb+='</div>';
-    h+=mkSec('// SQL INJECTION',sb,false);
-  }
-
-  if(res.testssl&&res.testssl.grade){
-    var gc={A:'#3ddc84',B:'#f5c518',C:'#ff8c00',F:'#ff4444'}[res.testssl.grade]||'#4a8fd4';
-    var tl='<div style="display:flex;align-items:center;gap:20px;margin-bottom:12px"><div style="font-family:Orbitron,sans-serif;font-size:36px;font-weight:900;color:'+gc+'">'+res.testssl.grade+'</div><div style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--silver)">TLS GRADE</div></div>';
-    if(res.testssl.issues&&res.testssl.issues.length){
-      tl+='<table class="dt"><thead><tr><th>PROBLEM</th><th>SEVERITY</th></tr></thead><tbody>';
-      res.testssl.issues.forEach(function(i){tl+='<tr><td>'+(i.description||i)+'</td><td>'+(i.severity||'—')+'</td></tr>';});
-      tl+='</tbody></table>';
-    } else tl+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;color:#3ddc84">BRAK PROBLEMÓW TLS</div>';
-    h+=mkSec('// BEZPIECZEŃSTWO TLS',tl,false);
-  }
-
-  ext.innerHTML=h;
-  ext.querySelectorAll('.res-section-hdr').forEach(function(hdr){
-    hdr.addEventListener('click',function(){
-      hdr.classList.toggle('open');
-      hdr.nextElementSibling.classList.toggle('open');
-    });
+  var findings = (res.nuclei && res.nuclei.findings) || [];
+  var sc = { high: 0, medium: 0, low: 0, info: 0 };
+  findings.forEach(function(f) {
+    var s = (f.info && f.info.severity) || 'info';
+    if (sc[s] !== undefined) sc[s]++; else sc.info++;
   });
+  Object.keys(sc).forEach(function(s) {
+    if (sc[s] > 0) {
+      var sp = document.createElement('span');
+      sp.className = 'sev ' + s;
+      sp.textContent = s.toUpperCase() + ': ' + sc[s];
+      sevrow.appendChild(sp);
+    }
+  });
+  if (!sevrow.children.length) {
+    sevrow.innerHTML = '<span class="sev info">TOTAL: ' + res.findings_count + '</span>';
+  }
+
+  document.getElementById('rec').textContent = a.recommendations || '—';
+
+  var pf = document.getElementById('pf');
+  pf.classList.remove('sweep');
+  pf.style.width = '100%';
+  setTimeout(function() {
+    document.getElementById('pw').classList.remove('on');
+    pf.style.width = '0';
+  }, 800);
+
+  setSt('Reconnaissance complete  ·  ' + res.findings_count + ' findings  ·  Risk: ' + risk, 'done');
+  // Set PDF button if task_id available
+  if (window._lastTaskId) {
+    var pb = document.getElementById('pdfBtn');
+    pb.href = API + '/scans/' + window._lastTaskId + '/pdf';
+    pb.style.display = 'inline-block';
+  }
+  document.getElementById('res').classList.add('on');
+  document.getElementById('scanBtn').disabled = false;
+  document.getElementById('res').scrollIntoView({ behavior: 'smooth' });
 }
 
 document.getElementById('tgt').addEventListener('keydown', function(e) {
@@ -1153,34 +839,34 @@ function renderHistory(scans) {
 }
 
 function loadScanDetail(taskId) {
-  window._lastTaskId = taskId;
-  Promise.all([
-    fetch(API+'/scans/'+taskId).then(function(r){return r.json();}),
-    fetch(API+'/scans/'+taskId+'/chains').then(function(r){return r.json();}).catch(function(){return {};}),
-    fetch(API+'/scans/'+taskId+'/narrative').then(function(r){return r.json();}).catch(function(){return {};})
-  ]).then(function(results){
-    var s=results[0]; var chainsData=results[1]; var narrData=results[2];
-    if(!s) return;
-    var combined={
-      target:s.target, findings_count:s.findings_count,
-      analysis:{summary:s.summary,risk_level:s.risk_level,top_issues:s.top_issues||[],recommendations:s.recommendations},
-      nuclei:{findings:[]},
-      ports:s.ports||[], gobuster:s.gobuster||{}, sqlmap:s.sqlmap||null,
-      testssl:s.testssl||null, fp_filter:s.fp_filter||null,
-      exploit_chains:chainsData.exploit_chains||chainsData||{},
-      hacker_narrative:narrData.hacker_narrative||narrData||{}
-    };
-    renderResults(combined,0);
-    var metaEl=document.getElementById('scanMeta')||document.getElementById('meta');
-    if(metaEl) metaEl.innerHTML='TARGET: '+s.target+'<br>FINDINGS: '+s.findings_count+'<br>DATE: '+(s.completed_at?new Date(s.completed_at).toLocaleString('pl-PL'):'N/A');
-  });
+  fetch(API + '/scans/' + taskId)
+    .then(function(r) { return r.json(); })
+    .then(function(s) {
+      if (!s) return;
+      var fakeResult = {
+        target: s.target,
+        findings_count: s.findings_count,
+        analysis: {
+          summary: s.summary,
+          risk_level: s.risk_level,
+          top_issues: s.top_issues || [],
+          recommendations: s.recommendations
+        },
+        nuclei: { findings: [] }
+      };
+      window._lastTaskId = taskId;
+      renderResults(fakeResult, 0);
+      document.getElementById('scanMeta').innerHTML =
+        'TARGET: ' + s.target + '<br>FINDINGS: ' + s.findings_count +
+        '<br>DATE: ' + (s.completed_at ? new Date(s.completed_at).toLocaleString('pl-PL') : 'N/A');
+    });
 }
 
 window.addEventListener('load', function() { loadHistory(); });
 
 
 function startAgentScan() {
-  var target = document.getElementById('tgt').value.trim();
+  var target = document.getElementById('targetInput').value.trim();
   if (!target) { alert('Enter target first'); return; }
 
   document.getElementById('agentBtn').disabled = true;
@@ -1194,7 +880,7 @@ function startAgentScan() {
   log('AGENT MODE ACTIVATED');
   log('Target: ' + target);
   log('Claude AI will autonomously decide which scanners to use...');
-  document.getElementById('res').classList.remove('on');
+  document.getElementById('resultsSection').style.display = 'none';
   document.getElementById('pdfBtn').style.display = 'none';
 
   fetch(API + '/agent/start?target=' + encodeURIComponent(target))

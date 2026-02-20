@@ -1,10 +1,5 @@
-import os
 import json
-import anthropic
-from dotenv import load_dotenv
-load_dotenv()
-
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+from modules.llm_provider import get_provider
 
 
 def generate_hacker_narrative(scan_result: dict) -> dict:
@@ -54,22 +49,24 @@ Odpowiedz w JSON:
   "time_to_compromise": "szacowany czas przejęcia"
 }}"""
 
+    provider = get_provider()
+
     try:
-        message = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=1500,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        response_text = message.content[0].text
+        response_text = provider.chat(prompt, max_tokens=1500)
         clean = response_text.strip()
         if clean.startswith("```"):
             clean = clean.split("```")[1]
             if clean.startswith("json"):
                 clean = clean[4:]
-        result = json.loads(clean.strip())
-        return {"target": target, **result}
+        try:
+            result = json.loads(clean.strip())
+        except json.JSONDecodeError:
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
+            result = json.loads(response_text[start:end])
+        return {"target": target, **result, "provider": provider.name}
     except Exception as e:
-        print(f"[hacker_narrative] Failed: {e}")
+        print(f"[hacker_narrative] {provider.name} failed: {e}")
         return {
             "target": target,
             "narrative": None,

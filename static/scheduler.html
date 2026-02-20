@@ -4,22 +4,63 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CYRBER — Scheduler</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   :root {
     --navy:    #080c18;
     --navy2:   #0c1220;
     --navy3:   #101828;
+    --panel:   #0a1020;
     --accent:  #4a8fd4;
-    --accent2: #2d6aa0;
-    --border:  rgba(74,143,212,.25);
-    --text:    #e8eef8;
-    --muted:   #8a9bb5;
-    --danger:  #e05555;
-    --success: #4caf7d;
+    --accent2: #7ab3e8;
+    --purple:  #9b59b6;
+    --silver:  #8a9bb5;
+    --white:   #e8eef8;
+    --border:  rgba(74,143,212,.18);
+    --border2: rgba(74,143,212,.10);
+    --red:     #ff4444;
+    --yellow:  #f5c518;
+    --green:   #3ddc84;
+    --orange:  #ff8c00;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--navy); color: var(--text); font-family: 'Share Tech Mono', monospace; min-height: 100vh; }
+
+  body {
+    background: var(--navy);
+    color: var(--white);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 15% 60%, rgba(20,40,80,0.55) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 85% 15%, rgba(10,20,50,0.7) 0%, transparent 60%),
+      radial-gradient(ellipse 100% 30% at 50% 100%, rgba(74,143,212,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(74,143,212,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,143,212,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── NAV ── */
   nav {
     position: sticky; top: 0; z-index: 100;
     display: flex; align-items: center; justify-content: space-between;
@@ -28,30 +69,90 @@
     border-bottom: 1px solid var(--border);
     backdrop-filter: blur(12px);
   }
-  nav .logo { font-family: Orbitron, sans-serif; font-size: 18px; font-weight: 900; letter-spacing: .15em; color: var(--text); }
-  nav .links { display: flex; gap: 4px; }
-  nav a { font-size: 11px; letter-spacing: .15em; color: var(--muted); text-decoration: none; padding: 6px 14px; border: 1px solid transparent; }
-  nav a.active { color: var(--accent); border-color: rgba(74,143,212,.4); }
-  nav a:hover { color: var(--accent); }
 
-  .container { max-width: 900px; margin: 40px auto; padding: 0 24px; }
-  h1 { font-family: Orbitron, sans-serif; font-size: 20px; letter-spacing: .2em; color: var(--accent); margin-bottom: 32px; }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: .15em;
+    color: var(--white);
+    text-decoration: none;
+  }
 
+  .nav-brand span {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--accent);
+    letter-spacing: .3em;
+    display: block;
+    margin-top: -2px;
+  }
+
+  .nav-links { display: flex; gap: 4px; }
+
+  .nav-link {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .15em;
+    color: var(--silver);
+    text-decoration: none;
+    padding: 6px 14px;
+    border: 1px solid transparent;
+    transition: all .2s;
+  }
+
+  .nav-link:hover { color: var(--accent); border-color: var(--border); }
+  .nav-link.active { color: var(--accent); border-color: var(--accent); }
+
+  /* ── LAYOUT ── */
+  .wrapper {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 32px clamp(16px, 2vw, 24px) 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .page-header {
+    margin-bottom: 32px;
+  }
+
+  .page-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: .3em;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .page-title-main {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: .1em;
+    color: var(--white);
+  }
+
+  /* ── CARD ── */
   .card {
-    background: var(--navy2);
+    background: rgba(12,18,32,.82);
     border: 1px solid var(--border);
     padding: 24px;
     margin-bottom: 24px;
+    backdrop-filter: blur(12px);
   }
-  .card h2 { font-size: 11px; letter-spacing: .2em; color: var(--muted); margin-bottom: 20px; }
+  .card h2 { font-size: 11px; letter-spacing: .2em; color: var(--silver); margin-bottom: 20px; }
 
   .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
   .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
-  label { font-size: 10px; letter-spacing: .15em; color: var(--muted); }
+  label { font-size: 10px; letter-spacing: .15em; color: var(--silver); }
   input {
     background: var(--navy3);
     border: 1px solid var(--border);
-    color: var(--text);
+    color: var(--white);
     font-family: 'Share Tech Mono', monospace;
     font-size: 13px;
     padding: 10px 14px;
@@ -70,36 +171,108 @@
     color: var(--accent);
     cursor: pointer;
     white-space: nowrap;
+    transition: all .2s;
   }
   .btn:hover { background: rgba(74,143,212,.15); }
-  .btn-danger { border-color: var(--danger); color: var(--danger); }
-  .btn-danger:hover { background: rgba(224,85,85,.15); }
+  .btn-danger { border-color: var(--red); color: var(--red); }
+  .btn-danger:hover { background: rgba(255,68,68,.15); }
 
   .msg { font-size: 12px; padding: 10px 14px; margin-top: 12px; border-left: 3px solid var(--accent); background: rgba(74,143,212,.08); }
-  .msg.error { border-color: var(--danger); background: rgba(224,85,85,.08); color: var(--danger); }
+  .msg.error { border-color: var(--red); background: rgba(255,68,68,.08); color: var(--red); }
 
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { text-align: left; font-size: 10px; letter-spacing: .15em; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  th { text-align: left; font-size: 10px; letter-spacing: .15em; color: var(--silver); padding: 8px 12px; border-bottom: 1px solid var(--border); }
   td { padding: 12px; border-bottom: 1px solid rgba(74,143,212,.08); vertical-align: middle; }
   tr:hover td { background: rgba(74,143,212,.04); }
   .badge { display: inline-block; font-size: 9px; letter-spacing: .1em; padding: 3px 8px; border: 1px solid; }
-  .badge-on { border-color: var(--success); color: var(--success); }
-  .badge-off { border-color: var(--muted); color: var(--muted); }
-  .empty { color: var(--muted); font-size: 12px; text-align: center; padding: 32px; }
+  .badge-on { border-color: var(--green); color: var(--green); }
+  .badge-off { border-color: var(--silver); color: var(--silver); }
+  .empty { color: var(--silver); font-size: 12px; text-align: center; padding: 32px; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    margin-top: 52px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border2);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: rgba(74,143,212,.18);
+    letter-spacing: .22em;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .form-row {
+      flex-direction: column;
+    }
+
+    .form-group {
+      min-width: 100%;
+    }
+
+    .btn {
+      width: 100%;
+      text-align: center;
+    }
+
+    nav {
+      padding: 0 16px;
+    }
+
+    .nav-link {
+      font-size: 10px;
+      padding: 5px 10px;
+      letter-spacing: .1em;
+    }
+
+    .nav-brand {
+      font-size: 15px;
+    }
+
+    .page-title-main {
+      font-size: 22px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .nav-brand span {
+      display: none;
+    }
+
+    .wrapper {
+      padding: 20px 12px 40px;
+    }
+
+    .card {
+      padding: 16px;
+    }
+
+    .page-title-main {
+      font-size: 18px;
+    }
+
+    footer {
+      font-size: 8px;
+    }
+  }
 </style>
 </head>
 <body>
 <nav>
-  <div class="logo">CYRBER</div>
-  <div class="links">
-    <a href="/ui">SCAN</a>
-    <a href="/dashboard">DASHBOARD</a>
-    <a href="/scheduler" class="active">SCHEDULER</a>
+  <a class="nav-brand" href="/ui">CYRBER<span>AUTONOMOUS RECON</span></a>
+  <div class="nav-links">
+    <a class="nav-link" href="/ui">SCAN</a>
+    <a class="nav-link" href="/dashboard">DASHBOARD</a>
+    <a class="nav-link active" href="/scheduler">SCHEDULER</a>
   </div>
 </nav>
 
-<div class="container">
-  <h1>SCHEDULED SCANS</h1>
+<div class="wrapper">
+  <div class="page-header">
+    <div class="page-title">AUTOMATION &amp; SCHEDULING</div>
+    <div class="page-title-main">SCHEDULED SCANS</div>
+  </div>
 
   <div class="card">
     <h2>// NOWY HARMONOGRAM</h2>
@@ -121,6 +294,8 @@
     <h2>// AKTYWNE HARMONOGRAMY</h2>
     <div id="schedules-list"><div class="empty">Ładowanie...</div></div>
   </div>
+
+  <footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.1.0</footer>
 </div>
 
 <script>

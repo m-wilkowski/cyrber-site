@@ -5,26 +5,22 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CYRBER — DASHBOARD</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
-  --navy:    #080c18;
-  --navy2:   #0c1220;
-  --navy3:   #101828;
-  --panel:   #0a1020;
-  --accent:  #4a8fd4;
-  --accent2: #7ab3e8;
-  --purple:  #9b59b6;
-  --silver:  #8a9bb5;
-  --white:   #e8eef8;
-  --border:  rgba(74,143,212,.18);
-  --border2: rgba(74,143,212,.10);
-  --red:     #ff4444;
-  --yellow:  #f5c518;
-  --green:   #3ddc84;
-  --orange:  #ff8c00;
+  --navy:   #080c18;
+  --panel:  #0a1020;
+  --border: rgba(74,143,212,.18);
+  --accent: #4a8fd4;
+  --accent2:#7ab3e8;
+  --purple: #9b59b6;
+  --silver: #8a9bb5;
+  --white:  #e8eef8;
+  --low:    #2ecc71;
+  --medium: #f1c40f;
+  --high:   #e67e22;
+  --crit:   #e74c3c;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,25 +34,14 @@ body {
   overflow-x: hidden;
 }
 
+/* Grid background */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background:
-    radial-gradient(ellipse 80% 50% at 15% 60%, rgba(20,40,80,0.55) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 40% at 85% 15%, rgba(10,20,50,0.7) 0%, transparent 60%),
-    radial-gradient(ellipse 100% 30% at 50% 100%, rgba(74,143,212,0.04) 0%, transparent 60%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
   background-image:
-    linear-gradient(rgba(74,143,212,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74,143,212,0.03) 1px, transparent 1px);
+    linear-gradient(rgba(74,143,212,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74,143,212,.04) 1px, transparent 1px);
   background-size: 40px 40px;
   pointer-events: none;
   z-index: 0;
@@ -118,9 +103,9 @@ nav {
 .wrapper {
   position: relative;
   z-index: 1;
-  max-width: 1440px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 32px clamp(16px, 2vw, 24px) 80px;
+  padding: 32px 24px 64px;
 }
 
 .page-header {
@@ -156,7 +141,7 @@ nav {
 /* ── KPI CARDS ── */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -307,10 +292,10 @@ nav {
   border: 1px solid;
 }
 
-.risk-NISKIE   { color: var(--green);  border-color: var(--green);  }
-.risk-ŚREDNIE  { color: var(--yellow); border-color: var(--yellow); }
-.risk-WYSOKIE  { color: var(--orange); border-color: var(--orange); }
-.risk-KRYTYCZNE{ color: var(--red);    border-color: var(--red);    }
+.risk-NISKIE   { color: var(--low);    border-color: var(--low);    }
+.risk-ŚREDNIE  { color: var(--medium); border-color: var(--medium); }
+.risk-WYSOKIE  { color: var(--high);   border-color: var(--high);   }
+.risk-KRYTYCZNE{ color: var(--crit);   border-color: var(--crit);   }
 
 /* ── SPARKLINE / TIMELINE ── */
 .timeline-wrap { height: 140px; position: relative; }
@@ -353,71 +338,6 @@ nav {
   color: var(--silver);
   letter-spacing: .15em;
 }
-
-/* ── FOOTER ── */
-footer {
-  text-align: center;
-  margin-top: 52px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border2);
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 10px;
-  color: rgba(74,143,212,.18);
-  letter-spacing: .22em;
-}
-
-/* ── RESPONSIVE ── */
-@media (max-width: 768px) {
-  .chart-grid, .chart-grid-3 {
-    grid-template-columns: 1fr;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  nav {
-    padding: 0 16px;
-  }
-
-  .nav-link {
-    font-size: 10px;
-    padding: 5px 10px;
-    letter-spacing: .1em;
-  }
-
-  .nav-brand {
-    font-size: 15px;
-  }
-}
-
-@media (max-width: 480px) {
-  .nav-brand span {
-    display: none;
-  }
-
-  .kpi {
-    padding: 14px 16px;
-  }
-
-  .kpi-value {
-    font-size: 28px;
-  }
-
-  .wrapper {
-    padding: 20px 12px 40px;
-  }
-
-  .page-title-main {
-    font-size: 22px;
-  }
-
-  footer {
-    font-size: 8px;
-  }
-}
 </style>
 </head>
 <body>
@@ -430,7 +350,6 @@ footer {
   <div class="nav-links">
     <a class="nav-link" href="/ui">SCAN</a>
     <a class="nav-link active" href="/dashboard">DASHBOARD</a>
-    <a class="nav-link" href="/scheduler">SCHEDULER</a>
   </div>
 </nav>
 
@@ -454,12 +373,12 @@ footer {
       <div class="kpi-value" id="kpiTotal">—</div>
       <div class="kpi-sub" id="kpiTotalSub">loading...</div>
     </div>
-    <div class="kpi" style="--accent-color: var(--red)">
+    <div class="kpi" style="--accent-color: var(--crit)">
       <div class="kpi-label">CRITICAL / HIGH</div>
       <div class="kpi-value" id="kpiHigh">—</div>
       <div class="kpi-sub" id="kpiHighSub">loading...</div>
     </div>
-    <div class="kpi" style="--accent-color: var(--yellow)">
+    <div class="kpi" style="--accent-color: var(--medium)">
       <div class="kpi-label">TOTAL FINDINGS</div>
       <div class="kpi-value" id="kpiFindings">—</div>
       <div class="kpi-sub" id="kpiFindingsSub">loading...</div>
@@ -527,17 +446,15 @@ footer {
 
 </div>
 
-<footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.1.0</footer>
-
 <script>
 var API = 'http://127.0.0.1:8000';
 var charts = {};
 
 var RISK_COLORS = {
-  'NISKIE':    '#3ddc84',
-  'ŚREDNIE':   '#f5c518',
-  'WYSOKIE':   '#ff8c00',
-  'KRYTYCZNE': '#ff4444',
+  'NISKIE':    '#2ecc71',
+  'ŚREDNIE':   '#f1c40f',
+  'WYSOKIE':   '#e67e22',
+  'KRYTYCZNE': '#e74c3c',
   'NIEZNANE':  '#4a8fd4'
 };
 

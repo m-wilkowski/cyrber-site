@@ -1,8 +1,6 @@
 import os
 import json
-from anthropic import Anthropic
-
-client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+from modules.llm_provider import get_provider
 
 TOOLS = [
     {
@@ -136,8 +134,10 @@ def run_agent(target: str, progress_callback=None) -> dict:
     Uruchamia autonomicznego agenta który sam decyduje jakie skanery użyć.
     progress_callback(step, tool_name) - opcjonalny callback dla statusu
     """
+    provider = get_provider()
     messages = [
-        {"role": "user", "content": f"Przeprowadź kompletny security assessment dla: {target}"}
+        provider.make_user_msg(
+            f"Przeprowadź kompletny security assessment dla: {target}")
     ]
 
     scan_results = {}
@@ -146,59 +146,40 @@ def run_agent(target: str, progress_callback=None) -> dict:
     max_iterations = 10
 
     for iteration in range(max_iterations):
-        response = client.messages.create(
-            model="claude-opus-4-5",
-            max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            tools=TOOLS,
-            messages=messages
-        )
+        response = provider.chat_with_tools(
+            messages, TOOLS, system=SYSTEM_PROMPT)
 
-        # Dodaj odpowiedź asystenta do historii
-        messages.append({"role": "assistant", "content": response.content})
+        # Append assistant response to history
+        messages.extend(provider.make_assistant_msgs(response))
 
-        # Sprawdź czy agent skończył
+        # Check if agent finished (no tool calls)
         if response.stop_reason == "end_turn":
             break
 
-        # Przetwórz wywołania narzędzi
+        # Process tool calls
         tool_results = []
-        for block in response.content:
-            if block.type != "tool_use":
-                continue
-
-            tool_name = block.name
-            tool_input = block.input
-
-            if tool_name == "finish_assessment":
-                final_report = tool_input
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": "Assessment zakończony."
-                })
-                steps.append({"tool": tool_name, "status": "completed"})
+        for tc in response.tool_calls:
+            if tc.name == "finish_assessment":
+                final_report = tc.input
+                tool_results.append((tc.id, "Assessment zakończony."))
+                steps.append({"tool": tc.name, "status": "completed"})
                 break
 
             if progress_callback:
-                progress_callback(iteration + 1, tool_name)
+                progress_callback(iteration + 1, tc.name)
 
-            steps.append({"tool": tool_name, "target": tool_input.get("target")})
-            result_str = run_tool(tool_name, tool_input, scan_results)
-
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": block.id,
-                "content": result_str
-            })
+            steps.append({"tool": tc.name, "target": tc.input.get("target")})
+            result_str = run_tool(tc.name, tc.input, scan_results)
+            tool_results.append((tc.id, result_str))
 
         if tool_results:
-            messages.append({"role": "user", "content": tool_results})
+            messages.extend(
+                provider.make_tool_result_msgs(tool_results))
 
         if final_report:
             break
 
-    # Policz findings
+    # Count findings
     findings_count = 0
     if "nuclei" in scan_results:
         findings_count += scan_results["nuclei"].get("findings_count", 0)
@@ -215,5 +196,6 @@ def run_agent(target: str, progress_callback=None) -> dict:
             "top_issues": [],
             "recommendations": ""
         },
-        "raw_scans": scan_results
+        "raw_scans": scan_results,
+        "llm_provider": provider.name
     }
