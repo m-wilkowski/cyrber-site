@@ -428,6 +428,7 @@ footer {
     <a class="nav-link" href="/ui">SCAN</a>
     <a class="nav-link active" href="/dashboard">DASHBOARD</a>
     <a class="nav-link" href="/scheduler">SCHEDULER</a>
+    <a class="nav-link" href="/phishing">PHISHING</a>
   </div>
 </nav>
 
@@ -508,6 +509,18 @@ footer {
       <div class="chart-wrap-sm">
         <canvas id="chartTrend"></canvas>
       </div>
+    </div>
+  </div>
+
+  <!-- PHISHING CAMPAIGNS -->
+  <div class="panel" id="phishingPanel" style="display:none">
+    <div class="panel-label" style="display:flex;justify-content:space-between;">
+      <span>PHISHING CAMPAIGNS</span>
+      <a href="/phishing" style="font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);text-decoration:none">MANAGE →</a>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px" id="phishingKpis"></div>
+    <div id="phishingTable">
+      <div class="loading pulse">LOADING</div>
     </div>
   </div>
 
@@ -870,9 +883,57 @@ function renderTable(scans) {
   document.getElementById('tableBody').innerHTML = html;
 }
 
-// Add /dashboard endpoint nav link to scan page
+// ── Phishing campaigns section ──
+function loadPhishing() {
+  fetch(API + '/phishing/campaigns')
+    .then(function(r) { return r.json(); })
+    .then(function(campaigns) {
+      if (!campaigns || !campaigns.length) return;
+      document.getElementById('phishingPanel').style.display = '';
+
+      var totSent = 0, totOpened = 0, totClicked = 0, totCreds = 0;
+      campaigns.forEach(function(c) {
+        var s = c.stats || {};
+        totSent += (s.sent || 0);
+        totOpened += (s.opened || 0);
+        totClicked += (s.clicked || 0);
+        totCreds += (s.submitted_data || 0);
+      });
+
+      var kpiHtml = '';
+      var kpis = [
+        {v: campaigns.length, l: 'CAMPAIGNS', c: 'var(--accent)'},
+        {v: totSent, l: 'EMAILS SENT', c: 'var(--accent)'},
+        {v: totOpened, l: 'OPENED', c: 'var(--yellow)'},
+        {v: totClicked, l: 'CLICKED', c: 'var(--orange)'},
+        {v: totCreds, l: 'CREDENTIALS', c: 'var(--red)'}
+      ];
+      kpis.forEach(function(k) {
+        kpiHtml += '<div style="background:var(--panel);border:1px solid var(--border);padding:12px;text-align:center">'
+          + '<div style="font-family:Orbitron,sans-serif;font-size:24px;font-weight:900;color:' + k.c + '">' + k.v + '</div>'
+          + '<div style="font-family:Share Tech Mono,monospace;font-size:8px;letter-spacing:.2em;color:var(--silver)">' + k.l + '</div>'
+          + '</div>';
+      });
+      document.getElementById('phishingKpis').innerHTML = kpiHtml;
+
+      var tbl = '<table class="scan-table"><thead><tr><th>CAMPAIGN</th><th>STATUS</th><th>SENT</th><th>OPENED</th><th>CLICKED</th><th>CREDS</th></tr></thead><tbody>';
+      campaigns.slice(0, 5).forEach(function(c) {
+        var s = c.stats || {};
+        tbl += '<tr><td class="target">' + (c.name || '—') + '</td><td>' + (c.status || '—') + '</td>';
+        tbl += '<td>' + (s.sent || 0) + '</td><td>' + (s.opened || 0) + '</td><td>' + (s.clicked || 0) + '</td>';
+        tbl += '<td style="color:' + ((s.submitted_data||0)>0?'var(--red)':'var(--silver)') + '">' + (s.submitted_data || 0) + '</td></tr>';
+      });
+      tbl += '</tbody></table>';
+      document.getElementById('phishingTable').innerHTML = tbl;
+    })
+    .catch(function() {
+      // GoPhish not available — hide section silently
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   loadDashboard();
+  loadPhishing();
 });
 </script>
 </body>

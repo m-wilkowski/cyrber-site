@@ -35,6 +35,17 @@ services:
       timeout: 5s
       retries: 5
 
+  gophish:
+    image: gophish/gophish:latest
+    ports:
+      - "3333:3333"
+      - "8080:80"
+    volumes:
+      - gophish_data:/opt/gophish/data
+    profiles:
+      - phishing
+    restart: on-failure
+
   api:
     build: .
     ports:
@@ -47,6 +58,8 @@ services:
       CLAUDE_MODEL: ${CLAUDE_MODEL:-claude-sonnet-4-20250514}
       OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-mistral}
+      GOPHISH_URL: ${GOPHISH_URL:-http://gophish:3333}
+      GOPHISH_API_KEY: ${GOPHISH_API_KEY:-}
       CYRBER_USER: ${CYRBER_USER:-admin}
       CYRBER_PASS: ${CYRBER_PASS:-cyrber2024}
     depends_on:
@@ -102,3 +115,4 @@ services:
 volumes:
   pgdata:
   ollama_data:
+  gophish_data:

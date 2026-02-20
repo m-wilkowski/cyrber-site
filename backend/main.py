@@ -10,6 +10,7 @@ import sys
 import os
 import secrets
 import ipaddress
+import requests as http_requests
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modules.nmap_scan import scan as nmap_scan
@@ -238,6 +239,195 @@ async def remove_schedule(schedule_id: int):
     if not ok:
         raise HTTPException(status_code=404, detail="Schedule not found")
     return {"status": "deleted", "id": schedule_id}
+
+@app.get("/phishing")
+async def phishing_page():
+    return FileResponse("static/phishing.html")
+
+# ── GoPhish proxy ──
+GOPHISH_URL = os.getenv("GOPHISH_URL", "http://gophish:3333")
+GOPHISH_API_KEY = os.getenv("GOPHISH_API_KEY", "")
+
+def _gophish_headers():
+    return {"Authorization": f"Bearer {GOPHISH_API_KEY}", "Content-Type": "application/json"}
+
+def _gophish_get(path: str):
+    r = http_requests.get(f"{GOPHISH_URL}/api/{path}", headers=_gophish_headers(), timeout=15, verify=False)
+    r.raise_for_status()
+    return r.json()
+
+def _gophish_post(path: str, data: dict):
+    r = http_requests.post(f"{GOPHISH_URL}/api/{path}", headers=_gophish_headers(), json=data, timeout=15, verify=False)
+    r.raise_for_status()
+    return r.json()
+
+def _gophish_delete(path: str):
+    r = http_requests.delete(f"{GOPHISH_URL}/api/{path}", headers=_gophish_headers(), timeout=15, verify=False)
+    r.raise_for_status()
+    return r.json() if r.text else {"status": "deleted"}
+
+@app.get("/phishing/campaigns")
+async def phishing_campaigns():
+    try:
+        campaigns = _gophish_get("campaigns/")
+        result = []
+        for c in campaigns:
+            stats = c.get("stats", {}) or {}
+            result.append({
+                "id": c.get("id"),
+                "name": c.get("name", ""),
+                "status": c.get("status", ""),
+                "created_date": c.get("created_date", ""),
+                "stats": {
+                    "sent": stats.get("sent", 0),
+                    "opened": stats.get("opened", 0),
+                    "clicked": stats.get("clicked", 0),
+                    "submitted_data": stats.get("submitted_data", 0),
+                    "error": stats.get("error", 0),
+                    "total": stats.get("total", 0),
+                }
+            })
+        return result
+    except http_requests.ConnectionError:
+        raise HTTPException(status_code=503, detail="GoPhish not available — start with: docker compose --profile phishing up -d")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+class PhishingCampaignCreate(BaseModel):
+    name: str
+    domain: str
+    subject: str
+    email_body: str
+    landing_url: str = ""
+    targets: list[str]
+
+@app.post("/phishing/campaigns")
+async def phishing_create_campaign(campaign: PhishingCampaignCreate):
+    try:
+        # 1. Create or reuse sending profile
+        smtp_name = f"CYRBER-{campaign.domain}"
+        try:
+            profiles = _gophish_get("smtp/")
+            profile = next((p for p in profiles if p["name"] == smtp_name), None)
+        except Exception:
+            profile = None
+
+        if not profile:
+            profile = _gophish_post("smtp/", {
+                "name": smtp_name,
+                "host": f"{campaign.domain}:25",
+                "from_address": f"security@{campaign.domain}",
+                "ignore_cert_errors": True
+            })
+        smtp_id = profile["id"]
+
+        # 2. Create email template
+        tmpl_name = f"CYRBER-{campaign.name}"
+        template = _gophish_post("templates/", {
+            "name": tmpl_name,
+            "subject": campaign.subject,
+            "html": campaign.email_body,
+        })
+        tmpl_id = template["id"]
+
+        # 3. Create landing page (if URL provided)
+        page_id = None
+        if campaign.landing_url:
+            page_name = f"CYRBER-LP-{campaign.name}"
+            page = _gophish_post("pages/", {
+                "name": page_name,
+                "capture_credentials": True,
+                "capture_passwords": True,
+                "redirect_url": "",
+                "html": f'<html><body><script>window.location="{campaign.landing_url}";</script></body></html>',
+            })
+            page_id = page["id"]
+
+        # 4. Create target group
+        group_name = f"CYRBER-{campaign.name}-targets"
+        targets_list = [
+            {"first_name": "", "last_name": "", "email": email, "position": ""}
+            for email in campaign.targets
+        ]
+        group = _gophish_post("groups/", {
+            "name": group_name,
+            "targets": targets_list
+        })
+        group_id = group["id"]
+
+        # 5. Create and launch campaign
+        camp_payload = {
+            "name": campaign.name,
+            "template": {"id": tmpl_id},
+            "smtp": {"id": smtp_id},
+            "groups": [{"id": group_id}],
+            "launch_date": "2000-01-01T00:00:00Z",
+        }
+        if page_id:
+            camp_payload["page"] = {"id": page_id}
+        else:
+            # GoPhish requires a page — create a minimal one
+            fallback_page = _gophish_post("pages/", {
+                "name": f"CYRBER-blank-{campaign.name}",
+                "html": "<html><body>Thank you.</body></html>",
+                "capture_credentials": False,
+            })
+            camp_payload["page"] = {"id": fallback_page["id"]}
+
+        result = _gophish_post("campaigns/", camp_payload)
+        return {"id": result.get("id"), "name": result.get("name"), "status": result.get("status")}
+
+    except http_requests.ConnectionError:
+        raise HTTPException(status_code=503, detail="GoPhish not available")
+    except http_requests.HTTPError as e:
+        detail = e.response.text if e.response else str(e)
+        raise HTTPException(status_code=502, detail=f"GoPhish error: {detail}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/phishing/campaigns/{campaign_id}")
+async def phishing_delete_campaign(campaign_id: int):
+    try:
+        return _gophish_delete(f"campaigns/{campaign_id}")
+    except http_requests.ConnectionError:
+        raise HTTPException(status_code=503, detail="GoPhish not available")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+@app.get("/phishing/campaigns/{campaign_id}/results")
+async def phishing_campaign_results(campaign_id: int):
+    try:
+        campaign = _gophish_get(f"campaigns/{campaign_id}")
+        results = campaign.get("results", [])
+        timeline = campaign.get("timeline", [])
+        stats = campaign.get("stats", {}) or {}
+
+        events = []
+        for ev in timeline:
+            events.append({
+                "email": ev.get("email", ""),
+                "message": ev.get("message", ""),
+                "time": ev.get("time", ""),
+            })
+
+        return {
+            "campaign_id": campaign_id,
+            "name": campaign.get("name", ""),
+            "status": campaign.get("status", ""),
+            "stats": {
+                "total": stats.get("total", len(results)),
+                "sent": stats.get("sent", 0),
+                "opened": stats.get("opened", 0),
+                "clicked": stats.get("clicked", 0),
+                "submitted_data": stats.get("submitted_data", 0),
+                "error": stats.get("error", 0),
+            },
+            "events": events,
+        }
+    except http_requests.ConnectionError:
+        raise HTTPException(status_code=503, detail="GoPhish not available")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 class MultiTargetScan(BaseModel):
     targets: list[str]
