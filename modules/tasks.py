@@ -19,6 +19,7 @@ from modules.exploit_chains import generate_exploit_chains
 from modules.false_positive_filter import filter_false_positives
 from modules.hacker_narrative import generate_hacker_narrative
 from modules.mitre_attack import mitre_map
+from modules.exploitdb_scan import exploitdb_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
 
@@ -70,6 +71,7 @@ def full_scan_task(target: str):
         "abuseipdb": abuseipdb,
         "otx": otx,
     }
+    edb = exploitdb_scan(scan_data)
     result = analyze_scan_results(scan_data)
     result["ports"] = nmap.get("ports", [])
     result["whatweb"] = whatweb
@@ -87,6 +89,8 @@ def full_scan_task(target: str):
         result["abuseipdb"] = abuseipdb
     if not otx.get("skipped"):
         result["otx"] = otx
+    if edb.get("exploits"):
+        result["exploitdb"] = edb
     result["fp_filter"] = nuclei_filtered.get("fp_filter", {})
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})

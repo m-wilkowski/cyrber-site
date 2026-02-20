@@ -213,6 +213,7 @@ from modules.enum4linux_scan import scan as enum4linux_scan
 from modules.mitre_attack import mitre_map
 from modules.abuseipdb_scan import scan as abuseipdb_scan
 from modules.otx_scan import scan as otx_scan
+from modules.exploitdb_scan import exploitdb_scan
 
 @app.get("/scan/gobuster")
 async def run_gobuster(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -269,6 +270,13 @@ async def run_abuseipdb(target: str = Query(...), user: str = Depends(get_curren
 @app.get("/scan/otx")
 async def run_otx(target: str = Query(...), user: str = Depends(get_current_user)):
     return otx_scan(target)
+
+@app.get("/scan/exploitdb")
+async def run_exploitdb(task_id: str = Query(...), user: str = Depends(get_current_user)):
+    scan = get_scan_by_task_id(task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return exploitdb_scan(scan)
 
 from modules.webhook import WazuhAlert, extract_target
 

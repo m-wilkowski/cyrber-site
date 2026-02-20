@@ -1581,6 +1581,45 @@ function renderExtended(res) {
     h+=mkSec(oxTitle,oc,false);
   }
 
+  // EXPLOITDB
+  var edb=res.exploitdb||{};
+  var edbExploits=edb.exploits||[];
+  if(edbExploits.length){
+    var ec='';
+    // Summary badges
+    ec+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">';
+    ec+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--accent);color:var(--accent);background:rgba(0,255,135,.08)">TOTAL: '+edb.total+'</span>';
+    if(edb.critical_count) ec+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid #ff2222;color:#ff2222;background:rgba(255,34,34,.08)">CRITICAL: '+edb.critical_count+'</span>';
+    if(edb.high_count) ec+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+edb.high_count+'</span>';
+    if(edb.medium_count) ec+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+edb.medium_count+'</span>';
+    if(edb.low_count) ec+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--silver);color:var(--silver);background:rgba(138,155,181,.06)">LOW: '+edb.low_count+'</span>';
+    ec+='</div>';
+    // Matched CVEs
+    if(edb.matched_cves && edb.matched_cves.length){
+      ec+='<div style="margin-bottom:12px"><span style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">MATCHED CVEs: </span>';
+      edb.matched_cves.forEach(function(c){ec+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 6px;margin:2px;border:1px solid var(--border);color:var(--white);display:inline-block">'+c+'</span>';});
+      ec+='</div>';
+    }
+    // Table
+    ec+='<table class="dt"><thead><tr><th>EDB-ID</th><th>TITLE</th><th>TYPE</th><th>PLATFORM</th><th>DATE</th><th>VERIFIED</th><th>SEVERITY</th></tr></thead><tbody>';
+    edbExploits.forEach(function(e){
+      var sevCol={critical:'#ff2222',high:'var(--red)',medium:'var(--yellow)',low:'var(--silver)'}[e.severity]||'var(--silver)';
+      var sevBg={critical:'rgba(255,34,34,.12)',high:'rgba(255,68,68,.10)',medium:'rgba(245,197,24,.08)',low:'transparent'}[e.severity]||'transparent';
+      var verifiedBadge=e.verified?'<span style="color:var(--accent)">VERIFIED</span>':'<span style="color:var(--silver)">—</span>';
+      ec+='<tr>';
+      ec+='<td><a href="'+e.url+'" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--border)">'+e.edb_id+'</a></td>';
+      ec+='<td style="color:var(--white);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e.title+'</td>';
+      ec+='<td>'+e.type+'</td>';
+      ec+='<td>'+e.platform+'</td>';
+      ec+='<td>'+e.date+'</td>';
+      ec+='<td>'+verifiedBadge+'</td>';
+      ec+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+sevCol+';color:'+sevCol+';background:'+sevBg+'">'+e.severity.toUpperCase()+'</span></td>';
+      ec+='</tr>';
+    });
+    ec+='</tbody></table>';
+    h+=mkSec('// EXPLOIT-DB — PUBLIC EXPLOITS ('+edb.total+' found)',ec,false);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];
