@@ -11,6 +11,7 @@ from modules.harvester_scan import scan as harvester_scan
 from modules.masscan_scan import scan as masscan_scan
 # from modules.censys_scan import scan as censys_scan  # requires paid API plan - module ready
 from modules.ipinfo_scan import scan as ipinfo_scan
+from modules.enum4linux_scan import scan as enum4linux_scan
 from modules.llm_analyze import analyze_scan_results
 from modules.exploit_chains import generate_exploit_chains
 from modules.false_positive_filter import filter_false_positives
@@ -47,6 +48,7 @@ def full_scan_task(target: str):
     harvester = harvester_scan(target)
     masscan = masscan_scan(target)
     ipinfo = ipinfo_scan(target)
+    enum4linux = enum4linux_scan(target)
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -59,6 +61,7 @@ def full_scan_task(target: str):
         "harvester": harvester,
         "masscan": masscan,
         "ipinfo": ipinfo,
+        "enum4linux": enum4linux,
     }
     result = analyze_scan_results(scan_data)
     result["ports"] = nmap.get("ports", [])
@@ -71,6 +74,8 @@ def full_scan_task(target: str):
     result["harvester"] = harvester
     result["masscan"] = masscan
     result["ipinfo"] = ipinfo
+    if not enum4linux.get("skipped"):
+        result["enum4linux"] = enum4linux
     result["fp_filter"] = nuclei_filtered.get("fp_filter", {})
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})

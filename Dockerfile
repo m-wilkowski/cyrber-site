@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y \
     libgdk-pixbuf-xlib-2.0-0 \
     libffi-dev \
     unzip \
+    smbclient \
+    samba-common \
     && rm -rf /var/lib/apt/lists/*
 # nikto (git clone)
 RUN git clone --depth 1 https://github.com/sullo/nikto /opt/nikto && \
@@ -43,6 +45,11 @@ RUN NUCLEI_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/nucle
 # sqlmap
 RUN git clone --depth 1 https://github.com/sqlmapproject/sqlmap.git /opt/sqlmap && \
     ln -s /opt/sqlmap/sqlmap.py /usr/local/bin/sqlmap
+# enum4linux-ng (git clone)
+RUN git clone --depth 1 https://github.com/cddmp/enum4linux-ng.git /opt/enum4linux-ng && \
+    pip install --no-cache-dir -r /opt/enum4linux-ng/requirements.txt && \
+    ln -s /opt/enum4linux-ng/enum4linux-ng.py /usr/local/bin/enum4linux-ng && \
+    chmod +x /opt/enum4linux-ng/enum4linux-ng.py
 # wordlist
 RUN mkdir -p /usr/share/wordlists/dirb && \
     curl -L https://raw.githubusercontent.com/v0re/dirb/master/wordlists/common.txt \

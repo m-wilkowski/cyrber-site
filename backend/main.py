@@ -209,6 +209,7 @@ from modules.harvester_scan import scan as harvester_scan
 from modules.masscan_scan import scan as masscan_scan
 # from modules.censys_scan import scan as censys_scan  # requires paid API plan - module ready
 from modules.ipinfo_scan import scan as ipinfo_scan
+from modules.enum4linux_scan import scan as enum4linux_scan
 
 @app.get("/scan/gobuster")
 async def run_gobuster(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -246,6 +247,10 @@ async def run_masscan(target: str = Query(...), user: str = Depends(get_current_
 @app.get("/scan/ipinfo")
 async def run_ipinfo(target: str = Query(...), user: str = Depends(get_current_user)):
     return ipinfo_scan(target)
+
+@app.get("/scan/enum4linux")
+async def run_enum4linux(target: str = Query(...), user: str = Depends(get_current_user)):
+    return enum4linux_scan(target)
 
 from modules.webhook import WazuhAlert, extract_target
 
