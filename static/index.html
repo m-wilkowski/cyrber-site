@@ -1472,6 +1472,34 @@ function renderExtended(res) {
     h+=mkSec(eTitle,ec,false);
   }
 
+  // MITRE ATT&CK
+  var mitre=res.mitre||{};
+  var mtechs=mitre.techniques||[];
+  if(mtechs.length){
+    var mc='';
+    // Summary badges
+    mc+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">';
+    if(mitre.high_count) mc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+mitre.high_count+'</span>';
+    if(mitre.medium_count) mc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+mitre.medium_count+'</span>';
+    if(mitre.low_count) mc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--silver);color:var(--silver);background:rgba(138,155,181,.06)">LOW: '+mitre.low_count+'</span>';
+    mc+='</div>';
+    // Table
+    mc+='<table class="dt"><thead><tr><th>TECHNIQUE</th><th>NAME</th><th>TACTIC</th><th>CONFIDENCE</th><th>TRIGGERED BY</th></tr></thead><tbody>';
+    mtechs.forEach(function(t){
+      var confCol={high:'var(--red)',medium:'var(--yellow)',low:'var(--silver)'}[t.confidence]||'var(--silver)';
+      var confBg={high:'rgba(255,68,68,.10)',medium:'rgba(245,197,24,.08)',low:'transparent'}[t.confidence]||'transparent';
+      mc+='<tr>';
+      mc+='<td><a href="'+t.url+'" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--border)">'+t.technique_id+'</a></td>';
+      mc+='<td style="color:var(--white)">'+t.technique_name+'</td>';
+      mc+='<td>'+t.tactic+'</td>';
+      mc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+confCol+';color:'+confCol+';background:'+confBg+'">'+t.confidence.toUpperCase()+'</span></td>';
+      mc+='<td style="font-size:11px">'+t.triggered_by+'</td>';
+      mc+='</tr>';
+    });
+    mc+='</tbody></table>';
+    h+=mkSec('// MITRE ATT&CK MAPPING ('+mtechs.length+' techniques)',mc,false);
+  }
+
   ext.innerHTML=h;
   ext.querySelectorAll('.res-section-hdr').forEach(function(hdr){
     hdr.addEventListener('click',function(){
@@ -1785,7 +1813,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','censys','ipinfo','enum4linux','exploit_chains','hacker_narrative','fp_filter'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','censys','ipinfo','enum4linux','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

@@ -16,6 +16,7 @@ from modules.llm_analyze import analyze_scan_results
 from modules.exploit_chains import generate_exploit_chains
 from modules.false_positive_filter import filter_false_positives
 from modules.hacker_narrative import generate_hacker_narrative
+from modules.mitre_attack import mitre_map
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
 
@@ -81,6 +82,8 @@ def full_scan_task(target: str):
     result["exploit_chains"] = chains.get("exploit_chains", {})
     narrative = generate_hacker_narrative(result)
     result["hacker_narrative"] = narrative
+    mitre = mitre_map(result)
+    result["mitre"] = mitre
     save_scan(task_id, target, result)
     send_scan_notification(target, task_id, result)
     return result

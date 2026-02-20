@@ -54,6 +54,7 @@ RUN git clone --depth 1 https://github.com/cddmp/enum4linux-ng.git /opt/enum4lin
 RUN mkdir -p /usr/share/wordlists/dirb && \
     curl -L https://raw.githubusercontent.com/v0re/dirb/master/wordlists/common.txt \
     -o /usr/share/wordlists/dirb/common.txt
+RUN mkdir -p /app/data
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
