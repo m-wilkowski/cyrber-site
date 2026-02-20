@@ -1181,6 +1181,79 @@ function renderExtended(res) {
     h+=mkSec('// MASSCAN — FAST PORT SCAN ('+mp.length+' portów)',mt+'</tbody></table>',false);
   }
 
+  // Censys
+  if(res.censys&&res.censys.found){
+    var cx=res.censys;
+    var cc='';
+    // Header info
+    var asys=cx.autonomous_system||{};
+    cc+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">';
+    cc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">IP</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(cx.ip||'—')+'</div></div>';
+    cc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">AUTONOMOUS SYSTEM</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(asys.name||(asys.asn?'AS'+asys.asn:'')||'—')+'</div></div>';
+    cc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">BGP PREFIX</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(asys.bgp_prefix||'—')+'</div></div>';
+    cc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">LOCATION</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(cx.geo?((cx.geo.city||'')+(cx.geo.city&&cx.geo.country?', ':'')+cx.geo.country):'—')+'</div></div>';
+    cc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">OS</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(cx.os||'—')+'</div></div>';
+    cc+='</div>';
+    // Labels
+    var labels=cx.labels||[];
+    if(labels.length){
+      cc+='<div style="margin-bottom:12px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:6px">LABELS</div>';
+      cc+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+      labels.forEach(function(l){cc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 8px;border:1px solid var(--border);color:var(--silver)">'+l+'</span>';});
+      cc+='</div></div>';
+    }
+    // Services
+    var svcs=cx.services||[];
+    if(svcs.length){
+      cc+='<table class="dt"><thead><tr><th>PORT</th><th>PROTO</th><th>SERVICE</th><th>PRODUCT</th><th>VERSION</th><th>BANNER</th></tr></thead><tbody>';
+      svcs.forEach(function(s){
+        cc+='<tr><td>'+s.port+'</td><td>'+(s.transport_protocol||'TCP')+'</td><td>'+(s.service_name||'—')+'</td><td>'+(s.product||'—')+'</td><td>'+(s.version||'—')+'</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.banner||'—')+'</td></tr>';
+      });
+      cc+='</tbody></table>';
+    }
+    var censysTitle='// CENSYS INTELLIGENCE — '+svcs.length+' services'+(labels.length?' ['+labels.join(', ')+']':'');
+    h+=mkSec(censysTitle,cc,false);
+  }
+
+  // IPInfo
+  if(res.ipinfo&&res.ipinfo.found){
+    var ii=res.ipinfo;
+    var ic='';
+    // Info grid
+    ic+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">';
+    ic+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">IP</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(ii.ip||'—')+'</div></div>';
+    ic+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">HOSTNAME</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(ii.hostname||'—')+'</div></div>';
+    ic+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">ORGANIZATION</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(ii.org||'—')+'</div></div>';
+    ic+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">ASN</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(ii.asn||'—')+'</div></div>';
+    ic+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">COUNTRY</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(ii.country||'—')+'</div></div>';
+    ic+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">REGION</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(ii.region||'—')+'</div></div>';
+    ic+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">CITY</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(ii.city||'—')+'</div></div>';
+    ic+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">TIMEZONE</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(ii.timezone||'—')+'</div></div>';
+    ic+='</div>';
+    // Privacy badges
+    var privacyFlags=[
+      {key:'is_vpn',label:'VPN'},{key:'is_proxy',label:'PROXY'},{key:'is_tor',label:'TOR'},{key:'is_datacenter',label:'DATACENTER'},{key:'is_relay',label:'RELAY'}
+    ];
+    var hasPrivacy=privacyFlags.some(function(f){return ii[f.key]!==undefined;});
+    if(hasPrivacy){
+      ic+='<div style="margin-bottom:12px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">PRIVACY FLAGS</div>';
+      ic+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+      privacyFlags.forEach(function(f){
+        var val=ii[f.key];
+        if(val===undefined) return;
+        var color=val?'var(--red)':'var(--silver)';
+        var bg=val?'rgba(255,68,68,.12)':'transparent';
+        ic+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 10px;border:1px solid '+color+';color:'+color+';background:'+bg+'">'+f.label+(val?' ✓':' ✗')+'</span>';
+      });
+      ic+='</div></div>';
+    }
+    // Coordinates
+    if(ii.loc&&ii.loc.lat&&ii.loc.lon){
+      ic+='<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:var(--silver)">COORDINATES: '+ii.loc.lat+', '+ii.loc.lon+'</div>';
+    }
+    h+=mkSec('// IPINFO — IP ENRICHMENT',ic,false);
+  }
+
   ext.innerHTML=h;
   ext.querySelectorAll('.res-section-hdr').forEach(function(hdr){
     hdr.addEventListener('click',function(){
@@ -1249,6 +1322,7 @@ function loadScanDetail(taskId) {
       ports:s.ports||[], gobuster:s.gobuster||{}, sqlmap:s.sqlmap||null,
       testssl:s.testssl||null, nikto:s.nikto||null,
       harvester:s.harvester||null, masscan:s.masscan||null,
+      censys:s.censys||null, ipinfo:s.ipinfo||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}

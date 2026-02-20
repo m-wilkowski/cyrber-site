@@ -207,6 +207,8 @@ from modules.sqlmap_scan import scan as sqlmap_scan
 from modules.nikto_scan import scan as nikto_scan
 from modules.harvester_scan import scan as harvester_scan
 from modules.masscan_scan import scan as masscan_scan
+# from modules.censys_scan import scan as censys_scan  # requires paid API plan - module ready
+from modules.ipinfo_scan import scan as ipinfo_scan
 
 @app.get("/scan/gobuster")
 async def run_gobuster(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -235,6 +237,15 @@ async def run_harvester(target: str = Query(...), user: str = Depends(get_curren
 @app.get("/scan/masscan")
 async def run_masscan(target: str = Query(...), user: str = Depends(get_current_user)):
     return masscan_scan(target)
+
+# requires paid API plan - module ready
+# @app.get("/scan/censys")
+# async def run_censys(target: str = Query(...), user: str = Depends(get_current_user)):
+#     return censys_scan(target)
+
+@app.get("/scan/ipinfo")
+async def run_ipinfo(target: str = Query(...), user: str = Depends(get_current_user)):
+    return ipinfo_scan(target)
 
 from modules.webhook import WazuhAlert, extract_target
 
