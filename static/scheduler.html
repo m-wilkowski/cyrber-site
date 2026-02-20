@@ -266,6 +266,7 @@
     <a class="nav-link" href="/dashboard">DASHBOARD</a>
     <a class="nav-link active" href="/scheduler">SCHEDULER</a>
     <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
   </div>
 </nav>
 
@@ -300,18 +301,34 @@
 </div>
 
 <script>
+// ── JWT Auth ──
+function getToken() { return localStorage.getItem('cyrber_token'); }
+if (!getToken()) window.location.href = '/login';
+
+function authHeaders(extra) {
+  const token = getToken();
+  if (!token) { window.location.href = '/login'; return {}; }
+  const h = {'Authorization': 'Bearer ' + token};
+  if (extra) Object.assign(h, extra);
+  return h;
+}
+
+async function authFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = authHeaders(opts.headers || {});
+  const r = await fetch(url, opts);
+  if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
+  return r;
+}
+
 async function fetchSchedules() {
   try {
-    const r = await fetch('/schedules', {headers: {'Authorization': 'Basic ' + btoa(getCreds())}});
+    const r = await authFetch('/schedules');
     const data = await r.json();
     renderSchedules(data);
   } catch(e) {
     document.getElementById('schedules-list').innerHTML = '<div class="empty">Błąd ładowania</div>';
   }
-}
-
-function getCreds() {
-  return (localStorage.getItem('cyrber_creds') || 'admin:cyrber2024');
 }
 
 function renderSchedules(schedules) {
@@ -357,12 +374,9 @@ async function addSchedule() {
   if (!interval || interval < 1) { showMsg('Interwał minimum 1 godzina', true); return; }
 
   try {
-    const r = await fetch('/schedules', {
+    const r = await authFetch('/schedules', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic ' + btoa(getCreds())
-      },
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({target, interval_hours: interval})
     });
     if (r.ok) {
@@ -381,9 +395,8 @@ async function addSchedule() {
 async function deleteSchedule(id) {
   if (!confirm('Usunąć harmonogram?')) return;
   try {
-    const r = await fetch(`/schedules/${id}`, {
-      method: 'DELETE',
-      headers: {'Authorization': 'Basic ' + btoa(getCreds())}
+    const r = await authFetch(`/schedules/${id}`, {
+      method: 'DELETE'
     });
     if (r.ok) fetchSchedules();
   } catch(e) {}

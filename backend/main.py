@@ -1,11 +1,14 @@
 from fastapi import FastAPI, Query, Depends, HTTPException, status, Request
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from pydantic import BaseModel
+from jose import jwt, JWTError
+from passlib.hash import sha256_crypt
+from datetime import datetime, timedelta
 import sys
 import os
 import secrets
@@ -18,53 +21,120 @@ from modules.nuclei_scan import scan as nuclei_scan
 from modules.llm_analyze import analyze_scan_results
 from modules.tasks import full_scan_task
 
-security = HTTPBasic()
-limiter = Limiter(key_func=get_remote_address)
+# ── JWT config ──
+JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_HOURS = 8
 
 CYRBER_USER = os.getenv("CYRBER_USER", "admin")
 CYRBER_PASS = os.getenv("CYRBER_PASS", "cyrber2024")
+# Hash the password at startup for constant-time comparison
+CYRBER_PASS_HASH = sha256_crypt.hash(CYRBER_PASS)
 
-def require_auth(credentials: HTTPBasicCredentials = Depends(security)):
-    ok_user = secrets.compare_digest(credentials.username.encode(), CYRBER_USER.encode())
-    ok_pass = secrets.compare_digest(credentials.password.encode(), CYRBER_PASS.encode())
-    if not (ok_user and ok_pass):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return credentials.username
+bearer_scheme = HTTPBearer(auto_error=False)
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
-app = FastAPI(title="CYRBER API", version="0.1.0", dependencies=[Depends(require_auth)])
+def create_token(username: str) -> str:
+    payload = {
+        "sub": username,
+        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS),
+        "iat": datetime.utcnow(),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> str:
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return username
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+# ── App ──
+app = FastAPI(title="CYRBER API", version="0.1.0")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# ── Database ──
+from modules.database import init_db, get_scan_history, get_scan_by_task_id
+from modules.database import add_schedule, get_schedules, delete_schedule
+from modules.database import save_audit_log, get_audit_logs
+from modules.pdf_report import generate_report
+from modules.exploit_chains import generate_exploit_chains
+from modules.hacker_narrative import generate_hacker_narrative
+
+init_db()
+
+# ── Audit helper ──
+def audit(request: Request, user: str, action: str, target: str = None):
+    ip = request.client.host if request.client else "unknown"
+    save_audit_log(user=user, action=action, target=target, ip_address=ip)
+
+# ── Public routes (no auth) ──
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+@app.post("/auth/login")
+@limiter.limit("10/minute")
+async def auth_login(request: Request, body: LoginRequest):
+    ip = request.client.host if request.client else "unknown"
+    if body.username == CYRBER_USER and sha256_crypt.verify(body.password, CYRBER_PASS_HASH):
+        token = create_token(body.username)
+        save_audit_log(user=body.username, action="login", ip_address=ip)
+        return {"token": token, "token_type": "bearer", "expires_in": JWT_EXPIRE_HOURS * 3600}
+    save_audit_log(user=body.username, action="login_failed", ip_address=ip)
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.get("/login")
+async def login_page():
+    return FileResponse("static/login.html")
+
 @app.get("/ui")
 async def ui():
     return FileResponse("static/index.html")
+
+@app.get("/dashboard")
+async def dashboard():
+    return FileResponse("static/dashboard.html")
+
+@app.get("/scheduler")
+async def scheduler():
+    return FileResponse("static/scheduler.html")
+
+@app.get("/phishing")
+async def phishing_page():
+    return FileResponse("static/phishing.html")
 
 @app.get("/")
 async def root():
     return {"status": "CYRBER online"}
 
+# ── Protected routes (JWT required) ──
+
 @app.get("/scan/nmap")
-async def run_nmap(target: str = Query(...)):
+async def run_nmap(target: str = Query(...), user: str = Depends(get_current_user)):
     return nmap_scan(target)
 
 @app.get("/scan/nuclei")
-async def run_nuclei(target: str = Query(...)):
+async def run_nuclei(target: str = Query(...), user: str = Depends(get_current_user)):
     return nuclei_scan(target)
 
 @app.get("/scan/full")
-async def run_full(target: str = Query(...)):
+async def run_full(target: str = Query(...), user: str = Depends(get_current_user)):
     nmap = nmap_scan(target)
     nuclei = nuclei_scan(target)
     return {"target": target, "ports": nmap.get("ports", []), "nmap_raw": nmap, "nuclei": nuclei}
 
 @app.get("/scan/analyze")
-async def run_analyze(target: str = Query(...)):
+async def run_analyze(target: str = Query(...), user: str = Depends(get_current_user)):
     nmap = nmap_scan(target)
     nuclei = nuclei_scan(target)
     scan_data = {"target": target, "ports": nmap.get("ports", []), "nuclei": nuclei}
@@ -72,12 +142,13 @@ async def run_analyze(target: str = Query(...)):
 
 @app.get("/scan/start")
 @limiter.limit("5/minute")
-async def scan_start(request: Request, target: str = Query(...)):
+async def scan_start(request: Request, target: str = Query(...), user: str = Depends(get_current_user)):
     task = full_scan_task.delay(target)
+    audit(request, user, "scan_start", target)
     return {"task_id": task.id, "status": "started", "target": target}
 
 @app.get("/scan/status/{task_id}")
-async def scan_status(task_id: str):
+async def scan_status(task_id: str, user: str = Depends(get_current_user)):
     task = full_scan_task.AsyncResult(task_id)
     if task.state == "PENDING":
         return {"task_id": task_id, "status": "pending"}
@@ -88,28 +159,21 @@ async def scan_status(task_id: str):
     else:
         return {"task_id": task_id, "status": task.state}
 
-from modules.database import init_db, get_scan_history, get_scan_by_task_id
-from modules.database import add_schedule, get_schedules, delete_schedule
-from modules.pdf_report import generate_report
-from modules.exploit_chains import generate_exploit_chains
-from modules.hacker_narrative import generate_hacker_narrative
-
-init_db()
-
 @app.get("/scans")
-async def scans_history(limit: int = 20):
+async def scans_history(limit: int = 20, user: str = Depends(get_current_user)):
     return get_scan_history(limit)
 
 @app.get("/scans/{task_id}")
-async def scan_detail(task_id: str):
+async def scan_detail(task_id: str, user: str = Depends(get_current_user)):
     return get_scan_by_task_id(task_id)
 
 @app.get("/scans/{task_id}/pdf")
-async def scan_pdf(task_id: str):
+async def scan_pdf(request: Request, task_id: str, user: str = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         return {"error": "Scan not found"}
     pdf_bytes = generate_report(scan)
+    audit(request, user, "pdf_download", scan.get("target"))
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -117,7 +181,7 @@ async def scan_pdf(task_id: str):
     )
 
 @app.get("/scans/{task_id}/chains")
-async def scan_chains(task_id: str):
+async def scan_chains(task_id: str, user: str = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
@@ -127,7 +191,7 @@ async def scan_chains(task_id: str):
     return chains
 
 @app.get("/scans/{task_id}/narrative")
-async def scan_narrative(task_id: str):
+async def scan_narrative(task_id: str, user: str = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
@@ -145,42 +209,43 @@ from modules.harvester_scan import scan as harvester_scan
 from modules.masscan_scan import scan as masscan_scan
 
 @app.get("/scan/gobuster")
-async def run_gobuster(target: str = Query(...)):
+async def run_gobuster(target: str = Query(...), user: str = Depends(get_current_user)):
     return gobuster_scan(target)
 
 @app.get("/scan/whatweb")
-async def run_whatweb(target: str = Query(...)):
+async def run_whatweb(target: str = Query(...), user: str = Depends(get_current_user)):
     return whatweb_scan(target)
 
 @app.get("/scan/testssl")
-async def run_testssl(target: str = Query(...)):
+async def run_testssl(target: str = Query(...), user: str = Depends(get_current_user)):
     return testssl_scan(target)
 
 @app.get("/scan/sqlmap")
-async def run_sqlmap(target: str = Query(...)):
+async def run_sqlmap(target: str = Query(...), user: str = Depends(get_current_user)):
     return sqlmap_scan(target)
 
 @app.get("/scan/nikto")
-async def run_nikto(target: str = Query(...)):
+async def run_nikto(target: str = Query(...), user: str = Depends(get_current_user)):
     return nikto_scan(target)
 
 @app.get("/scan/harvester")
-async def run_harvester(target: str = Query(...)):
+async def run_harvester(target: str = Query(...), user: str = Depends(get_current_user)):
     return harvester_scan(target)
 
 @app.get("/scan/masscan")
-async def run_masscan(target: str = Query(...)):
+async def run_masscan(target: str = Query(...), user: str = Depends(get_current_user)):
     return masscan_scan(target)
 
 from modules.webhook import WazuhAlert, extract_target
 
 @app.post("/webhook/wazuh")
 @limiter.limit("30/minute")
-async def wazuh_webhook(request: Request, alert: WazuhAlert):
+async def wazuh_webhook(request: Request, alert: WazuhAlert, user: str = Depends(get_current_user)):
     target = extract_target(alert)
     if not target:
         return {"status": "ignored", "reason": "no valid target extracted"}
     task = full_scan_task.delay(target)
+    audit(request, user, "webhook_wazuh", target)
     return {
         "status": "scan_started",
         "target": target,
@@ -191,11 +256,12 @@ async def wazuh_webhook(request: Request, alert: WazuhAlert):
 
 @app.post("/webhook/generic")
 @limiter.limit("30/minute")
-async def generic_webhook(request: Request, payload: dict):
+async def generic_webhook(request: Request, payload: dict, user: str = Depends(get_current_user)):
     target = payload.get("target") or payload.get("ip") or payload.get("host")
     if not target:
         return {"status": "ignored", "reason": "no target field in payload"}
     task = full_scan_task.delay(target)
+    audit(request, user, "webhook_generic", target)
     return {
         "status": "scan_started",
         "target": target,
@@ -207,42 +273,34 @@ from modules.tasks import agent_scan_task
 
 @app.get("/agent/start")
 @limiter.limit("3/minute")
-async def agent_start(request: Request, target: str = Query(...)):
+async def agent_start(request: Request, target: str = Query(...), user: str = Depends(get_current_user)):
     task = agent_scan_task.delay(target)
+    audit(request, user, "agent_start", target)
     return {"task_id": task.id, "status": "started", "target": target, "mode": "agent"}
-
-@app.get("/dashboard")
-async def dashboard():
-    return FileResponse("static/dashboard.html")
-
-@app.get("/scheduler")
-async def scheduler():
-    return FileResponse("static/scheduler.html")
 
 class ScheduleCreate(BaseModel):
     target: str
     interval_hours: int
 
 @app.post("/schedules")
-async def create_schedule(schedule: ScheduleCreate):
+async def create_schedule(request: Request, schedule: ScheduleCreate, user: str = Depends(get_current_user)):
     if schedule.interval_hours < 1:
         raise HTTPException(status_code=400, detail="interval_hours must be >= 1")
-    return add_schedule(schedule.target, schedule.interval_hours)
+    result = add_schedule(schedule.target, schedule.interval_hours)
+    audit(request, user, "schedule_create", schedule.target)
+    return result
 
 @app.get("/schedules")
-async def list_schedules():
+async def list_schedules(user: str = Depends(get_current_user)):
     return get_schedules()
 
 @app.delete("/schedules/{schedule_id}")
-async def remove_schedule(schedule_id: int):
+async def remove_schedule(request: Request, schedule_id: int, user: str = Depends(get_current_user)):
     ok = delete_schedule(schedule_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Schedule not found")
+    audit(request, user, "schedule_delete", str(schedule_id))
     return {"status": "deleted", "id": schedule_id}
-
-@app.get("/phishing")
-async def phishing_page():
-    return FileResponse("static/phishing.html")
 
 # ── GoPhish proxy ──
 GOPHISH_URL = os.getenv("GOPHISH_URL", "http://gophish:3333")
@@ -267,7 +325,7 @@ def _gophish_delete(path: str):
     return r.json() if r.text else {"status": "deleted"}
 
 @app.get("/phishing/campaigns")
-async def phishing_campaigns():
+async def phishing_campaigns(user: str = Depends(get_current_user)):
     try:
         campaigns = _gophish_get("campaigns/")
         result = []
@@ -302,7 +360,7 @@ class PhishingCampaignCreate(BaseModel):
     targets: list[str]
 
 @app.post("/phishing/campaigns")
-async def phishing_create_campaign(campaign: PhishingCampaignCreate):
+async def phishing_create_campaign(request: Request, campaign: PhishingCampaignCreate, user: str = Depends(get_current_user)):
     try:
         # 1. Create or reuse sending profile
         smtp_name = f"CYRBER-{campaign.domain}"
@@ -375,6 +433,7 @@ async def phishing_create_campaign(campaign: PhishingCampaignCreate):
             camp_payload["page"] = {"id": fallback_page["id"]}
 
         result = _gophish_post("campaigns/", camp_payload)
+        audit(request, user, "phishing_create", campaign.name)
         return {"id": result.get("id"), "name": result.get("name"), "status": result.get("status")}
 
     except http_requests.ConnectionError:
@@ -386,16 +445,18 @@ async def phishing_create_campaign(campaign: PhishingCampaignCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/phishing/campaigns/{campaign_id}")
-async def phishing_delete_campaign(campaign_id: int):
+async def phishing_delete_campaign(request: Request, campaign_id: int, user: str = Depends(get_current_user)):
     try:
-        return _gophish_delete(f"campaigns/{campaign_id}")
+        result = _gophish_delete(f"campaigns/{campaign_id}")
+        audit(request, user, "phishing_delete", str(campaign_id))
+        return result
     except http_requests.ConnectionError:
         raise HTTPException(status_code=503, detail="GoPhish not available")
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
 
 @app.get("/phishing/campaigns/{campaign_id}/results")
-async def phishing_campaign_results(campaign_id: int):
+async def phishing_campaign_results(campaign_id: int, user: str = Depends(get_current_user)):
     try:
         campaign = _gophish_get(f"campaigns/{campaign_id}")
         results = campaign.get("results", [])
@@ -434,7 +495,7 @@ class MultiTargetScan(BaseModel):
 
 @app.post("/scan/multi")
 @limiter.limit("3/minute")
-async def multi_scan(request: Request, body: MultiTargetScan):
+async def multi_scan(request: Request, body: MultiTargetScan, user: str = Depends(get_current_user)):
     if not body.targets:
         raise HTTPException(status_code=400, detail="targets list is empty")
 
@@ -455,4 +516,10 @@ async def multi_scan(request: Request, body: MultiTargetScan):
     for target in expanded:
         task = full_scan_task.delay(target)
         tasks.append({"task_id": task.id, "target": target, "status": "started"})
+    audit(request, user, "multi_scan", f"{len(expanded)} targets")
     return {"count": len(tasks), "tasks": tasks}
+
+# ── Audit logs endpoint ──
+@app.get("/audit")
+async def audit_logs(limit: int = 100, user: str = Depends(get_current_user)):
+    return get_audit_logs(limit)

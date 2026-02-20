@@ -321,6 +321,7 @@
     <a class="nav-link" href="/dashboard">DASHBOARD</a>
     <a class="nav-link" href="/scheduler">SCHEDULER</a>
     <a class="nav-link active" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
   </div>
 </nav>
 
@@ -400,13 +401,24 @@
 </div>
 
 <script>
-function getCreds() {
-  return (localStorage.getItem('cyrber_creds') || 'admin:cyrber2024');
-}
+// ── JWT Auth ──
+function getToken() { return localStorage.getItem('cyrber_token'); }
+if (!getToken()) window.location.href = '/login';
+
 function authHeaders(extra) {
-  var h = {'Authorization': 'Basic ' + btoa(getCreds())};
+  var token = getToken();
+  if (!token) { window.location.href = '/login'; return {}; }
+  var h = {'Authorization': 'Bearer ' + token};
   if (extra) Object.keys(extra).forEach(function(k){ h[k] = extra[k]; });
   return h;
+}
+
+async function authFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = authHeaders(opts.headers || {});
+  var r = await fetch(url, opts);
+  if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
+  return r;
 }
 
 // ── consent checkbox enables launch button ──
@@ -417,7 +429,7 @@ document.getElementById('consentCheck').addEventListener('change', function() {
 // ── load campaigns ──
 async function fetchCampaigns() {
   try {
-    var r = await fetch('/phishing/campaigns', {headers: authHeaders()});
+    var r = await authFetch('/phishing/campaigns');
     var data = await r.json();
     renderCampaigns(data);
   } catch(e) {
@@ -475,9 +487,9 @@ async function launchCampaign() {
   document.getElementById('launchBtn').disabled = true;
 
   try {
-    var r = await fetch('/phishing/campaigns', {
+    var r = await authFetch('/phishing/campaigns', {
       method: 'POST',
-      headers: authHeaders({'Content-Type': 'application/json'}),
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         name: name,
         domain: domain,
@@ -510,9 +522,8 @@ async function launchCampaign() {
 async function deleteCampaign(id) {
   if (!confirm('Usunąć kampanię #' + id + '?')) return;
   try {
-    var r = await fetch('/phishing/campaigns/' + id, {
-      method: 'DELETE',
-      headers: authHeaders()
+    var r = await authFetch('/phishing/campaigns/' + id, {
+      method: 'DELETE'
     });
     if (r.ok) {
       fetchCampaigns();
@@ -524,7 +535,7 @@ async function deleteCampaign(id) {
 // ── view results ──
 async function viewResults(id) {
   try {
-    var r = await fetch('/phishing/campaigns/' + id + '/results', {headers: authHeaders()});
+    var r = await authFetch('/phishing/campaigns/' + id + '/results');
     var data = await r.json();
     renderResults(data, id);
   } catch(e) {

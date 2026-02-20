@@ -1,20 +1,35 @@
 FROM python:3.11-slim
 RUN apt-get update && apt-get install -y \
     nmap \
-    gobuster \
-    whatweb \
-    nikto \
     masscan \
     curl \
     git \
+    perl \
+    libnet-ssleay-perl \
+    libio-socket-ssl-perl \
+    ruby \
+    ruby-dev \
+    build-essential \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
     libgdk-pixbuf-xlib-2.0-0 \
     libffi-dev \
     unzip \
-    python3 \
-    python3-pip \
     && rm -rf /var/lib/apt/lists/*
+# nikto (git clone)
+RUN git clone --depth 1 https://github.com/sullo/nikto /opt/nikto && \
+    ln -s /opt/nikto/program/nikto.pl /usr/local/bin/nikto && \
+    chmod +x /opt/nikto/program/nikto.pl
+# gobuster (binary from GitHub releases)
+RUN curl -L "https://github.com/OJ/gobuster/releases/latest/download/gobuster_Linux_x86_64.tar.gz" -o /tmp/gobuster.tar.gz && \
+    tar xzf /tmp/gobuster.tar.gz -C /tmp && \
+    mv /tmp/gobuster /usr/local/bin/gobuster && \
+    chmod +x /usr/local/bin/gobuster && \
+    rm -rf /tmp/gobuster* /tmp/LICENSE /tmp/README.md
+# whatweb (git clone)
+RUN git clone --depth 1 https://github.com/urbanadventurer/WhatWeb.git /opt/whatweb && \
+    ln -s /opt/whatweb/whatweb /usr/local/bin/whatweb && \
+    chmod +x /opt/whatweb/whatweb
 # theHarvester
 RUN pip install --no-cache-dir theHarvester
 # testssl

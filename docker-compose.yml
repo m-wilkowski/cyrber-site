@@ -62,6 +62,7 @@ services:
       GOPHISH_API_KEY: ${GOPHISH_API_KEY:-}
       CYRBER_USER: ${CYRBER_USER:-admin}
       CYRBER_PASS: ${CYRBER_PASS:-cyrber2024}
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
     depends_on:
       db:
         condition: service_healthy

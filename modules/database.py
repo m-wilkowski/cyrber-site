@@ -29,6 +29,15 @@ class Scan(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
 
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    user = Column(String, nullable=False)
+    action = Column(String, nullable=False)
+    target = Column(String)
+    ip_address = Column(String)
+
 class Schedule(Base):
     __tablename__ = "schedules"
     id = Column(Integer, primary_key=True, index=True)
@@ -191,5 +200,32 @@ def update_schedule_run(schedule_id: int):
             schedule.last_run = now
             schedule.next_run = now + timedelta(hours=schedule.interval_hours)
             db.commit()
+    finally:
+        db.close()
+
+def save_audit_log(user: str, action: str, target: str = None, ip_address: str = None):
+    db = SessionLocal()
+    try:
+        log = AuditLog(user=user, action=action, target=target, ip_address=ip_address)
+        db.add(log)
+        db.commit()
+    finally:
+        db.close()
+
+def get_audit_logs(limit: int = 100):
+    db = SessionLocal()
+    try:
+        logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit).all()
+        return [
+            {
+                "id": l.id,
+                "timestamp": l.timestamp.isoformat() if l.timestamp else None,
+                "user": l.user,
+                "action": l.action,
+                "target": l.target,
+                "ip_address": l.ip_address,
+            }
+            for l in logs
+        ]
     finally:
         db.close()

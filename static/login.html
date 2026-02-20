@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYRBER — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:    #080c18;
+    --navy2:   #0c1220;
+    --navy3:   #101828;
+    --panel:   #0a1020;
+    --accent:  #4a8fd4;
+    --accent2: #7ab3e8;
+    --purple:  #9b59b6;
+    --silver:  #8a9bb5;
+    --white:   #e8eef8;
+    --border:  rgba(74,143,212,.18);
+    --border2: rgba(74,143,212,.10);
+    --red:     #ff4444;
+    --yellow:  #f5c518;
+    --green:   #3ddc84;
+    --orange:  #ff8c00;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--navy);
+    color: var(--white);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 15% 60%, rgba(20,40,80,0.55) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 85% 15%, rgba(10,20,50,0.7) 0%, transparent 60%),
+      radial-gradient(ellipse 100% 30% at 50% 100%, rgba(74,143,212,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(74,143,212,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,143,212,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .login-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 400px;
+    padding: 0 20px;
+  }
+
+  .login-brand {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .login-brand h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 36px;
+    font-weight: 900;
+    letter-spacing: .15em;
+    color: var(--white);
+  }
+
+  .login-brand span {
+    display: block;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--accent);
+    letter-spacing: .3em;
+    margin-top: 4px;
+  }
+
+  .login-card {
+    background: rgba(12,18,32,.82);
+    border: 1px solid var(--border);
+    padding: 32px;
+    backdrop-filter: blur(12px);
+  }
+
+  .login-card h2 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .2em;
+    color: var(--silver);
+    margin-bottom: 24px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .15em;
+    color: var(--silver);
+  }
+
+  input {
+    background: var(--navy3);
+    border: 1px solid var(--border);
+    color: var(--white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+    outline: none;
+    width: 100%;
+    transition: border-color .2s;
+  }
+
+  input:focus {
+    border-color: var(--accent);
+  }
+
+  .btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: .15em;
+    padding: 12px 24px;
+    border: 1px solid var(--accent);
+    background: rgba(74,143,212,.1);
+    color: var(--accent);
+    cursor: pointer;
+    width: 100%;
+    margin-top: 8px;
+    transition: all .2s;
+  }
+
+  .btn:hover {
+    background: rgba(74,143,212,.2);
+  }
+
+  .msg {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 10px 14px;
+    margin-top: 16px;
+    border-left: 3px solid var(--red);
+    background: rgba(255,68,68,.08);
+    color: var(--red);
+    display: none;
+  }
+
+  .msg.visible { display: block; }
+
+  footer {
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: rgba(74,143,212,.18);
+    letter-spacing: .22em;
+    z-index: 1;
+  }
+
+  @media (max-width: 480px) {
+    .login-brand h1 { font-size: 28px; }
+    .login-card { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="login-container">
+  <div class="login-brand">
+    <h1>CYRBER</h1>
+    <span>AUTONOMOUS RECON</span>
+  </div>
+
+  <div class="login-card">
+    <h2>// AUTHENTICATION REQUIRED</h2>
+    <form id="loginForm" onsubmit="doLogin(event)">
+      <div class="form-group">
+        <label>USERNAME</label>
+        <input type="text" id="username" autocomplete="username" autofocus required>
+      </div>
+      <div class="form-group">
+        <label>PASSWORD</label>
+        <input type="password" id="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn">AUTHENTICATE</button>
+    </form>
+    <div class="msg" id="msg"></div>
+  </div>
+</div>
+
+<footer>CYRBER &middot; AUTONOMOUS RECON &middot; AUTHORIZED TARGETS ONLY &middot; v0.1.0</footer>
+
+<script>
+// If already authenticated, redirect to /ui
+if (localStorage.getItem('cyrber_token')) {
+  window.location.href = '/ui';
+}
+
+async function doLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const msg = document.getElementById('msg');
+
+  msg.classList.remove('visible');
+
+  try {
+    const r = await fetch('/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password})
+    });
+
+    if (r.ok) {
+      const data = await r.json();
+      localStorage.setItem('cyrber_token', data.token);
+      // Remove old Basic Auth credentials
+      localStorage.removeItem('cyrber_creds');
+      window.location.href = '/ui';
+    } else if (r.status === 429) {
+      msg.textContent = 'Too many attempts. Try again later.';
+      msg.classList.add('visible');
+    } else {
+      msg.textContent = 'Invalid credentials';
+      msg.classList.add('visible');
+    }
+  } catch(err) {
+    msg.textContent = 'Connection error';
+    msg.classList.add('visible');
+  }
+}
+</script>
+</body>
+</html>

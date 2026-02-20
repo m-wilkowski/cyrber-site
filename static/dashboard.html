@@ -429,6 +429,7 @@ footer {
     <a class="nav-link active" href="/dashboard">DASHBOARD</a>
     <a class="nav-link" href="/scheduler">SCHEDULER</a>
     <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
   </div>
 </nav>
 
@@ -540,8 +541,23 @@ footer {
 <footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.1.0</footer>
 
 <script>
-var API = 'http://127.0.0.1:8000';
+var API = '';
 var charts = {};
+
+// ── JWT Auth ──
+function getToken() { return localStorage.getItem('cyrber_token'); }
+if (!getToken()) window.location.href = '/login';
+
+function authFetch(url, opts) {
+  opts = opts || {};
+  var token = getToken();
+  if (!token) { window.location.href = '/login'; return Promise.reject('no token'); }
+  opts.headers = Object.assign({'Authorization': 'Bearer ' + token}, opts.headers || {});
+  return fetch(url, opts).then(function(r) {
+    if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
+    return r;
+  });
+}
 
 var RISK_COLORS = {
   'NISKIE':    '#3ddc84',
@@ -561,7 +577,7 @@ function destroyChart(id) {
 }
 
 function loadDashboard() {
-  fetch(API + '/scans?limit=100')
+  authFetch(API +'/scans?limit=100')
     .then(function(r) { return r.json(); })
     .then(function(scans) {
       renderKPIs(scans);
@@ -885,7 +901,7 @@ function renderTable(scans) {
 
 // ── Phishing campaigns section ──
 function loadPhishing() {
-  fetch(API + '/phishing/campaigns')
+  authFetch(API +'/phishing/campaigns')
     .then(function(r) { return r.json(); })
     .then(function(campaigns) {
       if (!campaigns || !campaigns.length) return;
