@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CYRBER — Login</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -35,8 +37,9 @@
     min-height: 100vh;
     overflow-x: hidden;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
+    padding-bottom: 5vh;
   }
 
   body::before {
@@ -72,15 +75,19 @@
   }
 
   .login-brand {
+    position: fixed;
+    top: 6vh;
+    left: 0;
+    right: 0;
     text-align: center;
-    margin-bottom: 40px;
+    z-index: 1;
   }
 
   .login-brand h1 {
     font-family: 'Orbitron', sans-serif;
-    font-size: 36px;
+    font-size: 56px;
     font-weight: 900;
-    letter-spacing: .15em;
+    letter-spacing: .2em;
     color: var(--white);
   }
 
@@ -183,24 +190,42 @@
     z-index: 1;
   }
 
+  .bg-logo {
+    position: fixed;
+    top: 56%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 92vw;
+    height: 92vh;
+    max-width: 1200px;
+    max-height: 1000px;
+    background: url('/static/cyrber_wolf.png') center center / contain no-repeat;
+    opacity: 0.04;
+    pointer-events: none;
+    z-index: 0;
+  }
+
   @media (max-width: 768px) {
     .login-card { max-width: 360px; padding: 28px; }
-    .login-brand h1 { font-size: 32px; }
+    .login-brand h1 { font-size: 44px; }
   }
   @media (max-width: 480px) {
-    .login-brand h1 { font-size: 28px; }
+    .login-brand h1 { font-size: 36px; }
     .login-card { padding: 24px; }
+    body { padding-bottom: 4vh; }
   }
 </style>
 </head>
 <body>
 
-<div class="login-container">
-  <div class="login-brand">
-    <h1>CYRBER</h1>
-    <span>AUTONOMOUS RECON</span>
-  </div>
+<div class="login-brand">
+  <h1>CYRBER</h1>
+  <span>AUTONOMOUS RECON</span>
+</div>
 
+<div class="bg-logo"></div>
+
+<div class="login-container">
   <div class="login-card">
     <h2>// AUTHENTICATION REQUIRED</h2>
     <form id="loginForm" onsubmit="doLogin(event)">
