@@ -139,6 +139,9 @@ from modules.gobuster_scan import scan as gobuster_scan
 from modules.whatweb_scan import scan as whatweb_scan
 from modules.testssl_scan import scan as testssl_scan
 from modules.sqlmap_scan import scan as sqlmap_scan
+from modules.nikto_scan import scan as nikto_scan
+from modules.harvester_scan import scan as harvester_scan
+from modules.masscan_scan import scan as masscan_scan
 
 @app.get("/scan/gobuster")
 async def run_gobuster(target: str = Query(...)):
@@ -155,6 +158,18 @@ async def run_testssl(target: str = Query(...)):
 @app.get("/scan/sqlmap")
 async def run_sqlmap(target: str = Query(...)):
     return sqlmap_scan(target)
+
+@app.get("/scan/nikto")
+async def run_nikto(target: str = Query(...)):
+    return nikto_scan(target)
+
+@app.get("/scan/harvester")
+async def run_harvester(target: str = Query(...)):
+    return harvester_scan(target)
+
+@app.get("/scan/masscan")
+async def run_masscan(target: str = Query(...)):
+    return masscan_scan(target)
 
 from modules.webhook import WazuhAlert, extract_target
 

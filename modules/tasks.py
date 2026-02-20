@@ -6,6 +6,9 @@ from modules.whatweb_scan import scan as whatweb_scan
 from modules.gobuster_scan import scan as gobuster_scan
 from modules.testssl_scan import scan as testssl_scan
 from modules.sqlmap_scan import scan as sqlmap_scan
+from modules.nikto_scan import scan as nikto_scan
+from modules.harvester_scan import scan as harvester_scan
+from modules.masscan_scan import scan as masscan_scan
 from modules.llm_analyze import analyze_scan_results
 from modules.exploit_chains import generate_exploit_chains
 from modules.false_positive_filter import filter_false_positives
@@ -38,6 +41,9 @@ def full_scan_task(target: str):
     gobuster = gobuster_scan(target)
     testssl = testssl_scan(target)
     sqlmap = sqlmap_scan(target)
+    nikto = nikto_scan(target)
+    harvester = harvester_scan(target)
+    masscan = masscan_scan(target)
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -45,7 +51,10 @@ def full_scan_task(target: str):
         "whatweb": whatweb,
         "gobuster": gobuster,
         "testssl": testssl,
-        "sqlmap": sqlmap
+        "sqlmap": sqlmap,
+        "nikto": nikto,
+        "harvester": harvester,
+        "masscan": masscan
     }
     result = analyze_scan_results(scan_data)
     result["ports"] = nmap.get("ports", [])
@@ -54,6 +63,9 @@ def full_scan_task(target: str):
     result["testssl"] = testssl
     result["sqlmap"] = sqlmap
     result["nuclei"] = nuclei_filtered
+    result["nikto"] = nikto
+    result["harvester"] = harvester
+    result["masscan"] = masscan
     result["fp_filter"] = nuclei_filtered.get("fp_filter", {})
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})

@@ -881,7 +881,7 @@ nav {
     </div>
   </div>
 
-  <footer>CYRBER &nbsp;·&nbsp; AUTONOMOUS RECON &nbsp;·&nbsp; AUTHORIZED TARGETS ONLY &nbsp;·&nbsp; v0.1.0</footer>
+  <footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.1.0</footer>
 </div>
 
 <script>
@@ -1099,6 +1099,45 @@ function renderExtended(res) {
     h+=mkSec('// BEZPIECZEŃSTWO TLS',tl,false);
   }
 
+  // Nikto
+  var nk=(res.nikto&&res.nikto.findings)||[];
+  if(nk.length){
+    var nt='<table class="dt"><thead><tr><th>OPIS</th><th>URL</th><th>OSVDB</th></tr></thead><tbody>';
+    nk.slice(0,40).forEach(function(f){nt+='<tr><td>'+f.description+'</td><td>'+(f.url||'—')+'</td><td>'+(f.osvdb||'—')+'</td></tr>';});
+    if(nk.length>40) nt+='<tr><td colspan="3" style="color:rgba(184,204,236,.35);font-size:10px">... i '+(nk.length-40)+' więcej</td></tr>';
+    h+=mkSec('// NIKTO — WEB VULNS ('+nk.length+')',nt+'</tbody></table>',false);
+  }
+
+  // theHarvester
+  if(res.harvester){
+    var hv=res.harvester;
+    var subs=hv.subdomains||[];
+    var emails=hv.emails||[];
+    if(subs.length||emails.length){
+      var ht='';
+      if(emails.length){
+        ht+='<div style="margin-bottom:12px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">EMAILS ('+emails.length+')</div>';
+        ht+='<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:var(--silver);line-height:1.8">'+emails.join('<br>')+'</div></div>';
+      }
+      if(subs.length){
+        ht+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">SUBDOMAINS ('+subs.length+')</div>';
+        ht+='<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:var(--silver);line-height:1.8">'+subs.slice(0,30).join('<br>');
+        if(subs.length>30) ht+='<br><span style="color:rgba(184,204,236,.35);font-size:10px">... i '+(subs.length-30)+' więcej</span>';
+        ht+='</div></div>';
+      }
+      h+=mkSec('// OSINT — theHarvester ('+subs.length+' subdomains, '+emails.length+' emails)',ht,false);
+    }
+  }
+
+  // Masscan
+  var mp=(res.masscan&&res.masscan.ports)||[];
+  if(mp.length){
+    var mt='<table class="dt"><thead><tr><th>PORT</th><th>PROTOCOL</th><th>STATUS</th><th>IP</th></tr></thead><tbody>';
+    mp.slice(0,50).forEach(function(p){mt+='<tr><td>'+p.port+'</td><td>'+p.protocol+'</td><td>'+p.status+'</td><td>'+(p.ip||'—')+'</td></tr>';});
+    if(mp.length>50) mt+='<tr><td colspan="4" style="color:rgba(184,204,236,.35);font-size:10px">... i '+(mp.length-50)+' więcej</td></tr>';
+    h+=mkSec('// MASSCAN — FAST PORT SCAN ('+mp.length+' portów)',mt+'</tbody></table>',false);
+  }
+
   ext.innerHTML=h;
   ext.querySelectorAll('.res-section-hdr').forEach(function(hdr){
     hdr.addEventListener('click',function(){
@@ -1166,7 +1205,9 @@ function loadScanDetail(taskId) {
       analysis:{summary:s.summary,risk_level:s.risk_level,top_issues:s.top_issues||[],recommendations:s.recommendations},
       nuclei:{findings:[]},
       ports:s.ports||[], gobuster:s.gobuster||{}, sqlmap:s.sqlmap||null,
-      testssl:s.testssl||null, fp_filter:s.fp_filter||null,
+      testssl:s.testssl||null, nikto:s.nikto||null,
+      harvester:s.harvester||null, masscan:s.masscan||null,
+      fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
     };
