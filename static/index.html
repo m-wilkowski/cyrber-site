@@ -1472,6 +1472,60 @@ function renderExtended(res) {
     h+=mkSec(eTitle,ec,false);
   }
 
+  // AbuseIPDB
+  if(res.abuseipdb&&!res.abuseipdb.skipped&&!res.abuseipdb.error){
+    var ab=res.abuseipdb;
+    var abScore=ab.abuse_confidence_score||0;
+    var abCol=abScore<=25?'var(--green)':abScore<=75?'var(--yellow)':'var(--red)';
+    var abBg=abScore<=25?'rgba(61,220,132,.08)':abScore<=75?'rgba(245,197,24,.08)':'rgba(255,68,68,.08)';
+    var ac='';
+    // Score badge
+    ac+='<div style="display:flex;align-items:center;gap:24px;margin-bottom:18px">';
+    ac+='<div style="text-align:center;border:2px solid '+abCol+';padding:16px 24px;background:'+abBg+'">';
+    ac+='<div style="font-family:Orbitron,sans-serif;font-size:32px;font-weight:900;color:'+abCol+'">'+abScore+'</div>';
+    ac+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:'+abCol+';margin-top:4px">ABUSE SCORE</div>';
+    ac+='</div>';
+    ac+='<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:var(--silver);line-height:1.8">';
+    ac+='Total Reports: <span style="color:var(--white)">'+ab.total_reports+'</span>';
+    if(ab.num_distinct_users) ac+='<br>Distinct Reporters: <span style="color:var(--white)">'+ab.num_distinct_users+'</span>';
+    if(ab.last_reported_at) ac+='<br>Last Reported: <span style="color:var(--white)">'+ab.last_reported_at.replace('T',' ').slice(0,19)+'</span>';
+    ac+='</div></div>';
+    // Info grid
+    ac+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">';
+    if(ab.ip) ac+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">IP</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+ab.ip+'</div></div>';
+    if(ab.isp) ac+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">ISP</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+ab.isp+'</div></div>';
+    if(ab.usage_type) ac+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">USAGE TYPE</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+ab.usage_type+'</div></div>';
+    if(ab.domain) ac+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">DOMAIN</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+ab.domain+'</div></div>';
+    if(ab.country_code) ac+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">COUNTRY</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+ab.country_code+'</div></div>';
+    ac+='</div>';
+    // Flags
+    var abFlags=[];
+    if(ab.is_tor) abFlags.push({label:'TOR EXIT NODE',active:true});
+    if(ab.is_whitelisted) abFlags.push({label:'WHITELISTED',active:true,safe:true});
+    if(ab.is_tor===false) abFlags.push({label:'TOR EXIT NODE',active:false});
+    if(ab.is_whitelisted===false&&ab.total_reports>0) abFlags.push({label:'NOT WHITELISTED',active:true});
+    if(abFlags.length){
+      ac+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+      abFlags.forEach(function(f){
+        var fc=f.safe?'var(--green)':f.active?'var(--red)':'var(--silver)';
+        var fbg=f.active?(f.safe?'rgba(61,220,132,.12)':'rgba(255,68,68,.12)'):'transparent';
+        ac+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 10px;border:1px solid '+fc+';color:'+fc+';background:'+fbg+'">'+f.label+(f.active?' \u2713':' \u2717')+'</span>';
+      });
+      ac+='</div>';
+    }
+    // Categories
+    var abCats=ab.categories||[];
+    if(abCats.length){
+      ac+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">REPORTED CATEGORIES ('+abCats.length+')</div>';
+      ac+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+      abCats.forEach(function(c){ac+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid rgba(255,68,68,.4);color:var(--red);background:rgba(255,68,68,.08)">'+c+'</span>';});
+      ac+='</div></div>';
+    }
+    var abTitle='// ABUSEIPDB — IP REPUTATION';
+    if(ab.total_reports>0) abTitle+=' ('+ab.total_reports+' reports, score '+abScore+')';
+    h+=mkSec(abTitle,ac,false);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];
@@ -1813,7 +1867,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','censys','ipinfo','enum4linux','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','censys','ipinfo','enum4linux','abuseipdb','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;
