@@ -65,6 +65,12 @@ services:
       CYRBER_USER: ${CYRBER_USER:-admin}
       CYRBER_PASS: ${CYRBER_PASS:-cyrber2024}
       JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_TO: ${SMTP_TO:-}
+      CYRBER_URL: ${CYRBER_URL:-http://127.0.0.1:8000}
     depends_on:
       db:
         condition: service_healthy
@@ -89,6 +95,12 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-mistral}
       CENSYS_API_TOKEN: ${CENSYS_API_TOKEN:-}
       IPINFO_TOKEN: ${IPINFO_TOKEN:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_TO: ${SMTP_TO:-}
+      CYRBER_URL: ${CYRBER_URL:-http://127.0.0.1:8000}
     depends_on:
       db:
         condition: service_healthy
