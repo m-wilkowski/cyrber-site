@@ -57,6 +57,8 @@ services:
     restart: on-failure
     volumes:
       - ./static:/app/static
+      - ./modules:/app/modules
+      - ./backend:/app/backend
 
   worker:
     build: .
@@ -75,6 +77,9 @@ services:
       redis:
         condition: service_healthy
     restart: on-failure
+    volumes:
+      - ./modules:/app/modules
+      - ./backend:/app/backend
 
   beat:
     build: .
