@@ -212,6 +212,7 @@ from modules.ipinfo_scan import scan as ipinfo_scan
 from modules.enum4linux_scan import scan as enum4linux_scan
 from modules.mitre_attack import mitre_map
 from modules.abuseipdb_scan import scan as abuseipdb_scan
+from modules.otx_scan import scan as otx_scan
 
 @app.get("/scan/gobuster")
 async def run_gobuster(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -264,6 +265,10 @@ async def run_mitre(task_id: str = Query(...), user: str = Depends(get_current_u
 @app.get("/scan/abuseipdb")
 async def run_abuseipdb(target: str = Query(...), user: str = Depends(get_current_user)):
     return abuseipdb_scan(target)
+
+@app.get("/scan/otx")
+async def run_otx(target: str = Query(...), user: str = Depends(get_current_user)):
+    return otx_scan(target)
 
 from modules.webhook import WazuhAlert, extract_target
 

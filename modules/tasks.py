@@ -13,6 +13,7 @@ from modules.masscan_scan import scan as masscan_scan
 from modules.ipinfo_scan import scan as ipinfo_scan
 from modules.enum4linux_scan import scan as enum4linux_scan
 from modules.abuseipdb_scan import scan as abuseipdb_scan
+from modules.otx_scan import scan as otx_scan
 from modules.llm_analyze import analyze_scan_results
 from modules.exploit_chains import generate_exploit_chains
 from modules.false_positive_filter import filter_false_positives
@@ -52,6 +53,7 @@ def full_scan_task(target: str):
     ipinfo = ipinfo_scan(target)
     enum4linux = enum4linux_scan(target)
     abuseipdb = abuseipdb_scan(target)
+    otx = otx_scan(target)
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -66,6 +68,7 @@ def full_scan_task(target: str):
         "ipinfo": ipinfo,
         "enum4linux": enum4linux,
         "abuseipdb": abuseipdb,
+        "otx": otx,
     }
     result = analyze_scan_results(scan_data)
     result["ports"] = nmap.get("ports", [])
@@ -82,6 +85,8 @@ def full_scan_task(target: str):
         result["enum4linux"] = enum4linux
     if not abuseipdb.get("skipped"):
         result["abuseipdb"] = abuseipdb
+    if not otx.get("skipped"):
+        result["otx"] = otx
     result["fp_filter"] = nuclei_filtered.get("fp_filter", {})
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})

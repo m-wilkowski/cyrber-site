@@ -1526,6 +1526,61 @@ function renderExtended(res) {
     h+=mkSec(abTitle,ac,false);
   }
 
+  // AlienVault OTX
+  if(res.otx&&!res.otx.skipped&&!res.otx.error){
+    var ox=res.otx;
+    var oxScore=ox.threat_score||0;
+    var oxCol=oxScore<=20?'var(--green)':oxScore<=60?'var(--yellow)':'var(--red)';
+    var oxBg=oxScore<=20?'rgba(61,220,132,.08)':oxScore<=60?'rgba(245,197,24,.08)':'rgba(255,68,68,.08)';
+    var oc='';
+    // Threat score badge
+    oc+='<div style="display:flex;align-items:center;gap:24px;margin-bottom:18px">';
+    oc+='<div style="text-align:center;border:2px solid '+oxCol+';padding:16px 24px;background:'+oxBg+'">';
+    oc+='<div style="font-family:Orbitron,sans-serif;font-size:32px;font-weight:900;color:'+oxCol+'">'+oxScore+'</div>';
+    oc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:'+oxCol+';margin-top:4px">THREAT SCORE</div>';
+    oc+='</div>';
+    oc+='<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:var(--silver);line-height:1.8">';
+    oc+='Pulses: <span style="color:var(--white)">'+ox.pulse_count+'</span>';
+    if(ox.malware_families&&ox.malware_families.length) oc+='<br>Malware Families: <span style="color:var(--red)">'+ox.malware_families.length+'</span>';
+    oc+='</div></div>';
+    // Info grid
+    oc+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">';
+    if(ox.ip) oc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">IP</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+ox.ip+'</div></div>';
+    if(ox.country) oc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">COUNTRY</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+ox.country+'</div></div>';
+    if(ox.asn) oc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">ASN</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+ox.asn+'</div></div>';
+    if(ox.organization) oc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">ORGANIZATION</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+ox.organization+'</div></div>';
+    oc+='</div>';
+    // Tags
+    var oxTags=ox.tags||[];
+    if(oxTags.length){
+      oc+='<div style="margin-bottom:16px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">TAGS ('+oxTags.length+')</div>';
+      oc+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+      oxTags.slice(0,30).forEach(function(t){oc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid rgba(74,143,212,.35);color:var(--accent);background:rgba(74,143,212,.06)">'+t+'</span>';});
+      if(oxTags.length>30) oc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--silver)">... +'+(oxTags.length-30)+' more</span>';
+      oc+='</div></div>';
+    }
+    // Malware families
+    var oxMal=ox.malware_families||[];
+    if(oxMal.length){
+      oc+='<div style="margin-bottom:16px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">MALWARE FAMILIES ('+oxMal.length+')</div>';
+      oc+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+      oxMal.slice(0,20).forEach(function(m){oc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid rgba(255,68,68,.4);color:var(--red);background:rgba(255,68,68,.08)">'+m+'</span>';});
+      if(oxMal.length>20) oc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--silver)">... +'+(oxMal.length-20)+' more</span>';
+      oc+='</div></div>';
+    }
+    // Related indicators
+    var oxInd=ox.related_indicators||[];
+    if(oxInd.length){
+      oc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">RELATED INDICATORS ('+oxInd.length+')</div>';
+      oc+='<table class="dt"><thead><tr><th>TYPE</th><th>INDICATOR</th><th>DESCRIPTION</th></tr></thead><tbody>';
+      oxInd.forEach(function(i){oc+='<tr><td>'+i.type+'</td><td style="color:var(--white)">'+i.indicator+'</td><td style="font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(i.description||'—')+'</td></tr>';});
+      oc+='</tbody></table></div>';
+    }
+    var oxTitle='// ALIENVAULT OTX — THREAT INTELLIGENCE';
+    if(ox.pulse_count>0) oxTitle+=' ('+ox.pulse_count+' pulses, score '+oxScore+')';
+    h+=mkSec(oxTitle,oc,false);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];
@@ -1867,7 +1922,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','censys','ipinfo','enum4linux','abuseipdb','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','censys','ipinfo','enum4linux','abuseipdb','otx','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;
