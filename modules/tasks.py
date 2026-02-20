@@ -22,6 +22,7 @@ from modules.mitre_attack import mitre_map
 from modules.exploitdb_scan import exploitdb_scan
 from modules.nvd_scan import nvd_scan
 from modules.whois_scan import whois_scan
+from modules.dnsrecon_scan import dnsrecon_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
 
@@ -58,6 +59,7 @@ def full_scan_task(target: str):
     abuseipdb = abuseipdb_scan(target)
     otx = otx_scan(target)
     whois = whois_scan(target)
+    dnsrecon = dnsrecon_scan(target)
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -99,6 +101,8 @@ def full_scan_task(target: str):
         result["nvd"] = nvd
     if not whois.get("error"):
         result["whois"] = whois
+    if not dnsrecon.get("skipped"):
+        result["dnsrecon"] = dnsrecon
     result["fp_filter"] = nuclei_filtered.get("fp_filter", {})
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})

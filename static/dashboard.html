@@ -120,9 +120,12 @@ nav {
 .wrapper {
   position: relative;
   z-index: 1;
-  max-width: 1440px;
+  max-width: 1920px;
   margin: 0 auto;
-  padding: 32px clamp(16px, 2vw, 24px) 80px;
+  padding: 32px clamp(16px, 3vw, 48px) 80px;
+}
+@media (min-width: 2560px) {
+  .wrapper { max-width: 2400px; }
 }
 
 .page-header {
@@ -205,16 +208,21 @@ nav {
 /* ── CHART GRID ── */
 .chart-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
 
 .chart-grid-3 {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
+}
+
+@media (min-width: 1920px) {
+  .chart-grid { grid-template-columns: repeat(3, 1fr); }
+  .chart-grid-3 { grid-template-columns: repeat(4, 1fr); }
 }
 
 .panel {

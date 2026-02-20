@@ -115,6 +115,281 @@ def _testssl_html(testssl: dict) -> str:
     return f"""{'<div class="grade-box"><span class="muted">OCENA TLS</span><span class="grade" style="color:' + grade_color + '">' + grade + '</span></div>' if grade else ''}
     {issues_html if issues_html else '<p class="muted">Brak problemów TLS.</p>'}"""
 
+def _nikto_html(nikto: dict) -> str:
+    findings = nikto.get("findings", []) if isinstance(nikto, dict) else []
+    if not findings:
+        return "<p class='muted'>Brak wyników Nikto.</p>"
+    rows = ""
+    for f in findings[:30]:
+        rows += f"<tr><td>{f.get('description','')}</td><td class='mono'>{f.get('url','')}</td><td>{f.get('osvdb','')}</td></tr>"
+    extra = f"<p class='muted'>... i {len(findings)-30} więcej</p>" if len(findings) > 30 else ""
+    return f"""<table>
+        <thead><tr><th>OPIS</th><th>URL</th><th>OSVDB</th></tr></thead>
+        <tbody>{rows}</tbody>
+    </table>{extra}"""
+
+def _nuclei_html(nuclei: dict) -> str:
+    findings = nuclei.get("findings", []) if isinstance(nuclei, dict) else []
+    if not findings:
+        return "<p class='muted'>Brak wyników Nuclei.</p>"
+    rows = ""
+    sev_color = {"critical": "#ff4444", "high": "#ff8c00", "medium": "#f5c518", "low": "#3ddc84", "info": "#4a8fd4"}
+    for f in findings[:30]:
+        sev = (f.get("severity", "") or "").lower()
+        color = sev_color.get(sev, "#4a8fd4")
+        rows += f"<tr><td>{f.get('name','') or f.get('template-id','')}</td><td style='color:{color}'>{sev.upper()}</td><td class='mono'>{f.get('matched-at','') or f.get('host','')}</td></tr>"
+    extra = f"<p class='muted'>... i {len(findings)-30} więcej</p>" if len(findings) > 30 else ""
+    return f"""<table>
+        <thead><tr><th>VULNERABILITY</th><th>SEVERITY</th><th>MATCHED AT</th></tr></thead>
+        <tbody>{rows}</tbody>
+    </table>{extra}"""
+
+def _harvester_html(harvester: dict) -> str:
+    if not harvester:
+        return "<p class='muted'>Brak danych OSINT.</p>"
+    emails = harvester.get("emails", []) or []
+    subdomains = harvester.get("subdomains", []) or []
+    if not emails and not subdomains:
+        return "<p class='muted'>Brak znalezionych adresów i subdomen.</p>"
+    html = ""
+    if emails:
+        items = "".join(f"<div class='mono' style='padding:2px 0'>{e}</div>" for e in emails[:20])
+        html += f"<div style='margin-bottom:12px'><div class='muted' style='margin-bottom:4px'>EMAILS ({len(emails)})</div>{items}</div>"
+    if subdomains:
+        items = "".join(f"<div class='mono' style='padding:2px 0'>{s}</div>" for s in subdomains[:20])
+        html += f"<div><div class='muted' style='margin-bottom:4px'>SUBDOMAINS ({len(subdomains)})</div>{items}</div>"
+    return html
+
+def _masscan_html(masscan: dict) -> str:
+    ports = masscan.get("ports", []) if isinstance(masscan, dict) else []
+    if not ports:
+        return "<p class='muted'>Brak wyników Masscan.</p>"
+    rows = ""
+    for p in ports[:40]:
+        rows += f"<tr><td class='mono'>{p.get('port','')}</td><td>{p.get('proto','')}</td><td>{p.get('status','')}</td></tr>"
+    return f"""<table>
+        <thead><tr><th>PORT</th><th>PROTOCOL</th><th>STATUS</th></tr></thead>
+        <tbody>{rows}</tbody>
+    </table>"""
+
+def _ipinfo_html(ipinfo: dict) -> str:
+    if not ipinfo or not ipinfo.get("found"):
+        return "<p class='muted'>Brak danych IPInfo.</p>"
+    ii = ipinfo
+    grid = ""
+    for label, key in [("IP", "ip"), ("HOSTNAME", "hostname"), ("ORG", "org"), ("ASN", "asn"), ("COUNTRY", "country"), ("REGION", "region"), ("CITY", "city")]:
+        val = ii.get(key, "")
+        if val:
+            grid += f"<div><span class='muted'>{label}</span><br><span style='color:#e8f0fc'>{val}</span></div>"
+    return f"<div style='display:flex;flex-wrap:wrap;gap:16px'>{grid}</div>"
+
+def _enum4linux_html(enum4linux: dict) -> str:
+    if not enum4linux or enum4linux.get("skipped"):
+        return "<p class='muted'>Pominięto (cel nie jest hostem SMB).</p>"
+    html = ""
+    users = enum4linux.get("users", [])
+    if users:
+        rows = "".join(f"<tr><td>{u.get('username','')}</td><td>{u.get('rid','')}</td></tr>" for u in users[:20])
+        html += f"<div style='margin-bottom:12px'><div class='muted' style='margin-bottom:4px'>USERS ({len(users)})</div><table><thead><tr><th>USERNAME</th><th>RID</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    shares = enum4linux.get("shares", [])
+    if shares:
+        rows = "".join(f"<tr><td>{s.get('name','')}</td><td>{s.get('type','')}</td><td>{s.get('comment','')}</td></tr>" for s in shares)
+        html += f"<div style='margin-bottom:12px'><div class='muted' style='margin-bottom:4px'>SHARES ({len(shares)})</div><table><thead><tr><th>NAME</th><th>TYPE</th><th>COMMENT</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    if not html:
+        html = "<p class='muted'>Brak danych SMB.</p>"
+    return html
+
+def _abuseipdb_html(abuseipdb: dict) -> str:
+    if not abuseipdb or abuseipdb.get("skipped") or abuseipdb.get("error"):
+        return "<p class='muted'>Brak danych AbuseIPDB.</p>"
+    score = abuseipdb.get("abuse_confidence_score", 0)
+    score_color = "#3ddc84" if score <= 25 else "#f5c518" if score <= 75 else "#ff4444"
+    cats = abuseipdb.get("categories", [])
+    cats_html = " ".join(f"<span style='color:#ff4444;font-size:10px;border:1px solid rgba(255,68,68,.3);padding:2px 6px;margin:2px'>{c}</span>" for c in cats) if cats else ""
+    return f"""<div style='display:flex;gap:24px;align-items:center;margin-bottom:12px'>
+        <div><span class='muted'>ABUSE SCORE</span><br><span style='font-size:28px;font-weight:700;color:{score_color}'>{score}</span><span class='muted'>/100</span></div>
+        <div><span class='muted'>ISP</span><br>{abuseipdb.get('isp','—')}</div>
+        <div><span class='muted'>COUNTRY</span><br>{abuseipdb.get('country_code','—')}</div>
+        <div><span class='muted'>REPORTS</span><br>{abuseipdb.get('total_reports',0)}</div>
+    </div>
+    {f"<div style='margin-top:8px'>{cats_html}</div>" if cats_html else ""}"""
+
+def _otx_html(otx: dict) -> str:
+    if not otx or otx.get("skipped") or otx.get("error"):
+        return "<p class='muted'>Brak danych AlienVault OTX.</p>"
+    score = otx.get("threat_score", 0)
+    score_color = "#3ddc84" if score <= 20 else "#f5c518" if score <= 60 else "#ff4444"
+    malware = otx.get("malware_families", [])
+    malware_html = " ".join(f"<span style='color:#ff4444;font-size:10px;border:1px solid rgba(255,68,68,.3);padding:2px 6px;margin:2px'>{m}</span>" for m in malware[:10]) if malware else ""
+    return f"""<div style='display:flex;gap:24px;align-items:center;margin-bottom:12px'>
+        <div><span class='muted'>THREAT SCORE</span><br><span style='font-size:28px;font-weight:700;color:{score_color}'>{score}</span></div>
+        <div><span class='muted'>PULSES</span><br>{otx.get('pulse_count',0)}</div>
+        <div><span class='muted'>COUNTRY</span><br>{otx.get('country','—')}</div>
+        <div><span class='muted'>ASN</span><br>{otx.get('asn','—')}</div>
+    </div>
+    {f"<div style='margin-top:8px'><span class='muted'>MALWARE FAMILIES:</span> {malware_html}</div>" if malware_html else ""}"""
+
+def _exploitdb_html(exploitdb: dict) -> str:
+    exploits = exploitdb.get("exploits", [])
+    if not exploits:
+        return "<p class='muted'>Brak exploitów w bazie ExploitDB.</p>"
+    sev_color = {"critical": "#ff4444", "high": "#ff8c00", "medium": "#f5c518", "low": "#8a9bb5"}
+    badges = ""
+    for sev in ["critical", "high", "medium", "low"]:
+        cnt = exploitdb.get(f"{sev}_count", 0)
+        if cnt:
+            badges += f"<span style='color:{sev_color[sev]};font-size:10px;border:1px solid {sev_color[sev]};padding:2px 8px;margin-right:6px'>{sev.upper()}: {cnt}</span>"
+    rows = ""
+    for e in exploits[:20]:
+        color = sev_color.get(e.get("severity", ""), "#8a9bb5")
+        verified = "✓" if e.get("verified") else ""
+        rows += f"<tr><td class='mono'>{e.get('edb_id','')}</td><td>{e.get('title','')}</td><td>{e.get('type','')}</td><td>{e.get('platform','')}</td><td style='color:{color}'>{e.get('severity','').upper()}</td><td style='color:#3ddc84'>{verified}</td></tr>"
+    extra = f"<p class='muted'>... i {len(exploits)-20} więcej</p>" if len(exploits) > 20 else ""
+    return f"""<div style='margin-bottom:10px'>{badges}</div>
+    <table>
+        <thead><tr><th>EDB-ID</th><th>TITLE</th><th>TYPE</th><th>PLATFORM</th><th>SEVERITY</th><th>VERIFIED</th></tr></thead>
+        <tbody>{rows}</tbody>
+    </table>{extra}"""
+
+def _nvd_html(nvd: dict) -> str:
+    cves = nvd.get("cves", [])
+    if not cves:
+        return "<p class='muted'>Brak danych NVD.</p>"
+    sev_color = {"CRITICAL": "#ff4444", "HIGH": "#ff8c00", "MEDIUM": "#f5c518", "LOW": "#8a9bb5"}
+    badges = ""
+    for sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+        cnt = nvd.get(f"{sev.lower()}_count", 0)
+        if cnt:
+            badges += f"<span style='color:{sev_color[sev]};font-size:10px;border:1px solid {sev_color[sev]};padding:2px 8px;margin-right:6px'>{sev}: {cnt}</span>"
+    rows = ""
+    for c in cves[:20]:
+        sev = c.get("cvss_severity", "UNKNOWN")
+        color = sev_color.get(sev, "#4a8fd4")
+        score = c.get("cvss_score")
+        score_str = f"{score:.1f}" if score is not None else "—"
+        desc = (c.get("description", "") or "")[:120]
+        exploit = "<span style='color:#ff4444'>YES</span>" if c.get("exploit_available") else ""
+        rows += f"<tr><td class='mono'>{c.get('cve_id','')}</td><td style='color:{color};font-weight:700'>{score_str}</td><td style='color:{color}'>{sev}</td><td style='font-size:10px'>{desc}</td><td>{exploit}</td></tr>"
+    extra = f"<p class='muted'>... i {len(cves)-20} więcej</p>" if len(cves) > 20 else ""
+    return f"""<div style='margin-bottom:10px'>{badges}</div>
+    <table>
+        <thead><tr><th>CVE ID</th><th>CVSS</th><th>SEVERITY</th><th>DESCRIPTION</th><th>EXPLOIT</th></tr></thead>
+        <tbody>{rows}</tbody>
+    </table>{extra}"""
+
+def _whois_html(whois: dict) -> str:
+    if not whois or whois.get("error"):
+        return "<p class='muted'>Brak danych WHOIS.</p>"
+    if whois.get("type") == "domain":
+        grid = ""
+        for label, key in [("REGISTRAR", "registrar"), ("REGISTERED", "registration_date"), ("EXPIRES", "expiration_date"), ("UPDATED", "last_updated")]:
+            val = whois.get(key, "")
+            if val:
+                val_display = val.split("T")[0] if "T" in str(val) else val
+                grid += f"<div><span class='muted'>{label}</span><br><span style='color:#e8f0fc'>{val_display}</span></div>"
+        expiry = whois.get("days_until_expiry")
+        badges = ""
+        if whois.get("is_expired"):
+            badges += "<span style='color:#ff4444;border:1px solid #ff4444;padding:2px 8px;font-size:10px'>EXPIRED</span> "
+        elif expiry is not None:
+            exp_color = "#3ddc84" if expiry > 90 else "#f5c518" if expiry >= 30 else "#ff4444"
+            badges += f"<span style='color:{exp_color};border:1px solid {exp_color};padding:2px 8px;font-size:10px'>EXPIRES IN {expiry} DAYS</span> "
+        if whois.get("privacy_protected"):
+            badges += "<span style='color:#9b59b6;border:1px solid #9b59b6;padding:2px 8px;font-size:10px'>PRIVACY PROTECTED</span>"
+        ns = whois.get("name_servers", [])
+        ns_html = "<br>".join(f"<span class='mono' style='font-size:11px'>{s}</span>" for s in ns) if ns else ""
+        reg = whois.get("registrant", {})
+        reg_html = ""
+        if reg.get("organization") or reg.get("country"):
+            reg_html = f"<div style='margin-top:10px'><span class='muted'>REGISTRANT:</span> {reg.get('organization','')} {reg.get('country','')}</div>"
+        return f"""<div style='margin-bottom:10px'>{badges}</div>
+        <div style='display:flex;flex-wrap:wrap;gap:16px;margin-bottom:12px'>{grid}</div>
+        {reg_html}
+        {f"<div style='margin-top:10px'><span class='muted'>NAME SERVERS</span><br>{ns_html}</div>" if ns_html else ""}"""
+    else:
+        grid = ""
+        for label, key in [("ASN", "asn"), ("REGISTRY", "asn_registry"), ("COUNTRY", "asn_country_code"), ("DESCRIPTION", "asn_description")]:
+            val = whois.get(key, "")
+            if val:
+                grid += f"<div><span class='muted'>{label}</span><br><span style='color:#e8f0fc'>{val}</span></div>"
+        net = whois.get("network", {})
+        if net.get("cidr"):
+            grid += f"<div><span class='muted'>NETWORK</span><br><span style='color:#e8f0fc'>{net['cidr']}</span></div>"
+        return f"<div style='display:flex;flex-wrap:wrap;gap:16px'>{grid}</div>"
+
+def _dnsrecon_html(dnsrecon: dict) -> str:
+    if not dnsrecon or dnsrecon.get("skipped"):
+        return "<p class='muted'>Brak danych DNSRecon.</p>"
+    html = ""
+    # Zone transfer alert
+    if dnsrecon.get("zone_transfer"):
+        html += "<div style='border:1px solid #ff4444;background:rgba(255,68,68,.12);color:#ff4444;padding:10px 14px;margin-bottom:12px;font-size:12px'>⚠ CRITICAL: ZONE TRANSFER POSSIBLE</div>"
+    # Missing SPF/DMARC warning
+    missing = []
+    if not dnsrecon.get("spf_configured"):
+        missing.append("SPF")
+    if not dnsrecon.get("dmarc_configured"):
+        missing.append("DMARC")
+    if missing:
+        html += f"<div style='border:1px solid #f5c518;background:rgba(245,197,24,.08);color:#f5c518;padding:10px 14px;margin-bottom:12px;font-size:12px'>⚠ Missing: {', '.join(missing)}</div>"
+    # SPF/DMARC badges
+    spf_ok = dnsrecon.get("spf_configured", False)
+    dmarc_ok = dnsrecon.get("dmarc_configured", False)
+    spf_col = "#3ddc84" if spf_ok else "#ff4444"
+    dmarc_col = "#3ddc84" if dmarc_ok else "#ff4444"
+    html += f"<div style='margin-bottom:12px'><span style='color:{spf_col};font-size:10px;border:1px solid {spf_col};padding:2px 8px;margin-right:6px'>SPF {'✓' if spf_ok else '✗'}</span>"
+    html += f"<span style='color:{dmarc_col};font-size:10px;border:1px solid {dmarc_col};padding:2px 8px'>DMARC {'✓' if dmarc_ok else '✗'}</span></div>"
+    # A Records
+    a_recs = dnsrecon.get("a_records", [])
+    if a_recs:
+        rows = "".join(f"<tr><td>{r.get('hostname','')}</td><td class='mono'>{r.get('ip','')}</td><td>{r.get('type','A')}</td></tr>" for r in a_recs[:20])
+        html += f"<div class='muted' style='margin-bottom:4px'>A / AAAA RECORDS ({len(a_recs)})</div><table><thead><tr><th>HOSTNAME</th><th>IP</th><th>TYPE</th></tr></thead><tbody>{rows}</tbody></table>"
+    # MX Records
+    mx_recs = dnsrecon.get("mx_records", [])
+    if mx_recs:
+        rows = "".join(f"<tr><td>{r.get('exchange','')}</td><td>{r.get('priority','')}</td></tr>" for r in mx_recs)
+        html += f"<div class='muted' style='margin:10px 0 4px'>MX RECORDS ({len(mx_recs)})</div><table><thead><tr><th>EXCHANGE</th><th>PRIORITY</th></tr></thead><tbody>{rows}</tbody></table>"
+    # SRV Records
+    srv_recs = dnsrecon.get("srv_records", [])
+    if srv_recs:
+        rows = "".join(f"<tr><td>{r.get('service','')}</td><td>{r.get('target','')}</td><td>{r.get('port','')}</td><td>{r.get('priority','')}</td></tr>" for r in srv_recs[:20])
+        html += f"<div class='muted' style='margin:10px 0 4px'>SRV RECORDS ({len(srv_recs)})</div><table><thead><tr><th>SERVICE</th><th>TARGET</th><th>PORT</th><th>PRIORITY</th></tr></thead><tbody>{rows}</tbody></table>"
+    # NS Records
+    ns_recs = dnsrecon.get("ns_records", [])
+    if ns_recs:
+        ns_html = " ".join(f"<span class='mono' style='font-size:11px;margin-right:8px'>{ns}</span>" for ns in ns_recs)
+        html += f"<div class='muted' style='margin:10px 0 4px'>NAME SERVERS ({len(ns_recs)})</div><div>{ns_html}</div>"
+    # Subdomains
+    subs = dnsrecon.get("subdomains", [])
+    if subs:
+        subs_html = " ".join(f"<span class='mono' style='font-size:10px;color:#7ab3e8'>{s}</span>" for s in subs[:30])
+        extra = f" <span class='muted'>... i {len(subs)-30} więcej</span>" if len(subs) > 30 else ""
+        html += f"<div class='muted' style='margin:10px 0 4px'>SUBDOMAINS ({len(subs)})</div><div>{subs_html}{extra}</div>"
+    if not html:
+        html = "<p class='muted'>Brak danych DNS.</p>"
+    return html
+
+def _mitre_html(mitre: dict) -> str:
+    techniques = mitre.get("techniques", [])
+    if not techniques:
+        return "<p class='muted'>Brak mapowań MITRE ATT&CK.</p>"
+    conf_color = {"high": "#ff4444", "medium": "#f5c518", "low": "#8a9bb5"}
+    badges = ""
+    for level in ["high", "medium", "low"]:
+        cnt = mitre.get(f"{level}_count", 0)
+        if cnt:
+            badges += f"<span style='color:{conf_color[level]};font-size:10px;border:1px solid {conf_color[level]};padding:2px 8px;margin-right:6px'>{level.upper()}: {cnt}</span>"
+    rows = ""
+    for t in techniques[:25]:
+        conf = t.get("confidence", "low")
+        color = conf_color.get(conf, "#8a9bb5")
+        rows += f"<tr><td class='mono'>{t.get('technique_id','')}</td><td>{t.get('technique_name','')}</td><td>{t.get('tactic','')}</td><td style='color:{color}'>{conf.upper()}</td><td style='font-size:10px'>{t.get('triggered_by','')}</td></tr>"
+    return f"""<div style='margin-bottom:10px'>{badges}</div>
+    <table>
+        <thead><tr><th>TECHNIQUE</th><th>NAME</th><th>TACTIC</th><th>CONFIDENCE</th><th>TRIGGERED BY</th></tr></thead>
+        <tbody>{rows}</tbody>
+    </table>"""
+
 def generate_report(scan_data: dict) -> bytes:
     target = scan_data.get("target", "unknown")
     analysis = scan_data.get("analysis", {})
@@ -131,6 +406,19 @@ def generate_report(scan_data: dict) -> bytes:
     exploit_chains = scan_data.get("exploit_chains", {})
     hacker_narrative = scan_data.get("hacker_narrative", {})
     fp_filter = scan_data.get("fp_filter", {})
+    nuclei = scan_data.get("nuclei", {})
+    nikto = scan_data.get("nikto", {})
+    harvester = scan_data.get("harvester", {})
+    masscan = scan_data.get("masscan", {})
+    ipinfo = scan_data.get("ipinfo", {})
+    enum4linux = scan_data.get("enum4linux", {})
+    abuseipdb = scan_data.get("abuseipdb", {})
+    otx = scan_data.get("otx", {})
+    exploitdb = scan_data.get("exploitdb", {})
+    nvd = scan_data.get("nvd", {})
+    whois = scan_data.get("whois", {})
+    mitre = scan_data.get("mitre", {})
+    dnsrecon = scan_data.get("dnsrecon", {})
 
     color = _risk_color(risk)
 
@@ -275,6 +563,71 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// BEZPIECZEŃSTWO TLS (TESTSSL)</div>
   {_testssl_html(testssl)}
+</div>
+
+<div class="section">
+  <div class="section-title">// NUCLEI — VULNERABILITY SCANNER</div>
+  {_nuclei_html(nuclei)}
+</div>
+
+<div class="section">
+  <div class="section-title">// NIKTO — WEB VULNERABILITIES</div>
+  {_nikto_html(nikto)}
+</div>
+
+<div class="section">
+  <div class="section-title">// THEHARVESTER — OSINT</div>
+  {_harvester_html(harvester)}
+</div>
+
+<div class="section">
+  <div class="section-title">// MASSCAN — FAST PORT SCAN</div>
+  {_masscan_html(masscan)}
+</div>
+
+<div class="section">
+  <div class="section-title">// IPINFO — IP ENRICHMENT</div>
+  {_ipinfo_html(ipinfo)}
+</div>
+
+<div class="section">
+  <div class="section-title">// WHOIS — {'DOMAIN REGISTRATION' if whois.get('type') == 'domain' else 'IP OWNERSHIP'}</div>
+  {_whois_html(whois)}
+</div>
+
+<div class="section">
+  <div class="section-title">// DNSRECON — DNS RECONNAISSANCE</div>
+  {_dnsrecon_html(dnsrecon)}
+</div>
+
+<div class="section">
+  <div class="section-title">// ENUM4LINUX — SMB ENUMERATION</div>
+  {_enum4linux_html(enum4linux)}
+</div>
+
+<div class="section">
+  <div class="section-title">// ABUSEIPDB — IP REPUTATION</div>
+  {_abuseipdb_html(abuseipdb)}
+</div>
+
+<div class="section">
+  <div class="section-title">// ALIENVAULT OTX — THREAT INTELLIGENCE</div>
+  {_otx_html(otx)}
+</div>
+
+<div class="section">
+  <div class="section-title">// EXPLOIT-DB — PUBLIC EXPLOITS ({len(exploitdb.get('exploits', []))})</div>
+  {_exploitdb_html(exploitdb)}
+</div>
+
+<div class="section">
+  <div class="section-title">// NVD — CVE DETAILS ({len(nvd.get('cves', []))})</div>
+  {_nvd_html(nvd)}
+</div>
+
+<div class="section">
+  <div class="section-title">// MITRE ATT&CK MAPPING ({len(mitre.get('techniques', []))} techniques)</div>
+  {_mitre_html(mitre)}
 </div>
 
 <div class="section">

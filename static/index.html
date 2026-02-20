@@ -65,11 +65,14 @@ body::after {
 }
 
 .wrapper {
-  max-width: 1440px;
+  max-width: 1920px;
   margin: 0 auto;
-  padding: 0 clamp(16px, 2vw, 24px) 80px;
+  padding: 0 clamp(16px, 3vw, 48px) 80px;
   position: relative;
   z-index: 1;
+}
+@media (min-width: 2560px) {
+  .wrapper { max-width: 2400px; padding: 0 clamp(24px, 3vw, 64px) 80px; }
 }
 
 /* ── HERO ── */
@@ -1262,11 +1265,88 @@ function renderExtended(res) {
     h+=mkSec('// ŁAŃCUCHY EXPLOITÓW ('+chains.length+')',ch,true);
   }
 
+  // NUCLEI DETAILED FINDINGS
+  var nfAll=(res.nuclei&&res.nuclei.findings)||[];
+  if(nfAll.length){
+    var nfc='';
+    var nfSev={critical:0,high:0,medium:0,low:0,info:0};
+    nfAll.forEach(function(f){var s=((f.info&&f.info.severity)||f.severity||'info').toLowerCase();if(nfSev[s]!==undefined)nfSev[s]++;else nfSev.info++;});
+    nfc+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">';
+    nfc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--accent);color:var(--accent);background:rgba(0,255,135,.08)">TOTAL: '+nfAll.length+'</span>';
+    if(nfSev.critical) nfc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid #ff2222;color:#ff2222;background:rgba(255,34,34,.08)">CRITICAL: '+nfSev.critical+'</span>';
+    if(nfSev.high) nfc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+nfSev.high+'</span>';
+    if(nfSev.medium) nfc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+nfSev.medium+'</span>';
+    if(nfSev.low) nfc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--silver);color:var(--silver);background:rgba(138,155,181,.06)">LOW: '+nfSev.low+'</span>';
+    if(nfSev.info) nfc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--accent);color:var(--accent);background:rgba(74,143,212,.06)">INFO: '+nfSev.info+'</span>';
+    nfc+='</div>';
+    nfc+='<table class="dt"><thead><tr><th>VULNERABILITY</th><th>SEVERITY</th><th>MATCHED AT</th><th>TEMPLATE</th></tr></thead><tbody>';
+    var sevOrd={critical:0,high:1,medium:2,low:3,info:4};
+    var nfSorted=nfAll.slice().sort(function(a,b){var sa=((a.info&&a.info.severity)||a.severity||'info').toLowerCase();var sb=((b.info&&b.info.severity)||b.severity||'info').toLowerCase();return(sevOrd[sa]||5)-(sevOrd[sb]||5);});
+    nfSorted.slice(0,30).forEach(function(f){
+      var sev=((f.info&&f.info.severity)||f.severity||'info').toLowerCase();
+      var sevCol={critical:'#ff2222',high:'var(--red)',medium:'var(--yellow)',low:'var(--silver)',info:'var(--accent)'}[sev]||'var(--accent)';
+      var sevBg={critical:'rgba(255,34,34,.12)',high:'rgba(255,68,68,.10)',medium:'rgba(245,197,24,.08)',low:'transparent',info:'transparent'}[sev]||'transparent';
+      var name=f.name||f['template-id']||'—';
+      var matched=f['matched-at']||f.host||'—';
+      var tmpl=f['template-id']||'—';
+      nfc+='<tr><td style="color:var(--white)">'+name+'</td>';
+      nfc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+sevCol+';color:'+sevCol+';background:'+sevBg+'">'+sev.toUpperCase()+'</span></td>';
+      nfc+='<td style="font-size:11px;max-width:clamp(200px,35vw,600px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+matched+'</td>';
+      nfc+='<td style="font-size:11px;color:var(--silver)">'+tmpl+'</td></tr>';
+    });
+    if(nfAll.length>30) nfc+='<tr><td colspan="4" style="color:rgba(184,204,236,.35);font-size:10px">... i '+(nfAll.length-30)+' więcej</td></tr>';
+    nfc+='</tbody></table>';
+    h+=mkSec('// NUCLEI — VULNERABILITY SCANNER ('+nfAll.length+' findings)',nfc,false);
+  }
+
   var ports=res.ports||[];
   if(ports.length){
     var pt='<table class="dt"><thead><tr><th>PORT</th><th>SERVICE</th><th>VERSION</th><th>STATE</th></tr></thead><tbody>';
     ports.forEach(function(p){pt+='<tr><td>'+p.port+'</td><td>'+p.service+'</td><td>'+(p.version||'—')+'</td><td>'+p.state+'</td></tr>';});
     h+=mkSec('// OTWARTE PORTY ('+ports.length+')',pt+'</tbody></table>',false);
+  }
+
+  // WHATWEB — TECHNOLOGIES
+  var ww=res.whatweb||{};
+  var wwPlugins=ww.plugins||ww.technologies||[];
+  var wwRaw=ww.raw||'';
+  if(wwPlugins.length||wwRaw){
+    var wwc='';
+    if(wwPlugins.length){
+      wwc+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">';
+      wwPlugins.forEach(function(p){
+        var name=typeof p==='string'?p:(p.name||p.plugin||'');
+        var ver=typeof p==='object'?(p.version||''):'';
+        if(name) wwc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:4px 12px;border:1px solid var(--border);color:var(--white);background:rgba(74,143,212,.06)">'+name+(ver?' <span style=color:var(--accent)>'+ver+'</span>':'')+'</span>';
+      });
+      wwc+='</div>';
+    }
+    if(wwRaw&&!wwPlugins.length){
+      // Parse raw WhatWeb output for technologies
+      var lines=wwRaw.split(/[\n,]/).filter(function(l){return l.trim();});
+      wwc+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">';
+      lines.slice(0,30).forEach(function(l){
+        var t=l.trim().replace(/^\[.*?\]\s*/,'');
+        if(t) wwc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:4px 12px;border:1px solid var(--border);color:var(--white);background:rgba(74,143,212,.06)">'+t+'</span>';
+      });
+      wwc+='</div>';
+    }
+    // Also show key info fields
+    var wwTarget=ww.target||'';
+    var wwStatus=ww.http_status||ww.status||'';
+    var wwTitle=ww.title||'';
+    var wwCountry=ww.country||'';
+    var wwIP=ww.ip||'';
+    if(wwTarget||wwStatus||wwTitle){
+      wwc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">';
+      if(wwTarget) wwc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TARGET</div><div style="color:var(--white);font-size:13px">'+wwTarget+'</div></div>';
+      if(wwStatus) wwc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">HTTP STATUS</div><div style="color:var(--white);font-size:13px">'+wwStatus+'</div></div>';
+      if(wwTitle) wwc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">PAGE TITLE</div><div style="color:var(--white);font-size:13px">'+wwTitle+'</div></div>';
+      if(wwCountry) wwc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">COUNTRY</div><div style="color:var(--white);font-size:13px">'+wwCountry+'</div></div>';
+      if(wwIP) wwc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">IP</div><div style="color:var(--white);font-size:13px">'+wwIP+'</div></div>';
+      wwc+='</div>';
+    }
+    h+=mkSec('// WHATWEB — TECHNOLOGIES',wwc,false);
   }
 
   var gf=(res.gobuster&&res.gobuster.findings)||[];
@@ -1363,7 +1443,7 @@ function renderExtended(res) {
     if(svcs.length){
       cc+='<table class="dt"><thead><tr><th>PORT</th><th>PROTO</th><th>SERVICE</th><th>PRODUCT</th><th>VERSION</th><th>BANNER</th></tr></thead><tbody>';
       svcs.forEach(function(s){
-        cc+='<tr><td>'+s.port+'</td><td>'+(s.transport_protocol||'TCP')+'</td><td>'+(s.service_name||'—')+'</td><td>'+(s.product||'—')+'</td><td>'+(s.version||'—')+'</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.banner||'—')+'</td></tr>';
+        cc+='<tr><td>'+s.port+'</td><td>'+(s.transport_protocol||'TCP')+'</td><td>'+(s.service_name||'—')+'</td><td>'+(s.product||'—')+'</td><td>'+(s.version||'—')+'</td><td style="max-width:clamp(200px,35vw,600px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.banner||'—')+'</td></tr>';
       });
       cc+='</tbody></table>';
     }
@@ -1636,7 +1716,7 @@ function renderExtended(res) {
     if(oxInd.length){
       oc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">RELATED INDICATORS ('+oxInd.length+')</div>';
       oc+='<table class="dt"><thead><tr><th>TYPE</th><th>INDICATOR</th><th>DESCRIPTION</th></tr></thead><tbody>';
-      oxInd.forEach(function(i){oc+='<tr><td>'+i.type+'</td><td style="color:var(--white)">'+i.indicator+'</td><td style="font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(i.description||'—')+'</td></tr>';});
+      oxInd.forEach(function(i){oc+='<tr><td>'+i.type+'</td><td style="color:var(--white)">'+i.indicator+'</td><td style="font-size:11px;max-width:clamp(200px,35vw,600px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(i.description||'—')+'</td></tr>';});
       oc+='</tbody></table></div>';
     }
     var oxTitle='// ALIENVAULT OTX — THREAT INTELLIGENCE';
@@ -1671,7 +1751,7 @@ function renderExtended(res) {
       var verifiedBadge=e.verified?'<span style="color:var(--accent)">VERIFIED</span>':'<span style="color:var(--silver)">—</span>';
       ec+='<tr>';
       ec+='<td><a href="'+e.url+'" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--border)">'+e.edb_id+'</a></td>';
-      ec+='<td style="color:var(--white);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e.title+'</td>';
+      ec+='<td style="color:var(--white);max-width:clamp(200px,35vw,600px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e.title+'</td>';
       ec+='<td>'+e.type+'</td>';
       ec+='<td>'+e.platform+'</td>';
       ec+='<td>'+e.date+'</td>';
@@ -1711,13 +1791,98 @@ function renderExtended(res) {
       nc+='<td><a href="'+c.url+'" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--border);white-space:nowrap">'+c.cve_id+'</a></td>';
       nc+='<td style="color:'+scoreCol+';font-family:Share Tech Mono,monospace;font-weight:700">'+score+'</td>';
       nc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+sevCol+';color:'+sevCol+';background:'+sevBg+'">'+sev+'</span></td>';
-      nc+='<td style="font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+desc+'</td>';
+      nc+='<td style="font-size:11px;max-width:clamp(200px,35vw,600px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+desc+'</td>';
       nc+='<td style="font-size:11px;white-space:nowrap">'+cwe+'</td>';
       nc+='<td>'+exploitBadge+'</td>';
       nc+='</tr>';
     });
     nc+='</tbody></table>';
     h+=mkSec('// NVD — CVE DETAILS ('+nvd.total+' vulnerabilities)',nc,false);
+  }
+
+  // DNSRECON
+  var dns=res.dnsrecon||{};
+  if(dns.target&&!dns.skipped){
+    var dc='';
+    // CRITICAL alert: zone transfer
+    if(dns.zone_transfer){
+      dc+='<div style="padding:12px 16px;margin-bottom:16px;border:1px solid #ff2222;background:rgba(255,34,34,.12);color:#ff2222;font-family:Share Tech Mono,monospace;font-size:12px;letter-spacing:.1em">&#9888; CRITICAL: ZONE TRANSFER POSSIBLE — Full DNS zone data exposed to unauthorized queries</div>';
+    }
+    // Warning: missing SPF or DMARC
+    if(!dns.spf_configured||!dns.dmarc_configured){
+      var missing=[];
+      if(!dns.spf_configured) missing.push('SPF');
+      if(!dns.dmarc_configured) missing.push('DMARC');
+      dc+='<div style="padding:12px 16px;margin-bottom:16px;border:1px solid var(--yellow);background:rgba(245,197,24,.08);color:var(--yellow);font-family:Share Tech Mono,monospace;font-size:12px;letter-spacing:.1em">&#9888; WARNING: Missing email security records: '+missing.join(', ')+' — domain vulnerable to spoofing</div>';
+    }
+    // Info grid
+    dc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px">';
+    dc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">A RECORDS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(dns.a_records||[]).length+'</div></div>';
+    dc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">MX RECORDS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(dns.mx_records||[]).length+'</div></div>';
+    dc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NS RECORDS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(dns.ns_records||[]).length+'</div></div>';
+    dc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SUBDOMAINS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(dns.subdomains||[]).length+'</div></div>';
+    dc+='</div>';
+    // A Records table
+    var aRecs=dns.a_records||[];
+    if(aRecs.length){
+      dc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:16px 0 8px">A / AAAA RECORDS</div>';
+      dc+='<table class="dt"><thead><tr><th>HOSTNAME</th><th>IP</th><th>TYPE</th></tr></thead><tbody>';
+      aRecs.forEach(function(r){dc+='<tr><td style="color:var(--white)">'+r.hostname+'</td><td>'+r.ip+'</td><td>'+r.type+'</td></tr>';});
+      dc+='</tbody></table>';
+    }
+    // MX Records table
+    var mxRecs=dns.mx_records||[];
+    if(mxRecs.length){
+      dc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:16px 0 8px">MX RECORDS</div>';
+      dc+='<table class="dt"><thead><tr><th>EXCHANGE</th><th>PRIORITY</th></tr></thead><tbody>';
+      mxRecs.forEach(function(r){dc+='<tr><td style="color:var(--white)">'+r.exchange+'</td><td>'+r.priority+'</td></tr>';});
+      dc+='</tbody></table>';
+    }
+    // TXT Records — SPF/DMARC badges + list
+    var txtRecs=dns.txt_records||[];
+    if(txtRecs.length||dns.spf_configured!==undefined){
+      dc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:16px 0 8px">TXT / EMAIL SECURITY</div>';
+      dc+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">';
+      if(dns.spf_configured) dc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--green);color:var(--green);background:rgba(61,220,132,.08)">SPF &#10003;</span>';
+      else dc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">SPF &#10007;</span>';
+      if(dns.dmarc_configured) dc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--green);color:var(--green);background:rgba(61,220,132,.08)">DMARC &#10003;</span>';
+      else dc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">DMARC &#10007;</span>';
+      dc+='</div>';
+      if(txtRecs.length){
+        txtRecs.forEach(function(r){
+          var tCol=r.type==='SPF'?'var(--green)':r.type==='DMARC'?'var(--green)':r.type==='DKIM'?'var(--accent)':'var(--silver)';
+          dc+='<div style="margin-bottom:8px"><span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid '+tCol+';color:'+tCol+';margin-right:8px">'+r.type+'</span><span style="font-size:12px;color:var(--white);word-break:break-all">'+r.value+'</span></div>';
+        });
+      }
+    }
+    // SRV Records table
+    var srvRecs=dns.srv_records||[];
+    if(srvRecs.length){
+      dc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:16px 0 8px">SRV RECORDS</div>';
+      dc+='<table class="dt"><thead><tr><th>SERVICE</th><th>TARGET</th><th>PORT</th><th>PRIORITY</th></tr></thead><tbody>';
+      srvRecs.forEach(function(r){dc+='<tr><td style="color:var(--white)">'+r.service+'</td><td>'+r.target+'</td><td>'+r.port+'</td><td>'+r.priority+'</td></tr>';});
+      dc+='</tbody></table>';
+    }
+    // NS Records
+    var nsRecs=dns.ns_records||[];
+    if(nsRecs.length){
+      dc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:16px 0 8px">NAME SERVERS</div>';
+      dc+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">';
+      nsRecs.forEach(function(ns){dc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:4px 12px;border:1px solid var(--border);color:var(--white);background:rgba(74,143,212,.06)">'+ns+'</span>';});
+      dc+='</div>';
+    }
+    // Subdomains list
+    var subs=dns.subdomains||[];
+    if(subs.length){
+      dc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:16px 0 8px">DISCOVERED SUBDOMAINS ('+subs.length+')</div>';
+      dc+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+      subs.slice(0,50).forEach(function(s){dc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--accent2);background:rgba(74,143,212,.04)">'+s+'</span>';});
+      if(subs.length>50) dc+='<span style="font-size:10px;color:rgba(184,204,236,.35);padding:3px 10px">... i '+(subs.length-50)+' więcej</span>';
+      dc+='</div>';
+    }
+    var dnsTitle='// DNSRECON — DNS RECONNAISSANCE';
+    if(dns.zone_transfer) dnsTitle+=' [ZONE TRANSFER!]';
+    h+=mkSec(dnsTitle,dc,dns.zone_transfer);
   }
 
   // MITRE ATT&CK
@@ -1812,11 +1977,15 @@ function loadScanDetail(taskId) {
     var combined={
       target:s.target, findings_count:s.findings_count,
       analysis:{summary:s.summary,risk_level:s.risk_level,top_issues:s.top_issues||[],recommendations:s.recommendations},
-      nuclei:{findings:[]},
+      nuclei:s.nuclei||{findings:[]},
+      whatweb:s.whatweb||null,
       ports:s.ports||[], gobuster:s.gobuster||{}, sqlmap:s.sqlmap||null,
       testssl:s.testssl||null, nikto:s.nikto||null,
       harvester:s.harvester||null, masscan:s.masscan||null,
       censys:s.censys||null, ipinfo:s.ipinfo||null,
+      enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
+      otx:s.otx||null, exploitdb:s.exploitdb||null,
+      nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -2061,7 +2230,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','censys','ipinfo','enum4linux','abuseipdb','otx','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','censys','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

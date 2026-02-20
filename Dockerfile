@@ -50,6 +50,12 @@ RUN git clone --depth 1 https://github.com/cddmp/enum4linux-ng.git /opt/enum4lin
     pip install --no-cache-dir -r /opt/enum4linux-ng/requirements.txt && \
     ln -s /opt/enum4linux-ng/enum4linux-ng.py /usr/local/bin/enum4linux-ng && \
     chmod +x /opt/enum4linux-ng/enum4linux-ng.py
+# dnsrecon
+RUN pip install dnsrecon --break-system-packages || \
+    git clone https://github.com/darkoperator/dnsrecon.git /opt/dnsrecon && \
+    pip install -r /opt/dnsrecon/requirements.txt && \
+    ln -s /opt/dnsrecon/dnsrecon.py /usr/local/bin/dnsrecon && \
+    chmod +x /opt/dnsrecon/dnsrecon.py
 # wordlist
 RUN mkdir -p /usr/share/wordlists/dirb && \
     curl -L https://raw.githubusercontent.com/v0re/dirb/master/wordlists/common.txt \
