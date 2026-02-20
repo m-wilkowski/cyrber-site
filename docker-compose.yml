@@ -41,7 +41,7 @@ services:
       - "3333:3333"
       - "8080:80"
     volumes:
-      - gophish_data:/opt/gophish/data
+      - gophish_data:/opt/gophish
     profiles:
       - phishing
     restart: on-failure
