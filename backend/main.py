@@ -214,6 +214,7 @@ from modules.mitre_attack import mitre_map
 from modules.abuseipdb_scan import scan as abuseipdb_scan
 from modules.otx_scan import scan as otx_scan
 from modules.exploitdb_scan import exploitdb_scan
+from modules.nvd_scan import nvd_scan
 
 @app.get("/scan/gobuster")
 async def run_gobuster(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -277,6 +278,13 @@ async def run_exploitdb(task_id: str = Query(...), user: str = Depends(get_curre
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return exploitdb_scan(scan)
+
+@app.get("/scan/nvd")
+async def run_nvd(task_id: str = Query(...), user: str = Depends(get_current_user)):
+    scan = get_scan_by_task_id(task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return nvd_scan(scan)
 
 from modules.webhook import WazuhAlert, extract_target
 

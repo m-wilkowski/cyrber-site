@@ -1622,6 +1622,43 @@ function renderExtended(res) {
     h+=mkSec('// EXPLOIT-DB — PUBLIC EXPLOITS ('+edb.total+' found)',ec,false);
   }
 
+  // NVD / CVE DETAILS
+  var nvd=res.nvd||{};
+  var nvdCves=nvd.cves||[];
+  if(nvdCves.length){
+    var nc='';
+    // Summary badges
+    nc+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">';
+    nc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--accent);color:var(--accent);background:rgba(0,255,135,.08)">TOTAL: '+nvd.total+'</span>';
+    if(nvd.critical_count) nc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid #ff2222;color:#ff2222;background:rgba(255,34,34,.08)">CRITICAL: '+nvd.critical_count+'</span>';
+    if(nvd.high_count) nc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+nvd.high_count+'</span>';
+    if(nvd.medium_count) nc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+nvd.medium_count+'</span>';
+    if(nvd.low_count) nc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--silver);color:var(--silver);background:rgba(138,155,181,.06)">LOW: '+nvd.low_count+'</span>';
+    nc+='</div>';
+    // Table
+    nc+='<table class="dt"><thead><tr><th>CVE ID</th><th>CVSS</th><th>SEVERITY</th><th>DESCRIPTION</th><th>CWE</th><th>EXPLOIT</th></tr></thead><tbody>';
+    nvdCves.forEach(function(c){
+      var sev=c.cvss_severity||'UNKNOWN';
+      var sevCol={CRITICAL:'#ff2222',HIGH:'var(--red)',MEDIUM:'var(--yellow)',LOW:'var(--silver)',UNKNOWN:'var(--silver)'}[sev]||'var(--silver)';
+      var sevBg={CRITICAL:'rgba(255,34,34,.12)',HIGH:'rgba(255,68,68,.10)',MEDIUM:'rgba(245,197,24,.08)',LOW:'transparent',UNKNOWN:'transparent'}[sev]||'transparent';
+      var score=c.cvss_score!=null?c.cvss_score.toFixed(1):'—';
+      var scoreCol=c.cvss_score>=9?'#ff2222':c.cvss_score>=7?'var(--red)':c.cvss_score>=4?'var(--yellow)':'var(--silver)';
+      var desc=(c.description||'').length>150?c.description.substring(0,150)+'…':c.description||'—';
+      var cwe=c.cwe_ids&&c.cwe_ids.length?c.cwe_ids.join(', '):'—';
+      var exploitBadge=c.exploit_available?'<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.10)">YES</span>':'<span style="color:var(--silver)">—</span>';
+      nc+='<tr>';
+      nc+='<td><a href="'+c.url+'" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--border);white-space:nowrap">'+c.cve_id+'</a></td>';
+      nc+='<td style="color:'+scoreCol+';font-family:Share Tech Mono,monospace;font-weight:700">'+score+'</td>';
+      nc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+sevCol+';color:'+sevCol+';background:'+sevBg+'">'+sev+'</span></td>';
+      nc+='<td style="font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+desc+'</td>';
+      nc+='<td style="font-size:11px;white-space:nowrap">'+cwe+'</td>';
+      nc+='<td>'+exploitBadge+'</td>';
+      nc+='</tr>';
+    });
+    nc+='</tbody></table>';
+    h+=mkSec('// NVD — CVE DETAILS ('+nvd.total+' vulnerabilities)',nc,false);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];

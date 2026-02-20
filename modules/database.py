@@ -123,7 +123,7 @@ def get_scan_by_task_id(task_id: str):
         }
         if s.raw_data:
             raw = json.loads(s.raw_data)
-            for key in ["ports", "nuclei", "gobuster", "whatweb", "testssl", "sqlmap", "exploit_chains", "censys", "ipinfo", "enum4linux", "mitre", "abuseipdb", "otx", "exploitdb"]:
+            for key in ["ports", "nuclei", "gobuster", "whatweb", "testssl", "sqlmap", "exploit_chains", "censys", "ipinfo", "enum4linux", "mitre", "abuseipdb", "otx", "exploitdb", "nvd"]:
                 if key in raw:
                     base[key] = raw[key]
         return base
