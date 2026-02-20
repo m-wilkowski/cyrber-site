@@ -60,3 +60,5 @@ slowapi==0.1.9
 requests
 python-jose[cryptography]
 passlib
+python-whois
+ipwhois

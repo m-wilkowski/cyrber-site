@@ -1410,6 +1410,67 @@ function renderExtended(res) {
     h+=mkSec('// IPINFO — IP ENRICHMENT',ic,false);
   }
 
+  // WHOIS
+  var wh=res.whois||{};
+  if(wh.type && !wh.error){
+    var wc='';
+    if(wh.type==='domain'){
+      // Expiry badge
+      wc+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">';
+      if(wh.is_expired) wc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.10)">EXPIRED</span>';
+      else if(wh.days_until_expiry!=null){
+        var dCol=wh.days_until_expiry>90?'var(--green)':wh.days_until_expiry>=30?'var(--yellow)':'var(--red)';
+        var dBg=wh.days_until_expiry>90?'rgba(61,220,132,.08)':wh.days_until_expiry>=30?'rgba(245,197,24,.08)':'rgba(255,68,68,.08)';
+        wc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid '+dCol+';color:'+dCol+';background:'+dBg+'">EXPIRES IN '+wh.days_until_expiry+' DAYS</span>';
+      }
+      if(wh.privacy_protected) wc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--purple);color:var(--purple);background:rgba(155,89,182,.08)">PRIVACY PROTECTED</span>';
+      if(wh.soon_expiring) wc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--orange);color:var(--orange);background:rgba(255,140,0,.08)">SOON EXPIRING</span>';
+      wc+='</div>';
+      // Info grid
+      wc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:16px">';
+      if(wh.registrar) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">REGISTRAR</div><div style="color:var(--white);font-size:13px">'+wh.registrar+'</div></div>';
+      if(wh.registration_date) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">REGISTERED</div><div style="color:var(--white);font-size:13px">'+wh.registration_date.split('T')[0]+'</div></div>';
+      if(wh.expiration_date) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">EXPIRES</div><div style="color:var(--white);font-size:13px">'+wh.expiration_date.split('T')[0]+'</div></div>';
+      if(wh.last_updated) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">LAST UPDATED</div><div style="color:var(--white);font-size:13px">'+wh.last_updated.split('T')[0]+'</div></div>';
+      wc+='</div>';
+      // Registrant
+      var reg=wh.registrant||{};
+      if(reg.organization||reg.country||reg.name){
+        wc+='<div style="margin-bottom:16px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">REGISTRANT</div>';
+        wc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">';
+        if(reg.name) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver)">NAME</div><div style="color:var(--white);font-size:13px">'+reg.name+'</div></div>';
+        if(reg.organization) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver)">ORGANIZATION</div><div style="color:var(--white);font-size:13px">'+reg.organization+'</div></div>';
+        if(reg.country) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver)">COUNTRY</div><div style="color:var(--white);font-size:13px">'+reg.country+'</div></div>';
+        wc+='</div></div>';
+      }
+      // Name servers
+      var ns=wh.name_servers||[];
+      if(ns.length){
+        wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">NAME SERVERS</div>';
+        ns.forEach(function(s){wc+='<div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white);padding:2px 0">'+s+'</div>';});
+        wc+='</div>';
+      }
+    } else {
+      // IP WHOIS
+      wc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:16px">';
+      if(wh.asn) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">ASN</div><div style="color:var(--white);font-size:13px">AS'+wh.asn+'</div></div>';
+      if(wh.asn_registry) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">REGISTRY</div><div style="color:var(--white);font-size:13px">'+wh.asn_registry.toUpperCase()+'</div></div>';
+      if(wh.asn_country_code) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">COUNTRY</div><div style="color:var(--white);font-size:13px">'+wh.asn_country_code+'</div></div>';
+      if(wh.asn_description) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">DESCRIPTION</div><div style="color:var(--white);font-size:13px">'+wh.asn_description+'</div></div>';
+      wc+='</div>';
+      var net=wh.network||{};
+      if(net.cidr||net.name){
+        wc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">';
+        if(net.cidr) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NETWORK CIDR</div><div style="color:var(--white);font-size:13px">'+net.cidr+'</div></div>';
+        if(net.name) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NETWORK NAME</div><div style="color:var(--white);font-size:13px">'+net.name+'</div></div>';
+        if(net.description) wc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NETWORK DESC</div><div style="color:var(--white);font-size:13px">'+net.description+'</div></div>';
+        wc+='</div>';
+      }
+    }
+    var whTitle='// WHOIS — '+(wh.type==='domain'?'DOMAIN REGISTRATION':'IP OWNERSHIP');
+    h+=mkSec(whTitle,wc,false);
+  }
+
   // enum4linux
   if(res.enum4linux&&!res.enum4linux.skipped){
     var el=res.enum4linux;

@@ -21,6 +21,7 @@ from modules.hacker_narrative import generate_hacker_narrative
 from modules.mitre_attack import mitre_map
 from modules.exploitdb_scan import exploitdb_scan
 from modules.nvd_scan import nvd_scan
+from modules.whois_scan import whois_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
 
@@ -56,6 +57,7 @@ def full_scan_task(target: str):
     enum4linux = enum4linux_scan(target)
     abuseipdb = abuseipdb_scan(target)
     otx = otx_scan(target)
+    whois = whois_scan(target)
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -95,6 +97,8 @@ def full_scan_task(target: str):
         result["exploitdb"] = edb
     if not nvd.get("skipped"):
         result["nvd"] = nvd
+    if not whois.get("error"):
+        result["whois"] = whois
     result["fp_filter"] = nuclei_filtered.get("fp_filter", {})
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})

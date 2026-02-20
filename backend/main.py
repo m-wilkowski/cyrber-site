@@ -215,6 +215,7 @@ from modules.abuseipdb_scan import scan as abuseipdb_scan
 from modules.otx_scan import scan as otx_scan
 from modules.exploitdb_scan import exploitdb_scan
 from modules.nvd_scan import nvd_scan
+from modules.whois_scan import whois_scan
 
 @app.get("/scan/gobuster")
 async def run_gobuster(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -285,6 +286,10 @@ async def run_nvd(task_id: str = Query(...), user: str = Depends(get_current_use
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return nvd_scan(scan)
+
+@app.get("/scan/whois")
+async def run_whois(target: str = Query(...), user: str = Depends(get_current_user)):
+    return whois_scan(target)
 
 from modules.webhook import WazuhAlert, extract_target
 
