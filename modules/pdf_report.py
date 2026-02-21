@@ -1205,7 +1205,8 @@ def _cmsmap_html(cmsmap: dict) -> str:
     cms_ver = cmsmap.get("cms_version", "")
     cms_color = {"WordPress": "#21759b", "Joomla": "#f44321", "Drupal": "#0678be"}.get(cms, "#4a8fd4")
     ver_str = f" {cms_ver}" if cms_ver else ""
-    html += f"<div style='margin-bottom:12px'><span style='font-size:10px;padding:4px 12px;border:1px solid {cms_color};color:{cms_color};background:rgba({",".join(str(int(cms_color[i:i+2],16)) for i in (1,3,5))},.12)'>{cms.upper()}{ver_str}</span></div>"
+    cms_rgb = ",".join(str(int(cms_color[i:i+2], 16)) for i in (1, 3, 5))
+    html += f"<div style='margin-bottom:12px'><span style='font-size:10px;padding:4px 12px;border:1px solid {cms_color};color:{cms_color};background:rgba({cms_rgb},.12)'>{cms.upper()}{ver_str}</span></div>"
     # Summary stats
     summary = cmsmap.get("summary", {})
     html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
