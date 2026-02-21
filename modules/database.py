@@ -27,6 +27,7 @@ class Scan(Base):
     ports = Column(Text)
     raw_data = Column(Text)
     scan_type = Column(String, default="full")
+    profile = Column(String, default="STRAZNIK")
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
 
@@ -61,6 +62,10 @@ def init_db(retries=10, delay=3):
                     with engine.begin() as conn:
                         conn.execute(text("ALTER TABLE scans ADD COLUMN scan_type VARCHAR DEFAULT 'full'"))
                     print("Migration: added scan_type column")
+                if 'profile' not in cols:
+                    with engine.begin() as conn:
+                        conn.execute(text("ALTER TABLE scans ADD COLUMN profile VARCHAR DEFAULT 'STRAZNIK'"))
+                    print("Migration: added profile column")
             except Exception:
                 pass
             print("Database initialized successfully")
@@ -72,7 +77,7 @@ def init_db(retries=10, delay=3):
             else:
                 raise e
 
-def save_scan(task_id: str, target: str, result: dict, scan_type: str = "full"):
+def save_scan(task_id: str, target: str, result: dict, scan_type: str = "full", profile: str = "STRAZNIK"):
     db = SessionLocal()
     try:
         analysis = result.get("analysis", {})
@@ -82,6 +87,7 @@ def save_scan(task_id: str, target: str, result: dict, scan_type: str = "full"):
             db.add(scan)
         scan.status = "completed"
         scan.scan_type = scan_type
+        scan.profile = profile
         scan.risk_level = analysis.get("risk_level")
         scan.findings_count = result.get("findings_count", 0)
         scan.summary = analysis.get("summary")
@@ -106,6 +112,7 @@ def get_scan_history(limit: int = 20):
                 "risk_level": s.risk_level,
                 "findings_count": s.findings_count,
                 "summary": s.summary,
+                "profile": s.profile or "STRAZNIK",
                 "created_at": s.created_at.isoformat() if s.created_at else None,
                 "completed_at": s.completed_at.isoformat() if s.completed_at else None,
             }
@@ -129,6 +136,7 @@ def get_scan_by_task_id(task_id: str):
             "findings_count": s.findings_count,
             "summary": s.summary,
             "recommendations": s.recommendations,
+            "profile": s.profile or "STRAZNIK",
             "top_issues": json.loads(s.top_issues) if s.top_issues else [],
             "created_at": s.created_at.isoformat() if s.created_at else None,
             "completed_at": s.completed_at.isoformat() if s.completed_at else None,

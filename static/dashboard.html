@@ -884,7 +884,7 @@ function renderTable(scans) {
   }
 
   var html = '<table class="scan-table"><thead><tr>' +
-    '<th>TARGET</th><th>DATE</th><th>FINDINGS</th><th>RISK</th><th>DURATION</th>' +
+    '<th>TARGET</th><th>PROFILE</th><th>DATE</th><th>FINDINGS</th><th>RISK</th><th>DURATION</th>' +
     '</tr></thead><tbody>';
 
   recent.forEach(function(s) {
@@ -897,8 +897,11 @@ function renderTable(scans) {
       dur = Math.round(ms/1000) + 's';
     }
     var risk = s.risk_level || 'N/A';
+    var prof = (s.profile || 'STRAZNIK').toUpperCase();
+    var profColor = prof === 'SZCZENIAK' ? '#4a8fd4' : prof === 'CERBER' ? '#ff4444' : '#f5c518';
     html += '<tr>' +
       '<td class="target">' + s.target + '</td>' +
+      '<td><span style="font-family:Orbitron,sans-serif;font-size:10px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:3px;color:' + profColor + ';border:1px solid ' + profColor + ';background:rgba(0,0,0,.2)">' + prof + '</span></td>' +
       '<td>' + date + '</td>' +
       '<td>' + (s.findings_count || 0) + '</td>' +
       '<td><span class="risk-badge risk-' + risk + '">' + risk + '</span></td>' +

@@ -57,6 +57,7 @@ from modules.impacket_scan import impacket_scan
 from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
+from modules.scan_profiles import should_run_module
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
@@ -73,56 +74,64 @@ celery_app.conf.beat_schedule = {
     },
 }
 
+_SKIPPED = {"skipped": True, "reason": "not in profile", "findings": []}
+
+def _skip():
+    return dict(_SKIPPED)
+
 @celery_app.task
-def full_scan_task(target: str):
+def full_scan_task(target: str, profile: str = "STRAZNIK"):
     task_id = full_scan_task.request.id
+    run = lambda mod: should_run_module(mod, profile)
+    # ── Fundamentals (always run) ──
     nmap = nmap_scan(target)
-    nuclei = nuclei_scan(target)
-    nuclei_filtered = filter_false_positives(nuclei, target)
-    zap = zap_scan(target)
-    wapiti = wapiti_scan(target)
-    joomscan = joomscan_scan(target)
-    cmsmap = cmsmap_scan(target)
-    droopescan = droopescan_scan(target)
-    retirejs = retirejs_scan(target)
-    whatweb = whatweb_scan(target)
-    wpscan = wpscan_scan(target)
-    gobuster = gobuster_scan(target)
-    testssl = testssl_scan(target)
-    sqlmap = sqlmap_scan(target)
-    nikto = nikto_scan(target)
-    harvester = harvester_scan(target)
-    masscan = masscan_scan(target)
     ipinfo = ipinfo_scan(target)
+    # ── Profile-gated modules ──
+    nuclei = nuclei_scan(target) if run("nuclei") else _skip()
+    nuclei_filtered = filter_false_positives(nuclei, target) if run("nuclei") else _skip()
+    zap = zap_scan(target) if run("zap") else _skip()
+    wapiti = wapiti_scan(target) if run("wapiti") else _skip()
+    joomscan = joomscan_scan(target) if run("joomscan") else _skip()
+    cmsmap = cmsmap_scan(target) if run("cmsmap") else _skip()
+    droopescan = droopescan_scan(target) if run("droopescan") else _skip()
+    retirejs = retirejs_scan(target) if run("retirejs") else _skip()
+    whatweb = whatweb_scan(target) if run("whatweb") else _skip()
+    wpscan = wpscan_scan(target) if run("wpscan") else _skip()
+    gobuster = gobuster_scan(target) if run("gobuster") else _skip()
+    testssl = testssl_scan(target) if run("testssl") else _skip()
+    sqlmap = sqlmap_scan(target) if run("sqlmap") else _skip()
+    nikto = nikto_scan(target) if run("nikto") else _skip()
+    harvester = harvester_scan(target)
+    masscan = masscan_scan(target) if run("masscan") else _skip()
     abuseipdb = abuseipdb_scan(target)
     otx = otx_scan(target)
-    whois = whois_scan(target)
+    whois = whois_scan(target) if run("whois") else _skip()
     dnsrecon = dnsrecon_scan(target)
-    amass = amass_scan(target)
-    subfinder = subfinder_scan(target)
+    amass = amass_scan(target) if run("amass") else _skip()
+    subfinder = subfinder_scan(target) if run("subfinder") else _skip()
     # Combine subdomains from amass + subfinder for httpx probing
     _httpx_subs = list(set(
         (amass.get("subdomains") or []) + (subfinder.get("subdomains") or [])
     ))
-    httpx = httpx_scan(target, subdomains=_httpx_subs)
-    naabu = naabu_scan(target, subdomains=_httpx_subs)
-    katana = katana_scan(target)
-    dnsx = dnsx_scan(target, subdomains=_httpx_subs)
-    netdiscover = netdiscover_scan(target)
-    arpscan = arpscan_scan(target)
-    fping = fping_scan(target)
-    traceroute = traceroute_scan(target)
-    nbtscan = nbtscan_scan(target)
-    snmpwalk = snmpwalk_scan(target)
-    netexec = netexec_scan(target)
-    enum4linux = enum4linux_scan(target)
-    bloodhound = bloodhound_scan(target)
-    responder = responder_scan(target)
-    fierce = fierce_scan(target)
-    smbmap = smbmap_scan(target)
-    onesixtyone = onesixtyone_scan(target)
-    ikescan = ikescan_scan(target)
-    sslyze = sslyze_scan(target)
+    httpx = httpx_scan(target, subdomains=_httpx_subs) if run("httpx") else _skip()
+    naabu = naabu_scan(target, subdomains=_httpx_subs) if run("naabu") else _skip()
+    katana = katana_scan(target) if run("katana") else _skip()
+    dnsx = dnsx_scan(target, subdomains=_httpx_subs) if run("dnsx") else _skip()
+    netdiscover = netdiscover_scan(target) if run("netdiscover") else _skip()
+    arpscan = arpscan_scan(target) if run("arpscan") else _skip()
+    fping = fping_scan(target) if run("fping") else _skip()
+    traceroute = traceroute_scan(target) if run("traceroute") else _skip()
+    nbtscan = nbtscan_scan(target) if run("nbtscan") else _skip()
+    snmpwalk = snmpwalk_scan(target) if run("snmpwalk") else _skip()
+    netexec = netexec_scan(target) if run("netexec") else _skip()
+    enum4linux = enum4linux_scan(target) if run("enum4linux") else _skip()
+    bloodhound = bloodhound_scan(target) if run("bloodhound") else _skip()
+    responder = responder_scan(target) if run("responder") else _skip()
+    fierce = fierce_scan(target) if run("fierce") else _skip()
+    smbmap = smbmap_scan(target) if run("smbmap") else _skip()
+    onesixtyone = onesixtyone_scan(target) if run("onesixtyone") else _skip()
+    ikescan = ikescan_scan(target) if run("ikescan") else _skip()
+    sslyze = sslyze_scan(target) if run("sslyze") else _skip()
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -141,6 +150,7 @@ def full_scan_task(target: str):
     edb = exploitdb_scan(scan_data)
     nvd = nvd_scan(scan_data)
     result = analyze_scan_results(scan_data)
+    result["profile"] = profile
     result["ports"] = nmap.get("ports", [])
     result["whatweb"] = whatweb
     result["gobuster"] = gobuster
@@ -161,7 +171,7 @@ def full_scan_task(target: str):
         result["exploitdb"] = edb
     if not nvd.get("skipped"):
         result["nvd"] = nvd
-    if not whois.get("error"):
+    if not whois.get("error") and not whois.get("skipped"):
         result["whois"] = whois
     if not dnsrecon.get("skipped"):
         result["dnsrecon"] = dnsrecon
@@ -219,10 +229,10 @@ def full_scan_task(target: str):
         result["ikescan"] = ikescan
     if not sslyze.get("skipped") and sslyze.get("total_accepted_ciphers", 0) > 0:
         result["sslyze"] = sslyze
-    searchsploit = searchsploit_scan(target, result)
+    searchsploit = searchsploit_scan(target, result) if run("searchsploit") else _skip()
     if not searchsploit.get("skipped") and searchsploit.get("total_exploits", 0) > 0:
         result["searchsploit"] = searchsploit
-    impacket = impacket_scan(target, result)
+    impacket = impacket_scan(target, result) if run("impacket") else _skip()
     if not impacket.get("skipped"):
         result["impacket"] = impacket
     cwe = cwe_mapping(result)
@@ -231,14 +241,14 @@ def full_scan_task(target: str):
     owasp = owasp_mapping(result)
     if owasp.get("detected_count", 0) > 0:
         result["owasp"] = owasp
-    result["fp_filter"] = nuclei_filtered.get("fp_filter", {})
+    result["fp_filter"] = nuclei_filtered.get("fp_filter", {}) if not nuclei_filtered.get("skipped") else {}
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})
     narrative = generate_hacker_narrative(result)
     result["hacker_narrative"] = narrative
     mitre = mitre_map(result)
     result["mitre"] = mitre
-    save_scan(task_id, target, result)
+    save_scan(task_id, target, result, profile=profile)
     send_scan_notification(target, task_id, result)
     return result
 

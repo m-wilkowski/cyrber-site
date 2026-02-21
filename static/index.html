@@ -918,6 +918,79 @@ nav {
   }
 }
 
+/* ── PROFILE CARDS ── */
+.profile-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.profile-card {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all .2s;
+  background: rgba(8,12,24,.5);
+  position: relative;
+}
+.profile-card:hover { border-color: var(--accent); background: rgba(74,143,212,.04); }
+.profile-card.selected-szczeniak { border-color: var(--accent); background: rgba(74,143,212,.08); box-shadow: 0 0 16px rgba(74,143,212,.15); }
+.profile-card.selected-straznik { border-color: var(--yellow); background: rgba(245,197,24,.06); box-shadow: 0 0 16px rgba(245,197,24,.12); }
+.profile-card.selected-cerber { border-color: var(--red); background: rgba(255,68,68,.06); box-shadow: 0 0 16px rgba(255,68,68,.12); }
+.profile-card-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  margin-bottom: 4px;
+}
+.profile-card-name.c-szczeniak { color: var(--accent); }
+.profile-card-name.c-straznik { color: var(--yellow); }
+.profile-card-name.c-cerber { color: var(--red); }
+.profile-card-price {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.profile-card-desc {
+  font-size: 12px;
+  color: var(--silver);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.profile-card-time {
+  font-size: 11px;
+  color: var(--silver);
+  font-family: 'Share Tech Mono', monospace;
+  opacity: .7;
+}
+.profile-card-modules {
+  font-size: 10px;
+  color: var(--silver);
+  margin-top: 8px;
+  opacity: .6;
+  line-height: 1.5;
+}
+.profile-badge {
+  display: inline-block;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+.profile-badge.pb-szczeniak { color: var(--accent); border: 1px solid var(--accent); background: rgba(74,143,212,.1); }
+.profile-badge.pb-straznik { color: var(--yellow); border: 1px solid var(--yellow); background: rgba(245,197,24,.1); }
+.profile-badge.pb-cerber { color: var(--red); border: 1px solid var(--red); background: rgba(255,68,68,.1); }
+
+@media (max-width: 768px) {
+  .profile-cards { grid-template-columns: 1fr; }
+}
+
 </style>
 </head>
 <body>
@@ -955,6 +1028,29 @@ nav {
     </div>
 
     <div class="scan-tab-body active" id="tab-single">
+      <div class="profile-cards" id="profileCards">
+        <div class="profile-card" onclick="selectProfile('SZCZENIAK')" id="pc-SZCZENIAK">
+          <div class="profile-card-name c-szczeniak">SZCZENIAK</div>
+          <div class="profile-card-price">€4,000</div>
+          <div class="profile-card-desc">Podstawowy rekonesans i web scanning</div>
+          <div class="profile-card-time">~30 min</div>
+          <div class="profile-card-modules" id="pm-SZCZENIAK"></div>
+        </div>
+        <div class="profile-card selected-straznik" onclick="selectProfile('STRAZNIK')" id="pc-STRAZNIK">
+          <div class="profile-card-name c-straznik">STRAZNIK</div>
+          <div class="profile-card-price">€7,500</div>
+          <div class="profile-card-desc">Pelny pentest sieci i aplikacji webowych</div>
+          <div class="profile-card-time">~2h</div>
+          <div class="profile-card-modules" id="pm-STRAZNIK"></div>
+        </div>
+        <div class="profile-card" onclick="selectProfile('CERBER')" id="pc-CERBER">
+          <div class="profile-card-name c-cerber">CERBER</div>
+          <div class="profile-card-price">€15,000+</div>
+          <div class="profile-card-desc">Pelny red team - AD, exploitation, hardware</div>
+          <div class="profile-card-time">~4h+</div>
+          <div class="profile-card-modules" id="pm-CERBER"></div>
+        </div>
+      </div>
       <div class="input-row">
         <input class="t-input" id="tgt" type="text"
           placeholder="192.168.1.1  |  example.com  |  10.0.0.0/24"
@@ -1056,6 +1152,36 @@ document.getElementById('logoImg').src = 'data:image/jpeg;base64,' + LOGO_B64;
 var API = '';
 var pollTimer = null;
 var t0 = null;
+var selectedProfile = 'STRAZNIK';
+
+function selectProfile(name) {
+  selectedProfile = name;
+  ['SZCZENIAK','STRAZNIK','CERBER'].forEach(function(p) {
+    var card = document.getElementById('pc-' + p);
+    card.className = 'profile-card' + (p === name ? ' selected-' + p.toLowerCase() : '');
+  });
+}
+
+function loadProfiles() {
+  authFetch(API + '/scan/profiles')
+    .then(function(r) { return r.json(); })
+    .then(function(profiles) {
+      profiles.forEach(function(p) {
+        var el = document.getElementById('pm-' + p.key);
+        if (el) {
+          var mods = p.modules.slice(0, 6).join(', ');
+          if (p.module_count > 6) mods += ' ...+' + (p.module_count - 6) + ' more';
+          el.textContent = p.module_count + ' modules: ' + mods;
+        }
+      });
+    })
+    .catch(function() {});
+}
+
+function profileBadge(profile) {
+  var p = (profile || 'STRAZNIK').toUpperCase();
+  return '<span class="profile-badge pb-' + p.toLowerCase() + '">' + p + '</span>';
+}
 
 // ── JWT Auth ──
 function getToken() { return localStorage.getItem('cyrber_token'); }
@@ -1143,16 +1269,21 @@ function startScan() {
   document.getElementById('pw').classList.add('on');
   document.getElementById('pf').classList.add('sweep');
   t0 = Date.now();
-  setSt('Initiating scan on: ' + target, 'active');
+  setSt('Initiating scan on: ' + target + ' [' + selectedProfile + ']', 'active');
   log('Target: ' + target);
-  log('Dispatching nmap port scanner...');
-  log('Dispatching nuclei vulnerability scanner...');
+  log('Profile: ' + selectedProfile);
+  log('Dispatching scan modules...');
 
-  authFetch(API +'/scan/start?target=' + encodeURIComponent(target))
+  authFetch(API +'/scan/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({target: target, profile: selectedProfile})
+  })
     .then(function(r) { return r.json(); })
     .then(function(d) {
       log('Task ID: ' + d.task_id);
       window._lastTaskId = d.task_id;
+      window._lastProfile = d.profile || selectedProfile;
       log('Background scan running. Polling for results...');
       pollTimer = setInterval(function() { pollStatus(d.task_id); }, 3000);
     })
@@ -1199,7 +1330,8 @@ function renderResults(res, elapsed) {
   rb.textContent = risk;
   rb.className = 'risk-badge ' + riskKey;
   var metaEl = document.getElementById('meta') || document.getElementById('scanMeta');
-  if(metaEl) metaEl.innerHTML = 'TARGET: '+res.target+'<br>FINDINGS: '+(res.findings_count||0)+(elapsed?'<br>TIME: '+elapsed+'s':'');
+  var prf = res.profile || window._lastProfile || '';
+  if(metaEl) metaEl.innerHTML = 'TARGET: '+res.target+(prf ? '<br>PROFILE: '+profileBadge(prf) : '')+'<br>FINDINGS: '+(res.findings_count||0)+(elapsed?'<br>TIME: '+elapsed+'s':'');
   document.getElementById('sum').textContent = a.summary || '—';
   var ul = document.getElementById('iss');
   ul.innerHTML = '';
@@ -3829,7 +3961,7 @@ function renderHistory(scans) {
       .replace(/ł/g,'L').replace(/ń/g,'N').replace(/ó/g,'O')
       .replace(/ś/g,'S').replace(/ź/g,'Z').replace(/ż/g,'Z');
     item.innerHTML =
-      '<div class="hist-target">' + s.target + '</div>' +
+      '<div class="hist-target">' + s.target + ' ' + profileBadge(s.profile) + '</div>' +
       '<div class="hist-date">' + date + '</div>' +
       '<div class="hist-findings">' + (s.findings_count || 0) + ' findings</div>' +
       '<div class="hist-risk ' + riskClass + '">' + risk + '</div>' +
@@ -3866,11 +3998,12 @@ function loadScanDetail(taskId) {
     };
     renderResults(combined,0);
     var metaEl=document.getElementById('scanMeta')||document.getElementById('meta');
-    if(metaEl) metaEl.innerHTML='TARGET: '+s.target+'<br>FINDINGS: '+s.findings_count+'<br>DATE: '+(s.completed_at?new Date(s.completed_at).toLocaleString('pl-PL'):'N/A');
+    var prf2 = s.profile || '';
+    if(metaEl) metaEl.innerHTML='TARGET: '+s.target+(prf2 ? '<br>PROFILE: '+profileBadge(prf2) : '')+'<br>FINDINGS: '+s.findings_count+'<br>DATE: '+(s.completed_at?new Date(s.completed_at).toLocaleString('pl-PL'):'N/A');
   });
 }
 
-window.addEventListener('load', function() { loadHistory(); });
+window.addEventListener('load', function() { loadHistory(); loadProfiles(); });
 
 
 function startAgentScan() {

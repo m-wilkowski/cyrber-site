@@ -22,6 +22,7 @@ from modules.nmap_scan import scan as nmap_scan
 from modules.nuclei_scan import scan as nuclei_scan
 from modules.llm_analyze import analyze_scan_results
 from modules.tasks import full_scan_task
+from modules.scan_profiles import get_profiles_list, get_profile
 
 # ── JWT config ──
 JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
@@ -146,12 +147,31 @@ async def run_analyze(target: str = Query(...), user: str = Depends(get_current_
     scan_data = {"target": target, "ports": nmap.get("ports", []), "nuclei": nuclei}
     return analyze_scan_results(scan_data)
 
+@app.get("/scan/profiles")
+async def scan_profiles(user: str = Depends(get_current_user)):
+    return get_profiles_list()
+
+class ScanStartRequest(BaseModel):
+    target: str
+    profile: str = "STRAZNIK"
+
+@app.post("/scan/start")
+@limiter.limit("5/minute")
+async def scan_start_post(request: Request, body: ScanStartRequest, user: str = Depends(get_current_user)):
+    if not get_profile(body.profile):
+        raise HTTPException(status_code=400, detail=f"Invalid profile: {body.profile}")
+    task = full_scan_task.delay(body.target, profile=body.profile.upper())
+    audit(request, user, "scan_start", body.target)
+    return {"task_id": task.id, "status": "started", "target": body.target, "profile": body.profile.upper()}
+
 @app.get("/scan/start")
 @limiter.limit("5/minute")
-async def scan_start(request: Request, target: str = Query(...), user: str = Depends(get_current_user)):
-    task = full_scan_task.delay(target)
+async def scan_start(request: Request, target: str = Query(...), profile: str = Query("STRAZNIK"), user: str = Depends(get_current_user)):
+    if not get_profile(profile):
+        profile = "STRAZNIK"
+    task = full_scan_task.delay(target, profile=profile.upper())
     audit(request, user, "scan_start", target)
-    return {"task_id": task.id, "status": "started", "target": target}
+    return {"task_id": task.id, "status": "started", "target": target, "profile": profile.upper()}
 
 @app.get("/scan/status/{task_id}")
 async def scan_status(task_id: str, user: str = Depends(get_current_user)):
@@ -783,6 +803,7 @@ async def phishing_campaign_results(campaign_id: int, user: str = Depends(get_cu
 
 class MultiTargetScan(BaseModel):
     targets: list[str]
+    profile: str = "STRAZNIK"
 
 @app.post("/scan/multi")
 @limiter.limit("3/minute")
@@ -803,10 +824,11 @@ async def multi_scan(request: Request, body: MultiTargetScan, user: str = Depend
     if len(expanded) > 254:
         raise HTTPException(status_code=400, detail="max 254 targets per request")
 
+    scan_profile = body.profile.upper() if get_profile(body.profile) else "STRAZNIK"
     tasks = []
     for target in expanded:
-        task = full_scan_task.delay(target)
-        tasks.append({"task_id": task.id, "target": target, "status": "started"})
+        task = full_scan_task.delay(target, profile=scan_profile)
+        tasks.append({"task_id": task.id, "target": target, "status": "started", "profile": scan_profile})
     audit(request, user, "multi_scan", f"{len(expanded)} targets")
     return {"count": len(tasks), "tasks": tasks}
 
