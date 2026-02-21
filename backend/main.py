@@ -13,6 +13,8 @@ import sys
 import os
 import secrets
 import ipaddress
+import unicodedata
+import re as _re
 import requests as http_requests
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -178,10 +180,13 @@ async def scan_pdf(request: Request, task_id: str, user: str = Depends(get_curre
         return {"error": "Scan not found"}
     pdf_bytes = generate_report(scan)
     audit(request, user, "pdf_download", scan.get("target"))
+    raw_t = scan.get("target", "unknown")
+    safe_t = unicodedata.normalize("NFKD", raw_t).encode("ascii", "ignore").decode("ascii")
+    safe_t = _re.sub(r'[^\w\-.]', '_', safe_t).strip('_') or "scan"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=cyrber_{scan['target']}_{task_id[:8]}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename=cyrber_{safe_t}_{task_id[:8]}.pdf"}
     )
 
 @app.get("/scans/{task_id}/chains")
@@ -323,6 +328,7 @@ async def run_owasp(task_id: str = Query(...), user: str = Depends(get_current_u
 
 from modules.wpscan_scan import wpscan_scan
 from modules.zap_scan import zap_scan
+from modules.wapiti_scan import wapiti_scan
 
 @app.get("/scan/wpscan")
 async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -331,6 +337,10 @@ async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_u
 @app.get("/scan/zap")
 async def run_zap(target: str = Query(...), user: str = Depends(get_current_user)):
     return zap_scan(target)
+
+@app.get("/scan/wapiti")
+async def run_wapiti(target: str = Query(...), user: str = Depends(get_current_user)):
+    return wapiti_scan(target)
 
 from modules.tasks import osint_scan_task
 from modules.database import get_osint_history, get_osint_by_task_id
@@ -381,10 +391,15 @@ async def osint_pdf(request: Request, task_id: str, user: str = Depends(get_curr
         raise HTTPException(status_code=404, detail="OSINT scan not found")
     pdf_bytes = generate_osint_report(scan)
     audit(request, user, "osint_pdf_download", scan.get("target"))
+    # Sanitize filename to ASCII-safe (Polish ł→l, ś→s, etc.)
+    raw_target = scan.get("target", "unknown")
+    safe_target = unicodedata.normalize("NFKD", raw_target).encode("ascii", "ignore").decode("ascii")
+    safe_target = _re.sub(r'[^\w\-.]', '_', safe_target).strip('_') or "scan"
+    filename = f"cyrber_osint_{safe_target}_{task_id[:8]}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=cyrber_osint_{scan.get('target', 'unknown')}_{task_id[:8]}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
 from modules.webhook import WazuhAlert, extract_target

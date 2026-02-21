@@ -592,10 +592,19 @@ def _maigret_lookup(username: str) -> dict:
                     try:
                         rec = json.loads(line)
                         if rec.get("status") and rec["status"].get("status") == "Claimed":
+                            tags = rec.get("tags", []) or []
+                            # Extract category from tags
+                            category = ""
+                            for t in tags:
+                                if t and isinstance(t, str):
+                                    category = t.replace("-", " ").title()
+                                    break
                             found.append({
                                 "platform": rec.get("siteName", ""),
                                 "url": rec.get("url_user", ""),
-                                "tags": rec.get("tags", []),
+                                "tags": tags,
+                                "category": category,
+                                "http_status": rec.get("status", {}).get("http_status", ""),
                             })
                     except json.JSONDecodeError:
                         continue
@@ -1109,15 +1118,38 @@ def _person_scan(query: str) -> dict:
     """Deep person OSINT scan."""
     query = query.strip()
     parts = query.lower().split()
-    username_guess = parts[0] + parts[-1] if len(parts) >= 2 else parts[0] if parts else "unknown"
+
+    # Generate multiple username guesses
+    username_guesses = []
+    if len(parts) >= 2:
+        first, last = parts[0], parts[-1]
+        username_guesses = [
+            first + last,       # jankowalski
+            first + "." + last, # jan.kowalski
+            first + "_" + last, # jan_kowalski
+            last + first,       # kowalskijan
+            first[0] + last,    # jkowalski
+        ]
+    elif parts:
+        username_guesses = [parts[0]]
+    else:
+        username_guesses = ["unknown"]
+
+    primary_username = username_guesses[0]
 
     results = {}
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         futures = {
             executor.submit(_harvester_deep, f'"{query}"'): "harvester",
-            executor.submit(_sherlock_lookup, username_guess): "sherlock",
-            executor.submit(_maigret_lookup, username_guess): "maigret",
+            executor.submit(_sherlock_lookup, primary_username): "sherlock",
+            executor.submit(_maigret_lookup, primary_username): "maigret",
+            executor.submit(_github_user, primary_username): "github",
         }
+        # Also try secondary username variants with Sherlock
+        if len(username_guesses) > 1:
+            for variant in username_guesses[1:3]:
+                futures[executor.submit(_sherlock_lookup, variant)] = f"sherlock_{variant}"
+
         for future in as_completed(futures):
             key = futures[future]
             try:
@@ -1128,9 +1160,11 @@ def _person_scan(query: str) -> dict:
     harv = results.get("harvester") or {}
     sherlock = results.get("sherlock") or {}
     maigret = results.get("maigret") or {}
+    github = results.get("github") or {}
 
     module_errors = []
     data_sources = []
+    risk_indicators = []
 
     emails = set()
     if harv.get("error"):
@@ -1146,7 +1180,7 @@ def _person_scan(query: str) -> dict:
         if h:
             hosts.add(str(h).lower().strip())
 
-    # Merge accounts
+    # Merge accounts from all sources (including variant username searches)
     seen_urls = set()
     accounts = []
     for src_name, src_data in [("Sherlock", sherlock), ("Maigret", maigret)]:
@@ -1157,8 +1191,41 @@ def _person_scan(query: str) -> dict:
                 url = acc.get("url", "")
                 if url and url not in seen_urls:
                     seen_urls.add(url)
+                    acc["source"] = src_name
                     accounts.append(acc)
             data_sources.append({"source": src_name, "accounts": len(src_data.get("accounts", []))})
+
+    # Add accounts from variant username searches
+    for variant in username_guesses[1:3]:
+        variant_data = results.get(f"sherlock_{variant}") or {}
+        if not variant_data.get("skipped") and not variant_data.get("error"):
+            for acc in variant_data.get("accounts", []):
+                url = acc.get("url", "")
+                if url and url not in seen_urls:
+                    seen_urls.add(url)
+                    acc["source"] = f"Sherlock ({variant})"
+                    acc["username_variant"] = variant
+                    accounts.append(acc)
+
+    # GitHub profile
+    if github.get("skipped"):
+        module_errors.append(f"GitHub: {github.get('reason', 'skipped')}")
+    elif github.get("found"):
+        data_sources.append({"source": "GitHub API", "repos": github.get("public_repos", 0)})
+        commit_emails = github.get("commit_emails", [])
+        for ce in commit_emails:
+            emails.add(ce.lower())
+        if commit_emails:
+            risk_indicators.append({
+                "id": "commit_emails_exposed", "severity": "medium",
+                "title": f"{len(commit_emails)} email(s) exposed in git commits",
+                "description": f"Emails: {', '.join(commit_emails[:5])}"})
+
+    if len(accounts) > 15:
+        risk_indicators.append({
+            "id": "high_exposure", "severity": "medium",
+            "title": f"Person found on {len(accounts)} platforms",
+            "description": "High online presence increases social engineering attack surface."})
 
     # Google dork suggestions
     dorks = [
@@ -1172,19 +1239,21 @@ def _person_scan(query: str) -> dict:
         "target": query,
         "search_type": "person",
         "person_name": query,
-        "username_guess": username_guess,
+        "username_guesses": username_guesses,
         "emails": sorted(emails),
         "associated_hosts": sorted(hosts),
         "accounts": accounts,
+        "github": github if github.get("found") else None,
         "google_dorks": {"dorks": dorks, "total": len(dorks)},
         "data_sources": data_sources,
-        "risk_indicators": [],
+        "risk_indicators": risk_indicators,
         "module_errors": module_errors,
         "summary": {
             "total_emails": len(emails),
             "total_hosts": len(hosts),
             "total_accounts": len(accounts),
-            "risk_count": 0,
+            "github_repos": github.get("public_repos", 0) if github.get("found") else 0,
+            "risk_count": len(risk_indicators),
             "sources_count": len(data_sources),
             "errors_count": len(module_errors),
         },

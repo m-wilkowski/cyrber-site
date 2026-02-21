@@ -2082,6 +2082,48 @@ function renderExtended(res) {
     h+=mkSec('// OWASP ZAP — DYNAMIC ANALYSIS ('+zapSum.total+' alerts)',zc,false);
   }
 
+  // WAPITI
+  var wapiti=res.wapiti||{};
+  var wapitiVulns=wapiti.vulnerabilities||[];
+  if(wapitiVulns.length){
+    var wc='';
+    var wapitiSum=wapiti.summary||{};
+    wc+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">';
+    if(wapitiSum.critical) wc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">CRITICAL: '+wapitiSum.critical+'</span>';
+    if(wapitiSum.high) wc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--orange);color:var(--orange);background:rgba(255,140,0,.08)">HIGH: '+wapitiSum.high+'</span>';
+    if(wapitiSum.medium) wc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+wapitiSum.medium+'</span>';
+    if(wapitiSum.low) wc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--green);color:var(--green);background:rgba(61,220,132,.08)">LOW: '+wapitiSum.low+'</span>';
+    wc+='</div>';
+    wc+='<table class="dt"><thead><tr><th>LEVEL</th><th>VULNERABILITY</th><th>URL</th><th>PARAMETER</th><th>WSTG</th></tr></thead><tbody>';
+    var _wapitiSmId=wapitiVulns.length>30?'sm'+(++_smC):'';
+    var wapitiLevCol={Critical:'var(--red)',High:'var(--orange)',Medium:'var(--yellow)',Low:'var(--green)'};
+    var wapitiLevBg={Critical:'rgba(255,68,68,.10)',High:'rgba(255,140,0,.08)',Medium:'rgba(245,197,24,.08)',Low:'rgba(61,220,132,.08)'};
+    wapitiVulns.forEach(function(v,idx){
+      if(idx===30&&_wapitiSmId) wc+='</tbody><tbody id="'+_wapitiSmId+'" style="display:none">';
+      var lc=wapitiLevCol[v.level]||'var(--silver)';
+      var lb=wapitiLevBg[v.level]||'transparent';
+      var shortUrl=(v.url||'').length>60?(v.url.substring(0,57)+'...'):v.url;
+      var wstgHtml='';
+      if(v.wstg&&v.wstg.length){
+        var wstgLinks=[];
+        v.wstg.slice(0,2).forEach(function(ref){
+          wstgLinks.push('<a href="https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/'+ref+'" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--border);font-size:10px">'+ref+'</a>');
+        });
+        wstgHtml=wstgLinks.join(', ');
+      }
+      wc+='<tr>';
+      wc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+lc+';color:'+lc+';background:'+lb+'">'+v.level.toUpperCase()+'</span></td>';
+      wc+='<td>'+v.name+'</td>';
+      wc+='<td class="mono" style="font-size:10px" title="'+(v.url||'')+'">'+shortUrl+'</td>';
+      wc+='<td class="mono" style="font-size:10px">'+(v.parameter||'')+'</td>';
+      wc+='<td>'+wstgHtml+'</td>';
+      wc+='</tr>';
+    });
+    if(_wapitiSmId) wc+='</tbody><tbody><tr><td colspan="5" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_wapitiSmId+'\',this)">SHOW ALL '+wapitiVulns.length+' VULNERABILITIES &#9660;</button></td></tr>';
+    wc+='</tbody></table>';
+    h+=mkSec('// WAPITI — WEB APPLICATION SCANNER ('+wapitiSum.total+' vulnerabilities)',wc,false);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];
@@ -2183,7 +2225,7 @@ function loadScanDetail(taskId) {
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
       nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
-      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, mitre:s.mitre||null,
+      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -2428,7 +2470,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

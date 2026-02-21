@@ -78,6 +78,8 @@ RUN curl -L "https://github.com/sundowndev/phoneinfoga/releases/latest/download/
     mv /tmp/phoneinfoga /usr/local/bin/phoneinfoga && \
     chmod +x /usr/local/bin/phoneinfoga && \
     rm -rf /tmp/phoneinfoga*
+# wapiti (web application vulnerability scanner)
+RUN pip install wapiti3 --break-system-packages
 # wordlist
 RUN mkdir -p /usr/share/wordlists/dirb && \
     curl -L https://raw.githubusercontent.com/v0re/dirb/master/wordlists/common.txt \

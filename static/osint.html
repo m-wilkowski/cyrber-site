@@ -768,11 +768,11 @@ function renderResults(data) {
   if (st === 'domain') {
     sh = _stat('EMAILS',s.total_emails||0) + _stat('SUBDOMAINS',s.total_subdomains||0) + _stat('IP ADDRESSES',s.total_ips||0) + _stat('DNS RECORDS',s.total_dns_records||0) + _stat('RISK',s.risk_count||0, s.risk_count>0?'var(--red)':'var(--green)') + _stat('SOURCES',s.sources_count||0) + (s.errors_count>0?_stat('ERRORS',s.errors_count,'var(--orange)'):'');
   } else if (st === 'email') {
-    sh = _stat('BREACHES',s.total_breaches||0, s.total_breaches>0?'var(--red)':'var(--green)') + _stat('PASTES',s.total_pastes||0, s.total_pastes>0?'var(--orange)':'') + _stat('PLATFORMS',s.total_holehe||0) + _stat('RELATED',s.total_related_emails||0) + _stat('RISK',s.risk_count||0, s.risk_count>0?'var(--red)':'var(--green)');
+    sh = _stat('BREACHES',s.total_breaches||0, s.total_breaches>0?'var(--red)':'var(--green)') + _stat('PASTES',s.total_pastes||0, s.total_pastes>0?'var(--orange)':'') + _stat('PLATFORMS',s.total_platforms||s.total_holehe||0) + _stat('RELATED',s.total_related_emails||0) + _stat('RISK',s.risk_count||0, s.risk_count>0?'var(--red)':'var(--green)') + (s.errors_count>0?_stat('ERRORS',s.errors_count,'var(--orange)'):'');
   } else if (st === 'username') {
     sh = _stat('ACCOUNTS',s.total_accounts||0) + _stat('SOURCES',s.sources_count||0) + _stat('RISK',s.risk_count||0);
   } else if (st === 'person') {
-    sh = _stat('EMAILS',s.total_emails||0) + _stat('ACCOUNTS',s.total_accounts||0) + _stat('HOSTS',s.total_hosts||0) + _stat('RISK',s.risk_count||0);
+    sh = _stat('EMAILS',s.total_emails||0) + _stat('ACCOUNTS',s.total_accounts||0) + _stat('GITHUB REPOS',s.github_repos||0) + _stat('HOSTS',s.total_hosts||0) + _stat('RISK',s.risk_count||0, s.risk_count>0?'var(--red)':'var(--green)') + (s.errors_count>0?_stat('ERRORS',s.errors_count,'var(--orange)'):'');
   } else if (st === 'phone') {
     sh = _stat('COUNTRY',s.country||'?','') + _stat('VALID',s.valid===true?'YES':s.valid===false?'NO':'?', s.valid===true?'var(--green)':'var(--orange)') + _stat('RISK',s.risk_count||0);
   }
@@ -1004,10 +1004,10 @@ function _renderEmail(d) {
     h += _sec('PASTE DUMPS (' + pastes.length + ')', pc, false);
   }
   // Holehe
-  var hol = d.holehe || [];
+  var hol = d.holehe_platforms || d.holehe || [];
   if (hol.length) {
-    var found = hol.filter(function(a) { return a.exists; });
-    var hc = '<div style="margin-bottom:12px"><span class="badge" style="border-color:var(--green);color:var(--green)">' + found.length + ' accounts exist</span> <span class="badge" style="border-color:var(--silver);color:var(--silver)">' + hol.length + ' platforms checked</span></div>';
+    var found = hol.filter(function(a) { return a.registered || a.exists; });
+    var hc = '<div style="margin-bottom:12px"><span class="badge" style="border-color:var(--green);color:var(--green)">' + found.length + ' accounts registered</span> <span class="badge" style="border-color:var(--silver);color:var(--silver)">' + hol.length + ' platforms checked</span></div>';
     if (found.length) {
       hc += '<div class="account-grid">';
       found.forEach(function(a) {
@@ -1019,19 +1019,20 @@ function _renderEmail(d) {
   }
   // EmailRep
   var er = d.emailrep || {};
-  if (er.email) {
+  if (er.reputation || er.email) {
+    var det = er.details || {};
     var ec = '<div class="whois-grid">';
-    [['EMAIL',er.email],['REPUTATION',er.reputation],['SUSPICIOUS',er.suspicious?'YES':'NO'],['REFERENCES',er.references],['BLACKLISTED',er.blacklisted?'YES':'NO']].forEach(function(f) { if(f[1]!=null) ec += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv"'+(f[0]==='SUSPICIOUS'&&er.suspicious?' style="color:var(--red)"':'')+(f[0]==='BLACKLISTED'&&er.blacklisted?' style="color:var(--red)"':'')+'>'+f[1]+'</div></div>'; });
+    [['REPUTATION',er.reputation],['SUSPICIOUS',er.suspicious?'YES':'NO'],['REFERENCES',er.references],['BLACKLISTED',det.blacklisted?'YES':'NO'],['CREDENTIALS LEAKED',det.credentials_leaked?'YES':'NO'],['DATA BREACH',det.data_breach?'YES':'NO'],['DELIVERABLE',det.deliverable===true?'YES':det.deliverable===false?'NO':'?'],['FREE PROVIDER',det.free_provider?'YES':'NO'],['SPOOFABLE',det.spoofable?'YES':'NO']].forEach(function(f) { if(f[1]!=null) ec += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv"'+(f[0]==='SUSPICIOUS'&&er.suspicious?' style="color:var(--red)"':'')+(f[0]==='BLACKLISTED'&&det.blacklisted?' style="color:var(--red)"':'')+(f[0]==='CREDENTIALS LEAKED'&&det.credentials_leaked?' style="color:var(--red)"':'')+(f[0]==='SPOOFABLE'&&det.spoofable?' style="color:var(--orange)"':'')+'>'+f[1]+'</div></div>'; });
     ec += '</div>';
-    var pr = er.profiles || [];
-    if (pr.length) { ec += '<div style="margin-top:12px">'; pr.forEach(function(p) { ec += '<span class="tag" style="border-color:var(--purple);color:var(--purple)">'+esc(p)+'</span>'; }); ec += '</div>'; }
+    var pr = det.profiles || er.profiles || [];
+    if (pr.length) { ec += '<div style="margin-top:12px;font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">KNOWN PROFILES</div>'; pr.forEach(function(p) { ec += '<span class="tag" style="border-color:var(--purple);color:var(--purple)">'+esc(p)+'</span>'; }); ec += '</div>'; }
     h += _sec('EMAILREP.IO ANALYSIS', ec, false);
   }
   // Hunter
   var hu = d.hunter || {};
-  if (hu.email) {
+  if (hu.result || hu.score) {
     var huc = '<div class="whois-grid">';
-    [['EMAIL',hu.email],['RESULT',hu.result],['SCORE',hu.score],['DISPOSABLE',hu.disposable?'YES':'NO'],['WEBMAIL',hu.webmail?'YES':'NO']].forEach(function(f) { if(f[1]!=null) huc += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv">'+f[1]+'</div></div>'; });
+    [['RESULT',hu.result],['SCORE',hu.score],['SMTP SERVER',hu.smtp_server?'YES':'NO'],['SMTP CHECK',hu.smtp_check?'YES':'NO'],['MX RECORDS',hu.mx_records?'YES':'NO']].forEach(function(f) { if(f[1]!=null) huc += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv">'+f[1]+'</div></div>'; });
     huc += '</div>';
     h += _sec('HUNTER.IO VERIFICATION', huc, false);
   }
@@ -1049,10 +1050,10 @@ function _renderUsername(d) {
   var h = '';
   var acc = d.accounts || [];
   if (acc.length) {
-    // Group by category
+    // Group by category (prefer Maigret category, fallback to _categorize)
     var cats = {};
     acc.forEach(function(a) {
-      var cat = _categorize(a.platform || '');
+      var cat = a.category || _categorize(a.platform || '');
       if (!cats[cat]) cats[cat] = [];
       cats[cat].push(a);
     });
@@ -1063,7 +1064,7 @@ function _renderUsername(d) {
       var items = cats[cat];
       var gc = '<div class="account-grid">';
       items.forEach(function(a) {
-        gc += '<div class="account-card"><div class="account-icon">&#128100;</div><div><div class="account-name">'+esc(a.platform||'')+'</div><a class="account-url" href="'+esc(a.url||'')+'" target="_blank" rel="noopener">'+esc(a.url||'')+'</a><div class="account-source">'+esc(a.source||'sherlock')+'</div></div></div>';
+        gc += _accountCard(a);
       });
       gc += '</div>';
       h += _sec(cat.toUpperCase() + ' (' + items.length + ')', gc, cat === 'Social Media');
@@ -1106,28 +1107,93 @@ function _renderPerson(d) {
     var ec = em.map(function(e) { return '<span class="tag tag-email">&#9993; '+esc(e)+'</span>'; }).join('');
     h += _sec('EMAILS (' + em.length + ')', ec, true);
   }
-  // Accounts as cards
+  // Accounts grouped by category (same as username)
   var acc = d.accounts || [];
   if (acc.length) {
-    var ac = '<div class="account-grid">';
+    var cats = {};
     acc.forEach(function(a) {
-      ac += '<div class="account-card"><div class="account-icon">&#128100;</div><div><div class="account-name">'+esc(a.platform||'')+'</div><a class="account-url" href="'+esc(a.url||'')+'" target="_blank" rel="noopener">'+esc(a.url||'')+'</a><div class="account-source">'+esc(a.source||'')+'</div></div></div>';
+      var cat = a.category || _categorize(a.platform || '');
+      if (!cats[cat]) cats[cat] = [];
+      cats[cat].push(a);
     });
-    ac += '</div>';
-    h += _sec('SOCIAL ACCOUNTS (' + acc.length + ')', ac, false);
+    h += '<div style="margin-bottom:16px"><span class="badge" style="border-color:var(--green);color:var(--green)">' + acc.length + ' accounts found</span></div>';
+    var order = ['Social Media','Coding','Gaming','Forums','Dating','Other'];
+    order.forEach(function(cat) {
+      if (!cats[cat] || !cats[cat].length) return;
+      var items = cats[cat];
+      var gc = '<div class="account-grid">';
+      items.forEach(function(a) {
+        gc += _accountCard(a);
+      });
+      gc += '</div>';
+      h += _sec(cat.toUpperCase() + ' (' + items.length + ')', gc, cat === 'Social Media');
+    });
+  } else h += _sec('ACCOUNTS', '<span style="color:var(--silver);font-size:12px">No accounts found for this person</span>', false);
+
+  // GitHub profile
+  var gh = d.github || {};
+  if (gh.login) {
+    var gc = '<div class="whois-grid">';
+    [['LOGIN',gh.login],['NAME',gh.name],['BIO',gh.bio],['COMPANY',gh.company],['LOCATION',gh.location],['PUBLIC REPOS',gh.public_repos],['FOLLOWERS',gh.followers],['CREATED',(gh.created_at||'').split('T')[0]]].forEach(function(f) { if(f[1]) gc += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv">'+esc(String(f[1]))+'</div></div>'; });
+    gc += '</div>';
+    var repos = gh.repos || [];
+    if (repos.length) {
+      gc += '<div style="margin-top:12px;font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">TOP REPOSITORIES</div>';
+      gc += '<table><thead><tr><th>REPO</th><th>LANGUAGE</th><th>STARS</th></tr></thead><tbody>';
+      repos.forEach(function(r) { gc += '<tr><td style="color:var(--white)">'+esc(r.name||'')+'</td><td>'+esc(r.language||'')+'</td><td>'+esc(String(r.stars||0))+'</td></tr>'; });
+      gc += '</tbody></table>';
+    }
+    var ce = gh.commit_emails || [];
+    if (ce.length) { gc += '<div style="margin-top:12px;font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">COMMIT EMAILS</div>'; ce.forEach(function(e) { gc += '<span class="tag tag-email">&#9993; '+esc(e)+'</span>'; }); }
+    h += _sec('GITHUB PROFILE', gc, false);
   }
+
   // Usernames guessed
   var ug = d.username_guesses || [];
   if (ug.length) {
     var uc = ug.map(function(u) { return '<span class="tag tag-green">'+esc(u)+'</span>'; }).join('');
-    h += _sec('POSSIBLE USERNAMES', uc, false);
+    h += _sec('USERNAME VARIANTS SEARCHED (' + ug.length + ')', uc, false);
   }
   var hosts = d.associated_hosts || [];
   if (hosts.length) {
     var hc = hosts.map(function(x) { return '<span class="tag">'+esc(x)+'</span>'; }).join('');
     h += _sec('ASSOCIATED HOSTS (' + hosts.length + ')', hc, false);
   }
+  // Google Dorks
+  var gd = d.google_dorks || {};
+  var dorks = gd.dorks || [];
+  if (dorks.length) {
+    var dc = '<table><thead><tr><th>DORK QUERY</th><th>LINK</th></tr></thead><tbody>';
+    dorks.forEach(function(dk) {
+      var gurl = 'https://www.google.com/search?q=' + encodeURIComponent(dk.query || '');
+      dc += '<tr><td style="color:var(--white);font-size:11px;word-break:break-all">'+esc(dk.query||'')+'</td><td><a href="'+esc(gurl)+'" target="_blank" rel="noopener" style="color:var(--accent);font-size:11px">Search</a></td></tr>';
+    });
+    dc += '</tbody></table>';
+    h += _sec('GOOGLE DORK SUGGESTIONS (' + dorks.length + ')', dc, false);
+  }
   return h;
+}
+
+// ── ACCOUNT CARD helper ──
+function _accountCard(a) {
+  var domain = '';
+  try { domain = new URL(a.url || '').hostname.replace('www.',''); } catch(e) {}
+  var tags = a.tags || [];
+  var tagHtml = '';
+  if (tags.length) {
+    tags.slice(0,3).forEach(function(t) {
+      tagHtml += '<span class="tag-source" style="display:inline-block;font-size:8px;padding:1px 5px;margin-right:3px;border:1px solid rgba(138,155,181,.2);color:var(--silver)">' + esc(t) + '</span>';
+    });
+  }
+  var variant = a.username_variant ? ' <span style="color:var(--cyan);font-size:9px">(' + esc(a.username_variant) + ')</span>' : '';
+  return '<div class="account-card"><div class="account-icon">&#128100;</div><div style="min-width:0;flex:1"><div class="account-name">'+esc(a.platform||'')+variant+'</div>'
+    + (domain ? '<div style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--silver);margin:1px 0">'+esc(domain)+'</div>' : '')
+    + '<a class="account-url" href="'+esc(a.url||'')+'" target="_blank" rel="noopener">'+esc(a.url||'')+'</a>'
+    + '<div style="margin-top:3px">'
+    + '<span class="account-source">'+esc(a.source||'')+'</span> '
+    + tagHtml
+    + '</div>'
+    + '</div></div>';
 }
 
 // ── PHONE ──

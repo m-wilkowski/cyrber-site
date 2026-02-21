@@ -522,6 +522,36 @@ def _wpscan_html(wpscan: dict) -> str:
             html += "</div>"
     return html or "<p class='muted'>Brak danych WPScan.</p>"
 
+def _wapiti_html(wapiti: dict) -> str:
+    vulns = wapiti.get("vulnerabilities", [])
+    if not vulns:
+        return "<p class='muted'>Brak wyników Wapiti.</p>"
+    summary = wapiti.get("summary", {})
+    sev_color = {"Critical": "#ff4444", "High": "#ff8c00", "Medium": "#f5c518", "Low": "#3ddc84"}
+    badges = ""
+    for level in ["Critical", "High", "Medium", "Low"]:
+        cnt = summary.get(level.lower(), 0)
+        if cnt:
+            badges += f"<span style='color:{sev_color[level]};font-size:10px;border:1px solid {sev_color[level]};padding:2px 8px;margin-right:6px'>{level.upper()}: {cnt}</span>"
+    rows = ""
+    for v in vulns[:30]:
+        color = sev_color.get(v.get("level", "Medium"), "#f5c518")
+        wstg_refs = v.get("wstg", [])
+        wstg_html = ""
+        if wstg_refs:
+            wstg_links = []
+            for ref in wstg_refs[:2]:
+                wstg_links.append(f"<a href='https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/{ref}' style='color:#4a8fd4;font-size:10px'>{ref}</a>")
+            wstg_html = ", ".join(wstg_links)
+        param = v.get("parameter", "") or ""
+        rows += f"<tr><td style='color:{color};font-weight:700'>{v.get('level','').upper()}</td><td>{v.get('name','')}</td><td class='mono' style='font-size:10px'>{(v.get('url','') or '')[:80]}</td><td class='mono'>{param[:40]}</td><td>{wstg_html}</td></tr>"
+    extra = f"<p class='muted'>... i {len(vulns)-30} więcej</p>" if len(vulns) > 30 else ""
+    return f"""<div style='margin-bottom:10px'>{badges}</div>
+    <table>
+        <thead><tr><th>LEVEL</th><th>VULNERABILITY</th><th>URL</th><th>PARAMETER</th><th>WSTG</th></tr></thead>
+        <tbody>{rows}</tbody>
+    </table>{extra}"""
+
 def _zap_html(zap: dict) -> str:
     alerts = zap.get("alerts", [])
     if not alerts:
@@ -607,6 +637,7 @@ def generate_report(scan_data: dict) -> bytes:
     owasp = scan_data.get("owasp", {})
     wpscan = scan_data.get("wpscan", {})
     zap = scan_data.get("zap", {})
+    wapiti = scan_data.get("wapiti", {})
 
     color = _risk_color(risk)
 
@@ -841,6 +872,11 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// OWASP ZAP — DYNAMIC ANALYSIS ({zap.get('summary', {}).get('total', 0)} alerts)</div>
   {_zap_html(zap)}
+</div>
+
+<div class="section">
+  <div class="section-title">// WAPITI — WEB APPLICATION SCANNER ({wapiti.get('summary', {}).get('total', 0)} vulnerabilities)</div>
+  {_wapiti_html(wapiti)}
 </div>
 
 <div class="section">
