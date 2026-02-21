@@ -2124,6 +2124,76 @@ function renderExtended(res) {
     h+=mkSec('// WAPITI — WEB APPLICATION SCANNER ('+wapitiSum.total+' vulnerabilities)',wc,false);
   }
 
+  // JOOMSCAN
+  var joom=res.joomscan||{};
+  if(joom.joomla_version||joom.vulnerabilities&&joom.vulnerabilities.length||joom.components&&joom.components.length){
+    var jc='';
+    // Joomla version badge
+    if(joom.joomla_version){
+      jc+='<div style="margin-bottom:12px"><span style="font-size:16px;font-weight:700;color:var(--white)">Joomla '+joom.joomla_version+'</span></div>';
+    }
+    // Admin URL alert
+    if(joom.admin_url){
+      jc+='<div style="border:1px solid var(--red);background:rgba(255,68,68,.12);color:var(--red);padding:10px 14px;margin-bottom:12px;font-size:12px">&#9888; ADMIN PANEL FOUND: <span class="mono" style="color:var(--white)">'+joom.admin_url+'</span></div>';
+    }
+    // Config files alert
+    var cfgFiles=joom.config_files||[];
+    if(cfgFiles.length){
+      var cfgHtml='';
+      cfgFiles.forEach(function(cf){cfgHtml+='<span class="mono" style="font-size:10px;color:var(--yellow);border:1px solid rgba(245,197,24,.4);padding:2px 6px;margin:2px">'+cf+'</span>';});
+      jc+='<div style="border:1px solid var(--yellow);background:rgba(245,197,24,.08);padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--yellow)">&#9888; CONFIG FILES: '+cfgHtml+'</div>';
+    }
+    // Backup files alert
+    var bkpFiles=joom.backup_files||[];
+    if(bkpFiles.length){
+      var bkpHtml='';
+      bkpFiles.forEach(function(bf){bkpHtml+='<span class="mono" style="font-size:10px;color:var(--yellow);border:1px solid rgba(245,197,24,.4);padding:2px 6px;margin:2px">'+bf+'</span>';});
+      jc+='<div style="border:1px solid var(--yellow);background:rgba(245,197,24,.08);padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--yellow)">&#9888; BACKUP FILES: '+bkpHtml+'</div>';
+    }
+    // Stats
+    var joomSum=joom.summary||{};
+    jc+='<div style="display:flex;gap:24px;margin-bottom:12px">';
+    var jvCnt=joomSum.total_vulns||0;
+    var jvCol=jvCnt?'var(--red)':'var(--green)';
+    jc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">VULNERABILITIES</span><br><span style="font-size:18px;font-weight:700;color:'+jvCol+'">'+jvCnt+'</span></div>';
+    jc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">COMPONENTS</span><br><span style="font-size:18px;font-weight:700;color:var(--white)">'+(joomSum.components_count||0)+'</span></div>';
+    jc+='</div>';
+    // Vulnerabilities table
+    var joomVulns=joom.vulnerabilities||[];
+    if(joomVulns.length){
+      var joomSevCol={High:'var(--red)',Medium:'var(--yellow)',Low:'var(--green)'};
+      var joomSevBg={High:'rgba(255,68,68,.10)',Medium:'rgba(245,197,24,.08)',Low:'rgba(61,220,132,.08)'};
+      jc+='<div style="color:var(--silver);font-size:10px;letter-spacing:.15em;margin-bottom:4px">VULNERABILITIES ('+joomVulns.length+')</div>';
+      jc+='<table class="dt"><thead><tr><th>SEVERITY</th><th>TITLE</th><th>URL</th><th>DESCRIPTION</th></tr></thead><tbody>';
+      var _joomSmId=joomVulns.length>20?'sm'+(++_smC):'';
+      joomVulns.forEach(function(v,idx){
+        if(idx===20&&_joomSmId) jc+='</tbody><tbody id="'+_joomSmId+'" style="display:none">';
+        var sc=joomSevCol[v.severity]||'var(--silver)';
+        var sb=joomSevBg[v.severity]||'transparent';
+        var shortUrl=(v.url||'').length>60?(v.url.substring(0,57)+'...'):v.url;
+        jc+='<tr>';
+        jc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+sc+';color:'+sc+';background:'+sb+'">'+(v.severity||'').toUpperCase()+'</span></td>';
+        jc+='<td>'+v.title+'</td>';
+        jc+='<td class="mono" style="font-size:10px" title="'+(v.url||'')+'">'+shortUrl+'</td>';
+        jc+='<td style="font-size:10px">'+(v.description||'')+'</td>';
+        jc+='</tr>';
+      });
+      if(_joomSmId) jc+='</tbody><tbody><tr><td colspan="4" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_joomSmId+'\',this)">SHOW ALL '+joomVulns.length+' VULNS &#9660;</button></td></tr>';
+      jc+='</tbody></table>';
+    }
+    // Components list
+    var joomComps=joom.components||[];
+    if(joomComps.length){
+      jc+='<div style="color:var(--silver);font-size:10px;letter-spacing:.15em;margin:10px 0 4px">COMPONENTS ('+joomComps.length+')</div>';
+      jc+='<table class="dt"><thead><tr><th>COMPONENT</th><th>VERSION</th></tr></thead><tbody>';
+      joomComps.forEach(function(c){
+        jc+='<tr><td>'+c.name+'</td><td class="mono">'+(c.version||'?')+'</td></tr>';
+      });
+      jc+='</tbody></table>';
+    }
+    h+=mkSec('// JOOMSCAN — JOOMLA SECURITY ('+jvCnt+' vulns, '+(joomSum.components_count||0)+' components)',jc,false);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];
@@ -2225,7 +2295,7 @@ function loadScanDetail(taskId) {
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
       nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
-      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, mitre:s.mitre||null,
+      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -2470,7 +2540,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

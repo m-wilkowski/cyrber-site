@@ -329,6 +329,7 @@ async def run_owasp(task_id: str = Query(...), user: str = Depends(get_current_u
 from modules.wpscan_scan import wpscan_scan
 from modules.zap_scan import zap_scan
 from modules.wapiti_scan import wapiti_scan
+from modules.joomscan_scan import joomscan_scan
 
 @app.get("/scan/wpscan")
 async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -341,6 +342,10 @@ async def run_zap(target: str = Query(...), user: str = Depends(get_current_user
 @app.get("/scan/wapiti")
 async def run_wapiti(target: str = Query(...), user: str = Depends(get_current_user)):
     return wapiti_scan(target)
+
+@app.get("/scan/joomscan")
+async def run_joomscan(target: str = Query(...), user: str = Depends(get_current_user)):
+    return joomscan_scan(target)
 
 from modules.tasks import osint_scan_task
 from modules.database import get_osint_history, get_osint_by_task_id

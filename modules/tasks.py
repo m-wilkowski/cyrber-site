@@ -29,6 +29,7 @@ from modules.owasp_mapping import owasp_mapping
 from modules.wpscan_scan import wpscan_scan
 from modules.zap_scan import zap_scan
 from modules.wapiti_scan import wapiti_scan
+from modules.joomscan_scan import joomscan_scan
 from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
@@ -56,6 +57,7 @@ def full_scan_task(target: str):
     nuclei_filtered = filter_false_positives(nuclei, target)
     zap = zap_scan(target)
     wapiti = wapiti_scan(target)
+    joomscan = joomscan_scan(target)
     whatweb = whatweb_scan(target)
     wpscan = wpscan_scan(target)
     gobuster = gobuster_scan(target)
@@ -122,6 +124,8 @@ def full_scan_task(target: str):
         result["zap"] = zap
     if not wapiti.get("skipped"):
         result["wapiti"] = wapiti
+    if not joomscan.get("skipped"):
+        result["joomscan"] = joomscan
     cwe = cwe_mapping(result)
     if cwe.get("total", 0) > 0:
         result["cwe"] = cwe

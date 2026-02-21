@@ -80,6 +80,11 @@ RUN curl -L "https://github.com/sundowndev/phoneinfoga/releases/latest/download/
     rm -rf /tmp/phoneinfoga*
 # wapiti (web application vulnerability scanner)
 RUN pip install wapiti3 --break-system-packages
+# joomscan (Joomla vulnerability scanner)
+RUN git clone --depth 1 https://github.com/OWASP/joomscan.git /opt/joomscan && \
+    chmod +x /opt/joomscan/joomscan.pl && \
+    apt-get update && apt-get install -y libwww-perl && rm -rf /var/lib/apt/lists/* && \
+    ln -s /opt/joomscan/joomscan.pl /usr/local/bin/joomscan
 # wordlist
 RUN mkdir -p /usr/share/wordlists/dirb && \
     curl -L https://raw.githubusercontent.com/v0re/dirb/master/wordlists/common.txt \

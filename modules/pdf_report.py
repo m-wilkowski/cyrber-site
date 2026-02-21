@@ -522,6 +522,60 @@ def _wpscan_html(wpscan: dict) -> str:
             html += "</div>"
     return html or "<p class='muted'>Brak danych WPScan.</p>"
 
+def _joomscan_html(joomscan: dict) -> str:
+    if not joomscan or joomscan.get("skipped"):
+        return "<p class='muted'>Joomla not detected or Joomscan skipped.</p>"
+    html = ""
+    # Version info
+    jver = joomscan.get("joomla_version", "")
+    if jver:
+        html += f"<div style='margin-bottom:12px'><span style='font-size:16px;font-weight:700;color:#e8f0fc'>Joomla {jver}</span></div>"
+    # Admin URL alert
+    admin_url = joomscan.get("admin_url", "")
+    if admin_url:
+        html += f"<div style='border:1px solid #ff4444;background:rgba(255,68,68,.12);color:#ff4444;padding:10px 14px;margin-bottom:12px;font-size:12px'>&#9888; ADMIN PANEL FOUND: <span class='mono' style='color:#e8f0fc'>{admin_url}</span></div>"
+    # Config files alert
+    config_files = joomscan.get("config_files", [])
+    if config_files:
+        items = " ".join(f"<span class='mono' style='font-size:10px;color:#f5c518;border:1px solid rgba(245,197,24,.4);padding:2px 6px;margin:2px'>{cf}</span>" for cf in config_files[:10])
+        html += f"<div style='border:1px solid #f5c518;background:rgba(245,197,24,.08);padding:10px 14px;margin-bottom:12px;font-size:12px;color:#f5c518'>&#9888; CONFIG FILES: {items}</div>"
+    # Backup files alert
+    backup_files = joomscan.get("backup_files", [])
+    if backup_files:
+        items = " ".join(f"<span class='mono' style='font-size:10px;color:#f5c518;border:1px solid rgba(245,197,24,.4);padding:2px 6px;margin:2px'>{bf}</span>" for bf in backup_files[:10])
+        html += f"<div style='border:1px solid #f5c518;background:rgba(245,197,24,.08);padding:10px 14px;margin-bottom:12px;font-size:12px;color:#f5c518'>&#9888; BACKUP FILES: {items}</div>"
+    # Summary stats
+    summary = joomscan.get("summary", {})
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    vuln_count = summary.get("total_vulns", 0)
+    vuln_col = "#ff4444" if vuln_count else "#3ddc84"
+    html += f"<div><span class='muted'>VULNERABILITIES</span><br><span style='font-size:18px;font-weight:700;color:{vuln_col}'>{vuln_count}</span></div>"
+    html += f"<div><span class='muted'>COMPONENTS</span><br><span style='font-size:18px;font-weight:700;color:#e8f0fc'>{summary.get('components_count', 0)}</span></div>"
+    html += "</div>"
+    # Vulnerabilities table
+    vulns = joomscan.get("vulnerabilities", [])
+    if vulns:
+        sev_color = {"High": "#ff4444", "Medium": "#f5c518", "Low": "#3ddc84"}
+        rows = ""
+        for v in vulns[:20]:
+            color = sev_color.get(v.get("severity", "Medium"), "#f5c518")
+            rows += f"<tr><td style='color:{color};font-weight:700'>{v.get('severity','').upper()}</td><td>{v.get('title','')}</td><td class='mono' style='font-size:10px'>{(v.get('url','') or '')[:80]}</td><td style='font-size:10px'>{v.get('description','')}</td></tr>"
+        extra = f"<p class='muted'>... i {len(vulns)-20} więcej</p>" if len(vulns) > 20 else ""
+        html += f"""<div class='muted' style='margin-bottom:4px'>VULNERABILITIES ({len(vulns)})</div>
+        <table>
+            <thead><tr><th>SEVERITY</th><th>TITLE</th><th>URL</th><th>DESCRIPTION</th></tr></thead>
+            <tbody>{rows}</tbody>
+        </table>{extra}"""
+    # Components list
+    components = joomscan.get("components", [])
+    if components:
+        rows = ""
+        for c in components[:20]:
+            rows += f"<tr><td>{c.get('name','')}</td><td class='mono'>{c.get('version','?')}</td></tr>"
+        html += f"<div class='muted' style='margin:10px 0 4px'>COMPONENTS ({len(components)})</div>"
+        html += f"<table><thead><tr><th>COMPONENT</th><th>VERSION</th></tr></thead><tbody>{rows}</tbody></table>"
+    return html or "<p class='muted'>Brak danych Joomscan.</p>"
+
 def _wapiti_html(wapiti: dict) -> str:
     vulns = wapiti.get("vulnerabilities", [])
     if not vulns:
@@ -638,6 +692,7 @@ def generate_report(scan_data: dict) -> bytes:
     wpscan = scan_data.get("wpscan", {})
     zap = scan_data.get("zap", {})
     wapiti = scan_data.get("wapiti", {})
+    joomscan = scan_data.get("joomscan", {})
 
     color = _risk_color(risk)
 
@@ -877,6 +932,11 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// WAPITI — WEB APPLICATION SCANNER ({wapiti.get('summary', {}).get('total', 0)} vulnerabilities)</div>
   {_wapiti_html(wapiti)}
+</div>
+
+<div class="section">
+  <div class="section-title">// JOOMSCAN — JOOMLA SECURITY ({joomscan.get('summary', {}).get('total_vulns', 0)} vulnerabilities)</div>
+  {_joomscan_html(joomscan)}
 </div>
 
 <div class="section">
