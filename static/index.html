@@ -2743,6 +2743,247 @@ function renderExtended(res) {
     h+=mkSec('// DNSX — DNS RESOLUTION ('+(dxSm.resolved||0)+' resolved / '+(dxSm.queried||0)+' queried'+(dxDangle.length?' · '+dxDangle.length+' DANGLING':'')+' )',dxc,dxDangleWarn);
   }
 
+  // NETDISCOVER — NETWORK DISCOVERY
+  var nd=res.netdiscover||{};
+  if(nd.total_hosts>0&&!nd.skipped){
+    var ndc='';
+    // Info grid
+    ndc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">';
+    ndc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL HOSTS</div><div style="color:var(--green);font-size:20px;font-weight:700">'+(nd.total_hosts||0)+'</div></div>';
+    ndc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NETWORK RANGE</div><div style="color:var(--white);font-size:16px;font-weight:700;font-family:Share Tech Mono,monospace">'+(nd.network_range||'N/A')+'</div></div>';
+    ndc+='</div>';
+    // Hosts table
+    var ndHosts=nd.hosts||[];
+    if(ndHosts.length){
+      ndc+='<table class="dt"><thead><tr><th>IP</th><th>MAC</th><th>VENDOR</th><th>HOSTNAME</th></tr></thead><tbody>';
+      var _ndSmId=ndHosts.length>30?'sm'+(++_smC):'';
+      ndHosts.forEach(function(h2,idx){
+        if(idx===30&&_ndSmId) ndc+='</tbody><tbody id="'+_ndSmId+'" style="display:none">';
+        ndc+='<tr><td class="mono" style="font-size:11px;color:var(--green)">'+h2.ip+'</td><td class="mono" style="font-size:10px">'+h2.mac+'</td><td style="font-size:10px">'+h2.vendor+'</td><td style="font-size:10px;color:var(--silver)">'+(h2.hostname||'—')+'</td></tr>';
+      });
+      if(_ndSmId) ndc+='</tbody><tbody><tr><td colspan="4" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_ndSmId+'\',this)">SHOW ALL '+ndHosts.length+' HOSTS &#9660;</button></td></tr>';
+      ndc+='</tbody></table>';
+    }
+    h+=mkSec('// NETDISCOVER — NETWORK DISCOVERY ('+nd.total_hosts+' hosts on '+(nd.network_range||'N/A')+')',ndc,false);
+  }
+
+  // ARP-SCAN — ARP HOST DISCOVERY
+  var arp=res.arpscan||{};
+  if(arp.total_hosts>0&&!arp.skipped){
+    var ac='';
+    // Info grid
+    ac+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">';
+    ac+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL HOSTS</div><div style="color:var(--green);font-size:20px;font-weight:700">'+(arp.total_hosts||0)+'</div></div>';
+    ac+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NETWORK RANGE</div><div style="color:var(--white);font-size:16px;font-weight:700;font-family:Share Tech Mono,monospace">'+(arp.network_range||'N/A')+'</div></div>';
+    var arpDups=arp.duplicates||[];
+    if(arpDups.length) ac+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--red)">DUPLICATES (ARP SPOOFING?)</div><div style="color:var(--red);font-size:20px;font-weight:700">'+arpDups.length+'</div></div>';
+    ac+='</div>';
+    // Duplicates warning
+    if(arpDups.length){
+      ac+='<div style="border:1px solid rgba(255,68,68,.3);background:rgba(255,68,68,.04);padding:12px;margin-bottom:16px">';
+      ac+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--red);margin-bottom:8px;font-weight:700">DUPLICATE IPs — POSSIBLE ARP SPOOFING ('+arpDups.length+')</div>';
+      ac+='<table class="dt"><thead><tr><th>IP</th><th>MAC #1</th><th>VENDOR #1</th><th>MAC #2</th><th>VENDOR #2</th></tr></thead><tbody>';
+      arpDups.forEach(function(d){
+        ac+='<tr><td style="color:var(--red);font-weight:700">'+d.ip+'</td><td class="mono" style="font-size:10px">'+d.mac_1+'</td><td style="font-size:10px">'+d.vendor_1+'</td><td class="mono" style="font-size:10px">'+d.mac_2+'</td><td style="font-size:10px">'+d.vendor_2+'</td></tr>';
+      });
+      ac+='</tbody></table></div>';
+    }
+    // Hosts table
+    var arpHosts=arp.hosts||[];
+    if(arpHosts.length){
+      ac+='<table class="dt"><thead><tr><th>IP</th><th>MAC</th><th>VENDOR</th></tr></thead><tbody>';
+      var _arpSmId=arpHosts.length>30?'sm'+(++_smC):'';
+      arpHosts.forEach(function(h2,idx){
+        if(idx===30&&_arpSmId) ac+='</tbody><tbody id="'+_arpSmId+'" style="display:none">';
+        ac+='<tr><td class="mono" style="font-size:11px;color:var(--green)">'+h2.ip+'</td><td class="mono" style="font-size:10px">'+h2.mac+'</td><td style="font-size:10px">'+h2.vendor+'</td></tr>';
+      });
+      if(_arpSmId) ac+='</tbody><tbody><tr><td colspan="3" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_arpSmId+'\',this)">SHOW ALL '+arpHosts.length+' HOSTS &#9660;</button></td></tr>';
+      ac+='</tbody></table>';
+    }
+    h+=mkSec('// ARP-SCAN — ARP HOST DISCOVERY ('+arp.total_hosts+' hosts on '+(arp.network_range||'N/A')+(arpDups.length?' · '+arpDups.length+' DUPLICATES':'')+' )',ac,arpDups.length>0);
+  }
+
+  // FPING — ICMP PING SWEEP
+  var fp=res.fping||{};
+  if(fp.total_alive>0&&!fp.skipped){
+    var fpc='';
+    // Info grid
+    fpc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">';
+    fpc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">ALIVE</div><div style="color:var(--green);font-size:20px;font-weight:700">'+(fp.total_alive||0)+'</div></div>';
+    fpc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">UNREACHABLE</div><div style="color:var(--red);font-size:20px;font-weight:700">'+(fp.total_unreachable||0)+'</div></div>';
+    fpc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL SCANNED</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(fp.total_scanned||0)+'</div></div>';
+    fpc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NETWORK RANGE</div><div style="color:var(--white);font-size:14px;font-weight:700;font-family:Share Tech Mono,monospace">'+(fp.network_range||'N/A')+'</div></div>';
+    if(fp.avg_latency_ms!=null) fpc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">AVG LATENCY</div><div style="color:var(--yellow);font-size:20px;font-weight:700">'+fp.avg_latency_ms+' ms</div></div>';
+    if(fp.max_latency_ms!=null) fpc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">MAX LATENCY</div><div style="color:var(--orange);font-size:20px;font-weight:700">'+fp.max_latency_ms+' ms</div></div>';
+    var fpUnstable=fp.unstable_count||0;
+    if(fpUnstable) fpc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--orange)">UNSTABLE</div><div style="color:var(--orange);font-size:20px;font-weight:700">'+fpUnstable+'</div></div>';
+    fpc+='</div>';
+    // Latency table
+    var fpLat=fp.latency||[];
+    if(fpLat.length){
+      fpc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">HOST LATENCY ('+fpLat.length+')</div>';
+      fpc+='<table class="dt"><thead><tr><th>IP</th><th>SENT</th><th>RECV</th><th>LOSS %</th><th>MIN ms</th><th>AVG ms</th><th>MAX ms</th><th>STATUS</th></tr></thead><tbody>';
+      var _fpSmId=fpLat.length>30?'sm'+(++_smC):'';
+      fpLat.forEach(function(l,idx){
+        if(idx===30&&_fpSmId) fpc+='</tbody><tbody id="'+_fpSmId+'" style="display:none">';
+        var sc=l.status==='stable'?'var(--green)':l.status==='unstable'?'var(--orange)':'var(--red)';
+        fpc+='<tr><td class="mono" style="font-size:11px;color:var(--green)">'+l.ip+'</td><td>'+l.sent+'</td><td>'+l.recv+'</td><td style="color:'+(l.loss_pct>0?'var(--orange)':'var(--silver)')+'">'+l.loss_pct+'%</td><td style="font-size:10px">'+(l.min_ms!=null?l.min_ms:'—')+'</td><td style="font-size:10px">'+(l.avg_ms!=null?l.avg_ms:'—')+'</td><td style="font-size:10px">'+(l.max_ms!=null?l.max_ms:'—')+'</td><td style="color:'+sc+';font-weight:700;font-size:10px;text-transform:uppercase">'+l.status+'</td></tr>';
+      });
+      if(_fpSmId) fpc+='</tbody><tbody><tr><td colspan="8" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_fpSmId+'\',this)">SHOW ALL '+fpLat.length+' HOSTS &#9660;</button></td></tr>';
+      fpc+='</tbody></table>';
+    }
+    // Alive hosts list (if no latency data)
+    if(!fpLat.length){
+      var fpAlive=fp.alive_hosts||[];
+      if(fpAlive.length){
+        fpc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+        fpAlive.forEach(function(ip){fpc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid var(--green);color:var(--green);background:rgba(61,220,132,.06)">'+ip+'</span>';});
+        fpc+='</div>';
+      }
+    }
+    var fpWarn=fpUnstable>0;
+    h+=mkSec('// FPING — ICMP PING SWEEP ('+fp.total_alive+' alive / '+fp.total_scanned+' scanned'+(fp.avg_latency_ms!=null?' · avg '+fp.avg_latency_ms+'ms':'')+(fpUnstable?' · '+fpUnstable+' unstable':'')+' )',fpc,fpWarn);
+  }
+
+  // TRACEROUTE — NETWORK PATH ANALYSIS
+  var tr=res.traceroute||{};
+  if(tr.total_hops>0&&!tr.skipped){
+    var trc='';
+    // Info grid
+    trc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">';
+    trc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL HOPS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+tr.total_hops+'</div></div>';
+    trc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">DESTINATION</div><div style="color:var(--white);font-size:13px;font-weight:700;font-family:Share Tech Mono,monospace">'+(tr.destination||'N/A')+'</div></div>';
+    trc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">DESTINATION IP</div><div style="color:var(--green);font-size:14px;font-weight:700;font-family:Share Tech Mono,monospace">'+(tr.destination_ip||'N/A')+'</div></div>';
+    trc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">REACHED</div><div style="color:'+(tr.reached?'var(--green)':'var(--red)')+';font-size:20px;font-weight:700">'+(tr.reached?'YES':'NO')+'</div></div>';
+    if(tr.avg_rtt_ms!=null) trc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">AVG RTT</div><div style="color:var(--yellow);font-size:20px;font-weight:700">'+tr.avg_rtt_ms+' ms</div></div>';
+    if(tr.max_rtt_ms!=null) trc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">MAX RTT</div><div style="color:var(--orange);font-size:20px;font-weight:700">'+tr.max_rtt_ms+' ms</div></div>';
+    var trTimeout=tr.timeout_hops||0;
+    if(trTimeout) trc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--orange)">TIMEOUTS</div><div style="color:var(--orange);font-size:20px;font-weight:700">'+trTimeout+'</div></div>';
+    trc+='</div>';
+    // Issues
+    var trIssues=tr.issues||[];
+    if(trIssues.length){
+      trc+='<div style="border:1px solid rgba(255,140,0,.3);background:rgba(255,140,0,.04);padding:12px;margin-bottom:16px">';
+      trc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--orange);margin-bottom:8px;font-weight:700">PATH ISSUES ('+trIssues.length+')</div>';
+      trIssues.forEach(function(iss){trc+='<div style="font-size:11px;padding:3px 0;color:var(--silver);border-bottom:1px solid var(--border)">'+iss+'</div>';});
+      trc+='</div>';
+    }
+    // Hops table
+    var trHops=tr.hops||[];
+    if(trHops.length){
+      trc+='<table class="dt"><thead><tr><th>HOP</th><th>IP</th><th>MIN ms</th><th>AVG ms</th><th>MAX ms</th><th>LOSS</th></tr></thead><tbody>';
+      trHops.forEach(function(hop){
+        var ipColor=hop.ip?'var(--green)':'var(--red)';
+        var ipText=hop.ip||'* * *';
+        var lossColor=hop.loss?'var(--orange)':'var(--silver)';
+        trc+='<tr><td style="font-weight:700;color:var(--accent)">'+hop.hop+'</td><td class="mono" style="font-size:11px;color:'+ipColor+'">'+ipText+'</td><td style="font-size:10px">'+(hop.min_rtt_ms!=null?hop.min_rtt_ms:'—')+'</td><td style="font-size:10px">'+(hop.avg_rtt_ms!=null?hop.avg_rtt_ms:'—')+'</td><td style="font-size:10px">'+(hop.max_rtt_ms!=null?hop.max_rtt_ms:'—')+'</td><td style="font-size:10px;color:'+lossColor+'">'+(hop.loss?'YES':'—')+'</td></tr>';
+      });
+      trc+='</tbody></table>';
+    }
+    var trWarn=trTimeout>2||!tr.reached;
+    h+=mkSec('// TRACEROUTE — NETWORK PATH ('+tr.total_hops+' hops to '+(tr.destination||'?')+(tr.reached?'':' · NOT REACHED')+(trTimeout?' · '+trTimeout+' timeouts':'')+(tr.avg_rtt_ms!=null?' · avg '+tr.avg_rtt_ms+'ms':'')+' )',trc,trWarn);
+  }
+
+  // NBTSCAN — NETBIOS ENUMERATION
+  var nbt=res.nbtscan||{};
+  if(nbt.total_hosts>0&&!nbt.skipped){
+    var nbtc='';
+    // Info grid
+    nbtc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">';
+    nbtc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL HOSTS</div><div style="color:var(--green);font-size:20px;font-weight:700">'+nbt.total_hosts+'</div></div>';
+    nbtc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NETWORK RANGE</div><div style="color:var(--white);font-size:13px;font-weight:700;font-family:Share Tech Mono,monospace">'+(nbt.network_range||'N/A')+'</div></div>';
+    var nbtWgs=nbt.workgroups||[];
+    if(nbtWgs.length) nbtc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">WORKGROUPS</div><div style="color:var(--yellow);font-size:20px;font-weight:700">'+nbtWgs.length+'</div></div>';
+    var nbtSrvCnt=nbt.total_servers||0;
+    if(nbtSrvCnt) nbtc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">FILE SERVERS</div><div style="color:var(--orange);font-size:20px;font-weight:700">'+nbtSrvCnt+'</div></div>';
+    var nbtDcCnt=nbt.total_dcs||0;
+    if(nbtDcCnt) nbtc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--red)">DOMAIN CONTROLLERS</div><div style="color:var(--red);font-size:20px;font-weight:700">'+nbtDcCnt+'</div></div>';
+    nbtc+='</div>';
+    // Workgroup badges
+    if(nbtWgs.length){
+      nbtc+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">';
+      nbtWgs.forEach(function(wg){nbtc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.06)">'+wg+'</span>';});
+      nbtc+='</div>';
+    }
+    // Domain Controllers warning
+    var nbtDcs=nbt.domain_controllers||[];
+    if(nbtDcs.length){
+      nbtc+='<div style="border:1px solid rgba(255,68,68,.3);background:rgba(255,68,68,.04);padding:12px;margin-bottom:16px">';
+      nbtc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--red);margin-bottom:8px;font-weight:700">DOMAIN CONTROLLERS ('+nbtDcs.length+')</div>';
+      nbtc+='<table class="dt"><thead><tr><th>IP</th><th>NETBIOS NAME</th></tr></thead><tbody>';
+      nbtDcs.forEach(function(dc){nbtc+='<tr><td class="mono" style="font-size:11px;color:var(--red);font-weight:700">'+dc.ip+'</td><td style="font-weight:700">'+dc.name+'</td></tr>';});
+      nbtc+='</tbody></table></div>';
+    }
+    // Hosts table
+    var nbtHosts=nbt.hosts||[];
+    if(nbtHosts.length){
+      nbtc+='<table class="dt"><thead><tr><th>IP</th><th>NETBIOS NAME</th><th>MAC</th><th>WORKGROUP</th><th>SERVICES</th></tr></thead><tbody>';
+      var _nbtSmId=nbtHosts.length>30?'sm'+(++_smC):'';
+      nbtHosts.forEach(function(h2,idx){
+        if(idx===30&&_nbtSmId) nbtc+='</tbody><tbody id="'+_nbtSmId+'" style="display:none">';
+        var svcBadges=(h2.services||[]).map(function(s){
+          var sc=s==='Domain Controller'?'var(--red)':s==='File Server'?'var(--orange)':s==='Master Browser'?'var(--yellow)':'var(--silver)';
+          return '<span style="font-size:9px;padding:1px 6px;border:1px solid '+sc+';color:'+sc+';margin-right:3px">'+s+'</span>';
+        }).join('');
+        var ipColor=h2.is_dc?'var(--red)':h2.is_server?'var(--orange)':'var(--green)';
+        nbtc+='<tr><td class="mono" style="font-size:11px;color:'+ipColor+'">'+h2.ip+'</td><td style="font-weight:700">'+h2.netbios_name+'</td><td class="mono" style="font-size:10px">'+h2.mac+'</td><td style="font-size:10px;color:var(--yellow)">'+(h2.workgroup||'—')+'</td><td>'+svcBadges+'</td></tr>';
+      });
+      if(_nbtSmId) nbtc+='</tbody><tbody><tr><td colspan="5" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_nbtSmId+'\',this)">SHOW ALL '+nbtHosts.length+' HOSTS &#9660;</button></td></tr>';
+      nbtc+='</tbody></table>';
+    }
+    var nbtWarn=nbtDcCnt>0||nbtSrvCnt>0;
+    h+=mkSec('// NBTSCAN — NETBIOS ENUMERATION ('+nbt.total_hosts+' hosts'+(nbtWgs.length?' · '+nbtWgs.length+' workgroups':'')+(nbtSrvCnt?' · '+nbtSrvCnt+' servers':'')+(nbtDcCnt?' · '+nbtDcCnt+' DCs':'')+' )',nbtc,nbtWarn);
+  }
+
+  // SNMPWALK — SNMP ENUMERATION
+  var snmp=res.snmpwalk||{};
+  if(snmp.total_interfaces>0&&!snmp.skipped){
+    var snc='';
+    var si=snmp.system_info||{};
+    // Info grid
+    snc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">';
+    if(si.sysName) snc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SYSTEM NAME</div><div style="color:var(--white);font-size:16px;font-weight:700">'+si.sysName+'</div></div>';
+    if(si.sysDescr) snc+='<div style="grid-column:span 2"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SYSTEM DESCRIPTION</div><div style="color:var(--silver);font-size:11px">'+si.sysDescr.substring(0,120)+'</div></div>';
+    if(si.sysUpTime) snc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">UPTIME</div><div style="color:var(--green);font-size:13px;font-weight:700">'+si.sysUpTime+'</div></div>';
+    snc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL INTERFACES</div><div style="color:var(--white);font-size:20px;font-weight:700">'+snmp.total_interfaces+'</div></div>';
+    var snmpActColor=snmp.active_interfaces>0?'var(--green)':'var(--silver)';
+    snc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">ACTIVE INTERFACES</div><div style="color:'+snmpActColor+';font-size:20px;font-weight:700">'+snmp.active_interfaces+'</div></div>';
+    if(snmp.total_services) snc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SERVICES</div><div style="color:var(--yellow);font-size:20px;font-weight:700">'+snmp.total_services+'</div></div>';
+    snc+='</div>';
+    // Extra system info
+    var snmpExtras=[];
+    if(si.sysContact) snmpExtras.push('Contact: '+si.sysContact);
+    if(si.sysLocation) snmpExtras.push('Location: '+si.sysLocation);
+    if(si.sysObjectID) snmpExtras.push('OID: '+si.sysObjectID);
+    if(snmpExtras.length) snc+='<div style="margin-bottom:10px;font-size:11px;color:var(--silver)">'+snmpExtras.join(' · ')+'</div>';
+    snc+='<div style="margin-bottom:12px;font-size:10px;color:var(--accent)">SNMP '+(snmp.snmp_version||'v2c')+' · community: '+(snmp.community_string||'public')+'</div>';
+    // Interfaces table
+    var snmpIfaces=snmp.interfaces||[];
+    if(snmpIfaces.length){
+      snc+='<table class="dt"><thead><tr><th>IDX</th><th>NAME</th><th>SPEED</th><th>MTU</th><th>MAC</th><th>ADMIN</th><th>OPER</th><th>IN OCTETS</th><th>OUT OCTETS</th></tr></thead><tbody>';
+      var _snmpSmId=snmpIfaces.length>20?'sm'+(++_smC):'';
+      snmpIfaces.forEach(function(iface,idx){
+        if(idx===20&&_snmpSmId) snc+='</tbody><tbody id="'+_snmpSmId+'" style="display:none">';
+        var adminColor=iface.admin_status==='up'?'var(--green)':iface.admin_status==='down'?'var(--red)':'var(--yellow)';
+        var operColor=iface.oper_status==='up'?'var(--green)':iface.oper_status==='down'?'var(--red)':'var(--yellow)';
+        snc+='<tr><td class="mono" style="font-size:11px">'+iface.index+'</td><td style="font-size:11px;color:var(--white);font-weight:700">'+iface.name+'</td><td style="font-size:10px">'+iface.speed+'</td><td style="font-size:10px">'+iface.mtu+'</td><td class="mono" style="font-size:10px">'+iface.mac+'</td><td style="color:'+adminColor+';font-size:10px">'+iface.admin_status+'</td><td style="color:'+operColor+';font-size:10px">'+iface.oper_status+'</td><td style="font-size:10px">'+(iface.in_octets||'0')+'</td><td style="font-size:10px">'+(iface.out_octets||'0')+'</td></tr>';
+      });
+      if(_snmpSmId) snc+='</tbody><tbody><tr><td colspan="9" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_snmpSmId+'\',this)">SHOW ALL '+snmpIfaces.length+' INTERFACES &#9660;</button></td></tr>';
+      snc+='</tbody></table>';
+    }
+    // Services list
+    var snmpSvcs=snmp.services||[];
+    if(snmpSvcs.length){
+      snc+='<div style="margin-top:12px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:6px">RUNNING SERVICES ('+snmpSvcs.length+')</div>';
+      snc+='<div style="display:flex;gap:4px;flex-wrap:wrap">';
+      snmpSvcs.slice(0,60).forEach(function(s){snc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid rgba(122,179,232,.3);color:var(--accent);background:rgba(74,143,212,.06)">'+s+'</span>';});
+      if(snmpSvcs.length>60) snc+='<span style="font-size:9px;color:var(--silver)">... +'+( snmpSvcs.length-60)+' more</span>';
+      snc+='</div></div>';
+    }
+    var snmpWarn=snmp.community_string==='public';
+    h+=mkSec('// SNMPWALK — SNMP ENUMERATION ('+snmp.total_interfaces+' interfaces · '+snmp.active_interfaces+' active'+(snmp.total_services?' · '+snmp.total_services+' services':'')+' · '+( snmp.snmp_version||'v2c')+' )',snc,snmpWarn);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];
@@ -2844,7 +3085,7 @@ function loadScanDetail(taskId) {
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
       nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
-      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, mitre:s.mitre||null,
+      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, netdiscover:s.netdiscover||null, arpscan:s.arpscan||null, fping:s.fping||null, traceroute:s.traceroute||null, nbtscan:s.nbtscan||null, snmpwalk:s.snmpwalk||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -3089,7 +3330,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

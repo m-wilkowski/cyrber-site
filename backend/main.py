@@ -338,6 +338,12 @@ from modules.httpx_scan import httpx_scan
 from modules.naabu_scan import naabu_scan
 from modules.katana_scan import katana_scan
 from modules.dnsx_scan import dnsx_scan
+from modules.netdiscover_scan import netdiscover_scan
+from modules.arpscan_scan import arpscan_scan
+from modules.fping_scan import fping_scan
+from modules.traceroute_scan import traceroute_scan
+from modules.nbtscan_scan import nbtscan_scan
+from modules.snmpwalk_scan import snmpwalk_scan
 
 @app.get("/scan/wpscan")
 async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -386,6 +392,30 @@ async def run_katana(target: str = Query(...), user: str = Depends(get_current_u
 @app.get("/scan/dnsx")
 async def run_dnsx(target: str = Query(...), user: str = Depends(get_current_user)):
     return dnsx_scan(target)
+
+@app.get("/scan/netdiscover")
+async def run_netdiscover(target: str = Query(...), user: str = Depends(get_current_user)):
+    return netdiscover_scan(target)
+
+@app.get("/scan/arpscan")
+async def run_arpscan(target: str = Query(...), user: str = Depends(get_current_user)):
+    return arpscan_scan(target)
+
+@app.get("/scan/fping")
+async def run_fping(target: str = Query(...), user: str = Depends(get_current_user)):
+    return fping_scan(target)
+
+@app.get("/scan/traceroute")
+async def run_traceroute(target: str = Query(...), user: str = Depends(get_current_user)):
+    return traceroute_scan(target)
+
+@app.get("/scan/nbtscan")
+async def run_nbtscan(target: str = Query(...), user: str = Depends(get_current_user)):
+    return nbtscan_scan(target)
+
+@app.get("/scan/snmpwalk")
+async def run_snmpwalk(target: str = Query(...), user: str = Depends(get_current_user)):
+    return snmpwalk_scan(target)
 
 from modules.tasks import osint_scan_task
 from modules.database import get_osint_history, get_osint_by_task_id

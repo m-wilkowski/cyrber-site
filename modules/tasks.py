@@ -38,6 +38,12 @@ from modules.httpx_scan import httpx_scan
 from modules.naabu_scan import naabu_scan
 from modules.katana_scan import katana_scan
 from modules.dnsx_scan import dnsx_scan
+from modules.netdiscover_scan import netdiscover_scan
+from modules.arpscan_scan import arpscan_scan
+from modules.fping_scan import fping_scan
+from modules.traceroute_scan import traceroute_scan
+from modules.nbtscan_scan import nbtscan_scan
+from modules.snmpwalk_scan import snmpwalk_scan
 from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
@@ -93,6 +99,12 @@ def full_scan_task(target: str):
     naabu = naabu_scan(target, subdomains=_httpx_subs)
     katana = katana_scan(target)
     dnsx = dnsx_scan(target, subdomains=_httpx_subs)
+    netdiscover = netdiscover_scan(target)
+    arpscan = arpscan_scan(target)
+    fping = fping_scan(target)
+    traceroute = traceroute_scan(target)
+    nbtscan = nbtscan_scan(target)
+    snmpwalk = snmpwalk_scan(target)
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -162,6 +174,18 @@ def full_scan_task(target: str):
         result["katana"] = katana
     if not dnsx.get("skipped") and dnsx.get("total_resolved", 0) > 0:
         result["dnsx"] = dnsx
+    if not netdiscover.get("skipped") and netdiscover.get("total_hosts", 0) > 0:
+        result["netdiscover"] = netdiscover
+    if not arpscan.get("skipped") and arpscan.get("total_hosts", 0) > 0:
+        result["arpscan"] = arpscan
+    if not fping.get("skipped") and fping.get("total_alive", 0) > 0:
+        result["fping"] = fping
+    if not traceroute.get("skipped") and traceroute.get("total_hops", 0) > 0:
+        result["traceroute"] = traceroute
+    if not nbtscan.get("skipped") and nbtscan.get("total_hosts", 0) > 0:
+        result["nbtscan"] = nbtscan
+    if not snmpwalk.get("skipped") and snmpwalk.get("total_interfaces", 0) > 0:
+        result["snmpwalk"] = snmpwalk
     cwe = cwe_mapping(result)
     if cwe.get("total", 0) > 0:
         result["cwe"] = cwe

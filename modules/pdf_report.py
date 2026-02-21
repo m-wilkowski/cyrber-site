@@ -668,6 +668,216 @@ def _dnsx_html(dnsx: dict) -> str:
         html += f"<table><thead><tr><th>HOST</th><th>A RECORDS</th><th>CNAME</th></tr></thead><tbody>{rows}</tbody></table>{extra}"
     return html
 
+def _netdiscover_html(netdiscover: dict) -> str:
+    if not netdiscover or netdiscover.get("skipped") or not netdiscover.get("total_hosts"):
+        return "<p class='muted'>Brak danych netdiscover.</p>"
+    html = ""
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>TOTAL HOSTS</span><br><span style='font-size:20px;font-weight:700;color:#3ddc84'>{netdiscover.get('total_hosts', 0)}</span></div>"
+    html += f"<div><span class='muted'>NETWORK RANGE</span><br><span style='font-size:16px;font-weight:700;color:#e8f0fc;font-family:Courier New,monospace'>{netdiscover.get('network_range', 'N/A')}</span></div>"
+    html += "</div>"
+    hosts = netdiscover.get("hosts", [])
+    if hosts:
+        rows = ""
+        for h in hosts[:50]:
+            rows += f"<tr><td class='mono' style='font-size:11px;color:#3ddc84'>{h.get('ip','')}</td><td class='mono' style='font-size:10px'>{h.get('mac','')}</td><td style='font-size:10px'>{h.get('vendor','')}</td><td style='font-size:10px;color:#8a9bb5'>{h.get('hostname','') or '—'}</td></tr>"
+        extra = f"<p class='muted'>... i {len(hosts)-50} więcej</p>" if len(hosts) > 50 else ""
+        html += f"<table><thead><tr><th>IP</th><th>MAC</th><th>VENDOR</th><th>HOSTNAME</th></tr></thead><tbody>{rows}</tbody></table>{extra}"
+    return html
+
+def _arpscan_html(arpscan: dict) -> str:
+    if not arpscan or arpscan.get("skipped") or not arpscan.get("total_hosts"):
+        return "<p class='muted'>Brak danych arp-scan.</p>"
+    html = ""
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>TOTAL HOSTS</span><br><span style='font-size:20px;font-weight:700;color:#3ddc84'>{arpscan.get('total_hosts', 0)}</span></div>"
+    html += f"<div><span class='muted'>NETWORK RANGE</span><br><span style='font-size:16px;font-weight:700;color:#e8f0fc;font-family:Courier New,monospace'>{arpscan.get('network_range', 'N/A')}</span></div>"
+    duplicates = arpscan.get("duplicates", [])
+    if duplicates:
+        html += f"<div><span class='muted' style='color:#ff4444'>DUPLICATES (ARP SPOOFING?)</span><br><span style='font-size:20px;font-weight:700;color:#ff4444'>{len(duplicates)}</span></div>"
+    html += "</div>"
+    # Duplicates warning
+    if duplicates:
+        rows = ""
+        for d in duplicates[:20]:
+            rows += f"<tr><td style='color:#ff4444;font-weight:700'>{d.get('ip','')}</td><td class='mono' style='font-size:10px'>{d.get('mac_1','')}</td><td style='font-size:10px'>{d.get('vendor_1','')}</td><td class='mono' style='font-size:10px'>{d.get('mac_2','')}</td><td style='font-size:10px'>{d.get('vendor_2','')}</td></tr>"
+        html += f"<div style='border:1px solid rgba(255,68,68,.3);padding:10px;margin-bottom:12px'><span style='color:#ff4444;font-size:11px;font-weight:700'>DUPLICATE IPs — POSSIBLE ARP SPOOFING ({len(duplicates)})</span>"
+        html += f"<table><thead><tr><th>IP</th><th>MAC #1</th><th>VENDOR #1</th><th>MAC #2</th><th>VENDOR #2</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    # Hosts table
+    hosts = arpscan.get("hosts", [])
+    if hosts:
+        rows = ""
+        for h in hosts[:50]:
+            rows += f"<tr><td class='mono' style='font-size:11px;color:#3ddc84'>{h.get('ip','')}</td><td class='mono' style='font-size:10px'>{h.get('mac','')}</td><td style='font-size:10px'>{h.get('vendor','')}</td></tr>"
+        extra = f"<p class='muted'>... i {len(hosts)-50} więcej</p>" if len(hosts) > 50 else ""
+        html += f"<table><thead><tr><th>IP</th><th>MAC</th><th>VENDOR</th></tr></thead><tbody>{rows}</tbody></table>{extra}"
+    return html
+
+def _fping_html(fping: dict) -> str:
+    if not fping or fping.get("skipped") or not fping.get("total_alive"):
+        return "<p class='muted'>Brak danych fping.</p>"
+    html = ""
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>ALIVE</span><br><span style='font-size:20px;font-weight:700;color:#3ddc84'>{fping.get('total_alive', 0)}</span></div>"
+    html += f"<div><span class='muted'>UNREACHABLE</span><br><span style='font-size:20px;font-weight:700;color:#ff4444'>{fping.get('total_unreachable', 0)}</span></div>"
+    html += f"<div><span class='muted'>TOTAL SCANNED</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{fping.get('total_scanned', 0)}</span></div>"
+    html += f"<div><span class='muted'>NETWORK RANGE</span><br><span style='font-size:14px;font-weight:700;color:#e8f0fc;font-family:Courier New,monospace'>{fping.get('network_range', 'N/A')}</span></div>"
+    avg_lat = fping.get("avg_latency_ms")
+    if avg_lat is not None:
+        html += f"<div><span class='muted'>AVG LATENCY</span><br><span style='font-size:20px;font-weight:700;color:#f5c518'>{avg_lat} ms</span></div>"
+    max_lat = fping.get("max_latency_ms")
+    if max_lat is not None:
+        html += f"<div><span class='muted'>MAX LATENCY</span><br><span style='font-size:20px;font-weight:700;color:#ff8c00'>{max_lat} ms</span></div>"
+    unstable = fping.get("unstable_count", 0)
+    if unstable:
+        html += f"<div><span class='muted' style='color:#ff8c00'>UNSTABLE</span><br><span style='font-size:20px;font-weight:700;color:#ff8c00'>{unstable}</span></div>"
+    html += "</div>"
+    # Latency table
+    latency = fping.get("latency", [])
+    if latency:
+        rows = ""
+        for l in latency[:50]:
+            status = l.get("status", "stable")
+            sc = "#3ddc84" if status == "stable" else "#ff8c00" if status == "unstable" else "#ff4444"
+            min_ms = l.get("min_ms", "—")
+            avg_ms = l.get("avg_ms", "—")
+            max_ms = l.get("max_ms", "—")
+            loss_color = "#ff8c00" if l.get("loss_pct", 0) > 0 else "#8a9bb5"
+            rows += f"<tr><td class='mono' style='font-size:11px;color:#3ddc84'>{l.get('ip','')}</td><td>{l.get('sent','')}</td><td>{l.get('recv','')}</td><td style='color:{loss_color}'>{l.get('loss_pct',0)}%</td><td style='font-size:10px'>{min_ms}</td><td style='font-size:10px'>{avg_ms}</td><td style='font-size:10px'>{max_ms}</td><td style='color:{sc};font-weight:700;font-size:10px;text-transform:uppercase'>{status}</td></tr>"
+        extra = f"<p class='muted'>... i {len(latency)-50} więcej</p>" if len(latency) > 50 else ""
+        html += f"<table><thead><tr><th>IP</th><th>SENT</th><th>RECV</th><th>LOSS %</th><th>MIN ms</th><th>AVG ms</th><th>MAX ms</th><th>STATUS</th></tr></thead><tbody>{rows}</tbody></table>{extra}"
+    return html
+
+def _traceroute_html(traceroute: dict) -> str:
+    if not traceroute or traceroute.get("skipped") or not traceroute.get("total_hops"):
+        return "<p class='muted'>Brak danych traceroute.</p>"
+    html = ""
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>TOTAL HOPS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{traceroute.get('total_hops', 0)}</span></div>"
+    html += f"<div><span class='muted'>DESTINATION</span><br><span style='font-size:13px;font-weight:700;color:#e8f0fc;font-family:Courier New,monospace'>{traceroute.get('destination', 'N/A')}</span></div>"
+    html += f"<div><span class='muted'>DESTINATION IP</span><br><span style='font-size:14px;font-weight:700;color:#3ddc84;font-family:Courier New,monospace'>{traceroute.get('destination_ip', 'N/A')}</span></div>"
+    reached = traceroute.get("reached", False)
+    rc = "#3ddc84" if reached else "#ff4444"
+    html += f"<div><span class='muted'>REACHED</span><br><span style='font-size:20px;font-weight:700;color:{rc}'>{'YES' if reached else 'NO'}</span></div>"
+    avg_rtt = traceroute.get("avg_rtt_ms")
+    if avg_rtt is not None:
+        html += f"<div><span class='muted'>AVG RTT</span><br><span style='font-size:20px;font-weight:700;color:#f5c518'>{avg_rtt} ms</span></div>"
+    max_rtt = traceroute.get("max_rtt_ms")
+    if max_rtt is not None:
+        html += f"<div><span class='muted'>MAX RTT</span><br><span style='font-size:20px;font-weight:700;color:#ff8c00'>{max_rtt} ms</span></div>"
+    timeout_hops = traceroute.get("timeout_hops", 0)
+    if timeout_hops:
+        html += f"<div><span class='muted' style='color:#ff8c00'>TIMEOUTS</span><br><span style='font-size:20px;font-weight:700;color:#ff8c00'>{timeout_hops}</span></div>"
+    html += "</div>"
+    # Issues
+    issues = traceroute.get("issues", [])
+    if issues:
+        iss_html = "".join(f"<div style='font-size:11px;padding:3px 0;color:#8a9bb5;border-bottom:1px solid rgba(74,143,212,.1)'>{iss}</div>" for iss in issues[:20])
+        html += f"<div style='border:1px solid rgba(255,140,0,.3);padding:10px;margin-bottom:12px'><span style='color:#ff8c00;font-size:11px;font-weight:700'>PATH ISSUES ({len(issues)})</span>{iss_html}</div>"
+    # Hops table
+    hops = traceroute.get("hops", [])
+    if hops:
+        rows = ""
+        for h in hops:
+            ip_color = "#3ddc84" if h.get("ip") else "#ff4444"
+            ip_text = h.get("ip") or "* * *"
+            loss_color = "#ff8c00" if h.get("loss") else "#8a9bb5"
+            rows += f"<tr><td style='font-weight:700;color:#4a8fd4'>{h.get('hop','')}</td><td class='mono' style='font-size:11px;color:{ip_color}'>{ip_text}</td><td style='font-size:10px'>{h.get('min_rtt_ms','—') if h.get('min_rtt_ms') is not None else '—'}</td><td style='font-size:10px'>{h.get('avg_rtt_ms','—') if h.get('avg_rtt_ms') is not None else '—'}</td><td style='font-size:10px'>{h.get('max_rtt_ms','—') if h.get('max_rtt_ms') is not None else '—'}</td><td style='font-size:10px;color:{loss_color}'>{'YES' if h.get('loss') else '—'}</td></tr>"
+        html += f"<table><thead><tr><th>HOP</th><th>IP</th><th>MIN ms</th><th>AVG ms</th><th>MAX ms</th><th>LOSS</th></tr></thead><tbody>{rows}</tbody></table>"
+    return html
+
+def _nbtscan_html(nbtscan: dict) -> str:
+    if not nbtscan or nbtscan.get("skipped") or not nbtscan.get("total_hosts"):
+        return "<p class='muted'>Brak danych NBTscan.</p>"
+    html = ""
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>TOTAL HOSTS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{nbtscan.get('total_hosts', 0)}</span></div>"
+    html += f"<div><span class='muted'>NETWORK RANGE</span><br><span style='font-size:13px;font-weight:700;color:#4a8fd4;font-family:Courier New,monospace'>{nbtscan.get('network_range', 'N/A')}</span></div>"
+    wgs = nbtscan.get("workgroups", [])
+    if wgs:
+        html += f"<div><span class='muted'>WORKGROUPS</span><br><span style='font-size:20px;font-weight:700;color:#7ab3e8'>{len(wgs)}</span></div>"
+    html += f"<div><span class='muted'>FILE SERVERS</span><br><span style='font-size:20px;font-weight:700;color:#f5c518'>{nbtscan.get('total_servers', 0)}</span></div>"
+    dcs = nbtscan.get("total_dcs", 0)
+    dc_color = "#ff4444" if dcs > 0 else "#8a9bb5"
+    html += f"<div><span class='muted'>DOMAIN CONTROLLERS</span><br><span style='font-size:20px;font-weight:700;color:{dc_color}'>{dcs}</span></div>"
+    html += "</div>"
+    # Workgroup badges
+    if wgs:
+        badges = " ".join(f"<span style='font-size:10px;color:#7ab3e8;border:1px solid rgba(122,179,232,.3);padding:2px 8px;margin-right:4px'>{w}</span>" for w in wgs)
+        html += f"<div style='margin-bottom:10px'>{badges}</div>"
+    # DC warning
+    dc_list = nbtscan.get("domain_controllers", [])
+    if dc_list:
+        dc_items = "".join(f"<div style='font-size:11px;padding:3px 0;color:#ff8c00;border-bottom:1px solid rgba(255,68,68,.1)'>{ip}</div>" for ip in dc_list[:10])
+        html += f"<div style='border:1px solid rgba(255,68,68,.3);padding:10px;margin-bottom:12px'><span style='color:#ff4444;font-size:11px;font-weight:700'>DOMAIN CONTROLLERS DETECTED</span>{dc_items}</div>"
+    # Hosts table
+    hosts = nbtscan.get("hosts", [])
+    if hosts:
+        rows = ""
+        for h in hosts[:50]:
+            svcs = h.get("services", [])
+            svc_badges = " ".join(f"<span style='font-size:9px;color:#3ddc84;border:1px solid rgba(61,220,132,.3);padding:1px 5px'>{s}</span>" for s in svcs)
+            is_dc = h.get("is_dc", False)
+            ip_color = "#ff4444" if is_dc else "#3ddc84"
+            rows += f"<tr><td class='mono' style='font-size:11px;color:{ip_color}'>{h.get('ip','')}</td><td style='font-size:11px;color:#e8f0fc'>{h.get('netbios_name','')}</td><td style='font-size:10px;color:#8a9bb5'>{h.get('mac','')}</td><td style='font-size:10px'>{h.get('workgroup','')}</td><td>{svc_badges}</td></tr>"
+        extra = f"<p class='muted'>... i {len(hosts)-50} więcej</p>" if len(hosts) > 50 else ""
+        html += f"<table><thead><tr><th>IP</th><th>NETBIOS NAME</th><th>MAC</th><th>WORKGROUP</th><th>SERVICES</th></tr></thead><tbody>{rows}</tbody></table>{extra}"
+    return html
+
+def _snmpwalk_html(snmpwalk: dict) -> str:
+    if not snmpwalk or snmpwalk.get("skipped") or not snmpwalk.get("total_interfaces"):
+        return "<p class='muted'>Brak danych SNMP.</p>"
+    html = ""
+    si = snmpwalk.get("system_info", {})
+    # Info grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    if si.get("sysName"):
+        html += f"<div><span class='muted'>SYSTEM NAME</span><br><span style='font-size:16px;font-weight:700;color:#e8f0fc'>{si['sysName']}</span></div>"
+    if si.get("sysDescr"):
+        desc = si['sysDescr'][:80]
+        html += f"<div><span class='muted'>SYSTEM DESCRIPTION</span><br><span style='font-size:11px;color:#b8ccec'>{desc}</span></div>"
+    if si.get("sysUpTime"):
+        html += f"<div><span class='muted'>UPTIME</span><br><span style='font-size:13px;font-weight:700;color:#3ddc84'>{si['sysUpTime']}</span></div>"
+    html += f"<div><span class='muted'>TOTAL INTERFACES</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{snmpwalk.get('total_interfaces', 0)}</span></div>"
+    active = snmpwalk.get("active_interfaces", 0)
+    act_color = "#3ddc84" if active > 0 else "#8a9bb5"
+    html += f"<div><span class='muted'>ACTIVE INTERFACES</span><br><span style='font-size:20px;font-weight:700;color:{act_color}'>{active}</span></div>"
+    total_svc = snmpwalk.get("total_services", 0)
+    if total_svc:
+        html += f"<div><span class='muted'>SERVICES</span><br><span style='font-size:20px;font-weight:700;color:#f5c518'>{total_svc}</span></div>"
+    html += "</div>"
+    # Extra system info
+    extras = []
+    if si.get("sysContact"):
+        extras.append(f"Contact: {si['sysContact']}")
+    if si.get("sysLocation"):
+        extras.append(f"Location: {si['sysLocation']}")
+    if si.get("sysObjectID"):
+        extras.append(f"OID: {si['sysObjectID']}")
+    if extras:
+        html += "<div style='margin-bottom:10px;font-size:11px;color:#8a9bb5'>" + " &middot; ".join(extras) + "</div>"
+    # SNMP meta
+    html += f"<div style='margin-bottom:12px;font-size:10px;color:#4a8fd4'>SNMP {snmpwalk.get('snmp_version', 'v2c')} · community: {snmpwalk.get('community_string', 'public')}</div>"
+    # Interfaces table
+    ifaces = snmpwalk.get("interfaces", [])
+    if ifaces:
+        rows = ""
+        for iface in ifaces[:30]:
+            admin = iface.get("admin_status", "")
+            oper = iface.get("oper_status", "")
+            admin_color = "#3ddc84" if admin == "up" else "#ff4444" if admin == "down" else "#f5c518"
+            oper_color = "#3ddc84" if oper == "up" else "#ff4444" if oper == "down" else "#f5c518"
+            rows += f"<tr><td class='mono' style='font-size:11px'>{iface.get('index','')}</td><td style='font-size:11px;color:#e8f0fc'>{iface.get('name','')}</td><td style='font-size:10px'>{iface.get('speed','')}</td><td style='font-size:10px'>{iface.get('mtu','')}</td><td class='mono' style='font-size:10px'>{iface.get('mac','')}</td><td style='color:{admin_color};font-size:10px'>{admin}</td><td style='color:{oper_color};font-size:10px'>{oper}</td><td style='font-size:10px'>{iface.get('in_octets','0')}</td><td style='font-size:10px'>{iface.get('out_octets','0')}</td></tr>"
+        extra = f"<p class='muted'>... i {len(ifaces)-30} więcej</p>" if len(ifaces) > 30 else ""
+        html += f"<table><thead><tr><th>IDX</th><th>NAME</th><th>SPEED</th><th>MTU</th><th>MAC</th><th>ADMIN</th><th>OPER</th><th>IN OCTETS</th><th>OUT OCTETS</th></tr></thead><tbody>{rows}</tbody></table>{extra}"
+    # Services list
+    services = snmpwalk.get("services", [])
+    if services:
+        svc_badges = " ".join(f"<span style='font-size:9px;color:#7ab3e8;border:1px solid rgba(122,179,232,.3);padding:1px 5px;margin:1px'>{s}</span>" for s in services[:40])
+        extra_svc = f" <span class='muted'>... +{len(services)-40}</span>" if len(services) > 40 else ""
+        html += f"<div style='margin-top:10px'><span class='muted'>RUNNING SERVICES ({len(services)})</span><br>{svc_badges}{extra_svc}</div>"
+    return html
+
 def _cwe_html(cwe: dict) -> str:
     cwes = cwe.get("cwes", [])
     if not cwes:
@@ -1106,6 +1316,12 @@ def generate_report(scan_data: dict) -> bytes:
     naabu = scan_data.get("naabu", {})
     katana = scan_data.get("katana", {})
     dnsx = scan_data.get("dnsx", {})
+    netdiscover = scan_data.get("netdiscover", {})
+    arpscan = scan_data.get("arpscan", {})
+    fping = scan_data.get("fping", {})
+    traceroute = scan_data.get("traceroute", {})
+    nbtscan = scan_data.get("nbtscan", {})
+    snmpwalk = scan_data.get("snmpwalk", {})
 
     color = _risk_color(risk)
 
@@ -1390,6 +1606,36 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// DNSX — DNS RESOLUTION ({dnsx.get('summary', {}).get('resolved', 0)} resolved / {dnsx.get('summary', {}).get('queried', 0)} queried)</div>
   {_dnsx_html(dnsx)}
+</div>
+
+<div class="section">
+  <div class="section-title">// NETDISCOVER — NETWORK DISCOVERY ({netdiscover.get('total_hosts', 0)} hosts on {netdiscover.get('network_range', 'N/A')})</div>
+  {_netdiscover_html(netdiscover)}
+</div>
+
+<div class="section">
+  <div class="section-title">// ARP-SCAN — ARP HOST DISCOVERY ({arpscan.get('total_hosts', 0)} hosts on {arpscan.get('network_range', 'N/A')})</div>
+  {_arpscan_html(arpscan)}
+</div>
+
+<div class="section">
+  <div class="section-title">// FPING — ICMP PING SWEEP ({fping.get('total_alive', 0)} alive / {fping.get('total_scanned', 0)} scanned)</div>
+  {_fping_html(fping)}
+</div>
+
+<div class="section">
+  <div class="section-title">// TRACEROUTE — NETWORK PATH ({traceroute.get('total_hops', 0)} hops to {traceroute.get('destination', '?')})</div>
+  {_traceroute_html(traceroute)}
+</div>
+
+<div class="section">
+  <div class="section-title">// NBTSCAN — NETBIOS ENUMERATION ({nbtscan.get('total_hosts', 0)} hosts, {nbtscan.get('total_servers', 0)} servers, {nbtscan.get('total_dcs', 0)} DCs)</div>
+  {_nbtscan_html(nbtscan)}
+</div>
+
+<div class="section">
+  <div class="section-title">// SNMPWALK — SNMP ENUMERATION ({snmpwalk.get('total_interfaces', 0)} interfaces, {snmpwalk.get('active_interfaces', 0)} active, {snmpwalk.get('total_services', 0)} services)</div>
+  {_snmpwalk_html(snmpwalk)}
 </div>
 
 <div class="section">

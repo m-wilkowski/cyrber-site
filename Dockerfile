@@ -122,6 +122,18 @@ RUN DNSX_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/dnsx/re
     unzip /tmp/dnsx.zip dnsx -d /usr/local/bin/ && \
     chmod +x /usr/local/bin/dnsx && \
     rm /tmp/dnsx.zip
+# netdiscover (ARP network discovery)
+RUN apt-get update && apt-get install -y netdiscover && rm -rf /var/lib/apt/lists/*
+# arp-scan (ARP host discovery)
+RUN apt-get update && apt-get install -y arp-scan && rm -rf /var/lib/apt/lists/*
+# fping (fast ICMP ping sweep)
+RUN apt-get update && apt-get install -y fping && rm -rf /var/lib/apt/lists/*
+# traceroute (network path analysis)
+RUN apt-get update && apt-get install -y traceroute && rm -rf /var/lib/apt/lists/*
+# nbtscan (NetBIOS name scanner)
+RUN apt-get update && apt-get install -y nbtscan && rm -rf /var/lib/apt/lists/*
+# snmp (SNMP enumeration tools: snmpwalk, snmpget, snmpbulkwalk)
+RUN apt-get update && apt-get install -y snmp && rm -rf /var/lib/apt/lists/*
 # retire.js (vulnerable JavaScript library detection)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \
