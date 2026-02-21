@@ -1614,47 +1614,73 @@ function renderExtended(res) {
   if(res.enum4linux&&!res.enum4linux.skipped){
     var el=res.enum4linux;
     var ec='';
-    // OS Info + Workgroup/Domain grid
+    // OS Info grid
     var osi=el.os_info||{};
-    ec+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">';
-    if(osi.name) ec+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">OS</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+osi.name+'</div></div>';
-    if(osi.version) ec+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">OS VERSION</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+osi.version+'</div></div>';
-    if(el.workgroup) ec+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">WORKGROUP</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+el.workgroup+'</div></div>';
-    if(el.domain) ec+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">DOMAIN</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+el.domain+'</div></div>';
+    ec+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">';
+    if(osi.os) ec+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">OS</div><div style="color:var(--white);font-size:12px;font-weight:700">'+osi.os+'</div></div>';
+    if(osi.version) ec+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">OS VERSION</div><div style="color:var(--white);font-size:12px">'+osi.version+'</div></div>';
+    if(osi.domain) ec+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">DOMAIN</div><div style="color:var(--yellow);font-size:14px;font-weight:700">'+osi.domain+'</div></div>';
+    if(osi.workgroup) ec+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">WORKGROUP</div><div style="color:var(--white);font-size:12px;font-weight:700">'+osi.workgroup+'</div></div>';
+    if(osi.netbios_name) ec+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NETBIOS NAME</div><div style="color:var(--white);font-size:12px;font-weight:700;font-family:Share Tech Mono,monospace">'+osi.netbios_name+'</div></div>';
     ec+='</div>';
+    // Vulnerability badges
+    var eVulns=el.vulnerabilities||[];
+    if(eVulns.length){
+      ec+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+      eVulns.forEach(function(v){
+        var vc=v.severity==='high'?'var(--red)':v.severity==='medium'?'var(--orange)':'var(--yellow)';
+        var vbg=v.severity==='high'?'rgba(255,68,68,.10)':v.severity==='medium'?'rgba(255,140,0,.08)':'rgba(245,197,24,.06)';
+        ec+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid '+vc+';color:'+vc+';background:'+vbg+'">'+v.severity.toUpperCase()+': '+v.title+'</span>';
+      });
+      ec+='</div>';
+    }
     // Users table
     var eusers=el.users||[];
     if(eusers.length){
       ec+='<div style="margin-bottom:16px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">USERS ('+eusers.length+')</div>';
-      ec+='<table class="dt"><thead><tr><th>USERNAME</th><th>RID</th><th>DESCRIPTION</th></tr></thead><tbody>';
-      eusers.forEach(function(u){ec+='<tr><td>'+u.username+'</td><td>'+u.rid+'</td><td>'+(u.description||'—')+'</td></tr>';});
+      ec+='<table class="dt"><thead><tr><th>USERNAME</th><th>RID</th><th>DESCRIPTION</th><th>FLAGS</th></tr></thead><tbody>';
+      var _eUsSmId=eusers.length>20?'sm'+(++_smC):'';
+      eusers.forEach(function(u,idx){
+        if(idx===20&&_eUsSmId) ec+='</tbody><tbody id="'+_eUsSmId+'" style="display:none">';
+        ec+='<tr><td style="font-weight:700;font-family:Share Tech Mono,monospace;font-size:11px;color:var(--yellow)">'+u.username+'</td><td class="mono" style="font-size:10px">'+u.rid+'</td><td style="font-size:10px;color:var(--silver)">'+(u.description||'—')+'</td><td style="font-size:9px;color:var(--silver)">'+(u.flags||'—')+'</td></tr>';
+      });
+      if(_eUsSmId) ec+='</tbody><tbody><tr><td colspan="4" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_eUsSmId+'\',this)">SHOW ALL '+eusers.length+' USERS &#9660;</button></td></tr>';
       ec+='</tbody></table></div>';
     }
-    // Groups
+    // Groups table
     var egroups=el.groups||[];
     if(egroups.length){
       ec+='<div style="margin-bottom:16px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">GROUPS ('+egroups.length+')</div>';
-      ec+='<table class="dt"><thead><tr><th>GROUP</th><th>RID</th><th>TYPE</th></tr></thead><tbody>';
-      egroups.forEach(function(g){ec+='<tr><td>'+g.name+'</td><td>'+g.rid+'</td><td>'+(g.type||'—')+'</td></tr>';});
+      ec+='<table class="dt"><thead><tr><th>GROUP</th><th>RID</th><th>MEMBERS</th></tr></thead><tbody>';
+      egroups.forEach(function(g){
+        var mbrs=(g.members||[]).join(', ')||'—';
+        ec+='<tr><td style="font-weight:700;font-size:11px">'+g.name+'</td><td class="mono" style="font-size:10px">'+g.rid+'</td><td style="font-size:10px;color:var(--silver)">'+mbrs+'</td></tr>';
+      });
       ec+='</tbody></table></div>';
     }
-    // Shares
+    // Shares table
     var eshares=el.shares||[];
     if(eshares.length){
       ec+='<div style="margin-bottom:16px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">SHARES ('+eshares.length+')</div>';
-      ec+='<table class="dt"><thead><tr><th>NAME</th><th>TYPE</th><th>COMMENT</th></tr></thead><tbody>';
-      eshares.forEach(function(s){ec+='<tr><td>'+s.name+'</td><td>'+(s.type||'—')+'</td><td>'+(s.comment||'—')+'</td></tr>';});
+      ec+='<table class="dt"><thead><tr><th>NAME</th><th>TYPE</th><th>ACCESS</th><th>COMMENT</th></tr></thead><tbody>';
+      eshares.forEach(function(s){
+        var accColor=s.access==='READ,WRITE'?'var(--red)':s.access==='WRITE'?'var(--red)':s.access==='READ'?'var(--yellow)':'var(--silver)';
+        var accBg=s.access==='READ,WRITE'?'rgba(255,68,68,.10)':s.access==='WRITE'?'rgba(255,68,68,.08)':s.access==='READ'?'rgba(245,197,24,.08)':'transparent';
+        ec+='<tr><td style="font-weight:700;font-family:Share Tech Mono,monospace;font-size:11px">'+s.name+'</td><td style="font-size:10px">'+(s.type||'—')+'</td><td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+accColor+';color:'+accColor+';background:'+accBg+'">'+(s.access||'—')+'</span></td><td style="font-size:10px;color:var(--silver)">'+(s.comment||'—')+'</td></tr>';
+      });
       ec+='</tbody></table></div>';
     }
     // Password Policy
     var ppol=el.password_policy||{};
-    if(ppol.min_length||ppol.lockout_threshold){
+    if(ppol.min_length!=null||ppol.lockout_threshold!=null){
       ec+='<div style="margin-bottom:16px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">PASSWORD POLICY</div>';
-      ec+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">';
-      if(ppol.min_length) ec+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">MIN LENGTH</div><div style="font-family:Share Tech Mono,monospace;font-size:14px;color:var(--white)">'+ppol.min_length+'</div></div>';
-      if(ppol.lockout_threshold) ec+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">LOCKOUT THRESHOLD</div><div style="font-family:Share Tech Mono,monospace;font-size:14px;color:var(--white)">'+ppol.lockout_threshold+'</div></div>';
-      if(ppol.lockout_duration) ec+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">LOCKOUT DURATION</div><div style="font-family:Share Tech Mono,monospace;font-size:14px;color:var(--white)">'+ppol.lockout_duration+' min</div></div>';
-      if(ppol.password_history) ec+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">HISTORY LENGTH</div><div style="font-family:Share Tech Mono,monospace;font-size:14px;color:var(--white)">'+ppol.password_history+'</div></div>';
+      ec+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">';
+      if(ppol.min_length!=null){var mlColor=ppol.min_length<8?'var(--red)':ppol.min_length<12?'var(--yellow)':'var(--green)';ec+='<div><div style="font-size:9px;color:var(--accent)">MIN LENGTH</div><div style="font-size:18px;font-weight:700;color:'+mlColor+'">'+ppol.min_length+'</div></div>';}
+      if(ppol.lockout_threshold!=null){var ltColor=ppol.lockout_threshold===0?'var(--red)':ppol.lockout_threshold<5?'var(--yellow)':'var(--green)';ec+='<div><div style="font-size:9px;color:var(--accent)">LOCKOUT THRESHOLD</div><div style="font-size:18px;font-weight:700;color:'+ltColor+'">'+ppol.lockout_threshold+'</div></div>';}
+      if(ppol.lockout_duration) ec+='<div><div style="font-size:9px;color:var(--accent)">LOCKOUT DURATION</div><div style="font-size:14px;font-weight:700;color:var(--silver)">'+ppol.lockout_duration+' min</div></div>';
+      if(ppol.max_age) ec+='<div><div style="font-size:9px;color:var(--accent)">MAX PASSWORD AGE</div><div style="font-size:14px;font-weight:700;color:var(--silver)">'+ppol.max_age+' days</div></div>';
+      if(ppol.password_history) ec+='<div><div style="font-size:9px;color:var(--accent)">HISTORY LENGTH</div><div style="font-size:14px;font-weight:700;color:var(--silver)">'+ppol.password_history+'</div></div>';
+      if(ppol.complexity!=null){var cxColor=ppol.complexity?'var(--green)':'var(--red)';ec+='<div><div style="font-size:9px;color:var(--accent)">COMPLEXITY</div><div style="font-size:14px;font-weight:700;color:'+cxColor+'">'+(ppol.complexity?'ENABLED':'DISABLED')+'</div></div>';}
       ec+='</div></div>';
     }
     // Printers
@@ -1665,13 +1691,560 @@ function renderExtended(res) {
       eprint.forEach(function(p){ec+=p.name+(p.description?' — '+p.description:'')+'<br>';});
       ec+='</div></div>';
     }
-    var eTitle='// ENUM4LINUX — SMB ENUMERATION';
+    var eTitle='// ENUM4LINUX-NG — SMB/AD ENUMERATION';
     var eCounts=[];
     if(eusers.length) eCounts.push(eusers.length+' users');
     if(eshares.length) eCounts.push(eshares.length+' shares');
     if(egroups.length) eCounts.push(egroups.length+' groups');
-    if(eCounts.length) eTitle+=' ('+eCounts.join(', ')+')';
-    h+=mkSec(eTitle,ec,false);
+    if(eVulns.length) eCounts.push(eVulns.length+' vulns');
+    if(eCounts.length) eTitle+=' ('+eCounts.join(' · ')+')';
+    var eWarn=eVulns.some(function(v){return v.severity==='high';});
+    h+=mkSec(eTitle,ec,eWarn);
+  }
+
+  // BLOODHOUND — ACTIVE DIRECTORY ATTACK PATHS
+  var bh=res.bloodhound||{};
+  if(!bh.skipped&&(bh.total_users>0||bh.total_computers>0)){
+    var bhc='';
+    // Stats grid
+    bhc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-bottom:20px">';
+    bhc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">USERS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+bh.total_users+'</div></div>';
+    bhc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">COMPUTERS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+bh.total_computers+'</div></div>';
+    bhc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">GROUPS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+bh.total_groups+'</div></div>';
+    if(bh.total_domains) bhc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">DOMAINS</div><div style="color:var(--yellow);font-size:20px;font-weight:700">'+bh.total_domains+'</div></div>';
+    if(bh.total_gpos) bhc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">GPOs</div><div style="color:var(--silver);font-size:20px;font-weight:700">'+bh.total_gpos+'</div></div>';
+    if(bh.total_sessions) bhc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SESSIONS</div><div style="color:var(--silver);font-size:20px;font-weight:700">'+bh.total_sessions+'</div></div>';
+    var bhApCnt=bh.total_attack_paths||0;
+    if(bhApCnt) bhc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">ATTACK PATHS</div><div style="color:var(--red);font-size:20px;font-weight:700">'+bhApCnt+'</div></div>';
+    bhc+='</div>';
+    // Severity badges
+    if(bh.critical_count||bh.high_count||bh.medium_count){
+      bhc+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+      if(bh.critical_count) bhc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.12)">CRITICAL: '+bh.critical_count+'</span>';
+      if(bh.high_count) bhc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+bh.high_count+'</span>';
+      if(bh.medium_count) bhc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+bh.medium_count+'</span>';
+      bhc+='</div>';
+    }
+    // Attack paths
+    var bhAps=bh.attack_paths||[];
+    if(bhAps.length){
+      bhc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">ATTACK PATHS ('+bhAps.length+')</div>';
+      bhAps.forEach(function(ap){
+        var apColor=ap.severity==='critical'?'var(--red)':ap.severity==='high'?'var(--red)':'var(--yellow)';
+        var apBg=ap.severity==='critical'?'rgba(255,68,68,.06)':ap.severity==='high'?'rgba(255,68,68,.04)':'rgba(245,197,24,.04)';
+        bhc+='<div style="border:1px solid '+apColor+';background:'+apBg+';padding:12px;margin-bottom:8px">';
+        bhc+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+        bhc+='<span style="font-weight:700;color:var(--white);font-size:12px">'+ap.title+'</span>';
+        bhc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid '+apColor+';color:'+apColor+'">'+ap.severity.toUpperCase()+'</span>';
+        bhc+='</div>';
+        bhc+='<div style="font-size:11px;color:var(--silver);margin-bottom:6px">'+ap.description+'</div>';
+        if(ap.mitre) bhc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 6px;border:1px solid var(--accent);color:var(--accent);margin-right:6px">'+ap.mitre+'</span>';
+        var apAff=ap.affected||[];
+        if(apAff.length){
+          bhc+='<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">';
+          apAff.slice(0,8).forEach(function(a){bhc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:1px 6px;border:1px solid rgba(245,197,24,.3);color:var(--yellow)">'+a+'</span>';});
+          if(apAff.length>8) bhc+='<span style="font-size:9px;color:var(--silver)">...+'+( apAff.length-8)+'</span>';
+          bhc+='</div>';
+        }
+        bhc+='</div>';
+      });
+    }
+    // Domains
+    var bhDoms=bh.domains||[];
+    if(bhDoms.length){
+      bhc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">DOMAINS ('+bhDoms.length+')</div>';
+      bhDoms.forEach(function(d){
+        bhc+='<div style="border:1px solid var(--border);padding:8px;margin-bottom:4px"><span style="font-weight:700;color:var(--yellow);font-size:12px">'+d.name+'</span>';
+        if(d.functional_level) bhc+=' <span style="font-size:10px;color:var(--silver)">FL: '+d.functional_level+'</span>';
+        bhc+='</div>';
+      });
+    }
+    // Users table (highlight risky ones)
+    var bhUsers=bh.users||[];
+    if(bhUsers.length){
+      bhc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">AD USERS ('+bhUsers.length+')</div>';
+      bhc+='<table class="dt"><thead><tr><th>USER</th><th>DOMAIN</th><th>ENABLED</th><th>ADMIN</th><th>SPN</th><th>PWD FLAGS</th></tr></thead><tbody>';
+      var _bhUsSmId=bhUsers.length>20?'sm'+(++_smC):'';
+      bhUsers.forEach(function(u,idx){
+        if(idx===20&&_bhUsSmId) bhc+='</tbody><tbody id="'+_bhUsSmId+'" style="display:none">';
+        var flags=[];
+        if(u.password_never_expires) flags.push('NEVER_EXPIRES');
+        if(u.password_not_required) flags.push('NOT_REQUIRED');
+        if(u.dont_require_preauth) flags.push('NO_PREAUTH');
+        var flagsStr=flags.length?flags.join(', '):'—';
+        var flagColor=flags.length?'var(--red)':'var(--silver)';
+        var nameColor=u.admin_count?'var(--red)':u.has_spn?'var(--yellow)':'var(--white)';
+        var enColor=u.enabled?'var(--green)':'var(--red)';
+        bhc+='<tr><td style="font-weight:700;font-size:11px;color:'+nameColor+'">'+u.name+'</td><td style="font-size:10px">'+u.domain+'</td><td style="color:'+enColor+';font-size:10px">'+(u.enabled?'YES':'NO')+'</td><td style="color:'+(u.admin_count?'var(--red)':'var(--silver)')+';font-size:10px">'+(u.admin_count?'YES':'—')+'</td><td style="color:'+(u.has_spn?'var(--yellow)':'var(--silver)')+';font-size:10px">'+(u.has_spn?'YES':'—')+'</td><td style="font-size:9px;color:'+flagColor+'">'+flagsStr+'</td></tr>';
+      });
+      if(_bhUsSmId) bhc+='</tbody><tbody><tr><td colspan="6" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_bhUsSmId+'\',this)">SHOW ALL '+bhUsers.length+' USERS &#9660;</button></td></tr>';
+      bhc+='</tbody></table>';
+    }
+    // Computers table
+    var bhComps=bh.computers||[];
+    if(bhComps.length){
+      bhc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">AD COMPUTERS ('+bhComps.length+')</div>';
+      bhc+='<table class="dt"><thead><tr><th>COMPUTER</th><th>OS</th><th>ENABLED</th><th>LAPS</th><th>UNCONSTRAINED</th></tr></thead><tbody>';
+      var _bhCSmId=bhComps.length>15?'sm'+(++_smC):'';
+      bhComps.forEach(function(c,idx){
+        if(idx===15&&_bhCSmId) bhc+='</tbody><tbody id="'+_bhCSmId+'" style="display:none">';
+        var ucColor=c.unconstraineddelegation?'var(--red)':'var(--silver)';
+        var lapsColor=c.has_laps?'var(--green)':'var(--orange)';
+        bhc+='<tr><td style="font-weight:700;font-size:11px;font-family:Share Tech Mono,monospace">'+c.name+'</td><td style="font-size:10px;color:var(--silver)">'+(c.os||'—')+'</td><td style="color:'+(c.enabled?'var(--green)':'var(--red)')+';font-size:10px">'+(c.enabled?'YES':'NO')+'</td><td style="color:'+lapsColor+';font-size:10px">'+(c.has_laps?'YES':'NO')+'</td><td style="color:'+ucColor+';font-size:10px">'+(c.unconstraineddelegation?'YES':'—')+'</td></tr>';
+      });
+      if(_bhCSmId) bhc+='</tbody><tbody><tr><td colspan="5" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_bhCSmId+'\',this)">SHOW ALL '+bhComps.length+' COMPUTERS &#9660;</button></td></tr>';
+      bhc+='</tbody></table>';
+    }
+    // Groups table
+    var bhGroups=bh.groups||[];
+    if(bhGroups.length){
+      bhc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">AD GROUPS ('+bhGroups.length+')</div>';
+      bhc+='<table class="dt"><thead><tr><th>GROUP</th><th>DOMAIN</th><th>ADMIN</th><th>MEMBERS</th></tr></thead><tbody>';
+      bhGroups.slice(0,30).forEach(function(g){
+        var gColor=g.admin_count?'var(--red)':'var(--white)';
+        bhc+='<tr><td style="font-weight:700;font-size:11px;color:'+gColor+'">'+g.name+'</td><td style="font-size:10px">'+g.domain+'</td><td style="color:'+(g.admin_count?'var(--red)':'var(--silver)')+';font-size:10px">'+(g.admin_count?'YES':'—')+'</td><td style="font-size:10px">'+g.member_count+'</td></tr>';
+      });
+      bhc+='</tbody></table>';
+    }
+    var bhWarn=bh.critical_count>0||bh.high_count>0;
+    var bhTitle='// BLOODHOUND — AD ATTACK PATHS ('+bh.total_users+' users · '+bh.total_computers+' computers · '+bh.total_groups+' groups'+(bhApCnt?' · '+bhApCnt+' attack paths':'')+')';
+    h+=mkSec(bhTitle,bhc,bhWarn);
+  }
+
+  // RESPONDER — LLMNR/NBT-NS/MDNS POISONING DETECTION
+  var rsp=res.responder||{};
+  if(!rsp.skipped&&rsp.total_protocols>0){
+    var rspc='';
+    // Stats grid
+    rspc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:20px">';
+    rspc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">PROTOCOLS</div><div style="color:var(--red);font-size:20px;font-weight:700">'+rsp.total_protocols+'</div></div>';
+    rspc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">REQUESTS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+rsp.total_requests+'</div></div>';
+    rspc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">VULNERABILITIES</div><div style="color:'+(rsp.total_vulnerabilities?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+rsp.total_vulnerabilities+'</div></div>';
+    rspc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">INTERFACE</div><div style="color:var(--silver);font-size:14px;font-weight:700;font-family:Share Tech Mono,monospace">'+rsp.interface+'</div></div>';
+    rspc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">DURATION</div><div style="color:var(--silver);font-size:14px;font-weight:700">'+rsp.duration_seconds+'s</div></div>';
+    rspc+='</div>';
+    // Severity badges
+    if(rsp.critical_count||rsp.high_count||rsp.medium_count){
+      rspc+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+      if(rsp.critical_count) rspc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.12)">CRITICAL: '+rsp.critical_count+'</span>';
+      if(rsp.high_count) rspc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+rsp.high_count+'</span>';
+      if(rsp.medium_count) rspc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+rsp.medium_count+'</span>';
+      rspc+='</div>';
+    }
+    // Detected protocols
+    var rspProtos=rsp.protocols_detected||[];
+    if(rspProtos.length){
+      rspc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">POISONABLE PROTOCOLS ('+rspProtos.length+')</div>';
+      rspc+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">';
+      rspProtos.forEach(function(p){
+        var pCol=p==='NTLM'?'var(--red)':(p==='LLMNR'||p==='NBT-NS'||p==='WPAD')?'var(--red)':'var(--yellow)';
+        rspc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:4px 12px;border:1px solid '+pCol+';color:'+pCol+';background:rgba(255,68,68,.06)">'+p+'</span>';
+      });
+      rspc+='</div>';
+    }
+    // Vulnerabilities
+    var rspVulns=rsp.vulnerabilities||[];
+    if(rspVulns.length){
+      rspc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">VULNERABILITIES ('+rspVulns.length+')</div>';
+      rspVulns.forEach(function(v){
+        var vCol=v.severity==='critical'?'var(--red)':v.severity==='high'?'var(--red)':'var(--yellow)';
+        var vBg=v.severity==='critical'?'rgba(255,68,68,.06)':v.severity==='high'?'rgba(255,68,68,.04)':'rgba(245,197,24,.04)';
+        rspc+='<div style="border:1px solid '+vCol+';background:'+vBg+';padding:12px;margin-bottom:8px">';
+        rspc+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+        rspc+='<span style="font-weight:700;color:var(--white);font-size:12px">'+v.title+'</span>';
+        rspc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid '+vCol+';color:'+vCol+'">'+v.severity.toUpperCase()+'</span>';
+        rspc+='</div>';
+        rspc+='<div style="font-size:11px;color:var(--silver);margin-bottom:6px">'+v.description+'</div>';
+        if(v.mitre) rspc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 6px;border:1px solid var(--accent);color:var(--accent);margin-right:6px">'+v.mitre+'</span>';
+        if(v.remediation) rspc+='<div style="font-size:10px;color:var(--green);margin-top:6px;border-left:2px solid var(--green);padding-left:8px">'+v.remediation+'</div>';
+        rspc+='</div>';
+      });
+    }
+    // Browsers/workstations detected
+    var rspBrowsers=rsp.browsers_detected||[];
+    if(rspBrowsers.length){
+      rspc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">NETWORK HOSTS DETECTED ('+rspBrowsers.length+')</div>';
+      rspc+='<table class="dt"><thead><tr><th>NAME</th><th>SUFFIX</th></tr></thead><tbody>';
+      rspBrowsers.slice(0,30).forEach(function(b){
+        rspc+='<tr><td style="font-weight:700;font-size:11px;font-family:Share Tech Mono,monospace">'+b.name+'</td><td style="font-size:10px;color:var(--silver)">'+b.suffix+'</td></tr>';
+      });
+      rspc+='</tbody></table>';
+    }
+    // Raw requests log
+    var rspReqs=rsp.poisonable_requests||[];
+    if(rspReqs.length){
+      var _rspSmId=rspReqs.length>10?'sm'+(++_smC):'';
+      rspc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">CAPTURED REQUESTS ('+rspReqs.length+')</div>';
+      rspc+='<div style="background:rgba(0,0,0,.3);padding:10px;font-family:Share Tech Mono,monospace;font-size:10px;color:var(--silver);max-height:300px;overflow-y:auto">';
+      rspReqs.forEach(function(r,idx){
+        if(idx===10&&_rspSmId) rspc+='<div id="'+_rspSmId+'" style="display:none">';
+        rspc+='<div style="margin-bottom:2px;word-break:break-all">'+r+'</div>';
+      });
+      if(_rspSmId) rspc+='</div><div style="text-align:center;padding:8px"><button class="show-more-btn" onclick="showAll(\''+_rspSmId+'\',this)">SHOW ALL '+rspReqs.length+' REQUESTS &#9660;</button></div>';
+      rspc+='</div>';
+    }
+    var rspWarn=rsp.critical_count>0||rsp.high_count>0;
+    var rspTitle='// RESPONDER — NETWORK POISONING DETECTION ('+rsp.total_protocols+' protocols · '+rsp.total_requests+' requests · '+rsp.total_vulnerabilities+' vulns)';
+    h+=mkSec(rspTitle,rspc,rspWarn);
+  }
+
+  // FIERCE — DNS RECONNAISSANCE
+  var frc=res.fierce||{};
+  if(!frc.skipped&&frc.total_subdomains>0){
+    var frcc='';
+    // Stats grid
+    frcc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:20px">';
+    frcc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SUBDOMAINS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+frc.total_subdomains+'</div></div>';
+    frcc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NAMESERVERS</div><div style="color:var(--silver);font-size:20px;font-weight:700">'+frc.total_nameservers+'</div></div>';
+    frcc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NEARBY IPs</div><div style="color:var(--silver);font-size:20px;font-weight:700">'+frc.total_nearby+'</div></div>';
+    var frcZt=frc.zone_transfer||{};
+    var frcZtCol=frcZt.successful?'var(--red)':'var(--green)';
+    var frcZtTxt=frcZt.successful?'SUCCESSFUL':'FAILED';
+    if(frcZt.attempted) frcc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">ZONE TRANSFER</div><div style="color:'+frcZtCol+';font-size:14px;font-weight:700">'+frcZtTxt+'</div></div>';
+    if(frc.wildcard) frcc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">WILDCARD</div><div style="color:var(--yellow);font-size:14px;font-weight:700;font-family:Share Tech Mono,monospace">'+frc.wildcard+'</div></div>';
+    frcc+='</div>';
+    // Zone transfer warning
+    if(frcZt.successful){
+      frcc+='<div style="border:1px solid var(--red);background:rgba(255,68,68,.06);padding:12px;margin-bottom:16px">';
+      frcc+='<span style="font-weight:700;color:var(--red);font-size:12px">ZONE TRANSFER SUCCESSFUL</span>';
+      frcc+='<div style="font-size:11px;color:var(--silver);margin-top:4px">DNS zone transfer is enabled — all DNS records are exposed. This is a critical misconfiguration.</div>';
+      frcc+='</div>';
+    }
+    // Nameservers
+    var frcNs=frc.nameservers||[];
+    if(frcNs.length){
+      frcc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">NAMESERVERS ('+frcNs.length+')</div>';
+      frcc+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">';
+      frcNs.forEach(function(ns){
+        frcc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:4px 10px;border:1px solid var(--accent);color:var(--accent)">'+ns+'</span>';
+      });
+      frcc+='</div>';
+    }
+    // Subdomains table
+    var frcSubs=frc.subdomains||[];
+    if(frcSubs.length){
+      frcc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:6px">DISCOVERED SUBDOMAINS ('+frcSubs.length+')</div>';
+      frcc+='<table class="dt"><thead><tr><th>SUBDOMAIN</th><th>IP ADDRESS</th><th>SOURCE</th></tr></thead><tbody>';
+      var _frcSmId=frcSubs.length>20?'sm'+(++_smC):'';
+      frcSubs.forEach(function(s,idx){
+        if(idx===20&&_frcSmId) frcc+='</tbody><tbody id="'+_frcSmId+'" style="display:none">';
+        frcc+='<tr><td style="font-weight:700;font-size:11px;font-family:Share Tech Mono,monospace">'+s.name+'</td><td style="font-size:10px;font-family:Share Tech Mono,monospace;color:var(--silver)">'+s.ip+'</td><td style="font-size:9px;color:var(--accent)">'+s.source+'</td></tr>';
+      });
+      if(_frcSmId) frcc+='</tbody><tbody><tr><td colspan="3" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_frcSmId+'\',this)">SHOW ALL '+frcSubs.length+' SUBDOMAINS &#9660;</button></td></tr>';
+      frcc+='</tbody></table>';
+    }
+    // Nearby IPs
+    var frcNearby=frc.nearby_ips||[];
+    if(frcNearby.length){
+      frcc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">NEARBY IPs ('+frcNearby.length+')</div>';
+      frcc+='<table class="dt"><thead><tr><th>IP ADDRESS</th><th>HOSTNAME</th></tr></thead><tbody>';
+      var _frcNSmId=frcNearby.length>20?'sm'+(++_smC):'';
+      frcNearby.forEach(function(n,idx){
+        if(idx===20&&_frcNSmId) frcc+='</tbody><tbody id="'+_frcNSmId+'" style="display:none">';
+        frcc+='<tr><td style="font-size:11px;font-family:Share Tech Mono,monospace">'+n.ip+'</td><td style="font-size:11px;font-family:Share Tech Mono,monospace;color:var(--silver)">'+n.hostname+'</td></tr>';
+      });
+      if(_frcNSmId) frcc+='</tbody><tbody><tr><td colspan="2" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_frcNSmId+'\',this)">SHOW ALL '+frcNearby.length+' NEARBY IPs &#9660;</button></td></tr>';
+      frcc+='</tbody></table>';
+    }
+    var frcWarn=frcZt.successful||false;
+    var frcTitle='// FIERCE — DNS RECONNAISSANCE ('+frc.total_subdomains+' subdomains · '+frc.total_nameservers+' NS · '+frc.total_nearby+' nearby'+(frcZt.successful?' · ZONE TRANSFER!':'')+')';
+    h+=mkSec(frcTitle,frcc,frcWarn);
+  }
+
+  // SMBMAP — SMB SHARE ENUMERATION
+  var smb=res.smbmap||{};
+  if(!smb.skipped&&smb.total_shares>0){
+    var smbc='';
+    // Stats grid
+    smbc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:20px">';
+    smbc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SHARES</div><div style="color:var(--white);font-size:20px;font-weight:700">'+smb.total_shares+'</div></div>';
+    smbc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">READABLE</div><div style="color:'+(smb.readable_shares?'var(--yellow)':'var(--silver)')+';font-size:20px;font-weight:700">'+smb.readable_shares+'</div></div>';
+    smbc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">WRITABLE</div><div style="color:'+(smb.writable_shares?'var(--red)':'var(--silver)')+';font-size:20px;font-weight:700">'+smb.writable_shares+'</div></div>';
+    smbc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">FILES FOUND</div><div style="color:'+(smb.total_files?'var(--yellow)':'var(--silver)')+';font-size:20px;font-weight:700">'+smb.total_files+'</div></div>';
+    smbc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">ACCESS</div><div style="color:'+(smb.access_method==='null'?'var(--red)':'var(--yellow)')+';font-size:14px;font-weight:700;font-family:Share Tech Mono,monospace">'+(smb.access_method||'N/A').toUpperCase()+' SESSION</div></div>';
+    smbc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">VULNERABILITIES</div><div style="color:'+(smb.total_vulnerabilities?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+smb.total_vulnerabilities+'</div></div>';
+    smbc+='</div>';
+    // Severity badges
+    if(smb.critical_count||smb.high_count||smb.medium_count){
+      smbc+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+      if(smb.critical_count) smbc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.12)">CRITICAL: '+smb.critical_count+'</span>';
+      if(smb.high_count) smbc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+smb.high_count+'</span>';
+      if(smb.medium_count) smbc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+smb.medium_count+'</span>';
+      smbc+='</div>';
+    }
+    // Shares table
+    var smbShares=smb.shares||[];
+    if(smbShares.length){
+      smbc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:6px">SHARES ('+smbShares.length+')</div>';
+      smbc+='<table class="dt"><thead><tr><th>SHARE</th><th>ACCESS</th><th>READ</th><th>WRITE</th></tr></thead><tbody>';
+      smbShares.forEach(function(s){
+        var rCol=s.read?'var(--green)':'var(--silver)';
+        var wCol=s.write?'var(--red)':'var(--silver)';
+        var nameCol=s.write?'var(--red)':s.read?'var(--yellow)':'var(--silver)';
+        smbc+='<tr><td style="font-weight:700;font-size:11px;font-family:Share Tech Mono,monospace;color:'+nameCol+'">'+s.name+'</td><td style="font-size:10px;color:var(--silver)">'+s.access+'</td><td style="color:'+rCol+';font-size:10px">'+(s.read?'YES':'—')+'</td><td style="color:'+wCol+';font-size:10px;font-weight:'+(s.write?'700':'400')+';">'+(s.write?'YES':'—')+'</td></tr>';
+      });
+      smbc+='</tbody></table>';
+    }
+    // Interesting files
+    var smbFiles=smb.interesting_files||[];
+    if(smbFiles.length){
+      smbc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">INTERESTING FILES ('+smbFiles.length+')</div>';
+      smbc+='<table class="dt"><thead><tr><th>SHARE</th><th>FILENAME</th><th>SIZE</th><th>SENSITIVE</th></tr></thead><tbody>';
+      var _smbFSmId=smbFiles.length>15?'sm'+(++_smC):'';
+      smbFiles.forEach(function(f,idx){
+        if(idx===15&&_smbFSmId) smbc+='</tbody><tbody id="'+_smbFSmId+'" style="display:none">';
+        var senCol=f.sensitive?'var(--red)':'var(--silver)';
+        var fnCol=f.sensitive?'var(--red)':'var(--white)';
+        smbc+='<tr><td style="font-size:10px;font-family:Share Tech Mono,monospace;color:var(--accent)">'+f.share+'</td><td style="font-weight:700;font-size:11px;font-family:Share Tech Mono,monospace;color:'+fnCol+'">'+f.filename+'</td><td style="font-size:10px;color:var(--silver)">'+(f.size!=null?f.size+' B':'—')+'</td><td style="color:'+senCol+';font-size:10px">'+(f.sensitive?'YES':'—')+'</td></tr>';
+      });
+      if(_smbFSmId) smbc+='</tbody><tbody><tr><td colspan="4" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_smbFSmId+'\',this)">SHOW ALL '+smbFiles.length+' FILES &#9660;</button></td></tr>';
+      smbc+='</tbody></table>';
+    }
+    // Vulnerabilities
+    var smbVulns=smb.vulnerabilities||[];
+    if(smbVulns.length){
+      smbc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 8px">VULNERABILITIES ('+smbVulns.length+')</div>';
+      smbVulns.forEach(function(v){
+        var vCol=v.severity==='critical'?'var(--red)':v.severity==='high'?'var(--red)':'var(--yellow)';
+        var vBg=v.severity==='critical'?'rgba(255,68,68,.06)':v.severity==='high'?'rgba(255,68,68,.04)':'rgba(245,197,24,.04)';
+        smbc+='<div style="border:1px solid '+vCol+';background:'+vBg+';padding:12px;margin-bottom:8px">';
+        smbc+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+        smbc+='<span style="font-weight:700;color:var(--white);font-size:12px">'+v.title+'</span>';
+        smbc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid '+vCol+';color:'+vCol+'">'+v.severity.toUpperCase()+'</span>';
+        smbc+='</div>';
+        smbc+='<div style="font-size:11px;color:var(--silver);margin-bottom:6px">'+v.description+'</div>';
+        if(v.mitre) smbc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 6px;border:1px solid var(--accent);color:var(--accent);margin-right:6px">'+v.mitre+'</span>';
+        if(v.remediation) smbc+='<div style="font-size:10px;color:var(--green);margin-top:6px;border-left:2px solid var(--green);padding-left:8px">'+v.remediation+'</div>';
+        smbc+='</div>';
+      });
+    }
+    var smbWarn=smb.critical_count>0||smb.high_count>0||smb.writable_shares>0;
+    var smbTitle='// SMBMAP — SMB SHARE ENUMERATION ('+smb.total_shares+' shares · '+smb.readable_shares+' readable · '+smb.writable_shares+' writable · '+smb.total_files+' files)';
+    h+=mkSec(smbTitle,smbc,smbWarn);
+  }
+
+  // ONESIXTYONE — SNMP COMMUNITY STRING BRUTE-FORCE
+  var ost=res.onesixtyone||{};
+  if(!ost.skipped&&ost.total_found>0){
+    var ostc='';
+    // Stats grid
+    ostc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:20px">';
+    ostc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">FOUND</div><div style="color:var(--red);font-size:20px;font-weight:700">'+ost.total_found+'</div></div>';
+    ostc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TESTED</div><div style="color:var(--silver);font-size:20px;font-weight:700">'+ost.total_tested+'</div></div>';
+    ostc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">VULNERABILITIES</div><div style="color:'+(ost.total_vulnerabilities?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+ost.total_vulnerabilities+'</div></div>';
+    ostc+='</div>';
+    // Severity badges
+    if(ost.critical_count||ost.high_count||ost.medium_count){
+      ostc+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+      if(ost.critical_count) ostc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.12)">CRITICAL: '+ost.critical_count+'</span>';
+      if(ost.high_count) ostc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+ost.high_count+'</span>';
+      if(ost.medium_count) ostc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+ost.medium_count+'</span>';
+      ostc+='</div>';
+    }
+    // Community strings table
+    var ostCs=ost.communities_found||[];
+    if(ostCs.length){
+      ostc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:6px">VALID COMMUNITY STRINGS ('+ostCs.length+')</div>';
+      ostc+='<table class="dt"><thead><tr><th>COMMUNITY STRING</th><th>TYPE</th><th>RISK</th><th>SYSTEM DESCRIPTION</th></tr></thead><tbody>';
+      ostCs.forEach(function(c){
+        var rCol=c.risk==='critical'?'var(--red)':c.risk==='high'?'var(--red)':'var(--yellow)';
+        var rBg=c.risk==='critical'?'rgba(255,68,68,.08)':c.risk==='high'?'rgba(255,68,68,.04)':'rgba(245,197,24,.04)';
+        var tCol=c.type==='write_access'?'var(--red)':c.type==='privileged'?'var(--red)':c.type==='default_read'?'var(--yellow)':'var(--silver)';
+        var typeLabel=(c.type||'').replace(/_/g,' ').toUpperCase();
+        ostc+='<tr style="background:'+rBg+'"><td style="font-weight:700;font-size:12px;font-family:Share Tech Mono,monospace;color:var(--white)">'+c.community+'</td><td style="font-size:10px;color:'+tCol+'">'+typeLabel+'</td><td style="font-size:10px;color:'+rCol+';font-weight:700">'+c.risk.toUpperCase()+'</td><td style="font-size:10px;color:var(--silver);max-width:300px;word-break:break-word">'+(c.system_description||'—')+'</td></tr>';
+      });
+      ostc+='</tbody></table>';
+    }
+    // System descriptions
+    var ostDesc=ost.system_descriptions||[];
+    if(ostDesc.length){
+      ostc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">SYSTEM DESCRIPTIONS ('+ostDesc.length+')</div>';
+      ostc+='<div style="background:rgba(0,0,0,.3);padding:10px;font-family:Share Tech Mono,monospace;font-size:10px;color:var(--silver)">';
+      ostDesc.forEach(function(d){
+        ostc+='<div style="margin-bottom:4px;word-break:break-word">'+d+'</div>';
+      });
+      ostc+='</div>';
+    }
+    // Vulnerabilities
+    var ostVulns=ost.vulnerabilities||[];
+    if(ostVulns.length){
+      ostc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 8px">VULNERABILITIES ('+ostVulns.length+')</div>';
+      ostVulns.forEach(function(v){
+        var vCol=v.severity==='critical'?'var(--red)':v.severity==='high'?'var(--red)':'var(--yellow)';
+        var vBg=v.severity==='critical'?'rgba(255,68,68,.06)':v.severity==='high'?'rgba(255,68,68,.04)':'rgba(245,197,24,.04)';
+        ostc+='<div style="border:1px solid '+vCol+';background:'+vBg+';padding:12px;margin-bottom:8px">';
+        ostc+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+        ostc+='<span style="font-weight:700;color:var(--white);font-size:12px">'+v.title+'</span>';
+        ostc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid '+vCol+';color:'+vCol+'">'+v.severity.toUpperCase()+'</span>';
+        ostc+='</div>';
+        ostc+='<div style="font-size:11px;color:var(--silver);margin-bottom:6px">'+v.description+'</div>';
+        if(v.mitre) ostc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 6px;border:1px solid var(--accent);color:var(--accent);margin-right:6px">'+v.mitre+'</span>';
+        if(v.remediation) ostc+='<div style="font-size:10px;color:var(--green);margin-top:6px;border-left:2px solid var(--green);padding-left:8px">'+v.remediation+'</div>';
+        ostc+='</div>';
+      });
+    }
+    var ostWarn=ost.critical_count>0||ost.high_count>0;
+    var ostTitle='// ONESIXTYONE — SNMP COMMUNITY STRINGS ('+ost.total_found+' found / '+ost.total_tested+' tested · '+ost.total_vulnerabilities+' vulns)';
+    h+=mkSec(ostTitle,ostc,ostWarn);
+  }
+
+  // IKE-SCAN — VPN GATEWAY DETECTION
+  var ike=res.ikescan||{};
+  if(!ike.skipped&&ike.ike_detected){
+    var ikec='';
+    // Stats grid
+    ikec+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">';
+    var ikeMain=ike.main_mode||{};
+    var ikeAgg=ike.aggressive_mode||{};
+    var ikeNat=ike.nat_t||{};
+    ikec+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">MAIN MODE</div><div style="color:'+(ikeMain.responded?'var(--green)':'var(--silver)')+';font-size:14px;font-weight:700">'+(ikeMain.responded?'ACTIVE':'N/A')+'</div></div>';
+    ikec+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">AGGRESSIVE MODE</div><div style="color:'+(ikeAgg.responded&&ikeAgg.handshake==='aggressive'?'var(--red)':'var(--silver)')+';font-size:14px;font-weight:700">'+(ikeAgg.responded&&ikeAgg.handshake==='aggressive'?'ACTIVE':'N/A')+'</div></div>';
+    ikec+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NAT-T (4500)</div><div style="color:'+(ikeNat.responded?'var(--yellow)':'var(--silver)')+';font-size:14px;font-weight:700">'+(ikeNat.responded?'ACTIVE':'N/A')+'</div></div>';
+    ikec+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TRANSFORMS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+ike.total_transforms+'</div></div>';
+    ikec+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">VULNERABILITIES</div><div style="color:'+(ike.total_vulnerabilities?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+ike.total_vulnerabilities+'</div></div>';
+    if(ike.implementation) ikec+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">VENDOR</div><div style="color:var(--yellow);font-size:14px;font-weight:700">'+ike.implementation+'</div></div>';
+    ikec+='</div>';
+    // Severity badges
+    if(ike.critical_count||ike.high_count||ike.medium_count){
+      ikec+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+      if(ike.critical_count) ikec+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.12)">CRITICAL: '+ike.critical_count+'</span>';
+      if(ike.high_count) ikec+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+ike.high_count+'</span>';
+      if(ike.medium_count) ikec+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+ike.medium_count+'</span>';
+      ikec+='</div>';
+    }
+    // Transforms table
+    var ikeTx=ike.transforms||[];
+    if(ikeTx.length){
+      ikec+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:6px">IKE TRANSFORMS ('+ikeTx.length+')</div>';
+      ikec+='<table class="dt"><thead><tr><th>ENCRYPTION</th><th>HASH</th><th>DH GROUP</th><th>AUTH</th><th>STRENGTH</th></tr></thead><tbody>';
+      ikeTx.forEach(function(t){
+        var sCol=t.strength==='weak'?'var(--red)':t.strength==='moderate'?'var(--yellow)':'var(--green)';
+        ikec+='<tr><td style="font-family:Share Tech Mono,monospace;font-size:11px;font-weight:700">'+(t.encryption||'—')+'</td><td style="font-size:10px;font-family:Share Tech Mono,monospace">'+(t.hash||'—')+'</td><td style="font-size:10px;font-family:Share Tech Mono,monospace">'+(t.dh_group||'—')+'</td><td style="font-size:10px">'+(t.auth||'—')+'</td><td style="color:'+sCol+';font-size:10px;font-weight:700">'+t.strength.toUpperCase()+'</td></tr>';
+      });
+      ikec+='</tbody></table>';
+    }
+    // Vendor ID
+    if(ike.vendor_id){
+      ikec+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">VENDOR ID</div>';
+      ikec+='<div style="background:rgba(0,0,0,.3);padding:8px;font-family:Share Tech Mono,monospace;font-size:10px;color:var(--silver);word-break:break-all">'+ike.vendor_id+'</div>';
+    }
+    // Vulnerabilities
+    var ikeVulns=ike.vulnerabilities||[];
+    if(ikeVulns.length){
+      ikec+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 8px">VULNERABILITIES ('+ikeVulns.length+')</div>';
+      ikeVulns.forEach(function(v){
+        var vCol=v.severity==='critical'?'var(--red)':v.severity==='high'?'var(--red)':v.severity==='medium'?'var(--yellow)':'var(--silver)';
+        var vBg=v.severity==='critical'?'rgba(255,68,68,.06)':v.severity==='high'?'rgba(255,68,68,.04)':v.severity==='medium'?'rgba(245,197,24,.04)':'rgba(138,155,181,.04)';
+        ikec+='<div style="border:1px solid '+vCol+';background:'+vBg+';padding:12px;margin-bottom:8px">';
+        ikec+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+        ikec+='<span style="font-weight:700;color:var(--white);font-size:12px">'+v.title+'</span>';
+        ikec+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid '+vCol+';color:'+vCol+'">'+v.severity.toUpperCase()+'</span>';
+        ikec+='</div>';
+        ikec+='<div style="font-size:11px;color:var(--silver);margin-bottom:6px">'+v.description+'</div>';
+        if(v.mitre) ikec+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 6px;border:1px solid var(--accent);color:var(--accent);margin-right:6px">'+v.mitre+'</span>';
+        if(v.remediation) ikec+='<div style="font-size:10px;color:var(--green);margin-top:6px;border-left:2px solid var(--green);padding-left:8px">'+v.remediation+'</div>';
+        ikec+='</div>';
+      });
+    }
+    var ikeWarn=ike.critical_count>0||ike.high_count>0;
+    var ikeTitle='// IKE-SCAN — VPN GATEWAY ('+(ike.implementation||'Unknown')+' · '+ike.total_transforms+' transforms · '+ike.total_vulnerabilities+' vulns)';
+    h+=mkSec(ikeTitle,ikec,ikeWarn);
+  }
+
+  // SSLyze — SSL/TLS ANALYSIS
+  var sslyz=res.sslyze||{};
+  if(!sslyz.skipped&&sslyz.total_accepted_ciphers>0){
+    var sslc='';
+    // Stats grid
+    sslc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">';
+    sslc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">ACCEPTED CIPHERS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+sslyz.total_accepted_ciphers+'</div></div>';
+    sslc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">WEAK CIPHERS</div><div style="color:'+(sslyz.total_weak_ciphers?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+sslyz.total_weak_ciphers+'</div></div>';
+    sslc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">VULNERABILITIES</div><div style="color:'+(sslyz.total_vulnerabilities?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+sslyz.total_vulnerabilities+'</div></div>';
+    // Protocol badges
+    var sslProtos=sslyz.protocols||{};
+    ['TLSv1.3','TLSv1.2','TLSv1.1','TLSv1.0','SSLv3','SSLv2'].forEach(function(p){
+      var pd=sslProtos[p]||{};
+      if(pd.supported){
+        var pCol=(p==='SSLv2'||p==='SSLv3')?'var(--red)':(p==='TLSv1.0'||p==='TLSv1.1')?'var(--yellow)':'var(--green)';
+        sslc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">'+p+'</div><div style="color:'+pCol+';font-size:14px;font-weight:700">ENABLED ('+pd.cipher_count+')</div></div>';
+      }
+    });
+    sslc+='</div>';
+    // Certificate info
+    var sslCert=sslyz.certificate||{};
+    if(sslCert.subject||sslCert.issuer){
+      sslc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:6px">CERTIFICATE</div>';
+      sslc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:16px;background:rgba(0,0,0,.2);padding:12px">';
+      if(sslCert.subject) sslc+='<div><span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--accent)">SUBJECT</span><br><span style="font-size:11px;color:var(--white);word-break:break-all">'+sslCert.subject+'</span></div>';
+      if(sslCert.issuer) sslc+='<div><span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--accent)">ISSUER</span><br><span style="font-size:11px;color:var(--silver)">'+sslCert.issuer+'</span></div>';
+      if(sslCert.not_before) sslc+='<div><span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--accent)">VALID FROM</span><br><span style="font-size:11px;color:var(--silver)">'+sslCert.not_before+'</span></div>';
+      if(sslCert.not_after) sslc+='<div><span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--accent)">VALID UNTIL</span><br><span style="font-size:11px;color:var(--silver)">'+sslCert.not_after+'</span></div>';
+      if(sslCert.key_type) sslc+='<div><span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--accent)">KEY</span><br><span style="font-size:11px;color:var(--white)">'+sslCert.key_type+(sslCert.key_size?' '+sslCert.key_size+'-bit':'')+'</span></div>';
+      var matchCol=sslCert.hostname_match===false?'var(--red)':sslCert.hostname_match===true?'var(--green)':'var(--silver)';
+      var matchTxt=sslCert.hostname_match===false?'MISMATCH':sslCert.hostname_match===true?'MATCH':'N/A';
+      sslc+='<div><span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--accent)">HOSTNAME</span><br><span style="font-size:14px;font-weight:700;color:'+matchCol+'">'+matchTxt+'</span></div>';
+      sslc+='</div>';
+      // SAN list
+      if(sslCert.san&&sslCert.san.length){
+        sslc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">SUBJECT ALTERNATIVE NAMES ('+sslCert.san.length+')</div>';
+        sslc+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px">';
+        sslCert.san.forEach(function(s){sslc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 6px;border:1px solid var(--accent);color:var(--silver)">'+s+'</span>';});
+        sslc+='</div>';
+      }
+    }
+    // Severity badges
+    if(sslyz.critical_count||sslyz.high_count||sslyz.medium_count||sslyz.low_count){
+      sslc+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+      if(sslyz.critical_count) sslc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.12)">CRITICAL: '+sslyz.critical_count+'</span>';
+      if(sslyz.high_count) sslc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+sslyz.high_count+'</span>';
+      if(sslyz.medium_count) sslc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+sslyz.medium_count+'</span>';
+      if(sslyz.low_count) sslc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--accent);color:var(--accent);background:rgba(0,180,216,.08)">LOW: '+sslyz.low_count+'</span>';
+      sslc+='</div>';
+    }
+    // Vulnerability tests
+    var vtests=sslyz.vulnerabilities_tested||{};
+    var vtKeys=Object.keys(vtests);
+    if(vtKeys.length){
+      sslc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:6px">VULNERABILITY TESTS</div>';
+      sslc+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+      vtKeys.forEach(function(k){
+        var vt=vtests[k];
+        var vtCol=vt.vulnerable?'var(--red)':'var(--green)';
+        sslc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:4px 10px;border:1px solid '+vtCol+';color:'+vtCol+'">'+k.toUpperCase()+': '+(vt.vulnerable?'VULNERABLE':'SAFE')+'</span>';
+      });
+      sslc+='</div>';
+    }
+    // Weak ciphers table
+    var sslWeak=sslyz.weak_ciphers||[];
+    if(sslWeak.length){
+      sslc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:6px">WEAK CIPHERS ('+sslWeak.length+')</div>';
+      sslc+='<table class="dt"><thead><tr><th>CIPHER SUITE</th><th>PROTOCOL</th></tr></thead><tbody>';
+      var sslWShow=sslWeak.slice(0,20);
+      sslWShow.forEach(function(c){sslc+='<tr><td style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--red)">'+c.name+'</td><td style="font-size:10px">'+c.protocol+'</td></tr>';});
+      if(sslWeak.length>20) sslc+='<tr><td colspan="2" style="font-size:10px;color:var(--silver)">...and '+(sslWeak.length-20)+' more</td></tr>';
+      sslc+='</tbody></table>';
+    }
+    // Vulnerabilities
+    var sslVulns=sslyz.vulnerabilities||[];
+    if(sslVulns.length){
+      sslc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 8px">VULNERABILITIES ('+sslVulns.length+')</div>';
+      sslVulns.forEach(function(v){
+        var vCol=v.severity==='critical'?'var(--red)':v.severity==='high'?'var(--red)':v.severity==='medium'?'var(--yellow)':'var(--accent)';
+        var vBg=v.severity==='critical'?'rgba(255,68,68,.06)':v.severity==='high'?'rgba(255,68,68,.04)':v.severity==='medium'?'rgba(245,197,24,.04)':'rgba(0,180,216,.04)';
+        sslc+='<div style="border:1px solid '+vCol+';background:'+vBg+';padding:12px;margin-bottom:8px">';
+        sslc+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+        sslc+='<span style="font-weight:700;color:var(--white);font-size:12px">'+v.title+'</span>';
+        sslc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid '+vCol+';color:'+vCol+'">'+v.severity.toUpperCase()+'</span>';
+        sslc+='</div>';
+        sslc+='<div style="font-size:11px;color:var(--silver);margin-bottom:6px">'+v.description+'</div>';
+        if(v.mitre) sslc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 6px;border:1px solid var(--accent);color:var(--accent);margin-right:6px">'+v.mitre+'</span>';
+        if(v.remediation) sslc+='<div style="font-size:10px;color:var(--green);margin-top:6px;border-left:2px solid var(--green);padding-left:8px">'+v.remediation+'</div>';
+        sslc+='</div>';
+      });
+    }
+    var sslWarn=sslyz.critical_count>0||sslyz.high_count>0;
+    var sslTitle='// SSLyze — SSL/TLS ANALYSIS ('+sslyz.total_accepted_ciphers+' ciphers · '+sslyz.total_weak_ciphers+' weak · '+sslyz.total_vulnerabilities+' vulns)';
+    h+=mkSec(sslTitle,sslc,sslWarn);
   }
 
   // AbuseIPDB
@@ -3153,7 +3726,7 @@ function loadScanDetail(taskId) {
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
       nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
-      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, netdiscover:s.netdiscover||null, arpscan:s.arpscan||null, fping:s.fping||null, traceroute:s.traceroute||null, nbtscan:s.nbtscan||null, snmpwalk:s.snmpwalk||null, netexec:s.netexec||null, mitre:s.mitre||null,
+      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, netdiscover:s.netdiscover||null, arpscan:s.arpscan||null, fping:s.fping||null, traceroute:s.traceroute||null, nbtscan:s.nbtscan||null, snmpwalk:s.snmpwalk||null, netexec:s.netexec||null, bloodhound:s.bloodhound||null, responder:s.responder||null, fierce:s.fierce||null, smbmap:s.smbmap||null, onesixtyone:s.onesixtyone||null, ikescan:s.ikescan||null, sslyze:s.sslyze||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -3398,7 +3971,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','netexec','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','netexec','bloodhound','responder','fierce','smbmap','onesixtyone','ikescan','sslyze','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

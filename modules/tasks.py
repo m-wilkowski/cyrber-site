@@ -11,7 +11,7 @@ from modules.harvester_scan import scan as harvester_scan
 from modules.masscan_scan import scan as masscan_scan
 # from modules.censys_scan import scan as censys_scan  # requires paid API plan - module ready
 from modules.ipinfo_scan import scan as ipinfo_scan
-from modules.enum4linux_scan import scan as enum4linux_scan
+from modules.enum4linux_scan import enum4linux_scan
 from modules.abuseipdb_scan import scan as abuseipdb_scan
 from modules.otx_scan import scan as otx_scan
 from modules.llm_analyze import analyze_scan_results
@@ -45,6 +45,13 @@ from modules.traceroute_scan import traceroute_scan
 from modules.nbtscan_scan import nbtscan_scan
 from modules.snmpwalk_scan import snmpwalk_scan
 from modules.netexec_scan import netexec_scan
+from modules.bloodhound_scan import bloodhound_scan
+from modules.responder_scan import responder_scan
+from modules.fierce_scan import fierce_scan
+from modules.smbmap_scan import smbmap_scan
+from modules.onesixtyone_scan import onesixtyone_scan
+from modules.ikescan_scan import ikescan_scan
+from modules.sslyze_scan import sslyze_scan
 from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
@@ -85,7 +92,6 @@ def full_scan_task(target: str):
     harvester = harvester_scan(target)
     masscan = masscan_scan(target)
     ipinfo = ipinfo_scan(target)
-    enum4linux = enum4linux_scan(target)
     abuseipdb = abuseipdb_scan(target)
     otx = otx_scan(target)
     whois = whois_scan(target)
@@ -107,6 +113,14 @@ def full_scan_task(target: str):
     nbtscan = nbtscan_scan(target)
     snmpwalk = snmpwalk_scan(target)
     netexec = netexec_scan(target)
+    enum4linux = enum4linux_scan(target)
+    bloodhound = bloodhound_scan(target)
+    responder = responder_scan(target)
+    fierce = fierce_scan(target)
+    smbmap = smbmap_scan(target)
+    onesixtyone = onesixtyone_scan(target)
+    ikescan = ikescan_scan(target)
+    sslyze = sslyze_scan(target)
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -119,7 +133,6 @@ def full_scan_task(target: str):
         "harvester": harvester,
         "masscan": masscan,
         "ipinfo": ipinfo,
-        "enum4linux": enum4linux,
         "abuseipdb": abuseipdb,
         "otx": otx,
     }
@@ -190,6 +203,20 @@ def full_scan_task(target: str):
         result["snmpwalk"] = snmpwalk
     if not netexec.get("skipped"):
         result["netexec"] = netexec
+    if not bloodhound.get("skipped"):
+        result["bloodhound"] = bloodhound
+    if not responder.get("skipped") and responder.get("total_protocols", 0) > 0:
+        result["responder"] = responder
+    if not fierce.get("skipped") and fierce.get("total_subdomains", 0) > 0:
+        result["fierce"] = fierce
+    if not smbmap.get("skipped") and smbmap.get("total_shares", 0) > 0:
+        result["smbmap"] = smbmap
+    if not onesixtyone.get("skipped") and onesixtyone.get("total_found", 0) > 0:
+        result["onesixtyone"] = onesixtyone
+    if not ikescan.get("skipped") and ikescan.get("ike_detected"):
+        result["ikescan"] = ikescan
+    if not sslyze.get("skipped") and sslyze.get("total_accepted_ciphers", 0) > 0:
+        result["sslyze"] = sslyze
     cwe = cwe_mapping(result)
     if cwe.get("total", 0) > 0:
         result["cwe"] = cwe

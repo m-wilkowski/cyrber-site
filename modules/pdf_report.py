@@ -217,15 +217,76 @@ def _enum4linux_html(enum4linux: dict) -> str:
     if not enum4linux or enum4linux.get("skipped"):
         return "<p class='muted'>Pominięto (cel nie jest hostem SMB).</p>"
     html = ""
+    osi = enum4linux.get("os_info", {})
+    # OS info grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    if osi.get("os"):
+        html += f"<div><span class='muted'>OS</span><br><span style='font-size:12px;font-weight:700;color:#e8f0fc'>{osi['os']}</span></div>"
+    if osi.get("version"):
+        html += f"<div><span class='muted'>VERSION</span><br><span style='font-size:11px;color:#b8ccec'>{osi['version']}</span></div>"
+    if osi.get("domain"):
+        html += f"<div><span class='muted'>DOMAIN</span><br><span style='font-size:14px;font-weight:700;color:#f5c518'>{osi['domain']}</span></div>"
+    if osi.get("workgroup"):
+        html += f"<div><span class='muted'>WORKGROUP</span><br><span style='font-size:12px;font-weight:700;color:#e8f0fc'>{osi['workgroup']}</span></div>"
+    if osi.get("netbios_name"):
+        html += f"<div><span class='muted'>NETBIOS NAME</span><br><span style='font-size:12px;font-weight:700;color:#e8f0fc;font-family:monospace'>{osi['netbios_name']}</span></div>"
+    html += "</div>"
+    # Vulnerability badges
+    vulns = enum4linux.get("vulnerabilities", [])
+    if vulns:
+        sev_color = {"high": "#ff4444", "medium": "#ff8c00", "low": "#f5c518"}
+        badges = ""
+        for v in vulns:
+            color = sev_color.get(v.get("severity", "medium"), "#f5c518")
+            badges += f"<span style='font-size:10px;color:{color};border:1px solid {color};padding:2px 8px;margin-right:6px'>{v.get('severity','').upper()}: {v.get('title','')}</span>"
+        html += f"<div style='margin-bottom:12px'>{badges}</div>"
+    # Users table
     users = enum4linux.get("users", [])
     if users:
-        rows = "".join(f"<tr><td>{u.get('username','')}</td><td>{u.get('rid','')}</td></tr>" for u in users[:20])
-        html += f"<div style='margin-bottom:12px'><div class='muted' style='margin-bottom:4px'>USERS ({len(users)})</div><table><thead><tr><th>USERNAME</th><th>RID</th></tr></thead><tbody>{rows}</tbody></table></div>"
+        rows = ""
+        for u in users[:30]:
+            rows += f"<tr><td class='mono' style='font-size:11px;color:#f5c518'>{u.get('username','')}</td><td style='font-size:10px'>{u.get('rid','')}</td><td style='font-size:10px'>{u.get('description','')}</td><td style='font-size:9px;color:#8a9bb5'>{u.get('flags','')}</td></tr>"
+        extra = f"<p class='muted'>... i {len(users)-30} więcej</p>" if len(users) > 30 else ""
+        html += f"<div style='margin-bottom:12px'><div class='muted' style='margin-bottom:4px'>USERS ({len(users)})</div><table><thead><tr><th>USERNAME</th><th>RID</th><th>DESCRIPTION</th><th>FLAGS</th></tr></thead><tbody>{rows}</tbody></table>{extra}</div>"
+    # Groups table
+    groups = enum4linux.get("groups", [])
+    if groups:
+        rows = ""
+        for g in groups[:20]:
+            members = ", ".join(g.get("members", [])) or "—"
+            rows += f"<tr><td style='font-size:11px;font-weight:700'>{g.get('name','')}</td><td style='font-size:10px'>{g.get('rid','')}</td><td style='font-size:10px;color:#8a9bb5'>{members}</td></tr>"
+        html += f"<div style='margin-bottom:12px'><div class='muted' style='margin-bottom:4px'>GROUPS ({len(groups)})</div><table><thead><tr><th>GROUP</th><th>RID</th><th>MEMBERS</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    # Shares table
     shares = enum4linux.get("shares", [])
     if shares:
-        rows = "".join(f"<tr><td>{s.get('name','')}</td><td>{s.get('type','')}</td><td>{s.get('comment','')}</td></tr>" for s in shares)
-        html += f"<div style='margin-bottom:12px'><div class='muted' style='margin-bottom:4px'>SHARES ({len(shares)})</div><table><thead><tr><th>NAME</th><th>TYPE</th><th>COMMENT</th></tr></thead><tbody>{rows}</tbody></table></div>"
-    if not html:
+        rows = ""
+        for s in shares:
+            acc = s.get("access", "NO ACCESS")
+            acc_color = "#ff4444" if "WRITE" in acc else "#f5c518" if acc == "READ" else "#8a9bb5"
+            rows += f"<tr><td class='mono' style='font-size:11px'>{s.get('name','')}</td><td style='font-size:10px'>{s.get('type','')}</td><td style='color:{acc_color};font-size:10px'>{acc}</td><td style='font-size:10px'>{s.get('comment','')}</td></tr>"
+        html += f"<div style='margin-bottom:12px'><div class='muted' style='margin-bottom:4px'>SHARES ({len(shares)})</div><table><thead><tr><th>NAME</th><th>TYPE</th><th>ACCESS</th><th>COMMENT</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    # Password policy
+    pol = enum4linux.get("password_policy", {})
+    if pol:
+        html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-top:10px'>"
+        ml = pol.get("min_length")
+        if ml is not None:
+            ml_color = "#ff4444" if ml < 8 else "#f5c518" if ml < 12 else "#3ddc84"
+            html += f"<div><span class='muted'>MIN LENGTH</span><br><span style='font-size:18px;font-weight:700;color:{ml_color}'>{ml}</span></div>"
+        lt = pol.get("lockout_threshold")
+        if lt is not None:
+            lt_color = "#ff4444" if lt == 0 else "#f5c518" if lt < 5 else "#3ddc84"
+            html += f"<div><span class='muted'>LOCKOUT THRESHOLD</span><br><span style='font-size:18px;font-weight:700;color:{lt_color}'>{lt}</span></div>"
+        if pol.get("lockout_duration"):
+            html += f"<div><span class='muted'>LOCKOUT DURATION</span><br><span style='font-size:14px;font-weight:700;color:#8a9bb5'>{pol['lockout_duration']} min</span></div>"
+        if pol.get("max_age"):
+            html += f"<div><span class='muted'>MAX AGE</span><br><span style='font-size:14px;font-weight:700;color:#8a9bb5'>{pol['max_age']} days</span></div>"
+        cx = pol.get("complexity")
+        if cx is not None:
+            cx_color = "#3ddc84" if cx else "#ff4444"
+            html += f"<div><span class='muted'>COMPLEXITY</span><br><span style='font-size:14px;font-weight:700;color:{cx_color}'>{'ENABLED' if cx else 'DISABLED'}</span></div>"
+        html += "</div>"
+    if not html.strip():
         html = "<p class='muted'>Brak danych SMB.</p>"
     return html
 
@@ -1315,6 +1376,457 @@ def _zap_html(zap: dict) -> str:
         <tbody>{rows}</tbody>
     </table>{extra}"""
 
+def _bloodhound_html(bloodhound: dict) -> str:
+    if not bloodhound or bloodhound.get("skipped"):
+        return "<p class='muted'>Brak danych BloodHound (AD niedostępne lub brak uprawnień).</p>"
+    html = ""
+    # Stats grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>USERS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{bloodhound.get('total_users', 0)}</span></div>"
+    html += f"<div><span class='muted'>COMPUTERS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{bloodhound.get('total_computers', 0)}</span></div>"
+    html += f"<div><span class='muted'>GROUPS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{bloodhound.get('total_groups', 0)}</span></div>"
+    if bloodhound.get("total_domains"):
+        html += f"<div><span class='muted'>DOMAINS</span><br><span style='font-size:20px;font-weight:700;color:#f5c518'>{bloodhound['total_domains']}</span></div>"
+    if bloodhound.get("total_sessions"):
+        html += f"<div><span class='muted'>SESSIONS</span><br><span style='font-size:20px;font-weight:700;color:#8a9bb5'>{bloodhound['total_sessions']}</span></div>"
+    ap_cnt = bloodhound.get("total_attack_paths", 0)
+    if ap_cnt:
+        html += f"<div><span class='muted'>ATTACK PATHS</span><br><span style='font-size:20px;font-weight:700;color:#ff4444'>{ap_cnt}</span></div>"
+    html += "</div>"
+    # Severity badges
+    crit = bloodhound.get("critical_count", 0)
+    high = bloodhound.get("high_count", 0)
+    med = bloodhound.get("medium_count", 0)
+    if crit or high or med:
+        badges = ""
+        if crit:
+            badges += f"<span style='font-size:10px;color:#ff4444;border:1px solid #ff4444;padding:2px 8px;margin-right:6px;background:rgba(255,68,68,.12)'>CRITICAL: {crit}</span>"
+        if high:
+            badges += f"<span style='font-size:10px;color:#ff4444;border:1px solid #ff4444;padding:2px 8px;margin-right:6px;background:rgba(255,68,68,.08)'>HIGH: {high}</span>"
+        if med:
+            badges += f"<span style='font-size:10px;color:#f5c518;border:1px solid #f5c518;padding:2px 8px;margin-right:6px;background:rgba(245,197,24,.08)'>MEDIUM: {med}</span>"
+        html += f"<div style='margin-bottom:12px'>{badges}</div>"
+    # Attack paths
+    attack_paths = bloodhound.get("attack_paths", [])
+    if attack_paths:
+        for ap in attack_paths:
+            sev = ap.get("severity", "medium")
+            color = "#ff4444" if sev in ("critical", "high") else "#f5c518"
+            affected = ap.get("affected", [])
+            aff_html = " ".join(f"<span style='font-size:9px;color:#f5c518;border:1px solid rgba(245,197,24,.3);padding:1px 5px'>{a}</span>" for a in affected[:8])
+            mitre_badge = f"<span style='font-size:9px;color:#4a8fd4;border:1px solid rgba(74,143,212,.3);padding:1px 5px'>{ap.get('mitre','')}</span> " if ap.get("mitre") else ""
+            html += f"<div style='border:1px solid {color};padding:10px;margin-bottom:6px'>"
+            html += f"<div style='display:flex;justify-content:space-between'><span style='font-weight:700;color:#e8f0fc;font-size:12px'>{ap.get('title','')}</span>"
+            html += f"<span style='font-size:10px;color:{color};border:1px solid {color};padding:1px 6px'>{sev.upper()}</span></div>"
+            html += f"<div style='font-size:11px;color:#8a9bb5;margin:4px 0'>{ap.get('description','')}</div>"
+            html += f"{mitre_badge}{aff_html}</div>"
+    # Users table (top risky)
+    users = bloodhound.get("users", [])
+    risky_users = [u for u in users if u.get("has_spn") or u.get("admin_count") or u.get("dont_require_preauth") or u.get("password_not_required")]
+    if risky_users:
+        rows = ""
+        for u in risky_users[:20]:
+            flags = []
+            if u.get("has_spn"):
+                flags.append("SPN")
+            if u.get("dont_require_preauth"):
+                flags.append("NO_PREAUTH")
+            if u.get("password_not_required"):
+                flags.append("PWD_NOT_REQ")
+            if u.get("password_never_expires"):
+                flags.append("NEVER_EXPIRES")
+            flags_str = ", ".join(flags) or "—"
+            name_color = "#ff4444" if u.get("admin_count") else "#f5c518" if u.get("has_spn") else "#e8f0fc"
+            rows += f"<tr><td style='font-size:11px;font-weight:700;color:{name_color}'>{u.get('name','')}</td><td style='font-size:10px'>{u.get('domain','')}</td><td style='color:{'#ff4444' if u.get('admin_count') else '#8a9bb5'};font-size:10px'>{'YES' if u.get('admin_count') else '—'}</td><td style='font-size:9px;color:#ff8c00'>{flags_str}</td></tr>"
+        html += f"<div style='margin-top:10px'><div class='muted' style='margin-bottom:4px'>HIGH-RISK USERS ({len(risky_users)})</div><table><thead><tr><th>USER</th><th>DOMAIN</th><th>ADMIN</th><th>FLAGS</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    # Computers with unconstrained delegation
+    comps = bloodhound.get("computers", [])
+    uc_comps = [c for c in comps if c.get("unconstraineddelegation")]
+    if uc_comps:
+        rows = ""
+        for c in uc_comps[:15]:
+            rows += f"<tr><td class='mono' style='font-size:11px'>{c.get('name','')}</td><td style='font-size:10px'>{c.get('os','')}</td><td style='color:#ff4444;font-size:10px'>YES</td></tr>"
+        html += f"<div style='margin-top:10px'><div class='muted' style='margin-bottom:4px'>UNCONSTRAINED DELEGATION ({len(uc_comps)})</div><table><thead><tr><th>COMPUTER</th><th>OS</th><th>UNCONSTRAINED</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    if not html.strip():
+        html = "<p class='muted'>Brak danych AD.</p>"
+    return html
+
+def _responder_html(responder: dict) -> str:
+    if not responder or responder.get("skipped"):
+        return "<p class='muted'>Brak danych Responder (narzędzie niedostępne lub brak wykrytych protokołów).</p>"
+    html = ""
+    # Stats grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>PROTOCOLS</span><br><span style='font-size:20px;font-weight:700;color:#ff4444'>{responder.get('total_protocols', 0)}</span></div>"
+    html += f"<div><span class='muted'>REQUESTS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{responder.get('total_requests', 0)}</span></div>"
+    vuln_cnt = responder.get("total_vulnerabilities", 0)
+    vuln_col = "#ff4444" if vuln_cnt else "#3ddc84"
+    html += f"<div><span class='muted'>VULNERABILITIES</span><br><span style='font-size:20px;font-weight:700;color:{vuln_col}'>{vuln_cnt}</span></div>"
+    html += f"<div><span class='muted'>INTERFACE</span><br><span style='font-size:14px;font-weight:700;color:#8a9bb5'>{responder.get('interface', 'N/A')}</span></div>"
+    html += f"<div><span class='muted'>DURATION</span><br><span style='font-size:14px;font-weight:700;color:#8a9bb5'>{responder.get('duration_seconds', 0)}s</span></div>"
+    html += "</div>"
+    # Severity badges
+    crit = responder.get("critical_count", 0)
+    high = responder.get("high_count", 0)
+    med = responder.get("medium_count", 0)
+    if crit or high or med:
+        badges = ""
+        if crit:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #ff4444;color:#ff4444;background:rgba(255,68,68,.12);margin-right:6px'>CRITICAL: {crit}</span>"
+        if high:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #ff4444;color:#ff4444;background:rgba(255,68,68,.08);margin-right:6px'>HIGH: {high}</span>"
+        if med:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #f5c518;color:#f5c518;background:rgba(245,197,24,.08);margin-right:6px'>MEDIUM: {med}</span>"
+        html += f"<div style='margin-bottom:12px'>{badges}</div>"
+    # Detected protocols
+    protos = responder.get("protocols_detected", [])
+    if protos:
+        proto_badges = ""
+        for p in protos:
+            p_col = "#ff4444" if p in ("NTLM", "LLMNR", "NBT-NS", "WPAD") else "#f5c518"
+            proto_badges += f"<span style='display:inline-block;font-size:11px;padding:3px 10px;border:1px solid {p_col};color:{p_col};margin-right:4px;margin-bottom:4px'>{p}</span>"
+        html += f"<div style='margin-bottom:12px'><div class='muted' style='margin-bottom:4px'>POISONABLE PROTOCOLS ({len(protos)})</div>{proto_badges}</div>"
+    # Vulnerabilities
+    vulns = responder.get("vulnerabilities", [])
+    if vulns:
+        for v in vulns:
+            sev = v.get("severity", "medium")
+            v_col = "#ff4444" if sev in ("critical", "high") else "#f5c518"
+            mitre_badge = f"<span style='font-size:9px;padding:2px 6px;border:1px solid #5eead4;color:#5eead4;margin-left:6px'>{v['mitre']}</span>" if v.get("mitre") else ""
+            html += f"<div style='border:1px solid {v_col};padding:10px;margin-bottom:6px'>"
+            html += f"<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='font-weight:700;color:#e8f0fc;font-size:11px'>{v['title']}</span><span style='font-size:9px;padding:2px 6px;border:1px solid {v_col};color:{v_col}'>{sev.upper()}</span></div>"
+            html += f"<div style='font-size:10px;color:#8a9bb5;margin-bottom:4px'>{v.get('description','')}</div>"
+            html += mitre_badge
+            if v.get("remediation"):
+                html += f"<div style='font-size:9px;color:#3ddc84;margin-top:6px;border-left:2px solid #3ddc84;padding-left:6px'>{v['remediation']}</div>"
+            html += "</div>"
+    # Browsers
+    browsers = responder.get("browsers_detected", [])
+    if browsers:
+        rows = ""
+        for b in browsers[:20]:
+            rows += f"<tr><td class='mono' style='font-size:11px'>{b.get('name','')}</td><td style='font-size:10px'>{b.get('suffix','')}</td></tr>"
+        html += f"<div style='margin-top:10px'><div class='muted' style='margin-bottom:4px'>NETWORK HOSTS ({len(browsers)})</div><table><thead><tr><th>NAME</th><th>SUFFIX</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    if not html.strip():
+        html = "<p class='muted'>Brak danych.</p>"
+    return html
+
+def _fierce_html(fierce: dict) -> str:
+    if not fierce or fierce.get("skipped"):
+        return "<p class='muted'>Brak danych Fierce (narzędzie niedostępne lub cel to adres IP).</p>"
+    html = ""
+    # Stats grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>SUBDOMAINS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{fierce.get('total_subdomains', 0)}</span></div>"
+    html += f"<div><span class='muted'>NAMESERVERS</span><br><span style='font-size:20px;font-weight:700;color:#8a9bb5'>{fierce.get('total_nameservers', 0)}</span></div>"
+    html += f"<div><span class='muted'>NEARBY IPs</span><br><span style='font-size:20px;font-weight:700;color:#8a9bb5'>{fierce.get('total_nearby', 0)}</span></div>"
+    zt = fierce.get("zone_transfer", {})
+    if zt.get("attempted"):
+        zt_col = "#ff4444" if zt.get("successful") else "#3ddc84"
+        zt_txt = "SUCCESSFUL" if zt.get("successful") else "FAILED"
+        html += f"<div><span class='muted'>ZONE TRANSFER</span><br><span style='font-size:14px;font-weight:700;color:{zt_col}'>{zt_txt}</span></div>"
+    if fierce.get("wildcard"):
+        html += f"<div><span class='muted'>WILDCARD</span><br><span style='font-size:14px;font-weight:700;color:#f5c518'>{fierce['wildcard']}</span></div>"
+    html += "</div>"
+    # Zone transfer warning
+    if zt.get("successful"):
+        html += "<div style='border:1px solid #ff4444;padding:10px;margin-bottom:10px'>"
+        html += "<span style='font-weight:700;color:#ff4444;font-size:11px'>ZONE TRANSFER SUCCESSFUL</span>"
+        html += "<div style='font-size:10px;color:#8a9bb5;margin-top:4px'>DNS zone transfer is enabled — all DNS records are exposed. This is a critical misconfiguration.</div>"
+        html += "</div>"
+    # Nameservers
+    ns_list = fierce.get("nameservers", [])
+    if ns_list:
+        ns_badges = ""
+        for ns in ns_list:
+            ns_badges += f"<span style='display:inline-block;font-size:10px;padding:2px 8px;border:1px solid #5eead4;color:#5eead4;margin-right:4px;margin-bottom:4px'>{ns}</span>"
+        html += f"<div style='margin-bottom:10px'><div class='muted' style='margin-bottom:4px'>NAMESERVERS ({len(ns_list)})</div>{ns_badges}</div>"
+    # Subdomains table
+    subs = fierce.get("subdomains", [])
+    if subs:
+        rows = ""
+        for s in subs[:30]:
+            rows += f"<tr><td class='mono' style='font-size:10px;font-weight:700'>{s.get('name','')}</td><td class='mono' style='font-size:10px'>{s.get('ip','')}</td><td style='font-size:9px;color:#5eead4'>{s.get('source','')}</td></tr>"
+        extra = f"<div class='muted' style='margin-top:6px;font-size:9px'>... i {len(subs)-30} więcej</div>" if len(subs) > 30 else ""
+        html += f"<div style='margin-top:10px'><div class='muted' style='margin-bottom:4px'>SUBDOMAINS ({len(subs)})</div><table><thead><tr><th>SUBDOMAIN</th><th>IP</th><th>SOURCE</th></tr></thead><tbody>{rows}</tbody></table>{extra}</div>"
+    # Nearby IPs
+    nearby = fierce.get("nearby_ips", [])
+    if nearby:
+        rows = ""
+        for n in nearby[:20]:
+            rows += f"<tr><td class='mono' style='font-size:10px'>{n.get('ip','')}</td><td class='mono' style='font-size:10px'>{n.get('hostname','')}</td></tr>"
+        extra = f"<div class='muted' style='margin-top:6px;font-size:9px'>... i {len(nearby)-20} więcej</div>" if len(nearby) > 20 else ""
+        html += f"<div style='margin-top:10px'><div class='muted' style='margin-bottom:4px'>NEARBY IPs ({len(nearby)})</div><table><thead><tr><th>IP</th><th>HOSTNAME</th></tr></thead><tbody>{rows}</tbody></table>{extra}</div>"
+    if not html.strip():
+        html = "<p class='muted'>Brak danych.</p>"
+    return html
+
+def _smbmap_html(smbmap: dict) -> str:
+    if not smbmap or smbmap.get("skipped"):
+        return "<p class='muted'>Brak danych SMBMap (narzędzie niedostępne lub SMB nieosiągalny).</p>"
+    html = ""
+    # Stats grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>SHARES</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{smbmap.get('total_shares', 0)}</span></div>"
+    r_cnt = smbmap.get("readable_shares", 0)
+    w_cnt = smbmap.get("writable_shares", 0)
+    html += f"<div><span class='muted'>READABLE</span><br><span style='font-size:20px;font-weight:700;color:{'#f5c518' if r_cnt else '#8a9bb5'}'>{r_cnt}</span></div>"
+    html += f"<div><span class='muted'>WRITABLE</span><br><span style='font-size:20px;font-weight:700;color:{'#ff4444' if w_cnt else '#8a9bb5'}'>{w_cnt}</span></div>"
+    f_cnt = smbmap.get("total_files", 0)
+    html += f"<div><span class='muted'>FILES</span><br><span style='font-size:20px;font-weight:700;color:{'#f5c518' if f_cnt else '#8a9bb5'}'>{f_cnt}</span></div>"
+    method = (smbmap.get("access_method") or "N/A").upper()
+    m_col = "#ff4444" if method == "NULL" else "#f5c518"
+    html += f"<div><span class='muted'>ACCESS</span><br><span style='font-size:14px;font-weight:700;color:{m_col}'>{method} SESSION</span></div>"
+    v_cnt = smbmap.get("total_vulnerabilities", 0)
+    html += f"<div><span class='muted'>VULNS</span><br><span style='font-size:20px;font-weight:700;color:{'#ff4444' if v_cnt else '#3ddc84'}'>{v_cnt}</span></div>"
+    html += "</div>"
+    # Severity badges
+    crit = smbmap.get("critical_count", 0)
+    high = smbmap.get("high_count", 0)
+    med = smbmap.get("medium_count", 0)
+    if crit or high or med:
+        badges = ""
+        if crit:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #ff4444;color:#ff4444;background:rgba(255,68,68,.12);margin-right:6px'>CRITICAL: {crit}</span>"
+        if high:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #ff4444;color:#ff4444;background:rgba(255,68,68,.08);margin-right:6px'>HIGH: {high}</span>"
+        if med:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #f5c518;color:#f5c518;background:rgba(245,197,24,.08);margin-right:6px'>MEDIUM: {med}</span>"
+        html += f"<div style='margin-bottom:12px'>{badges}</div>"
+    # Shares table
+    shares = smbmap.get("shares", [])
+    if shares:
+        rows = ""
+        for s in shares:
+            r_col = "#3ddc84" if s.get("read") else "#8a9bb5"
+            w_col = "#ff4444" if s.get("write") else "#8a9bb5"
+            n_col = "#ff4444" if s.get("write") else "#f5c518" if s.get("read") else "#8a9bb5"
+            rows += f"<tr><td style='font-weight:700;font-size:10px;color:{n_col}'>{s.get('name','')}</td><td style='font-size:9px'>{s.get('access','')}</td><td style='color:{r_col};font-size:10px'>{'YES' if s.get('read') else '—'}</td><td style='color:{w_col};font-size:10px;font-weight:{'700' if s.get('write') else '400'}'>{'YES' if s.get('write') else '—'}</td></tr>"
+        html += f"<div style='margin-bottom:10px'><div class='muted' style='margin-bottom:4px'>SHARES ({len(shares)})</div><table><thead><tr><th>SHARE</th><th>ACCESS</th><th>READ</th><th>WRITE</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    # Interesting files
+    files = smbmap.get("interesting_files", [])
+    if files:
+        rows = ""
+        for f in files[:20]:
+            fn_col = "#ff4444" if f.get("sensitive") else "#e8f0fc"
+            rows += f"<tr><td style='font-size:9px;color:#5eead4'>{f.get('share','')}</td><td style='font-weight:700;font-size:10px;color:{fn_col}'>{f.get('filename','')}</td><td style='font-size:9px'>{f.get('size','—')}</td><td style='color:{'#ff4444' if f.get('sensitive') else '#8a9bb5'};font-size:9px'>{'YES' if f.get('sensitive') else '—'}</td></tr>"
+        extra = f"<div class='muted' style='margin-top:6px;font-size:9px'>... i {len(files)-20} więcej</div>" if len(files) > 20 else ""
+        html += f"<div style='margin-top:10px'><div class='muted' style='margin-bottom:4px'>INTERESTING FILES ({len(files)})</div><table><thead><tr><th>SHARE</th><th>FILENAME</th><th>SIZE</th><th>SENSITIVE</th></tr></thead><tbody>{rows}</tbody></table>{extra}</div>"
+    # Vulnerabilities
+    vulns = smbmap.get("vulnerabilities", [])
+    if vulns:
+        for v in vulns:
+            sev = v.get("severity", "medium")
+            v_col = "#ff4444" if sev in ("critical", "high") else "#f5c518"
+            mitre_badge = f"<span style='font-size:9px;padding:2px 6px;border:1px solid #5eead4;color:#5eead4;margin-left:6px'>{v['mitre']}</span>" if v.get("mitre") else ""
+            html += f"<div style='border:1px solid {v_col};padding:10px;margin-bottom:6px'>"
+            html += f"<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='font-weight:700;color:#e8f0fc;font-size:11px'>{v['title']}</span><span style='font-size:9px;padding:2px 6px;border:1px solid {v_col};color:{v_col}'>{sev.upper()}</span></div>"
+            html += f"<div style='font-size:10px;color:#8a9bb5;margin-bottom:4px'>{v.get('description','')}</div>"
+            html += mitre_badge
+            if v.get("remediation"):
+                html += f"<div style='font-size:9px;color:#3ddc84;margin-top:6px;border-left:2px solid #3ddc84;padding-left:6px'>{v['remediation']}</div>"
+            html += "</div>"
+    if not html.strip():
+        html = "<p class='muted'>Brak danych.</p>"
+    return html
+
+def _onesixtyone_html(onesixtyone: dict) -> str:
+    if not onesixtyone or onesixtyone.get("skipped"):
+        return "<p class='muted'>Brak danych onesixtyone (narzędzie niedostępne lub SNMP nieosiągalny).</p>"
+    html = ""
+    # Stats grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    found = onesixtyone.get("total_found", 0)
+    html += f"<div><span class='muted'>FOUND</span><br><span style='font-size:20px;font-weight:700;color:#ff4444'>{found}</span></div>"
+    html += f"<div><span class='muted'>TESTED</span><br><span style='font-size:20px;font-weight:700;color:#8a9bb5'>{onesixtyone.get('total_tested', 0)}</span></div>"
+    v_cnt = onesixtyone.get("total_vulnerabilities", 0)
+    html += f"<div><span class='muted'>VULNS</span><br><span style='font-size:20px;font-weight:700;color:{'#ff4444' if v_cnt else '#3ddc84'}'>{v_cnt}</span></div>"
+    html += "</div>"
+    # Severity badges
+    crit = onesixtyone.get("critical_count", 0)
+    high = onesixtyone.get("high_count", 0)
+    med = onesixtyone.get("medium_count", 0)
+    if crit or high or med:
+        badges = ""
+        if crit:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #ff4444;color:#ff4444;background:rgba(255,68,68,.12);margin-right:6px'>CRITICAL: {crit}</span>"
+        if high:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #ff4444;color:#ff4444;background:rgba(255,68,68,.08);margin-right:6px'>HIGH: {high}</span>"
+        if med:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #f5c518;color:#f5c518;background:rgba(245,197,24,.08);margin-right:6px'>MEDIUM: {med}</span>"
+        html += f"<div style='margin-bottom:12px'>{badges}</div>"
+    # Community strings table
+    communities = onesixtyone.get("communities_found", [])
+    if communities:
+        rows = ""
+        for c in communities:
+            risk = c.get("risk", "medium")
+            r_col = "#ff4444" if risk in ("critical", "high") else "#f5c518"
+            t_col = "#ff4444" if c.get("type") in ("write_access", "privileged") else "#f5c518" if c.get("type") == "default_read" else "#8a9bb5"
+            type_label = (c.get("type") or "").replace("_", " ").upper()
+            rows += f"<tr><td style='font-weight:700;font-size:11px;color:#e8f0fc'>{c.get('community','')}</td><td style='font-size:9px;color:{t_col}'>{type_label}</td><td style='font-size:9px;color:{r_col};font-weight:700'>{risk.upper()}</td><td style='font-size:9px;color:#8a9bb5'>{c.get('system_description','—')}</td></tr>"
+        html += f"<div style='margin-bottom:10px'><div class='muted' style='margin-bottom:4px'>VALID COMMUNITY STRINGS ({len(communities)})</div><table><thead><tr><th>STRING</th><th>TYPE</th><th>RISK</th><th>SYSTEM</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    # Vulnerabilities
+    vulns = onesixtyone.get("vulnerabilities", [])
+    if vulns:
+        for v in vulns:
+            sev = v.get("severity", "medium")
+            v_col = "#ff4444" if sev in ("critical", "high") else "#f5c518"
+            mitre_badge = f"<span style='font-size:9px;padding:2px 6px;border:1px solid #5eead4;color:#5eead4;margin-left:6px'>{v['mitre']}</span>" if v.get("mitre") else ""
+            html += f"<div style='border:1px solid {v_col};padding:10px;margin-bottom:6px'>"
+            html += f"<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='font-weight:700;color:#e8f0fc;font-size:11px'>{v['title']}</span><span style='font-size:9px;padding:2px 6px;border:1px solid {v_col};color:{v_col}'>{sev.upper()}</span></div>"
+            html += f"<div style='font-size:10px;color:#8a9bb5;margin-bottom:4px'>{v.get('description','')}</div>"
+            html += mitre_badge
+            if v.get("remediation"):
+                html += f"<div style='font-size:9px;color:#3ddc84;margin-top:6px;border-left:2px solid #3ddc84;padding-left:6px'>{v['remediation']}</div>"
+            html += "</div>"
+    if not html.strip():
+        html = "<p class='muted'>Brak danych.</p>"
+    return html
+
+def _ikescan_html(ikescan: dict) -> str:
+    if not ikescan or ikescan.get("skipped"):
+        return "<p class='muted'>Brak danych ike-scan (narzędzie niedostępne lub brak usługi IKE).</p>"
+    html = ""
+    main = ikescan.get("main_mode") or {}
+    agg = ikescan.get("aggressive_mode") or {}
+    nat_t = ikescan.get("nat_t") or {}
+    # Stats grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    m_col = "#3ddc84" if main.get("responded") else "#8a9bb5"
+    html += f"<div><span class='muted'>MAIN MODE</span><br><span style='font-size:14px;font-weight:700;color:{m_col}'>{'ACTIVE' if main.get('responded') else 'N/A'}</span></div>"
+    a_col = "#ff4444" if agg.get("responded") and agg.get("handshake") == "aggressive" else "#8a9bb5"
+    html += f"<div><span class='muted'>AGGRESSIVE</span><br><span style='font-size:14px;font-weight:700;color:{a_col}'>{'ACTIVE' if agg.get('responded') and agg.get('handshake') == 'aggressive' else 'N/A'}</span></div>"
+    n_col = "#f5c518" if nat_t.get("responded") else "#8a9bb5"
+    html += f"<div><span class='muted'>NAT-T</span><br><span style='font-size:14px;font-weight:700;color:{n_col}'>{'ACTIVE' if nat_t.get('responded') else 'N/A'}</span></div>"
+    html += f"<div><span class='muted'>TRANSFORMS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{ikescan.get('total_transforms', 0)}</span></div>"
+    v_cnt = ikescan.get("total_vulnerabilities", 0)
+    html += f"<div><span class='muted'>VULNS</span><br><span style='font-size:20px;font-weight:700;color:{'#ff4444' if v_cnt else '#3ddc84'}'>{v_cnt}</span></div>"
+    if ikescan.get("implementation"):
+        html += f"<div><span class='muted'>VENDOR</span><br><span style='font-size:14px;font-weight:700;color:#f5c518'>{ikescan['implementation']}</span></div>"
+    html += "</div>"
+    # Severity badges
+    crit = ikescan.get("critical_count", 0)
+    high = ikescan.get("high_count", 0)
+    med = ikescan.get("medium_count", 0)
+    if crit or high or med:
+        badges = ""
+        if crit:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #ff4444;color:#ff4444;background:rgba(255,68,68,.12);margin-right:6px'>CRITICAL: {crit}</span>"
+        if high:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #ff4444;color:#ff4444;background:rgba(255,68,68,.08);margin-right:6px'>HIGH: {high}</span>"
+        if med:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #f5c518;color:#f5c518;background:rgba(245,197,24,.08);margin-right:6px'>MEDIUM: {med}</span>"
+        html += f"<div style='margin-bottom:12px'>{badges}</div>"
+    # Transforms table
+    transforms = ikescan.get("transforms", [])
+    if transforms:
+        rows = ""
+        for t in transforms:
+            s_col = "#ff4444" if t.get("strength") == "weak" else "#f5c518" if t.get("strength") == "moderate" else "#3ddc84"
+            rows += f"<tr><td style='font-weight:700;font-size:10px'>{t.get('encryption','—')}</td><td style='font-size:9px'>{t.get('hash','—')}</td><td style='font-size:9px'>{t.get('dh_group','—')}</td><td style='font-size:9px'>{t.get('auth','—')}</td><td style='color:{s_col};font-size:9px;font-weight:700'>{t.get('strength','').upper()}</td></tr>"
+        html += f"<div style='margin-bottom:10px'><div class='muted' style='margin-bottom:4px'>IKE TRANSFORMS ({len(transforms)})</div><table><thead><tr><th>ENCRYPTION</th><th>HASH</th><th>DH GROUP</th><th>AUTH</th><th>STRENGTH</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    # Vulnerabilities
+    vulns = ikescan.get("vulnerabilities", [])
+    if vulns:
+        for v in vulns:
+            sev = v.get("severity", "medium")
+            v_col = "#ff4444" if sev in ("critical", "high") else "#f5c518" if sev == "medium" else "#8a9bb5"
+            mitre_badge = f"<span style='font-size:9px;padding:2px 6px;border:1px solid #5eead4;color:#5eead4;margin-left:6px'>{v['mitre']}</span>" if v.get("mitre") else ""
+            html += f"<div style='border:1px solid {v_col};padding:10px;margin-bottom:6px'>"
+            html += f"<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='font-weight:700;color:#e8f0fc;font-size:11px'>{v['title']}</span><span style='font-size:9px;padding:2px 6px;border:1px solid {v_col};color:{v_col}'>{sev.upper()}</span></div>"
+            html += f"<div style='font-size:10px;color:#8a9bb5;margin-bottom:4px'>{v.get('description','')}</div>"
+            html += mitre_badge
+            if v.get("remediation"):
+                html += f"<div style='font-size:9px;color:#3ddc84;margin-top:6px;border-left:2px solid #3ddc84;padding-left:6px'>{v['remediation']}</div>"
+            html += "</div>"
+    if not html.strip():
+        html = "<p class='muted'>Brak danych.</p>"
+    return html
+
+def _sslyze_html(sslyze: dict) -> str:
+    if not sslyze or sslyze.get("skipped"):
+        return "<p class='muted'>Brak danych SSLyze (narzędzie niedostępne lub brak usługi SSL/TLS).</p>"
+    html = ""
+    # Stats grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>ACCEPTED CIPHERS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{sslyze.get('total_accepted_ciphers', 0)}</span></div>"
+    wk = sslyze.get("total_weak_ciphers", 0)
+    html += f"<div><span class='muted'>WEAK CIPHERS</span><br><span style='font-size:20px;font-weight:700;color:{'#ff4444' if wk else '#3ddc84'}'>{wk}</span></div>"
+    v_cnt = sslyze.get("total_vulnerabilities", 0)
+    html += f"<div><span class='muted'>VULNERABILITIES</span><br><span style='font-size:20px;font-weight:700;color:{'#ff4444' if v_cnt else '#3ddc84'}'>{v_cnt}</span></div>"
+    # Protocol badges
+    protocols = sslyze.get("protocols", {})
+    for p in ["TLSv1.3", "TLSv1.2", "TLSv1.1", "TLSv1.0", "SSLv3", "SSLv2"]:
+        pd = protocols.get(p, {})
+        if pd.get("supported"):
+            p_col = "#ff4444" if p in ("SSLv2", "SSLv3") else "#f5c518" if p in ("TLSv1.0", "TLSv1.1") else "#3ddc84"
+            html += f"<div><span class='muted'>{p}</span><br><span style='font-size:14px;font-weight:700;color:{p_col}'>ENABLED ({pd.get('cipher_count', 0)})</span></div>"
+    html += "</div>"
+    # Certificate info
+    cert = sslyze.get("certificate", {})
+    if cert.get("subject") or cert.get("issuer"):
+        html += "<div class='muted' style='margin-bottom:4px'>CERTIFICATE</div>"
+        html += "<div style='display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;background:rgba(0,0,0,.2);padding:10px'>"
+        if cert.get("subject"):
+            html += f"<div><span class='muted'>SUBJECT</span><br><span style='font-size:10px;color:#e8f0fc;word-break:break-all'>{cert['subject']}</span></div>"
+        if cert.get("issuer"):
+            html += f"<div><span class='muted'>ISSUER</span><br><span style='font-size:10px;color:#8a9bb5'>{cert['issuer']}</span></div>"
+        if cert.get("not_before"):
+            html += f"<div><span class='muted'>VALID FROM</span><br><span style='font-size:10px;color:#8a9bb5'>{cert['not_before']}</span></div>"
+        if cert.get("not_after"):
+            html += f"<div><span class='muted'>VALID UNTIL</span><br><span style='font-size:10px;color:#8a9bb5'>{cert['not_after']}</span></div>"
+        if cert.get("key_type"):
+            ks = f" {cert['key_size']}-bit" if cert.get("key_size") else ""
+            html += f"<div><span class='muted'>KEY</span><br><span style='font-size:10px;color:#e8f0fc'>{cert['key_type']}{ks}</span></div>"
+        hm = cert.get("hostname_match")
+        hm_col = "#ff4444" if hm is False else "#3ddc84" if hm is True else "#8a9bb5"
+        hm_txt = "MISMATCH" if hm is False else "MATCH" if hm is True else "N/A"
+        html += f"<div><span class='muted'>HOSTNAME</span><br><span style='font-size:14px;font-weight:700;color:{hm_col}'>{hm_txt}</span></div>"
+        html += "</div>"
+    # Severity badges
+    crit = sslyze.get("critical_count", 0)
+    high = sslyze.get("high_count", 0)
+    med = sslyze.get("medium_count", 0)
+    low = sslyze.get("low_count", 0)
+    if crit or high or med or low:
+        badges = ""
+        if crit:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #ff4444;color:#ff4444;background:rgba(255,68,68,.12);margin-right:6px'>CRITICAL: {crit}</span>"
+        if high:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #ff4444;color:#ff4444;background:rgba(255,68,68,.08);margin-right:6px'>HIGH: {high}</span>"
+        if med:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #f5c518;color:#f5c518;background:rgba(245,197,24,.08);margin-right:6px'>MEDIUM: {med}</span>"
+        if low:
+            badges += f"<span style='display:inline-block;font-size:10px;padding:3px 10px;border:1px solid #5eead4;color:#5eead4;background:rgba(0,180,216,.08);margin-right:6px'>LOW: {low}</span>"
+        html += f"<div style='margin-bottom:12px'>{badges}</div>"
+    # Weak ciphers table
+    weak_ciphers = sslyze.get("weak_ciphers", [])
+    if weak_ciphers:
+        rows = ""
+        for c in weak_ciphers[:20]:
+            rows += f"<tr><td style='font-size:9px;color:#ff4444'>{c.get('name', '')}</td><td style='font-size:9px'>{c.get('protocol', '')}</td></tr>"
+        if len(weak_ciphers) > 20:
+            rows += f"<tr><td colspan='2' style='font-size:9px;color:#8a9bb5'>...and {len(weak_ciphers)-20} more</td></tr>"
+        html += f"<div style='margin-bottom:10px'><div class='muted' style='margin-bottom:4px'>WEAK CIPHERS ({len(weak_ciphers)})</div><table><thead><tr><th>CIPHER SUITE</th><th>PROTOCOL</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    # Vulnerabilities
+    vulns = sslyze.get("vulnerabilities", [])
+    if vulns:
+        for v in vulns:
+            sev = v.get("severity", "medium")
+            v_col = "#ff4444" if sev in ("critical", "high") else "#f5c518" if sev == "medium" else "#5eead4"
+            mitre_badge = f"<span style='font-size:9px;padding:2px 6px;border:1px solid #5eead4;color:#5eead4;margin-left:6px'>{v['mitre']}</span>" if v.get("mitre") else ""
+            html += f"<div style='border:1px solid {v_col};padding:10px;margin-bottom:6px'>"
+            html += f"<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='font-weight:700;color:#e8f0fc;font-size:11px'>{v['title']}</span><span style='font-size:9px;padding:2px 6px;border:1px solid {v_col};color:{v_col}'>{sev.upper()}</span></div>"
+            html += f"<div style='font-size:10px;color:#8a9bb5;margin-bottom:4px'>{v.get('description','')}</div>"
+            html += mitre_badge
+            if v.get("remediation"):
+                html += f"<div style='font-size:9px;color:#3ddc84;margin-top:6px;border-left:2px solid #3ddc84;padding-left:6px'>{v['remediation']}</div>"
+            html += "</div>"
+    if not html.strip():
+        html = "<p class='muted'>Brak danych.</p>"
+    return html
+
 def _mitre_html(mitre: dict) -> str:
     techniques = mitre.get("techniques", [])
     if not techniques:
@@ -1388,6 +1900,13 @@ def generate_report(scan_data: dict) -> bytes:
     nbtscan = scan_data.get("nbtscan", {})
     snmpwalk = scan_data.get("snmpwalk", {})
     netexec = scan_data.get("netexec", {})
+    bloodhound = scan_data.get("bloodhound", {})
+    responder = scan_data.get("responder", {})
+    fierce = scan_data.get("fierce", {})
+    smbmap = scan_data.get("smbmap", {})
+    onesixtyone = scan_data.get("onesixtyone", {})
+    ikescan = scan_data.get("ikescan", {})
+    sslyze = scan_data.get("sslyze", {})
 
     color = _risk_color(risk)
 
@@ -1585,7 +2104,7 @@ def generate_report(scan_data: dict) -> bytes:
 </div>
 
 <div class="section">
-  <div class="section-title">// ENUM4LINUX — SMB ENUMERATION</div>
+  <div class="section-title">// ENUM4LINUX-NG — SMB/AD ENUMERATION ({enum4linux.get('summary', {{}}).get('users_count', 0)} users, {enum4linux.get('summary', {{}}).get('shares_count', 0)} shares, {enum4linux.get('summary', {{}}).get('groups_count', 0)} groups)</div>
   {_enum4linux_html(enum4linux)}
 </div>
 
@@ -1707,6 +2226,41 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// NETEXEC — SMB ENUMERATION ({netexec.get('smb_info', {{}}).get('hostname', 'N/A')} · {netexec.get('total_shares', 0)} shares, {netexec.get('total_users', 0)} users, {netexec.get('total_vulnerabilities', 0)} vulns)</div>
   {_netexec_html(netexec)}
+</div>
+
+<div class="section">
+  <div class="section-title">// BLOODHOUND — AD ATTACK PATHS ({bloodhound.get('total_users', 0)} users, {bloodhound.get('total_computers', 0)} computers, {bloodhound.get('total_attack_paths', 0)} attack paths)</div>
+  {_bloodhound_html(bloodhound)}
+</div>
+
+<div class="section">
+  <div class="section-title">// RESPONDER — NETWORK POISONING DETECTION ({responder.get('total_protocols', 0)} protocols, {responder.get('total_vulnerabilities', 0)} vulns)</div>
+  {_responder_html(responder)}
+</div>
+
+<div class="section">
+  <div class="section-title">// FIERCE — DNS RECONNAISSANCE ({fierce.get('total_subdomains', 0)} subdomains, {fierce.get('total_nameservers', 0)} NS, {fierce.get('total_nearby', 0)} nearby)</div>
+  {_fierce_html(fierce)}
+</div>
+
+<div class="section">
+  <div class="section-title">// SMBMAP — SMB SHARE ENUMERATION ({smbmap.get('total_shares', 0)} shares, {smbmap.get('readable_shares', 0)} readable, {smbmap.get('writable_shares', 0)} writable)</div>
+  {_smbmap_html(smbmap)}
+</div>
+
+<div class="section">
+  <div class="section-title">// ONESIXTYONE — SNMP COMMUNITY STRINGS ({onesixtyone.get('total_found', 0)} found / {onesixtyone.get('total_tested', 0)} tested)</div>
+  {_onesixtyone_html(onesixtyone)}
+</div>
+
+<div class="section">
+  <div class="section-title">// IKE-SCAN — VPN GATEWAY ({ikescan.get('implementation', 'Unknown')} · {ikescan.get('total_transforms', 0)} transforms)</div>
+  {_ikescan_html(ikescan)}
+</div>
+
+<div class="section">
+  <div class="section-title">// SSLyze — SSL/TLS ANALYSIS ({sslyze.get('total_accepted_ciphers', 0)} ciphers · {sslyze.get('total_weak_ciphers', 0)} weak · {sslyze.get('total_vulnerabilities', 0)} vulns)</div>
+  {_sslyze_html(sslyze)}
 </div>
 
 <div class="section">

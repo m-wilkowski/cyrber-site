@@ -218,7 +218,7 @@ from modules.harvester_scan import scan as harvester_scan
 from modules.masscan_scan import scan as masscan_scan
 # from modules.censys_scan import scan as censys_scan  # requires paid API plan - module ready
 from modules.ipinfo_scan import scan as ipinfo_scan
-from modules.enum4linux_scan import scan as enum4linux_scan
+from modules.enum4linux_scan import enum4linux_scan
 from modules.mitre_attack import mitre_map
 from modules.abuseipdb_scan import scan as abuseipdb_scan
 from modules.otx_scan import scan as otx_scan
@@ -345,6 +345,13 @@ from modules.traceroute_scan import traceroute_scan
 from modules.nbtscan_scan import nbtscan_scan
 from modules.snmpwalk_scan import snmpwalk_scan
 from modules.netexec_scan import netexec_scan
+from modules.bloodhound_scan import bloodhound_scan
+from modules.responder_scan import responder_scan
+from modules.fierce_scan import fierce_scan
+from modules.smbmap_scan import smbmap_scan
+from modules.onesixtyone_scan import onesixtyone_scan
+from modules.ikescan_scan import ikescan_scan
+from modules.sslyze_scan import sslyze_scan
 
 @app.get("/scan/wpscan")
 async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -421,6 +428,34 @@ async def run_snmpwalk(target: str = Query(...), user: str = Depends(get_current
 @app.get("/scan/netexec")
 async def run_netexec(target: str = Query(...), user: str = Depends(get_current_user)):
     return netexec_scan(target)
+
+@app.get("/scan/bloodhound")
+async def run_bloodhound(target: str = Query(...), user: str = Depends(get_current_user)):
+    return bloodhound_scan(target)
+
+@app.get("/scan/responder")
+async def run_responder(target: str = Query(...), user: str = Depends(get_current_user)):
+    return responder_scan(target)
+
+@app.get("/scan/fierce")
+async def run_fierce(target: str = Query(...), user: str = Depends(get_current_user)):
+    return fierce_scan(target)
+
+@app.get("/scan/smbmap")
+async def run_smbmap(target: str = Query(...), user: str = Depends(get_current_user)):
+    return smbmap_scan(target)
+
+@app.get("/scan/onesixtyone")
+async def run_onesixtyone(target: str = Query(...), user: str = Depends(get_current_user)):
+    return onesixtyone_scan(target)
+
+@app.get("/scan/ikescan")
+async def run_ikescan(target: str = Query(...), user: str = Depends(get_current_user)):
+    return ikescan_scan(target)
+
+@app.get("/scan/sslyze")
+async def run_sslyze(target: str = Query(...), user: str = Depends(get_current_user)):
+    return sslyze_scan(target)
 
 from modules.tasks import osint_scan_task
 from modules.database import get_osint_history, get_osint_by_task_id

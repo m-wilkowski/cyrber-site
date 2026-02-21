@@ -87,7 +87,7 @@ RUN git clone --depth 1 https://github.com/OWASP/joomscan.git /opt/joomscan && \
     ln -s /opt/joomscan/joomscan.pl /usr/local/bin/joomscan
 # cmsmap (multi-CMS vulnerability scanner)
 RUN git clone --depth 1 https://github.com/Dionach/CMSmap.git /opt/cmsmap && \
-    pip install -r /opt/cmsmap/requirements.txt --break-system-packages && \
+    (test -f /opt/cmsmap/requirements.txt && pip install -r /opt/cmsmap/requirements.txt --break-system-packages || true) && \
     ln -s /opt/cmsmap/cmsmap.py /usr/local/bin/cmsmap && \
     chmod +x /opt/cmsmap/cmsmap.py
 # droopescan (Drupal/Joomla/WordPress/SilverStripe/Moodle scanner)
@@ -101,7 +101,7 @@ RUN SUBFINDER_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/su
 # httpx (HTTP probing and technology detection by ProjectDiscovery)
 RUN HTTPX_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/httpx/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
     curl -L "https://github.com/projectdiscovery/httpx/releases/latest/download/httpx_${HTTPX_VERSION}_linux_amd64.zip" -o /tmp/httpx.zip && \
-    unzip /tmp/httpx.zip httpx -d /usr/local/bin/ && \
+    unzip -o /tmp/httpx.zip httpx -d /usr/local/bin/ && \
     chmod +x /usr/local/bin/httpx && \
     rm /tmp/httpx.zip
 # naabu (fast port scanner by ProjectDiscovery)
@@ -136,9 +136,22 @@ RUN apt-get update && apt-get install -y nbtscan && rm -rf /var/lib/apt/lists/*
 RUN apt-get update && apt-get install -y snmp && rm -rf /var/lib/apt/lists/*
 # netexec (SMB/WinRM/LDAP/MSSQL network enumeration)
 RUN pip install netexec --break-system-packages || \
-    git clone https://github.com/Pennyw0rth/NetExec.git /opt/netexec && \
-    pip install -r /opt/netexec/requirements.txt --break-system-packages && \
-    ln -s /opt/netexec/netexec /usr/local/bin/netexec
+    (git clone --depth 1 https://github.com/Pennyw0rth/NetExec.git /opt/netexec && \
+    cd /opt/netexec && pip install . --break-system-packages) || true
+# bloodhound-python (Active Directory enumeration collector)
+RUN pip install bloodhound --break-system-packages
+# responder (LLMNR/NBT-NS/MDNS poisoner — used in analyze mode for detection)
+RUN git clone --depth 1 https://github.com/lgandx/Responder.git /opt/responder
+# fierce (DNS reconnaissance and zone transfer scanner)
+RUN pip install fierce --break-system-packages
+# smbmap (SMB share enumeration and access checking)
+RUN pip install smbmap --break-system-packages
+# onesixtyone (fast SNMP community string brute-forcer)
+RUN apt-get update && apt-get install -y onesixtyone && rm -rf /var/lib/apt/lists/*
+# ike-scan (IKE/IPsec VPN gateway discovery and fingerprinting)
+RUN apt-get update && apt-get install -y ike-scan && rm -rf /var/lib/apt/lists/*
+# sslyze (SSL/TLS configuration analysis and vulnerability scanning)
+RUN pip install sslyze --break-system-packages
 # retire.js (vulnerable JavaScript library detection)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \
