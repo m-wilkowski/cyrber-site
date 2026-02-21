@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CYRBER — OSINT Panel</title>
+<title>CYRBER — Deep OSINT Scanner</title>
 <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 <link rel="icon" type="image/png" href="/static/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,6 +26,7 @@
     --yellow:  #f5c518;
     --green:   #3ddc84;
     --orange:  #ff8c00;
+    --cyan:    #00d2ff;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -40,26 +41,21 @@
 
   body::before {
     content: '';
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background:
       radial-gradient(ellipse 80% 50% at 15% 60%, rgba(20,40,80,0.55) 0%, transparent 70%),
       radial-gradient(ellipse 60% 40% at 85% 15%, rgba(10,20,50,0.7) 0%, transparent 60%),
       radial-gradient(ellipse 100% 30% at 50% 100%, rgba(74,143,212,0.04) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: 0;
+    pointer-events: none; z-index: 0;
   }
-
   body::after {
     content: '';
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background-image:
       linear-gradient(rgba(74,143,212,0.03) 1px, transparent 1px),
       linear-gradient(90deg, rgba(74,143,212,0.03) 1px, transparent 1px);
     background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
+    pointer-events: none; z-index: 0;
   }
 
   /* ── NAV ── */
@@ -71,7 +67,6 @@
     border-bottom: 1px solid var(--border);
     backdrop-filter: blur(12px);
   }
-
   .nav-brand {
     display: flex; align-items: center; gap: 12px;
     font-family: 'Orbitron', sans-serif;
@@ -112,12 +107,12 @@
   .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
   .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
   label { font-size: 10px; letter-spacing: .15em; color: var(--silver); }
-  input {
+  input, select {
     background: var(--navy3); border: 1px solid var(--border); color: var(--white);
     font-family: 'Share Tech Mono', monospace; font-size: 13px;
     padding: 10px 14px; outline: none; width: 100%;
   }
-  input:focus { border-color: var(--accent); }
+  input:focus, select:focus { border-color: var(--accent); }
 
   .btn {
     font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: .15em;
@@ -130,7 +125,7 @@
     background: linear-gradient(140deg, #183568, #0e2040);
     color: var(--white); font-family: 'Orbitron', monospace;
     font-weight: 700; letter-spacing: .22em; padding: 13px 28px;
-    position: relative; overflow: hidden;
+    position: relative; overflow: hidden; border: 1px solid var(--accent);
   }
   .btn-primary::after {
     content: ''; position: absolute; inset: 0;
@@ -139,6 +134,13 @@
   }
   .btn-primary:hover:not(:disabled)::after { transform: translateX(120%); }
   .btn-primary:hover:not(:disabled) { background: linear-gradient(140deg, #244a90, #162d5c); box-shadow: 0 0 22px rgba(74,143,212,.35); }
+  .btn-pdf {
+    background: rgba(155,89,182,.12); border: 1px solid var(--purple); color: var(--purple);
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: .15em;
+    padding: 8px 18px; cursor: pointer; transition: all .2s; text-decoration: none; display: inline-block;
+  }
+  .btn-pdf:hover { background: rgba(155,89,182,.25); box-shadow: 0 0 12px rgba(155,89,182,.3); }
+  .btn-sm { font-size: 10px; padding: 5px 12px; }
 
   .status-bar {
     font-family: 'Share Tech Mono', monospace; font-size: 11px;
@@ -150,13 +152,44 @@
   .status-bar.on { display: block; }
   .status-bar.error { border-color: var(--red); background: rgba(255,68,68,.08); color: var(--red); }
 
-  /* ── RESULTS GRID ── */
+  /* ── SEARCH TABS ── */
+  .search-tabs {
+    display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid var(--border);
+  }
+  .search-tab {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: .12em;
+    color: var(--silver); padding: 12px 22px; cursor: pointer; border: none; background: none;
+    border-bottom: 2px solid transparent; transition: all .2s; position: relative;
+  }
+  .search-tab:hover { color: var(--accent); background: rgba(74,143,212,.06); }
+  .search-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(74,143,212,.08); }
+  .tab-time {
+    font-size: 8px; color: var(--orange); display: block; margin-top: 2px; letter-spacing: .1em;
+  }
+
+  /* ── TAB PANEL (engines info + inputs) ── */
+  .tab-panel { display: none; padding: 20px 0 0; }
+  .tab-panel.active { display: block; }
+  .engines-info {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: .1em;
+    color: var(--silver); padding: 10px 14px; margin-bottom: 16px;
+    border-left: 2px solid var(--purple); background: rgba(155,89,182,.05);
+    line-height: 1.8;
+  }
+  .engines-info strong { color: var(--purple); font-weight: 600; }
+  .time-badge {
+    display: inline-block; font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    padding: 3px 10px; border: 1px solid var(--orange); color: var(--orange);
+    background: rgba(255,140,0,.06); margin-left: 8px; letter-spacing: .1em;
+  }
+
+  /* ── RESULTS ── */
   .results { display: none; }
   .results.on { display: block; }
 
   .summary-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 16px; margin-bottom: 24px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px; margin-bottom: 24px;
   }
   .stat-card {
     background: rgba(74,143,212,.04); border: 1px solid var(--border); padding: 16px; text-align: center;
@@ -169,8 +202,8 @@
     color: var(--silver); padding: 10px 0; border-bottom: 1px solid var(--border);
     cursor: pointer; user-select: none; margin-top: 20px;
   }
-  .section-hdr::before { content: '▸ '; color: var(--accent); }
-  .section-hdr.open::before { content: '▾ '; }
+  .section-hdr::before { content: '\25B8 '; color: var(--accent); }
+  .section-hdr.open::before { content: '\25BE '; }
   .section-body { display: none; padding: 16px 0; }
   .section-body.open { display: block; }
 
@@ -181,6 +214,12 @@
   }
   .tag-email { border-color: var(--purple); color: var(--purple); background: rgba(155,89,182,.06); }
   .tag-ip { color: var(--white); background: rgba(74,143,212,.06); }
+  .tag-green { border-color: var(--green); color: var(--green); background: rgba(61,220,132,.06); }
+  .tag-red { border-color: var(--red); color: var(--red); background: rgba(255,68,68,.06); }
+  .tag-source {
+    font-size: 9px; padding: 2px 6px; border-color: rgba(138,155,181,.25);
+    color: var(--silver); background: rgba(138,155,181,.05);
+  }
 
   .risk-alert {
     font-family: 'Share Tech Mono', monospace; font-size: 12px;
@@ -192,13 +231,38 @@
   .risk-medium { border-color: var(--yellow); color: var(--yellow); background: rgba(245,197,24,.08); }
   .risk-info { border-color: var(--silver); color: var(--silver); background: rgba(138,155,181,.06); }
 
+  /* ── PWNED BADGE ── */
+  .pwned-badge {
+    font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900;
+    letter-spacing: .15em; padding: 14px 28px; text-align: center; margin-bottom: 20px;
+  }
+  .pwned-yes { background: rgba(255,68,68,.12); border: 2px solid var(--red); color: var(--red); }
+  .pwned-no { background: rgba(61,220,132,.08); border: 2px solid var(--green); color: var(--green); }
+
+  /* ── ACCOUNT CARD ── */
+  .account-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;
+  }
+  .account-card {
+    background: rgba(74,143,212,.04); border: 1px solid var(--border); padding: 14px;
+    display: flex; align-items: center; gap: 12px; transition: all .2s;
+  }
+  .account-card:hover { border-color: var(--accent); background: rgba(74,143,212,.08); }
+  .account-icon {
+    width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0; border: 1px solid var(--border); background: var(--navy3);
+  }
+  .account-name { font-weight: 600; font-size: 13px; color: var(--white); }
+  .account-url { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--accent); text-decoration: none; word-break: break-all; }
+  .account-url:hover { color: var(--accent2); text-decoration: underline; }
+  .account-source { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--silver); margin-top: 2px; }
+
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
   th { text-align: left; font-size: 10px; letter-spacing: .15em; color: var(--silver); padding: 8px 12px; border-bottom: 1px solid var(--border); }
   td { padding: 10px 12px; border-bottom: 1px solid rgba(74,143,212,.08); }
 
   .whois-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 12px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;
   }
   .whois-item .wl { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: .2em; color: var(--accent); }
   .whois-item .wv { color: var(--white); font-size: 13px; margin-top: 2px; }
@@ -207,10 +271,36 @@
   .show-more-btn { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: .15em; padding: 6px 16px; border: 1px solid var(--accent); background: rgba(74,143,212,.06); color: var(--accent); cursor: pointer; transition: all .2s; margin: 6px 3px; }
   .show-more-btn:hover { background: rgba(74,143,212,.15); box-shadow: 0 0 10px rgba(74,143,212,.2); }
 
-  /* ── PROGRESS TRACKER ── */
+  /* ── HISTORY ── */
+  .hist-table { width: 100%; border-collapse: collapse; }
+  .hist-table th { font-size: 9px; letter-spacing: .15em; color: var(--silver); padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+  .hist-table td { padding: 10px 12px; border-bottom: 1px solid var(--border2); font-size: 12px; }
+  .hist-table tbody tr { cursor: pointer; transition: background .2s; }
+  .hist-table tbody tr:hover { background: rgba(74,143,212,.08); }
+  .hist-empty { color: var(--silver); font-size: 12px; padding: 20px; text-align: center; }
+  .hist-filter {
+    display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .hist-filter-btn {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: .1em;
+    padding: 5px 14px; border: 1px solid var(--border); background: none;
+    color: var(--silver); cursor: pointer; transition: all .2s;
+  }
+  .hist-filter-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .hist-filter-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(74,143,212,.08); }
+  .type-badge {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: .1em;
+    padding: 2px 8px; border: 1px solid; display: inline-block;
+  }
+  .type-domain { border-color: var(--accent); color: var(--accent); }
+  .type-email { border-color: var(--purple); color: var(--purple); }
+  .type-person { border-color: var(--cyan); color: var(--cyan); }
+  .type-username { border-color: var(--green); color: var(--green); }
+  .type-phone { border-color: var(--orange); color: var(--orange); }
+
+  /* ── PROGRESS ── */
   .progress-card { display: none; }
   .progress-card.on { display: block; }
-
   .progress-bar-track {
     height: 3px; background: var(--navy3); margin-bottom: 24px; position: relative; overflow: hidden;
   }
@@ -222,7 +312,6 @@
     content: ''; position: absolute; right: 0; top: -2px; width: 7px; height: 7px;
     background: var(--green); border-radius: 50%; box-shadow: 0 0 10px var(--green);
   }
-
   .progress-step {
     display: flex; align-items: center; gap: 14px;
     padding: 12px 0; border-bottom: 1px solid rgba(74,143,212,.06);
@@ -230,40 +319,25 @@
     transition: opacity .3s;
   }
   .progress-step:last-child { border-bottom: none; }
-
   .step-icon {
     width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
     font-size: 13px; flex-shrink: 0; transition: all .4s;
   }
-
-  .step-pending .step-icon {
-    border: 1px solid rgba(138,155,181,.25); color: rgba(138,155,181,.35); background: transparent;
-  }
+  .step-pending .step-icon { border: 1px solid rgba(138,155,181,.25); color: rgba(138,155,181,.35); background: transparent; }
   .step-pending .step-label { color: rgba(138,155,181,.4); }
   .step-pending .step-desc { color: rgba(138,155,181,.25); }
-
-  .step-active .step-icon {
-    border: 1px solid var(--accent); color: var(--accent);
-    background: rgba(74,143,212,.1); animation: stepPulse 1.5s ease-in-out infinite;
-  }
+  .step-active .step-icon { border: 1px solid var(--accent); color: var(--accent); background: rgba(74,143,212,.1); animation: stepPulse 1.5s ease-in-out infinite; }
   .step-active .step-label { color: var(--accent); }
   .step-active .step-desc { color: var(--silver); }
-
-  .step-done .step-icon {
-    border: 1px solid var(--green); color: var(--green);
-    background: rgba(61,220,132,.1); animation: none;
-  }
+  .step-done .step-icon { border: 1px solid var(--green); color: var(--green); background: rgba(61,220,132,.1); animation: none; }
   .step-done .step-label { color: var(--green); }
   .step-done .step-desc { color: rgba(61,220,132,.5); }
-
   @keyframes stepPulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(74,143,212,.3); }
     50% { box-shadow: 0 0 12px 3px rgba(74,143,212,.25); }
   }
-
   .step-label { font-weight: 600; font-size: 13px; letter-spacing: .08em; transition: color .4s; }
   .step-desc { font-size: 11px; letter-spacing: .05em; margin-left: auto; transition: color .4s; }
-
   .progress-elapsed {
     font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: .15em;
     color: var(--silver); text-align: right; margin-top: 12px;
@@ -286,6 +360,9 @@
     .nav-link { font-size: 10px; padding: 5px 10px; letter-spacing: .1em; }
     .nav-brand { font-size: 15px; }
     .page-title-main { font-size: 22px; }
+    .search-tabs { flex-wrap: wrap; }
+    .search-tab { font-size: 10px; padding: 8px 14px; }
+    .account-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 480px) {
     .nav-brand span { display: none; }
@@ -311,92 +388,136 @@
 
 <div class="wrapper">
   <div class="page-header">
-    <div class="page-title">OPEN SOURCE INTELLIGENCE</div>
-    <div class="page-title-main">OSINT PANEL</div>
+    <div class="page-title">DEEP OPEN SOURCE INTELLIGENCE</div>
+    <div class="page-title-main">OSINT SCANNER</div>
   </div>
 
+  <!-- ══════════ SEARCH CARD ══════════ -->
   <div class="card">
     <h2>// TARGET RECONNAISSANCE</h2>
-    <div class="form-row">
-      <div class="form-group">
-        <label>TARGET (DOMAIN / IP)</label>
-        <input type="text" id="target" placeholder="example.com">
-      </div>
-      <button class="btn btn-primary" id="launchBtn" onclick="launchOsint()">LAUNCH OSINT SCAN</button>
+    <div class="search-tabs" id="searchTabs">
+      <button class="search-tab active" data-type="domain" onclick="selectTab(this)">DOMAIN<span class="tab-time">~30-40 MIN</span></button>
+      <button class="search-tab" data-type="email" onclick="selectTab(this)">EMAIL<span class="tab-time">~5 MIN</span></button>
+      <button class="search-tab" data-type="person" onclick="selectTab(this)">PERSON<span class="tab-time">~10 MIN</span></button>
+      <button class="search-tab" data-type="username" onclick="selectTab(this)">USERNAME<span class="tab-time">~5 MIN</span></button>
+      <button class="search-tab" data-type="phone" onclick="selectTab(this)">PHONE<span class="tab-time">~3 MIN</span></button>
     </div>
+
+    <!-- DOMAIN panel -->
+    <div class="tab-panel active" id="panel-domain">
+      <div class="engines-info">
+        <strong>ENGINES:</strong> theHarvester (all), Amass active, DNSRecon brute, crt.sh, WHOIS, VirusTotal, Shodan, SecurityTrails, Metagoofil, Google Dorks
+        <span class="time-badge">EST. 30-40 MIN</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>DOMAIN / IP</label><input type="text" id="inp-domain" placeholder="example.com"></div>
+        <button class="btn btn-primary" id="launchBtn" onclick="launchOsint()">LAUNCH DOMAIN SCAN</button>
+      </div>
+    </div>
+
+    <!-- EMAIL panel -->
+    <div class="tab-panel" id="panel-email">
+      <div class="engines-info">
+        <strong>ENGINES:</strong> HaveIBeenPwned, HIBP Pastes, Holehe (120+ platforms), EmailRep.io, Hunter.io, theHarvester
+        <span class="time-badge">EST. ~5 MIN</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>EMAIL ADDRESS</label><input type="text" id="inp-email" placeholder="user@example.com"></div>
+        <button class="btn btn-primary" onclick="launchOsint()">LAUNCH EMAIL SCAN</button>
+      </div>
+    </div>
+
+    <!-- PERSON panel -->
+    <div class="tab-panel" id="panel-person">
+      <div class="engines-info">
+        <strong>ENGINES:</strong> theHarvester (Google/Bing/LinkedIn), Sherlock, Maigret (2500+ sites)
+        <span class="time-badge">EST. ~10 MIN</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>FIRST NAME</label><input type="text" id="inp-person-first" placeholder="Jan"></div>
+        <div class="form-group"><label>LAST NAME</label><input type="text" id="inp-person-last" placeholder="Kowalski"></div>
+        <button class="btn btn-primary" onclick="launchOsint()">LAUNCH PERSON SCAN</button>
+      </div>
+    </div>
+
+    <!-- USERNAME panel -->
+    <div class="tab-panel" id="panel-username">
+      <div class="engines-info">
+        <strong>ENGINES:</strong> Sherlock (400+ platforms), Maigret (500+ platforms), GitHub API (repos & commit emails)
+        <span class="time-badge">EST. ~5 MIN</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>USERNAME</label><input type="text" id="inp-username" placeholder="johndoe"></div>
+        <button class="btn btn-primary" onclick="launchOsint()">LAUNCH USERNAME SCAN</button>
+      </div>
+    </div>
+
+    <!-- PHONE panel -->
+    <div class="tab-panel" id="panel-phone">
+      <div class="engines-info">
+        <strong>ENGINES:</strong> NumVerify, PhoneInfoga
+        <span class="time-badge">EST. ~3 MIN</span>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>PHONE NUMBER</label><input type="text" id="inp-phone" placeholder="+48123456789"></div>
+        <button class="btn btn-primary" onclick="launchOsint()">LAUNCH PHONE SCAN</button>
+      </div>
+    </div>
+
     <div class="status-bar" id="status"></div>
   </div>
 
+  <!-- ══════════ PROGRESS ══════════ -->
   <div class="card progress-card" id="progressCard">
-    <h2>// SCAN PROGRESS</h2>
+    <h2>// DEEP SCAN PROGRESS</h2>
+    <div id="timeEstimate" style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--orange);margin-bottom:12px"></div>
     <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
-    <div id="progressSteps">
-      <div class="progress-step step-pending" id="step0">
-        <div class="step-icon">&#8212;</div>
-        <div class="step-label">theHarvester</div>
-        <div class="step-desc">emails / subdomains</div>
-      </div>
-      <div class="progress-step step-pending" id="step1">
-        <div class="step-icon">&#8212;</div>
-        <div class="step-label">WHOIS</div>
-        <div class="step-desc">domain registration</div>
-      </div>
-      <div class="progress-step step-pending" id="step2">
-        <div class="step-icon">&#8212;</div>
-        <div class="step-label">DNSRecon</div>
-        <div class="step-desc">DNS records</div>
-      </div>
-      <div class="progress-step step-pending" id="step3">
-        <div class="step-icon">&#8212;</div>
-        <div class="step-label">Amass</div>
-        <div class="step-desc">passive subdomain enum</div>
-      </div>
-      <div class="progress-step step-pending" id="step4">
-        <div class="step-icon">&#8212;</div>
-        <div class="step-label">Aggregating results</div>
-        <div class="step-desc">merging &amp; risk analysis</div>
-      </div>
-    </div>
+    <div id="progressSteps"></div>
     <div class="progress-elapsed" id="progressElapsed">00:00</div>
   </div>
 
+  <!-- ══════════ RESULTS ══════════ -->
   <div class="results" id="results">
     <div class="card">
-      <h2>// OSINT PROFILE SUMMARY</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <h2 style="margin-bottom:0">// OSINT INTELLIGENCE REPORT</h2>
+        <a class="btn-pdf" id="pdfBtn" style="display:none" href="#">DOWNLOAD PDF</a>
+      </div>
       <div class="summary-grid" id="summaryGrid"></div>
     </div>
 
     <div id="moduleErrorsSection"></div>
     <div id="riskSection"></div>
 
-    <div class="card">
+    <div class="card" id="dataCard">
       <h2>// INTELLIGENCE DATA</h2>
-
-      <div class="section-hdr open" onclick="toggleSec(this)">EMAILS</div>
-      <div class="section-body open" id="secEmails"><span style="color:var(--silver);font-size:12px">No data</span></div>
-
-      <div class="section-hdr" onclick="toggleSec(this)">SUBDOMAINS</div>
-      <div class="section-body" id="secSubdomains"><span style="color:var(--silver);font-size:12px">No data</span></div>
-
-      <div class="section-hdr" onclick="toggleSec(this)">IP ADDRESSES</div>
-      <div class="section-body" id="secIPs"><span style="color:var(--silver);font-size:12px">No data</span></div>
-
-      <div class="section-hdr" onclick="toggleSec(this)">DNS RECORDS</div>
-      <div class="section-body" id="secDNS"><span style="color:var(--silver);font-size:12px">No data</span></div>
-
-      <div class="section-hdr" onclick="toggleSec(this)">WHOIS</div>
-      <div class="section-body" id="secWhois"><span style="color:var(--silver);font-size:12px">No data</span></div>
-
-      <div class="section-hdr" onclick="toggleSec(this)">DATA SOURCES</div>
-      <div class="section-body" id="secSources"><span style="color:var(--silver);font-size:12px">No data</span></div>
+      <div id="dataSections"></div>
     </div>
   </div>
 
-  <footer>CYRBER &middot; AUTONOMOUS RECON &middot; AUTHORIZED TARGETS ONLY &middot; v0.1.0</footer>
+  <!-- ══════════ HISTORY ══════════ -->
+  <div class="card" id="historyCard">
+    <h2>// SCAN HISTORY</h2>
+    <div class="hist-filter" id="histFilter">
+      <button class="hist-filter-btn active" data-filter="all" onclick="filterHistory(this)">ALL</button>
+      <button class="hist-filter-btn" data-filter="domain" onclick="filterHistory(this)">DOMAIN</button>
+      <button class="hist-filter-btn" data-filter="email" onclick="filterHistory(this)">EMAIL</button>
+      <button class="hist-filter-btn" data-filter="person" onclick="filterHistory(this)">PERSON</button>
+      <button class="hist-filter-btn" data-filter="username" onclick="filterHistory(this)">USERNAME</button>
+      <button class="hist-filter-btn" data-filter="phone" onclick="filterHistory(this)">PHONE</button>
+    </div>
+    <div id="historyContent"><div class="hist-empty">Loading...</div></div>
+  </div>
+
+  <footer>CYRBER &middot; DEEP OSINT SCANNER &middot; AUTHORIZED TARGETS ONLY &middot; v0.3.0</footer>
 </div>
 
 <script>
 var API = '';
+var _currentTaskId = null;
+var _currentSearchType = 'domain';
+var _historyData = [];
+var _historyFilter = 'all';
 
 // ── JWT Auth ──
 function getToken() { return localStorage.getItem('cyrber_token'); }
@@ -418,11 +539,8 @@ async function authFetch(url, opts) {
   return r;
 }
 
-function toggleSec(hdr) {
-  hdr.classList.toggle('open');
-  hdr.nextElementSibling.classList.toggle('open');
-}
-
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function toggleSec(hdr) { hdr.classList.toggle('open'); hdr.nextElementSibling.classList.toggle('open'); }
 var _smC=0;
 function showAll(id,btn){var el=document.getElementById(id);if(el){el.style.display='';btn.parentNode.removeChild(btn);}}
 
@@ -431,53 +549,107 @@ function setStatus(msg, isError) {
   el.textContent = msg;
   el.className = 'status-bar on' + (isError ? ' error' : '');
 }
+function hideStatus() { document.getElementById('status').className = 'status-bar'; }
 
-function hideStatus() {
-  document.getElementById('status').className = 'status-bar';
+// ── TABS ──
+function selectTab(el) {
+  document.querySelectorAll('.search-tab').forEach(function(t) { t.classList.remove('active'); });
+  el.classList.add('active');
+  _currentSearchType = el.getAttribute('data-type');
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById('panel-' + _currentSearchType).classList.add('active');
 }
 
-var pollTimer = null;
-var stepTimer = null;
-var elapsedTimer = null;
-var currentStep = -1;
-var scanStartTime = 0;
-var TOTAL_STEPS = 5;
+function getTarget() {
+  if (_currentSearchType === 'domain') return document.getElementById('inp-domain').value.trim();
+  if (_currentSearchType === 'email') return document.getElementById('inp-email').value.trim();
+  if (_currentSearchType === 'person') {
+    var f = document.getElementById('inp-person-first').value.trim();
+    var l = document.getElementById('inp-person-last').value.trim();
+    return (f && l) ? f + ' ' + l : f || l;
+  }
+  if (_currentSearchType === 'username') return document.getElementById('inp-username').value.trim();
+  if (_currentSearchType === 'phone') return document.getElementById('inp-phone').value.trim();
+  return '';
+}
 
+// ── PROGRESS ──
+var STEP_CONFIG = {
+  domain: [
+    {label: 'theHarvester', desc: 'all engines (~10 min)'},
+    {label: 'Amass ACTIVE', desc: 'active enumeration (~15 min)'},
+    {label: 'DNSRecon + brute-force', desc: 'std + brt (~8 min)'},
+    {label: 'crt.sh + SecurityTrails', desc: 'CT logs + subdomains (~2 min)'},
+    {label: 'Metagoofil + Google Dorks', desc: 'documents & exposed files (~5 min)'},
+    {label: 'Aggregating results', desc: 'dedup & risk analysis'}
+  ],
+  email: [
+    {label: 'theHarvester', desc: 'email search'},
+    {label: 'HaveIBeenPwned', desc: 'breach check'},
+    {label: 'Holehe', desc: '120+ platforms'},
+    {label: 'EmailRep.io', desc: 'reputation analysis'},
+    {label: 'Aggregating results', desc: 'risk analysis'}
+  ],
+  person: [
+    {label: 'Google / Bing / LinkedIn', desc: 'theHarvester search'},
+    {label: 'Sherlock', desc: 'username search (~5 min)'},
+    {label: 'Maigret', desc: 'deep search (~5 min)'},
+    {label: 'Aggregating results', desc: 'compiling data'}
+  ],
+  username: [
+    {label: 'Sherlock', desc: '400+ platforms (~5 min)'},
+    {label: 'Maigret', desc: '500+ platforms (~5 min)'},
+    {label: 'GitHub API', desc: 'repos & commit emails'},
+    {label: 'Aggregating results', desc: 'compiling data'}
+  ],
+  phone: [
+    {label: 'NumVerify', desc: 'carrier lookup'},
+    {label: 'PhoneInfoga', desc: 'OSINT analysis'},
+    {label: 'Aggregating results', desc: 'compiling data'}
+  ]
+};
+
+var pollTimer = null, stepTimer = null, elapsedTimer = null;
+var currentStep = -1, scanStartTime = 0, TOTAL_STEPS = 5;
 var STEP_ICONS = { pending: '\u2014', active: '\u23F3', done: '\u2713' };
+
+function buildProgressSteps(type) {
+  var steps = STEP_CONFIG[type] || STEP_CONFIG.domain;
+  TOTAL_STEPS = steps.length;
+  var el = document.getElementById('progressSteps');
+  el.innerHTML = '';
+  steps.forEach(function(s, i) {
+    el.innerHTML += '<div class="progress-step step-pending" id="step' + i + '"><div class="step-icon">\u2014</div><div class="step-label">' + s.label + '</div><div class="step-desc">' + s.desc + '</div></div>';
+  });
+}
 
 function resetProgress() {
   currentStep = -1;
   for (var i = 0; i < TOTAL_STEPS; i++) {
     var el = document.getElementById('step' + i);
-    el.className = 'progress-step step-pending';
-    el.querySelector('.step-icon').textContent = STEP_ICONS.pending;
+    if (el) { el.className = 'progress-step step-pending'; el.querySelector('.step-icon').textContent = STEP_ICONS.pending; }
   }
   document.getElementById('progressFill').style.width = '0%';
   document.getElementById('progressElapsed').textContent = '00:00';
 }
 
 function advanceStep() {
-  // Mark current as done
   if (currentStep >= 0 && currentStep < TOTAL_STEPS) {
     var prev = document.getElementById('step' + currentStep);
-    prev.className = 'progress-step step-done';
-    prev.querySelector('.step-icon').textContent = STEP_ICONS.done;
+    if (prev) { prev.className = 'progress-step step-done'; prev.querySelector('.step-icon').textContent = STEP_ICONS.done; }
   }
   currentStep++;
   if (currentStep < TOTAL_STEPS) {
     var cur = document.getElementById('step' + currentStep);
-    cur.className = 'progress-step step-active';
-    cur.querySelector('.step-icon').textContent = STEP_ICONS.active;
-    var pct = Math.round(((currentStep + 0.5) / TOTAL_STEPS) * 100);
-    document.getElementById('progressFill').style.width = pct + '%';
+    if (cur) { cur.className = 'progress-step step-active'; cur.querySelector('.step-icon').textContent = STEP_ICONS.active; }
+    document.getElementById('progressFill').style.width = Math.round(((currentStep + 0.5) / TOTAL_STEPS) * 100) + '%';
   }
 }
 
 function completeAllSteps() {
   for (var i = 0; i < TOTAL_STEPS; i++) {
     var el = document.getElementById('step' + i);
-    el.className = 'progress-step step-done';
-    el.querySelector('.step-icon').textContent = STEP_ICONS.done;
+    if (el) { el.className = 'progress-step step-done'; el.querySelector('.step-icon').textContent = STEP_ICONS.done; }
   }
   document.getElementById('progressFill').style.width = '100%';
 }
@@ -486,9 +658,7 @@ function startElapsedTimer() {
   scanStartTime = Date.now();
   elapsedTimer = setInterval(function() {
     var sec = Math.floor((Date.now() - scanStartTime) / 1000);
-    var m = String(Math.floor(sec / 60)).padStart(2, '0');
-    var s = String(sec % 60).padStart(2, '0');
-    document.getElementById('progressElapsed').textContent = m + ':' + s;
+    document.getElementById('progressElapsed').textContent = String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
   }, 1000);
 }
 
@@ -498,48 +668,53 @@ function stopTimers() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
 
-function showProgress() {
-  document.getElementById('progressCard').classList.add('on');
+function showProgress(type) {
+  buildProgressSteps(type);
+  var pc = document.getElementById('progressCard');
+  pc.classList.add('on');
+  var times = { domain: '30-40 MIN', email: '~5 MIN', person: '~10 MIN', username: '~5 MIN', phone: '~3 MIN' };
+  document.getElementById('timeEstimate').textContent = '\u26A0 DEEP SCAN IN PROGRESS \u2014 ESTIMATED: ' + (times[type]||'?') + ' \u2014 DO NOT CLOSE THIS PAGE';
   resetProgress();
   advanceStep();
   startElapsedTimer();
-  stepTimer = setInterval(function() {
-    if (currentStep < TOTAL_STEPS - 1) {
-      advanceStep();
-    }
-  }, 8000);
+  var totalMs = { domain: 2100000, email: 300000, phone: 180000, person: 600000, username: 300000 };
+  var interval = Math.floor((totalMs[type] || 300000) / TOTAL_STEPS);
+  stepTimer = setInterval(function() { if (currentStep < TOTAL_STEPS - 1) advanceStep(); }, interval);
 }
 
 function hideProgress() {
-  completeAllSteps();
-  stopTimers();
-  setTimeout(function() {
-    document.getElementById('progressCard').classList.remove('on');
-  }, 1200);
+  completeAllSteps(); stopTimers();
+  setTimeout(function() { document.getElementById('progressCard').classList.remove('on'); }, 1200);
 }
 
+// ── LAUNCH ──
 async function launchOsint() {
-  var target = document.getElementById('target').value.trim();
+  var target = getTarget();
   if (!target) { setStatus('Enter target first', true); return; }
 
-  document.getElementById('launchBtn').disabled = true;
+  document.querySelectorAll('.btn-primary').forEach(function(b) { b.disabled = true; });
   document.getElementById('results').classList.remove('on');
-  document.getElementById('moduleErrorsSection').innerHTML = '';
-  document.getElementById('riskSection').innerHTML = '';
-  setStatus('Launching OSINT scan for ' + target + '...');
+  document.getElementById('pdfBtn').style.display = 'none';
+  setStatus('Launching ' + _currentSearchType.toUpperCase() + ' scan for ' + target + '...');
 
   try {
-    var r = await authFetch(API + '/osint/start?target=' + encodeURIComponent(target));
+    var r = await authFetch(API + '/osint/start', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({target: target, search_type: _currentSearchType})
+    });
     var d = await r.json();
-    if (!d.task_id) { setStatus('Error: ' + (d.detail || 'unknown'), true); document.getElementById('launchBtn').disabled = false; return; }
+    if (!d.task_id) { setStatus('Error: ' + (d.detail || 'unknown'), true); enableButtons(); return; }
+    _currentTaskId = d.task_id;
     setStatus('Task ' + d.task_id.slice(0,8) + ' started \u2014 scanning...');
-    showProgress();
+    showProgress(_currentSearchType);
     pollStatus(d.task_id);
   } catch(e) {
-    setStatus('Connection error: ' + e.message, true);
-    document.getElementById('launchBtn').disabled = false;
+    setStatus('Connection error: ' + e.message, true); enableButtons();
   }
 }
+
+function enableButtons() { document.querySelectorAll('.btn-primary').forEach(function(b) { b.disabled = false; }); }
 
 function pollStatus(taskId) {
   if (pollTimer) clearInterval(pollTimer);
@@ -548,200 +723,515 @@ function pollStatus(taskId) {
       var r = await authFetch(API + '/osint/status/' + taskId);
       var d = await r.json();
       if (d.status === 'completed') {
-        clearInterval(pollTimer);
-        pollTimer = null;
-        setStatus('Scan completed!');
-        setTimeout(hideStatus, 3000);
-        document.getElementById('launchBtn').disabled = false;
-        hideProgress();
+        clearInterval(pollTimer); pollTimer = null;
+        setStatus('Scan completed!'); setTimeout(hideStatus, 3000);
+        enableButtons(); hideProgress();
+        _currentTaskId = taskId;
         setTimeout(function() { renderResults(d.result); }, 1300);
+        loadHistory();
       } else if (d.status === 'failed') {
-        stopTimers();
-        document.getElementById('progressCard').classList.remove('on');
-        setStatus('Scan failed: ' + (d.error || 'unknown'), true);
-        document.getElementById('launchBtn').disabled = false;
+        stopTimers(); document.getElementById('progressCard').classList.remove('on');
+        setStatus('Scan failed: ' + (d.error || 'unknown'), true); enableButtons();
       } else {
         setStatus('Scanning... (' + d.status + ')');
       }
-    } catch(e) {
-      // keep polling
-    }
+    } catch(e) { /* keep polling */ }
   }, 3000);
 }
 
+// ══════════ RENDER RESULTS ══════════
 function renderResults(data) {
   document.getElementById('results').classList.add('on');
+  var st = data.search_type || 'domain';
 
+  // PDF
+  if (_currentTaskId) {
+    var pb = document.getElementById('pdfBtn');
+    pb.style.display = 'inline-block';
+    pb.onclick = function(e) {
+      e.preventDefault();
+      authFetch(API + '/osint/' + _currentTaskId + '/pdf')
+        .then(function(r) { return r.blob(); })
+        .then(function(blob) {
+          var u = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'cyrber_osint_' + (data.target||'scan') + '.pdf';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    };
+  }
+
+  // Summary
   var s = data.summary || {};
   var grid = document.getElementById('summaryGrid');
-  grid.innerHTML =
-    '<div class="stat-card"><div class="stat-label">EMAILS</div><div class="stat-value">' + (s.total_emails||0) + '</div></div>' +
-    '<div class="stat-card"><div class="stat-label">SUBDOMAINS</div><div class="stat-value">' + (s.total_subdomains||0) + '</div></div>' +
-    '<div class="stat-card"><div class="stat-label">IP ADDRESSES</div><div class="stat-value">' + (s.total_ips||0) + '</div></div>' +
-    '<div class="stat-card"><div class="stat-label">RISK INDICATORS</div><div class="stat-value" style="color:' + (s.risk_count > 0 ? 'var(--red)' : 'var(--green)') + '">' + (s.risk_count||0) + '</div></div>' +
-    '<div class="stat-card"><div class="stat-label">DATA SOURCES</div><div class="stat-value">' + (s.sources_count||0) + '</div></div>' +
-    (s.errors_count > 0 ? '<div class="stat-card"><div class="stat-label">MODULE ERRORS</div><div class="stat-value" style="color:var(--orange)">' + s.errors_count + '</div></div>' : '');
-
-  // Module errors (diagnostics)
-  var modErrors = data.module_errors || [];
-  var meEl = document.getElementById('moduleErrorsSection');
-  if (modErrors.length) {
-    var meHtml = '<div class="card" style="border-color:var(--orange)"><h2 style="color:var(--orange)">// MODULE ERRORS</h2>';
-    meHtml += '<div style="font-size:12px;color:var(--silver);margin-bottom:10px">Some OSINT modules could not execute. This may indicate missing tools in the environment.</div>';
-    modErrors.forEach(function(err) {
-      meHtml += '<div class="risk-alert risk-medium" style="border-color:var(--orange)"><span style="font-size:14px">&#9888;</span><div style="font-size:12px;color:var(--orange)">' + err + '</div></div>';
-    });
-    meHtml += '</div>';
-    meEl.innerHTML = meHtml;
-  } else {
-    meEl.innerHTML = '';
+  var sh = '';
+  if (st === 'domain') {
+    sh = _stat('EMAILS',s.total_emails||0) + _stat('SUBDOMAINS',s.total_subdomains||0) + _stat('IP ADDRESSES',s.total_ips||0) + _stat('DNS RECORDS',s.total_dns_records||0) + _stat('RISK',s.risk_count||0, s.risk_count>0?'var(--red)':'var(--green)') + _stat('SOURCES',s.sources_count||0) + (s.errors_count>0?_stat('ERRORS',s.errors_count,'var(--orange)'):'');
+  } else if (st === 'email') {
+    sh = _stat('BREACHES',s.total_breaches||0, s.total_breaches>0?'var(--red)':'var(--green)') + _stat('PASTES',s.total_pastes||0, s.total_pastes>0?'var(--orange)':'') + _stat('PLATFORMS',s.total_holehe||0) + _stat('RELATED',s.total_related_emails||0) + _stat('RISK',s.risk_count||0, s.risk_count>0?'var(--red)':'var(--green)');
+  } else if (st === 'username') {
+    sh = _stat('ACCOUNTS',s.total_accounts||0) + _stat('SOURCES',s.sources_count||0) + _stat('RISK',s.risk_count||0);
+  } else if (st === 'person') {
+    sh = _stat('EMAILS',s.total_emails||0) + _stat('ACCOUNTS',s.total_accounts||0) + _stat('HOSTS',s.total_hosts||0) + _stat('RISK',s.risk_count||0);
+  } else if (st === 'phone') {
+    sh = _stat('COUNTRY',s.country||'?','') + _stat('VALID',s.valid===true?'YES':s.valid===false?'NO':'?', s.valid===true?'var(--green)':'var(--orange)') + _stat('RISK',s.risk_count||0);
   }
+  grid.innerHTML = sh;
+
+  // Module errors
+  var me = data.module_errors || [];
+  var meEl = document.getElementById('moduleErrorsSection');
+  if (me.length) {
+    var mh = '<div class="card" style="border-color:var(--orange)"><h2 style="color:var(--orange)">// MODULE ERRORS (' + me.length + ')</h2>';
+    me.forEach(function(e) { mh += '<div class="risk-alert risk-medium" style="border-color:var(--orange)"><span style="font-size:14px">&#9888;</span><div style="font-size:12px;color:var(--orange)">' + esc(e) + '</div></div>'; });
+    mh += '</div>';
+    meEl.innerHTML = mh;
+  } else meEl.innerHTML = '';
 
   // Risk indicators
-  var riskEl = document.getElementById('riskSection');
-  var risks = data.risk_indicators || [];
-  if (risks.length) {
+  var ri = data.risk_indicators || [];
+  var rEl = document.getElementById('riskSection');
+  if (ri.length) {
     var rh = '<div class="card"><h2>// RISK INDICATORS</h2>';
-    risks.forEach(function(ri) {
-      rh += '<div class="risk-alert risk-' + ri.severity + '"><span style="font-size:14px">&#9888;</span><div><div style="font-weight:600">' + ri.title + '</div><div style="font-size:11px;opacity:.8">' + ri.description + '</div></div></div>';
-    });
+    ri.forEach(function(r) { rh += '<div class="risk-alert risk-' + r.severity + '"><span style="font-size:14px">&#9888;</span><div><div style="font-weight:600">' + esc(r.title) + '</div><div style="font-size:11px;opacity:.8">' + esc(r.description) + '</div></div></div>'; });
     rh += '</div>';
-    riskEl.innerHTML = rh;
-  } else {
-    riskEl.innerHTML = '';
+    rEl.innerHTML = rh;
+  } else rEl.innerHTML = '';
+
+  // Data sections
+  var ds = document.getElementById('dataSections');
+  var dh = '';
+  if (st === 'domain') dh = _renderDomain(data);
+  else if (st === 'email') dh = _renderEmail(data);
+  else if (st === 'username') dh = _renderUsername(data);
+  else if (st === 'person') dh = _renderPerson(data);
+  else if (st === 'phone') dh = _renderPhone(data);
+
+  // Sources
+  var src = data.data_sources || [];
+  if (src.length) {
+    var sv = '<div>';
+    src.forEach(function(s) {
+      var d = [];
+      if (s.emails) d.push(s.emails+' emails');
+      if (s.subdomains) d.push(s.subdomains+' subdomains');
+      if (s.records) d.push(s.records+' records');
+      if (s.breaches !== undefined) d.push(s.breaches+' breaches');
+      if (s.accounts !== undefined) d.push(s.accounts+' accounts');
+      sv += '<span class="tag" style="border-color:var(--purple);color:var(--purple)">' + esc(s.source) + (d.length?' <span style="color:var(--silver);font-size:10px">('+d.join(', ')+')</span>':'') + '</span>';
+    });
+    sv += '</div>';
+    dh += _sec('DATA SOURCES (' + src.length + ')', sv, false);
   }
 
-  // Emails
-  var emails = data.emails || [];
-  var eEl = document.getElementById('secEmails');
-  if (emails.length) {
-    eEl.innerHTML = '<div style="margin-bottom:8px"><span class="badge" style="border-color:var(--purple);color:var(--purple)">' + emails.length + ' emails found</span></div>' +
-      emails.map(function(e) { return '<span class="tag tag-email">&#9993; ' + e + '</span>'; }).join('');
-  } else {
-    eEl.innerHTML = '<span style="color:var(--silver);font-size:12px">No emails discovered</span>';
-  }
+  ds.innerHTML = dh;
+  ds.querySelectorAll('.section-hdr').forEach(function(h) { h.addEventListener('click', function() { toggleSec(h); }); });
+}
+
+function _stat(l,v,c) { return '<div class="stat-card"><div class="stat-label">'+l+'</div><div class="stat-value"'+(c?' style="color:'+c+'"':'')+'>'+v+'</div></div>'; }
+function _sec(t,c,o) { return '<div class="section-hdr'+(o?' open':'')+'">'+ t+'</div><div class="section-body'+(o?' open':'')+'">'+c+'</div>'; }
+
+// ── DOMAIN ──
+function _renderDomain(d) {
+  var h = '';
+  // Emails with source grouping
+  var em = d.emails || [];
+  if (em.length) {
+    var ec = '<div style="margin-bottom:8px"><span class="badge" style="border-color:var(--purple);color:var(--purple)">' + em.length + ' emails found</span></div>';
+    em.forEach(function(e) { ec += '<span class="tag tag-email">&#9993; ' + esc(e) + '</span>'; });
+    h += _sec('EMAILS (' + em.length + ')', ec, true);
+  } else h += _sec('EMAILS', '<span style="color:var(--silver);font-size:12px">No emails discovered</span>', false);
 
   // Subdomains
-  var subs = data.subdomains || [];
-  var sEl = document.getElementById('secSubdomains');
+  var subs = d.subdomains || [];
   if (subs.length) {
-    var sh = '<div style="margin-bottom:8px"><span class="badge" style="border-color:var(--accent);color:var(--accent)">' + subs.length + ' subdomains</span></div><div>';
-    subs.slice(0, 200).forEach(function(s) { sh += '<span class="tag">' + s + '</span>'; });
-    if (subs.length > 200) { var _id='osm'+(++_smC); sh += '<span id="'+_id+'" style="display:none">'; subs.slice(200).forEach(function(s){ sh += '<span class="tag">' + s + '</span>'; }); sh += '</span> <button class="show-more-btn" onclick="showAll(\''+_id+'\',this)">SHOW ALL ' + subs.length + ' &#9660;</button>'; }
-    sh += '</div>';
-    sEl.innerHTML = sh;
-  } else {
-    sEl.innerHTML = '<span style="color:var(--silver);font-size:12px">No subdomains discovered</span>';
+    var sc = '<div style="margin-bottom:8px"><span class="badge" style="border-color:var(--accent);color:var(--accent)">' + subs.length + ' subdomains</span></div><div>';
+    subs.slice(0,200).forEach(function(s) { sc += '<span class="tag">' + esc(s) + '</span>'; });
+    if (subs.length > 200) { var _id='sm'+(++_smC); sc += '<span id="'+_id+'" style="display:none">'; subs.slice(200).forEach(function(s){ sc += '<span class="tag">'+esc(s)+'</span>'; }); sc += '</span><button class="show-more-btn" onclick="showAll(\''+_id+'\',this)">SHOW ALL '+subs.length+' &#9660;</button>'; }
+    sc += '</div>';
+    h += _sec('SUBDOMAINS (' + subs.length + ')', sc, false);
   }
 
-  // IP Addresses
-  var ips = data.ip_addresses || [];
-  var iEl = document.getElementById('secIPs');
+  // IPs
+  var ips = d.ip_addresses || [];
   if (ips.length) {
-    var ih = '<div style="margin-bottom:8px"><span class="badge" style="border-color:var(--accent);color:var(--accent)">' + ips.length + ' IPs</span></div>';
-    ih += ips.slice(0, 100).map(function(ip) { return '<span class="tag tag-ip">' + ip + '</span>'; }).join('');
-    if (ips.length > 100) { var _id='osm'+(++_smC); ih += '<span id="'+_id+'" style="display:none">'; ips.slice(100).forEach(function(ip){ ih += '<span class="tag tag-ip">' + ip + '</span>'; }); ih += '</span> <button class="show-more-btn" onclick="showAll(\''+_id+'\',this)">SHOW ALL ' + ips.length + ' &#9660;</button>'; }
-    iEl.innerHTML = ih;
-  } else {
-    iEl.innerHTML = '<span style="color:var(--silver);font-size:12px">No IP addresses discovered</span>';
+    var ic = '<div style="margin-bottom:8px"><span class="badge" style="border-color:var(--accent);color:var(--accent)">' + ips.length + ' IPs</span></div>';
+    ips.slice(0,100).forEach(function(ip) { ic += '<span class="tag tag-ip">' + esc(ip) + '</span>'; });
+    h += _sec('IP ADDRESSES (' + ips.length + ')', ic, false);
   }
 
-  // DNS Records
-  var dns = data.dns_records || {};
-  var dEl = document.getElementById('secDNS');
-  var dh = '';
-  var aRecs = dns.a_records || [];
-  if (aRecs.length) {
-    dh += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">A / AAAA RECORDS (' + aRecs.length + ')</div>';
-    dh += '<table><thead><tr><th>HOSTNAME</th><th>IP</th><th>TYPE</th></tr></thead><tbody>';
-    aRecs.forEach(function(r) { dh += '<tr><td style="color:var(--white)">' + (r.hostname||'') + '</td><td>' + (r.ip||'') + '</td><td>' + (r.type||'A') + '</td></tr>'; });
-    dh += '</tbody></table>';
-  }
-  var mxRecs = dns.mx_records || [];
-  if (mxRecs.length) {
-    dh += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">MX RECORDS (' + mxRecs.length + ')</div>';
-    dh += '<table><thead><tr><th>EXCHANGE</th><th>PRIORITY</th></tr></thead><tbody>';
-    mxRecs.forEach(function(r) { dh += '<tr><td style="color:var(--white)">' + (r.exchange||'') + '</td><td>' + (r.priority||'') + '</td></tr>'; });
-    dh += '</tbody></table>';
-  }
-  var nsRecs = dns.ns_records || [];
-  if (nsRecs.length) {
-    dh += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">NS RECORDS (' + nsRecs.length + ')</div>';
-    dh += '<div>';
-    nsRecs.forEach(function(ns) { dh += '<span class="tag tag-ip">' + ns + '</span>'; });
-    dh += '</div>';
-  }
-  var txtRecs = dns.txt_records || [];
-  if (txtRecs.length) {
-    dh += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">TXT RECORDS (' + txtRecs.length + ')</div>';
-    txtRecs.forEach(function(r) {
-      var tCol = r.type === 'SPF' ? 'var(--green)' : r.type === 'DMARC' ? 'var(--green)' : r.type === 'DKIM' ? 'var(--accent)' : 'var(--silver)';
-      dh += '<div style="margin-bottom:6px"><span class="badge" style="border-color:' + tCol + ';color:' + tCol + '">' + r.type + '</span> <span style="font-size:12px;color:var(--white);word-break:break-all;margin-left:6px">' + (r.value||'') + '</span></div>';
-    });
-  }
-  var srvRecs = dns.srv_records || [];
-  if (srvRecs.length) {
-    dh += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">SRV RECORDS (' + srvRecs.length + ')</div>';
-    dh += '<table><thead><tr><th>SERVICE</th><th>TARGET</th><th>PORT</th><th>PRIORITY</th></tr></thead><tbody>';
-    srvRecs.forEach(function(r) { dh += '<tr><td style="color:var(--white)">' + (r.service||'') + '</td><td>' + (r.target||'') + '</td><td>' + (r.port||'') + '</td><td>' + (r.priority||'') + '</td></tr>'; });
-    dh += '</tbody></table>';
-  }
-  dEl.innerHTML = dh || '<span style="color:var(--silver);font-size:12px">No DNS records</span>';
-
+  // DNS
+  h += _renderDNS(d.dns_records || {});
   // WHOIS
-  var wh = data.whois_info || {};
-  var wEl = document.getElementById('secWhois');
-  if (wh.target || wh.domain_name) {
-    var wc = '<div class="whois-grid">';
-    if (wh.type === 'domain') {
-      var fields = [['DOMAIN', wh.domain_name], ['REGISTRAR', wh.registrar],
-        ['REGISTERED', (wh.registration_date||'').split('T')[0]], ['EXPIRES', (wh.expiration_date||'').split('T')[0]],
-        ['UPDATED', (wh.last_updated||'').split('T')[0]]];
-      fields.forEach(function(f) { if (f[1]) wc += '<div class="whois-item"><div class="wl">' + f[0] + '</div><div class="wv">' + f[1] + '</div></div>'; });
-      if (wh.days_until_expiry !== null && wh.days_until_expiry !== undefined) {
-        var expCol = wh.days_until_expiry > 90 ? 'var(--green)' : wh.days_until_expiry >= 30 ? 'var(--yellow)' : 'var(--red)';
-        wc += '<div class="whois-item"><div class="wl">EXPIRES IN</div><div class="wv" style="color:' + expCol + '">' + wh.days_until_expiry + ' days</div></div>';
-      }
-      if (wh.privacy_protected) wc += '<div class="whois-item"><div class="wl">PRIVACY</div><div class="wv" style="color:var(--purple)">Protected</div></div>';
-      wc += '</div>';
-      var ns = wh.name_servers || [];
-      if (ns.length) {
-        wc += '<div style="margin-top:12px;font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">NAME SERVERS</div>';
-        ns.forEach(function(n) { wc += '<span class="tag tag-ip">' + n + '</span>'; });
-      }
-    } else {
-      var fields = [['ASN', wh.asn], ['REGISTRY', wh.asn_registry], ['COUNTRY', wh.asn_country_code], ['DESCRIPTION', wh.asn_description]];
-      fields.forEach(function(f) { if (f[1]) wc += '<div class="whois-item"><div class="wl">' + f[0] + '</div><div class="wv">' + f[1] + '</div></div>'; });
-      if (wh.network && wh.network.cidr) wc += '<div class="whois-item"><div class="wl">NETWORK</div><div class="wv">' + wh.network.cidr + '</div></div>';
-      wc += '</div>';
-    }
-    wEl.innerHTML = wc;
-  } else {
-    wEl.innerHTML = '<span style="color:var(--silver);font-size:12px">No WHOIS data</span>';
+  h += _renderWhois(d.whois_info || {});
+
+  // Shodan
+  var sh = d.shodan || {};
+  if (sh.ip && !sh.error) {
+    var sc = '<div class="whois-grid">';
+    [['IP',sh.ip],['ORG',sh.org],['ISP',sh.isp],['OS',sh.os],['COUNTRY',sh.country_name],['CITY',sh.city]].forEach(function(f) { if(f[1]) sc += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv">'+esc(String(f[1]))+'</div></div>'; });
+    sc += '</div>';
+    var ports = sh.ports || [];
+    if (ports.length) { sc += '<div style="margin-top:12px;font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">OPEN PORTS ('+ports.length+')</div>'; ports.forEach(function(p){sc += '<span class="tag tag-ip">'+p+'</span>';}); }
+    var vulns = sh.vulns || [];
+    if (vulns.length) { sc += '<div style="margin-top:12px;font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--red);margin-bottom:6px">VULNERABILITIES ('+vulns.length+')</div>'; vulns.forEach(function(v){sc += '<span class="tag tag-red">'+esc(v)+'</span>';}); }
+    h += _sec('SHODAN INTELLIGENCE', sc, false);
   }
 
-  // Data sources
-  var sources = data.data_sources || [];
-  var srcEl = document.getElementById('secSources');
-  if (sources.length) {
-    var sh = '<div>';
-    sources.forEach(function(src) {
-      var detail = '';
-      if (src.emails) detail += src.emails + ' emails ';
-      if (src.subdomains) detail += src.subdomains + ' subdomains ';
-      if (src.records) detail += src.records + ' records ';
-      sh += '<span class="tag" style="border-color:var(--purple);color:var(--purple)">' + src.source + (detail ? ' <span style="color:var(--silver);font-size:10px">(' + detail.trim() + ')</span>' : '') + '</span>';
+  // CT Logs
+  var ct = d.crtsh_subdomains || [];
+  if (ct.length) {
+    var cc = '<div style="margin-bottom:8px"><span class="badge" style="border-color:var(--accent);color:var(--accent)">' + ct.length + ' from CT logs</span></div>';
+    ct.slice(0,100).forEach(function(s){ cc += '<span class="tag">'+esc(s)+'</span>'; });
+    if (ct.length>100) cc += '<span style="color:var(--silver);font-size:11px;margin-left:8px">... and '+(ct.length-100)+' more</span>';
+    h += _sec('CERTIFICATE TRANSPARENCY (' + ct.length + ')', cc, false);
+  }
+
+  // Google Dorks
+  var dk = d.google_dorks || [];
+  if (dk.length) {
+    var dc = '<table><thead><tr><th>DORK QUERY</th><th>PURPOSE</th><th>LINK</th></tr></thead><tbody>';
+    dk.forEach(function(d) { dc += '<tr><td style="color:var(--white);font-size:11px;word-break:break-all">'+esc(d.query||'')+'</td><td style="font-size:11px">'+esc(d.description||'')+'</td><td><a href="'+esc(d.url||'')+'" target="_blank" rel="noopener" style="color:var(--accent);font-size:11px">Search</a></td></tr>'; });
+    dc += '</tbody></table>';
+    h += _sec('GOOGLE DORKS (' + dk.length + ')', dc, false);
+  }
+
+  // Metagoofil
+  var mg = d.metagoofil || {};
+  var mf = mg.files || [];
+  if (mf.length) {
+    var mc = '<table><thead><tr><th>DOCUMENT</th><th>TYPE</th></tr></thead><tbody>';
+    mf.slice(0,50).forEach(function(f) { mc += '<tr><td style="color:var(--white);word-break:break-all">'+esc(f)+'</td><td>'+esc(f.split('.').pop().toUpperCase())+'</td></tr>'; });
+    mc += '</tbody></table>';
+    if (mg.metadata && mg.metadata.length) {
+      mc += '<div style="margin-top:12px;font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">EXTRACTED METADATA</div>';
+      mc += '<table><thead><tr><th>FILE</th><th>AUTHOR</th><th>CREATOR</th></tr></thead><tbody>';
+      mg.metadata.slice(0,30).forEach(function(m) { mc += '<tr><td style="font-size:11px;word-break:break-all">'+esc(m.file||'')+'</td><td>'+esc(m.author||'')+'</td><td style="font-size:11px">'+esc(m.creator||'')+'</td></tr>'; });
+      mc += '</tbody></table>';
+    }
+    h += _sec('DOCUMENTS \u2014 METAGOOFIL (' + mf.length + ')', mc, false);
+  }
+  return h;
+}
+
+function _renderDNS(dns) {
+  var h = '';
+  var ar = dns.a_records || [];
+  if (ar.length) {
+    h += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">A / AAAA RECORDS ('+ar.length+')</div>';
+    h += '<table><thead><tr><th>HOSTNAME</th><th>IP</th><th>TYPE</th></tr></thead><tbody>';
+    ar.forEach(function(r) { h += '<tr><td style="color:var(--white)">'+esc(r.hostname||'')+'</td><td>'+esc(r.ip||'')+'</td><td>'+esc(r.type||'A')+'</td></tr>'; });
+    h += '</tbody></table>';
+  }
+  var mx = dns.mx_records || [];
+  if (mx.length) {
+    h += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">MX RECORDS ('+mx.length+')</div>';
+    h += '<table><thead><tr><th>EXCHANGE</th><th>PRIORITY</th></tr></thead><tbody>';
+    mx.forEach(function(r) { h += '<tr><td style="color:var(--white)">'+esc(r.exchange||'')+'</td><td>'+r.priority+'</td></tr>'; });
+    h += '</tbody></table>';
+  }
+  var ns = dns.ns_records || [];
+  if (ns.length) {
+    h += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">NS RECORDS ('+ns.length+')</div><div>';
+    ns.forEach(function(n) { h += '<span class="tag tag-ip">'+esc(n)+'</span>'; });
+    h += '</div>';
+  }
+  var txt = dns.txt_records || [];
+  if (txt.length) {
+    h += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">TXT RECORDS ('+txt.length+')</div>';
+    txt.forEach(function(r) {
+      var c = r.type==='SPF'?'var(--green)':r.type==='DMARC'?'var(--green)':r.type==='DKIM'?'var(--accent)':'var(--silver)';
+      h += '<div style="margin-bottom:6px"><span class="badge" style="border-color:'+c+';color:'+c+'">'+r.type+'</span> <span style="font-size:12px;color:var(--white);word-break:break-all;margin-left:6px">'+esc(r.value||'')+'</span></div>';
     });
-    sh += '</div>';
-    srcEl.innerHTML = sh;
+  }
+  var srv = dns.srv_records || [];
+  if (srv.length) {
+    h += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">SRV RECORDS ('+srv.length+')</div>';
+    h += '<table><thead><tr><th>SERVICE</th><th>TARGET</th><th>PORT</th><th>PRIORITY</th></tr></thead><tbody>';
+    srv.forEach(function(r) { h += '<tr><td style="color:var(--white)">'+esc(r.service||'')+'</td><td>'+esc(r.target||'')+'</td><td>'+r.port+'</td><td>'+r.priority+'</td></tr>'; });
+    h += '</tbody></table>';
+  }
+  return _sec('DNS RECORDS', h || '<span style="color:var(--silver);font-size:12px">No DNS records</span>', false);
+}
+
+function _renderWhois(wh) {
+  if (!wh || (!wh.target && !wh.domain_name)) return _sec('WHOIS', '<span style="color:var(--silver);font-size:12px">No WHOIS data</span>', false);
+  var c = '<div class="whois-grid">';
+  if (wh.type === 'domain') {
+    [['DOMAIN',wh.domain_name],['REGISTRAR',wh.registrar],['REGISTERED',(wh.registration_date||'').split('T')[0]],['EXPIRES',(wh.expiration_date||'').split('T')[0]],['UPDATED',(wh.last_updated||'').split('T')[0]]].forEach(function(f) { if(f[1]) c += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv">'+esc(f[1])+'</div></div>'; });
+    if (wh.days_until_expiry != null) {
+      var ec = wh.days_until_expiry > 90 ? 'var(--green)' : wh.days_until_expiry >= 30 ? 'var(--yellow)' : 'var(--red)';
+      c += '<div class="whois-item"><div class="wl">EXPIRES IN</div><div class="wv" style="color:'+ec+'">'+wh.days_until_expiry+' days</div></div>';
+    }
+    if (wh.privacy_protected) c += '<div class="whois-item"><div class="wl">PRIVACY</div><div class="wv" style="color:var(--purple)">Protected</div></div>';
+    c += '</div>';
+    var ns = wh.name_servers || [];
+    if (ns.length) { c += '<div style="margin-top:12px;font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">NAME SERVERS</div>'; ns.forEach(function(n) { c += '<span class="tag tag-ip">'+esc(n)+'</span>'; }); }
   } else {
-    srcEl.innerHTML = '<span style="color:var(--silver);font-size:12px">No sources</span>';
+    [['ASN',wh.asn],['REGISTRY',wh.asn_registry],['COUNTRY',wh.asn_country_code],['DESCRIPTION',wh.asn_description]].forEach(function(f) { if(f[1]) c += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv">'+esc(String(f[1]))+'</div></div>'; });
+    if (wh.network && wh.network.cidr) c += '<div class="whois-item"><div class="wl">NETWORK</div><div class="wv">'+esc(wh.network.cidr)+'</div></div>';
+    c += '</div>';
+  }
+  return _sec('WHOIS', c, false);
+}
+
+// ── EMAIL ──
+function _renderEmail(d) {
+  var h = '';
+  // PWNED badge
+  var breaches = d.breaches || [];
+  if (breaches.length) {
+    h += '<div class="pwned-badge pwned-yes">&#9888; PWNED IN ' + breaches.length + ' BREACH' + (breaches.length>1?'ES':'') + '</div>';
+  } else {
+    h += '<div class="pwned-badge pwned-no">&#10003; NO BREACHES FOUND</div>';
+  }
+  // Breaches table
+  if (breaches.length) {
+    var bc = '<table><thead><tr><th>BREACH</th><th>DOMAIN</th><th>DATE</th><th>RECORDS</th><th>DATA TYPES</th></tr></thead><tbody>';
+    breaches.forEach(function(b) {
+      var v = b.is_verified ? ' <span style="color:var(--red);font-size:10px">VERIFIED</span>' : '';
+      bc += '<tr><td style="color:var(--red);font-weight:600">'+esc(b.name)+v+'</td><td>'+esc(b.domain||'')+'</td><td>'+esc(b.breach_date||'')+'</td><td style="font-family:Share Tech Mono,monospace">'+(b.pwn_count||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--silver)">'+(b.data_classes||[]).slice(0,4).join(', ')+'</td></tr>';
+    });
+    bc += '</tbody></table>';
+    h += _sec('DATA BREACHES (' + breaches.length + ')', bc, true);
+  }
+  // Pastes
+  var pastes = d.pastes || [];
+  if (pastes.length) {
+    var pc = '<table><thead><tr><th>SOURCE</th><th>TITLE</th><th>DATE</th><th>EMAILS</th></tr></thead><tbody>';
+    pastes.forEach(function(p) { pc += '<tr><td>'+esc(p.source||'')+'</td><td>'+esc(p.title||'')+'</td><td>'+(p.date||'').split('T')[0]+'</td><td>'+(p.email_count||0)+'</td></tr>'; });
+    pc += '</tbody></table>';
+    h += _sec('PASTE DUMPS (' + pastes.length + ')', pc, false);
+  }
+  // Holehe
+  var hol = d.holehe || [];
+  if (hol.length) {
+    var found = hol.filter(function(a) { return a.exists; });
+    var hc = '<div style="margin-bottom:12px"><span class="badge" style="border-color:var(--green);color:var(--green)">' + found.length + ' accounts exist</span> <span class="badge" style="border-color:var(--silver);color:var(--silver)">' + hol.length + ' platforms checked</span></div>';
+    if (found.length) {
+      hc += '<div class="account-grid">';
+      found.forEach(function(a) {
+        hc += '<div class="account-card"><div class="account-icon" style="border-color:var(--green);color:var(--green)">&#10003;</div><div><div class="account-name">'+esc(a.name||a.platform||'')+'</div>'+(a.recovery?'<div class="account-source">Recovery: '+esc(a.recovery)+'</div>':'')+'</div></div>';
+      });
+      hc += '</div>';
+    }
+    h += _sec('PLATFORM ACCOUNTS \u2014 HOLEHE (' + found.length + '/' + hol.length + ')', hc, false);
+  }
+  // EmailRep
+  var er = d.emailrep || {};
+  if (er.email) {
+    var ec = '<div class="whois-grid">';
+    [['EMAIL',er.email],['REPUTATION',er.reputation],['SUSPICIOUS',er.suspicious?'YES':'NO'],['REFERENCES',er.references],['BLACKLISTED',er.blacklisted?'YES':'NO']].forEach(function(f) { if(f[1]!=null) ec += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv"'+(f[0]==='SUSPICIOUS'&&er.suspicious?' style="color:var(--red)"':'')+(f[0]==='BLACKLISTED'&&er.blacklisted?' style="color:var(--red)"':'')+'>'+f[1]+'</div></div>'; });
+    ec += '</div>';
+    var pr = er.profiles || [];
+    if (pr.length) { ec += '<div style="margin-top:12px">'; pr.forEach(function(p) { ec += '<span class="tag" style="border-color:var(--purple);color:var(--purple)">'+esc(p)+'</span>'; }); ec += '</div>'; }
+    h += _sec('EMAILREP.IO ANALYSIS', ec, false);
+  }
+  // Hunter
+  var hu = d.hunter || {};
+  if (hu.email) {
+    var huc = '<div class="whois-grid">';
+    [['EMAIL',hu.email],['RESULT',hu.result],['SCORE',hu.score],['DISPOSABLE',hu.disposable?'YES':'NO'],['WEBMAIL',hu.webmail?'YES':'NO']].forEach(function(f) { if(f[1]!=null) huc += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv">'+f[1]+'</div></div>'; });
+    huc += '</div>';
+    h += _sec('HUNTER.IO VERIFICATION', huc, false);
+  }
+  // Related
+  var rel = d.related_emails || [];
+  if (rel.length) {
+    var rc = rel.map(function(e) { return '<span class="tag tag-email">&#9993; '+esc(e)+'</span>'; }).join('');
+    h += _sec('RELATED EMAILS (' + rel.length + ')', rc, false);
+  }
+  return h;
+}
+
+// ── USERNAME ──
+function _renderUsername(d) {
+  var h = '';
+  var acc = d.accounts || [];
+  if (acc.length) {
+    // Group by category
+    var cats = {};
+    acc.forEach(function(a) {
+      var cat = _categorize(a.platform || '');
+      if (!cats[cat]) cats[cat] = [];
+      cats[cat].push(a);
+    });
+    h += '<div style="margin-bottom:16px"><span class="badge" style="border-color:var(--green);color:var(--green)">' + acc.length + ' accounts found</span></div>';
+    var order = ['Social Media','Coding','Gaming','Forums','Dating','Other'];
+    order.forEach(function(cat) {
+      if (!cats[cat] || !cats[cat].length) return;
+      var items = cats[cat];
+      var gc = '<div class="account-grid">';
+      items.forEach(function(a) {
+        gc += '<div class="account-card"><div class="account-icon">&#128100;</div><div><div class="account-name">'+esc(a.platform||'')+'</div><a class="account-url" href="'+esc(a.url||'')+'" target="_blank" rel="noopener">'+esc(a.url||'')+'</a><div class="account-source">'+esc(a.source||'sherlock')+'</div></div></div>';
+      });
+      gc += '</div>';
+      h += _sec(cat.toUpperCase() + ' (' + items.length + ')', gc, cat === 'Social Media');
+    });
+  } else h += _sec('ACCOUNTS', '<span style="color:var(--silver);font-size:12px">No accounts found</span>', false);
+
+  // GitHub
+  var gh = d.github || {};
+  if (gh.login) {
+    var gc = '<div class="whois-grid">';
+    [['LOGIN',gh.login],['NAME',gh.name],['BIO',gh.bio],['COMPANY',gh.company],['LOCATION',gh.location],['PUBLIC REPOS',gh.public_repos],['FOLLOWERS',gh.followers],['CREATED',(gh.created_at||'').split('T')[0]]].forEach(function(f) { if(f[1]) gc += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv">'+esc(String(f[1]))+'</div></div>'; });
+    gc += '</div>';
+    var ce = gh.commit_emails || [];
+    if (ce.length) { gc += '<div style="margin-top:12px;font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">COMMIT EMAILS</div>'; ce.forEach(function(e) { gc += '<span class="tag tag-email">&#9993; '+esc(e)+'</span>'; }); }
+    h += _sec('GITHUB PROFILE', gc, false);
+  }
+  return h;
+}
+
+function _categorize(platform) {
+  var p = platform.toLowerCase();
+  var social = ['facebook','twitter','instagram','tiktok','linkedin','snapchat','pinterest','tumblr','reddit','mastodon','threads','vk','ok.ru','telegram','whatsapp'];
+  var coding = ['github','gitlab','bitbucket','stackoverflow','codepen','replit','hackerrank','leetcode','npm'];
+  var gaming = ['steam','twitch','xbox','playstation','epic','roblox','minecraft','discord','battlenet'];
+  var forums = ['quora','medium','hackernews','devto','slashdot'];
+  var dating = ['tinder','bumble','badoo','okcupid'];
+  for (var i=0;i<social.length;i++) if (p.indexOf(social[i])>=0) return 'Social Media';
+  for (var i=0;i<coding.length;i++) if (p.indexOf(coding[i])>=0) return 'Coding';
+  for (var i=0;i<gaming.length;i++) if (p.indexOf(gaming[i])>=0) return 'Gaming';
+  for (var i=0;i<forums.length;i++) if (p.indexOf(forums[i])>=0) return 'Forums';
+  for (var i=0;i<dating.length;i++) if (p.indexOf(dating[i])>=0) return 'Dating';
+  return 'Other';
+}
+
+// ── PERSON ──
+function _renderPerson(d) {
+  var h = '';
+  var em = d.emails || [];
+  if (em.length) {
+    var ec = em.map(function(e) { return '<span class="tag tag-email">&#9993; '+esc(e)+'</span>'; }).join('');
+    h += _sec('EMAILS (' + em.length + ')', ec, true);
+  }
+  // Accounts as cards
+  var acc = d.accounts || [];
+  if (acc.length) {
+    var ac = '<div class="account-grid">';
+    acc.forEach(function(a) {
+      ac += '<div class="account-card"><div class="account-icon">&#128100;</div><div><div class="account-name">'+esc(a.platform||'')+'</div><a class="account-url" href="'+esc(a.url||'')+'" target="_blank" rel="noopener">'+esc(a.url||'')+'</a><div class="account-source">'+esc(a.source||'')+'</div></div></div>';
+    });
+    ac += '</div>';
+    h += _sec('SOCIAL ACCOUNTS (' + acc.length + ')', ac, false);
+  }
+  // Usernames guessed
+  var ug = d.username_guesses || [];
+  if (ug.length) {
+    var uc = ug.map(function(u) { return '<span class="tag tag-green">'+esc(u)+'</span>'; }).join('');
+    h += _sec('POSSIBLE USERNAMES', uc, false);
+  }
+  var hosts = d.associated_hosts || [];
+  if (hosts.length) {
+    var hc = hosts.map(function(x) { return '<span class="tag">'+esc(x)+'</span>'; }).join('');
+    h += _sec('ASSOCIATED HOSTS (' + hosts.length + ')', hc, false);
+  }
+  return h;
+}
+
+// ── PHONE ──
+function _renderPhone(d) {
+  var h = '';
+  var pi = d.phone_info || {};
+  if (pi.number) {
+    var pc = '<div class="whois-grid">';
+    [['NUMBER',pi.number],['COUNTRY',pi.country],['CARRIER',pi.carrier],['LINE TYPE',pi.line_type],['LOCATION',pi.location],['INTERNATIONAL',pi.international_format],['LOCAL',pi.local_format]].forEach(function(f) { if(f[1]) pc += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv">'+esc(String(f[1]))+'</div></div>'; });
+    pc += '</div>';
+    h += _sec('PHONE DETAILS', pc, true);
+  }
+  var pf = d.phoneinfoga || {};
+  if (pf.social_media && pf.social_media.length) {
+    var sc = '<table><thead><tr><th>PLATFORM</th><th>URL</th></tr></thead><tbody>';
+    pf.social_media.forEach(function(s) { sc += '<tr><td style="color:var(--white)">'+esc(s.platform||'')+'</td><td><a href="'+esc(s.url||'')+'" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">'+esc(s.url||'')+'</a></td></tr>'; });
+    sc += '</tbody></table>';
+    h += _sec('PHONEINFOGA RESULTS', sc, false);
+  }
+  return h;
+}
+
+// ══════════ HISTORY ══════════
+async function loadHistory() {
+  try {
+    var r = await authFetch(API + '/osint/history');
+    _historyData = await r.json();
+    renderHistory();
+  } catch(e) {
+    document.getElementById('historyContent').innerHTML = '<div class="hist-empty">Failed to load history.</div>';
   }
 }
 
-document.getElementById('target').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') launchOsint();
+function filterHistory(btn) {
+  document.querySelectorAll('.hist-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  _historyFilter = btn.getAttribute('data-filter');
+  renderHistory();
+}
+
+function renderHistory() {
+  var el = document.getElementById('historyContent');
+  var data = _historyData;
+  if (!data || !data.length) { el.innerHTML = '<div class="hist-empty">No OSINT scans recorded yet.</div>'; return; }
+
+  var filtered = _historyFilter === 'all' ? data : data.filter(function(s) { return s.search_type === _historyFilter; });
+  if (!filtered.length) { el.innerHTML = '<div class="hist-empty">No ' + _historyFilter.toUpperCase() + ' scans recorded.</div>'; return; }
+
+  var h = '<table class="hist-table"><thead><tr><th>TYPE</th><th>TARGET</th><th>DATE</th><th>RESULTS</th><th>PDF</th></tr></thead><tbody>';
+  filtered.forEach(function(s) {
+    var sm = s.summary || {};
+    var st = s.search_type || 'domain';
+    var date = s.completed_at ? new Date(s.completed_at).toLocaleString('pl-PL') : 'pending';
+    var summary = _histSummary(st, sm);
+    h += '<tr onclick="loadOsintDetail(\'' + s.task_id + '\',\'' + st + '\')">';
+    h += '<td><span class="type-badge type-' + st + '">' + st.toUpperCase() + '</span></td>';
+    h += '<td style="color:var(--white);font-weight:600">' + esc(s.target) + '</td>';
+    h += '<td style="font-size:11px">' + date + '</td>';
+    h += '<td style="font-size:11px;color:var(--silver)">' + summary + '</td>';
+    h += '<td><button class="btn-pdf btn-sm" onclick="event.stopPropagation();downloadPdf(\'' + s.task_id + '\',\'' + esc(s.target) + '\')">PDF</button></td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+function _histSummary(type, sm) {
+  if (type === 'domain') return (sm.total_emails||0)+' emails, '+(sm.total_subdomains||0)+' subs';
+  if (type === 'email') return (sm.total_breaches||0)+' breaches';
+  if (type === 'username') return (sm.total_accounts||0)+' accounts';
+  if (type === 'person') return (sm.total_emails||0)+' emails, '+(sm.total_accounts||0)+' accounts';
+  if (type === 'phone') return (sm.country||'?');
+  return '';
+}
+
+function downloadPdf(taskId, target) {
+  authFetch(API + '/osint/' + taskId + '/pdf')
+    .then(function(r) { return r.blob(); })
+    .then(function(blob) {
+      var u = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href = u; a.download = 'cyrber_osint_' + target + '.pdf';
+      a.click(); URL.revokeObjectURL(u);
+    });
+}
+
+async function loadOsintDetail(taskId, searchType) {
+  try {
+    var r = await authFetch(API + '/osint/status/' + taskId);
+    var d = await r.json();
+    if (d.status === 'completed' && d.result) {
+      _currentTaskId = taskId;
+      _currentSearchType = searchType || d.result.search_type || 'domain';
+      renderResults(d.result);
+      document.getElementById('results').scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
+  } catch(e) { setStatus('Failed to load scan: ' + e.message, true); }
+}
+
+// ── KEYBOARD ──
+document.querySelectorAll('input[type="text"]').forEach(function(inp) {
+  inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') launchOsint(); });
 });
+
+window.addEventListener('load', function() { loadHistory(); });
 </script>
 </body>
 </html>

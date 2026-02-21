@@ -862,3 +862,224 @@ def generate_report(scan_data: dict) -> bytes:
 
     pdf = HTML(string=html_content, base_url=".").write_pdf()
     return pdf
+
+
+def generate_osint_report(scan_data: dict) -> bytes:
+    """Generate PDF report for OSINT scan results."""
+    target = scan_data.get("target", "unknown")
+    search_type = scan_data.get("search_type", "domain")
+    summary = scan_data.get("summary", {})
+    completed_at = scan_data.get("completed_at", datetime.utcnow().isoformat())
+
+    # Emails section
+    emails = scan_data.get("emails", [])
+    emails_html = ""
+    if emails:
+        items = "".join(f"<div class='mono' style='padding:2px 0;color:#9b59b6'>{e}</div>" for e in emails[:50])
+        emails_html = f"<div class='muted' style='margin-bottom:4px'>EMAILS ({len(emails)})</div>{items}"
+    else:
+        emails_html = "<p class='muted'>No emails discovered.</p>"
+
+    # Subdomains section
+    subdomains = scan_data.get("subdomains", [])
+    subs_html = ""
+    if subdomains:
+        tags = " ".join(f"<span class='mono' style='font-size:10px;color:#7ab3e8'>{s}</span>" for s in subdomains[:80])
+        extra = f" <span class='muted'>... and {len(subdomains)-80} more</span>" if len(subdomains) > 80 else ""
+        subs_html = f"<div class='muted' style='margin-bottom:4px'>SUBDOMAINS ({len(subdomains)})</div><div>{tags}{extra}</div>"
+    else:
+        subs_html = "<p class='muted'>No subdomains discovered.</p>"
+
+    # IP addresses section
+    ips = scan_data.get("ip_addresses", [])
+    ips_html = ""
+    if ips:
+        items = " ".join(f"<span class='mono' style='font-size:11px'>{ip}</span>" for ip in ips[:50])
+        ips_html = f"<div class='muted' style='margin-bottom:4px'>IP ADDRESSES ({len(ips)})</div><div>{items}</div>"
+    else:
+        ips_html = "<p class='muted'>No IP addresses discovered.</p>"
+
+    # DNS records section
+    dns_records = scan_data.get("dns_records", {})
+    dns_html = ""
+    a_recs = dns_records.get("a_records", [])
+    if a_recs:
+        rows = "".join(f"<tr><td>{r.get('hostname','')}</td><td class='mono'>{r.get('ip','')}</td><td>{r.get('type','A')}</td></tr>" for r in a_recs[:20])
+        dns_html += f"<div class='muted' style='margin-bottom:4px'>A / AAAA RECORDS ({len(a_recs)})</div><table><thead><tr><th>HOSTNAME</th><th>IP</th><th>TYPE</th></tr></thead><tbody>{rows}</tbody></table>"
+    mx_recs = dns_records.get("mx_records", [])
+    if mx_recs:
+        rows = "".join(f"<tr><td>{r.get('exchange','')}</td><td>{r.get('priority','')}</td></tr>" for r in mx_recs)
+        dns_html += f"<div class='muted' style='margin:10px 0 4px'>MX RECORDS ({len(mx_recs)})</div><table><thead><tr><th>EXCHANGE</th><th>PRIORITY</th></tr></thead><tbody>{rows}</tbody></table>"
+    ns_recs = dns_records.get("ns_records", [])
+    if ns_recs:
+        ns_items = " ".join(f"<span class='mono' style='font-size:11px;margin-right:8px'>{ns}</span>" for ns in ns_recs)
+        dns_html += f"<div class='muted' style='margin:10px 0 4px'>NAME SERVERS ({len(ns_recs)})</div><div>{ns_items}</div>"
+    txt_recs = dns_records.get("txt_records", [])
+    if txt_recs:
+        txt_items = "".join(f"<div style='margin-bottom:4px'><span style='color:#4a8fd4;font-size:10px'>{r.get('type','TXT')}</span> <span style='font-size:10px;word-break:break-all'>{r.get('value','')}</span></div>" for r in txt_recs[:10])
+        dns_html += f"<div class='muted' style='margin:10px 0 4px'>TXT RECORDS ({len(txt_recs)})</div>{txt_items}"
+    if not dns_html:
+        dns_html = "<p class='muted'>No DNS records.</p>"
+
+    # WHOIS section
+    whois_info = scan_data.get("whois_info", {})
+    whois_html = _whois_html(whois_info) if whois_info else "<p class='muted'>No WHOIS data.</p>"
+
+    # Risk indicators section
+    risk_indicators = scan_data.get("risk_indicators", [])
+    risk_html = ""
+    if risk_indicators:
+        sev_color = {"critical": "#ff4444", "high": "#ff8c00", "medium": "#f5c518", "info": "#8a9bb5"}
+        for ri in risk_indicators:
+            color = sev_color.get(ri.get("severity", "info"), "#8a9bb5")
+            risk_html += f"<div style='border:1px solid {color};background:rgba({color},0.08);padding:10px 14px;margin-bottom:8px;font-size:12px'><span style='color:{color};font-weight:700'>{ri.get('severity','').upper()}</span> — {ri.get('title','')} <span class='muted' style='display:block;margin-top:2px'>{ri.get('description','')}</span></div>"
+    else:
+        risk_html = "<p class='muted'>No risk indicators.</p>"
+
+    # Breaches section (email search type)
+    breaches = scan_data.get("breaches", [])
+    breaches_html = ""
+    if breaches:
+        rows = ""
+        for b in breaches[:20]:
+            rows += f"<tr><td style='color:#ff4444;font-weight:700'>{b.get('name','')}</td><td>{b.get('domain','')}</td><td>{b.get('breach_date','')}</td><td>{b.get('pwn_count',0):,}</td></tr>"
+        breaches_html = f"""<div class='section'>
+            <div class='section-title'>// DATA BREACHES ({len(breaches)})</div>
+            <table><thead><tr><th>BREACH</th><th>DOMAIN</th><th>DATE</th><th>RECORDS</th></tr></thead><tbody>{rows}</tbody></table>
+        </div>"""
+
+    # Accounts section (username search type)
+    accounts = scan_data.get("accounts", [])
+    accounts_html = ""
+    if accounts:
+        rows = "".join(f"<tr><td>{a.get('platform','')}</td><td class='mono' style='font-size:10px'>{a.get('url','')}</td></tr>" for a in accounts[:30])
+        extra = f"<p class='muted'>... and {len(accounts)-30} more</p>" if len(accounts) > 30 else ""
+        accounts_html = f"""<div class='section'>
+            <div class='section-title'>// SOCIAL ACCOUNTS ({len(accounts)})</div>
+            <table><thead><tr><th>PLATFORM</th><th>URL</th></tr></thead><tbody>{rows}</tbody></table>{extra}
+        </div>"""
+
+    # Phone info section
+    phone_info = scan_data.get("phone_info", {})
+    phone_html = ""
+    if phone_info.get("number"):
+        grid = ""
+        for label, key in [("NUMBER", "number"), ("COUNTRY", "country"), ("CARRIER", "carrier"), ("LINE TYPE", "line_type"), ("LOCATION", "location")]:
+            val = phone_info.get(key, "")
+            if val:
+                grid += f"<div><span class='muted'>{label}</span><br><span style='color:#e8f0fc'>{val}</span></div>"
+        phone_html = f"""<div class='section'>
+            <div class='section-title'>// PHONE INFORMATION</div>
+            <div style='display:flex;flex-wrap:wrap;gap:16px'>{grid}</div>
+        </div>"""
+
+    # Data sources
+    data_sources = scan_data.get("data_sources", [])
+    sources_html = ""
+    if data_sources:
+        items = " ".join(f"<span style='font-size:10px;border:1px solid rgba(155,89,182,.4);padding:2px 8px;margin:2px;color:#9b59b6'>{s.get('source','')}</span>" for s in data_sources if "/" not in s.get("source", ""))
+        sources_html = f"<div>{items}</div>"
+
+    # Summary stats
+    stat_items = ""
+    type_labels = {
+        "domain": [("EMAILS", "total_emails"), ("SUBDOMAINS", "total_subdomains"), ("IPs", "total_ips"), ("RISKS", "risk_count")],
+        "email": [("BREACHES", "total_breaches"), ("PASTES", "total_pastes"), ("RELATED", "total_related_emails"), ("RISKS", "risk_count")],
+        "username": [("ACCOUNTS", "total_accounts"), ("RISKS", "risk_count")],
+        "person": [("EMAILS", "total_emails"), ("HOSTS", "total_hosts"), ("RISKS", "risk_count")],
+        "phone": [("COUNTRY", "country"), ("RISKS", "risk_count")],
+    }
+    for label, key in type_labels.get(search_type, type_labels["domain"]):
+        val = summary.get(key, 0)
+        stat_items += f"<div style='text-align:center'><div class='muted'>{label}</div><div style='font-size:22px;font-weight:700;color:#e8f0fc'>{val}</div></div>"
+
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * {{ margin:0; padding:0; box-sizing:border-box; }}
+  body {{ font-family: 'Rajdhani', sans-serif; background:#080c18; color:#b8ccec; padding:40px; font-size:13px; }}
+  .mono {{ font-family: monospace; }}
+  .muted {{ color:#4a8fd4; font-size:11px; }}
+  .header {{ border-bottom:2px solid #4a8fd4; padding-bottom:24px; margin-bottom:32px; display:flex; justify-content:space-between; align-items:flex-end; }}
+  .brand {{ font-size:36px; font-weight:700; letter-spacing:0.3em; color:#e8f0fc; }}
+  .brand-sub {{ font-size:10px; color:#4a8fd4; letter-spacing:0.3em; margin-top:4px; }}
+  .report-meta {{ text-align:right; font-size:10px; color:#4a8fd4; line-height:1.8; }}
+  .section {{ margin-bottom:28px; page-break-inside:avoid; }}
+  .section-title {{ font-size:10px; color:#4a8fd4; letter-spacing:0.3em; border-bottom:1px solid rgba(74,143,212,0.2); padding-bottom:6px; margin-bottom:14px; }}
+  table {{ width:100%; border-collapse:collapse; font-size:11px; margin-top:8px; }}
+  th {{ text-align:left; font-size:9px; letter-spacing:0.2em; color:#4a8fd4; padding:6px 8px; border-bottom:1px solid rgba(74,143,212,0.3); }}
+  td {{ padding:8px; border-bottom:1px solid rgba(74,143,212,0.08); }}
+  .footer {{ margin-top:48px; padding-top:16px; border-top:1px solid rgba(74,143,212,0.2); font-size:9px; color:rgba(74,143,212,0.3); text-align:center; letter-spacing:0.2em; }}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="brand">CYRBER</div>
+    <div class="brand-sub">OPEN SOURCE INTELLIGENCE REPORT</div>
+  </div>
+  <div class="report-meta">
+    OSINT ASSESSMENT<br>
+    TARGET: {target}<br>
+    TYPE: {search_type.upper()}<br>
+    DATE: {completed_at[:10] if completed_at else datetime.utcnow().strftime('%Y-%m-%d')}<br>
+    GENERATED: {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">// SUMMARY</div>
+  <div style="display:flex;gap:32px;margin-bottom:16px">{stat_items}</div>
+</div>
+
+<div class="section">
+  <div class="section-title">// RISK INDICATORS ({len(risk_indicators)})</div>
+  {risk_html}
+</div>
+
+<div class="section">
+  <div class="section-title">// EMAILS ({len(emails)})</div>
+  {emails_html}
+</div>
+
+<div class="section">
+  <div class="section-title">// SUBDOMAINS ({len(subdomains)})</div>
+  {subs_html}
+</div>
+
+<div class="section">
+  <div class="section-title">// IP ADDRESSES ({len(ips)})</div>
+  {ips_html}
+</div>
+
+<div class="section">
+  <div class="section-title">// DNS RECORDS</div>
+  {dns_html}
+</div>
+
+<div class="section">
+  <div class="section-title">// WHOIS</div>
+  {whois_html}
+</div>
+
+{breaches_html}
+{accounts_html}
+{phone_html}
+
+<div class="section">
+  <div class="section-title">// DATA SOURCES ({len(data_sources)})</div>
+  {sources_html}
+</div>
+
+<div class="footer">
+  CYRBER · OSINT REPORT · CONFIDENTIAL · FOR AUTHORIZED USE ONLY · v0.2.0
+</div>
+
+</body>
+</html>"""
+
+    pdf = HTML(string=html_content, base_url=".").write_pdf()
+    return pdf

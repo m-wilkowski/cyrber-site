@@ -61,6 +61,23 @@ RUN curl -L "https://github.com/owasp-amass/amass/releases/latest/download/amass
     rm -rf /tmp/amass.tar.gz /tmp/amass_linux_amd64
 # wpscan
 RUN gem install wpscan --no-document
+# sherlock (username OSINT)
+RUN pip install --no-cache-dir sherlock-project
+# holehe (email account check)
+RUN pip install --no-cache-dir holehe
+# maigret (username OSINT across 2500+ sites)
+RUN pip install --no-cache-dir maigret
+# metagoofil (metadata extraction from public docs)
+RUN git clone --depth 1 https://github.com/opsdisk/metagoofil.git /opt/metagoofil && \
+    pip install --no-cache-dir -r /opt/metagoofil/requirements.txt 2>/dev/null || true && \
+    ln -s /opt/metagoofil/metagoofil.py /usr/local/bin/metagoofil && \
+    chmod +x /opt/metagoofil/metagoofil.py
+# phoneinfoga
+RUN curl -L "https://github.com/sundowndev/phoneinfoga/releases/latest/download/phoneinfoga_Linux_x86_64.tar.gz" -o /tmp/phoneinfoga.tar.gz && \
+    tar xzf /tmp/phoneinfoga.tar.gz -C /tmp && \
+    mv /tmp/phoneinfoga /usr/local/bin/phoneinfoga && \
+    chmod +x /usr/local/bin/phoneinfoga && \
+    rm -rf /tmp/phoneinfoga*
 # wordlist
 RUN mkdir -p /usr/share/wordlists/dirb && \
     curl -L https://raw.githubusercontent.com/v0re/dirb/master/wordlists/common.txt \

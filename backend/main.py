@@ -333,13 +333,26 @@ async def run_zap(target: str = Query(...), user: str = Depends(get_current_user
     return zap_scan(target)
 
 from modules.tasks import osint_scan_task
+from modules.database import get_osint_history, get_osint_by_task_id
+from modules.pdf_report import generate_osint_report
+
+class OsintStartRequest(BaseModel):
+    target: str
+    search_type: str = "domain"
 
 @app.get("/osint/start")
 @limiter.limit("5/minute")
-async def osint_start(request: Request, target: str = Query(...), user: str = Depends(get_current_user)):
-    task = osint_scan_task.delay(target)
+async def osint_start_get(request: Request, target: str = Query(...), search_type: str = Query("domain"), user: str = Depends(get_current_user)):
+    task = osint_scan_task.delay(target, search_type=search_type)
     audit(request, user, "osint_start", target)
-    return {"task_id": task.id, "status": "started", "target": target}
+    return {"task_id": task.id, "status": "started", "target": target, "search_type": search_type}
+
+@app.post("/osint/start")
+@limiter.limit("5/minute")
+async def osint_start_post(request: Request, body: OsintStartRequest, user: str = Depends(get_current_user)):
+    task = osint_scan_task.delay(body.target, search_type=body.search_type)
+    audit(request, user, "osint_start", body.target)
+    return {"task_id": task.id, "status": "started", "target": body.target, "search_type": body.search_type}
 
 @app.get("/osint/status/{task_id}")
 async def osint_status(task_id: str, user: str = Depends(get_current_user)):
@@ -352,6 +365,23 @@ async def osint_status(task_id: str, user: str = Depends(get_current_user)):
         return {"task_id": task_id, "status": "failed", "error": str(task.info)}
     else:
         return {"task_id": task_id, "status": task.state}
+
+@app.get("/osint/history")
+async def osint_history(limit: int = 20, user: str = Depends(get_current_user)):
+    return get_osint_history(limit)
+
+@app.get("/osint/{task_id}/pdf")
+async def osint_pdf(request: Request, task_id: str, user: str = Depends(get_current_user)):
+    scan = get_osint_by_task_id(task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="OSINT scan not found")
+    pdf_bytes = generate_osint_report(scan)
+    audit(request, user, "osint_pdf_download", scan.get("target"))
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=cyrber_osint_{scan.get('target', 'unknown')}_{task_id[:8]}.pdf"}
+    )
 
 from modules.webhook import WazuhAlert, extract_target
 

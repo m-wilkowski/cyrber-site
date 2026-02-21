@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, text, inspect as sa_inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -26,6 +26,7 @@ class Scan(Base):
     top_issues = Column(Text)
     ports = Column(Text)
     raw_data = Column(Text)
+    scan_type = Column(String, default="full")
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
 
@@ -52,6 +53,16 @@ def init_db(retries=10, delay=3):
     for i in range(retries):
         try:
             Base.metadata.create_all(bind=engine)
+            # Migrate: add scan_type column if missing
+            try:
+                insp = sa_inspect(engine)
+                cols = [c['name'] for c in insp.get_columns('scans')]
+                if 'scan_type' not in cols:
+                    with engine.begin() as conn:
+                        conn.execute(text("ALTER TABLE scans ADD COLUMN scan_type VARCHAR DEFAULT 'full'"))
+                    print("Migration: added scan_type column")
+            except Exception:
+                pass
             print("Database initialized successfully")
             return
         except Exception as e:
@@ -61,7 +72,7 @@ def init_db(retries=10, delay=3):
             else:
                 raise e
 
-def save_scan(task_id: str, target: str, result: dict):
+def save_scan(task_id: str, target: str, result: dict, scan_type: str = "full"):
     db = SessionLocal()
     try:
         analysis = result.get("analysis", {})
@@ -70,6 +81,7 @@ def save_scan(task_id: str, target: str, result: dict):
             scan = Scan(task_id=task_id, target=target)
             db.add(scan)
         scan.status = "completed"
+        scan.scan_type = scan_type
         scan.risk_level = analysis.get("risk_level")
         scan.findings_count = result.get("findings_count", 0)
         scan.summary = analysis.get("summary")
@@ -227,5 +239,52 @@ def get_audit_logs(limit: int = 100):
             }
             for l in logs
         ]
+    finally:
+        db.close()
+
+def get_osint_history(limit: int = 20):
+    db = SessionLocal()
+    try:
+        scans = db.query(Scan).filter(Scan.scan_type == "osint").order_by(Scan.created_at.desc()).limit(limit).all()
+        results = []
+        for s in scans:
+            summary = {}
+            search_type = "domain"
+            if s.raw_data:
+                try:
+                    raw = json.loads(s.raw_data)
+                    summary = raw.get("summary", {})
+                    search_type = raw.get("search_type", "domain")
+                except Exception:
+                    pass
+            results.append({
+                "task_id": s.task_id,
+                "target": s.target,
+                "status": s.status,
+                "search_type": search_type,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "completed_at": s.completed_at.isoformat() if s.completed_at else None,
+                "summary": summary,
+            })
+        return results
+    finally:
+        db.close()
+
+def get_osint_by_task_id(task_id: str):
+    db = SessionLocal()
+    try:
+        s = db.query(Scan).filter(Scan.task_id == task_id, Scan.scan_type == "osint").first()
+        if not s:
+            return None
+        if s.raw_data:
+            try:
+                data = json.loads(s.raw_data)
+                data["task_id"] = s.task_id
+                data["created_at"] = s.created_at.isoformat() if s.created_at else None
+                data["completed_at"] = s.completed_at.isoformat() if s.completed_at else None
+                return data
+            except Exception:
+                pass
+        return {"task_id": s.task_id, "target": s.target, "status": s.status}
     finally:
         db.close()

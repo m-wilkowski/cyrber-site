@@ -135,9 +135,12 @@ def full_scan_task(target: str):
     send_scan_notification(target, task_id, result)
     return result
 
-@celery_app.task
-def osint_scan_task(target: str):
-    return osint_scan(target)
+@celery_app.task(soft_time_limit=3600, time_limit=3660)
+def osint_scan_task(target: str, search_type: str = "domain"):
+    task_id = osint_scan_task.request.id
+    result = osint_scan(target, search_type=search_type)
+    save_scan(task_id, target, result, scan_type="osint")
+    return result
 
 from modules.agent import run_agent
 
