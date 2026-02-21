@@ -357,12 +357,16 @@ async def osint_start_post(request: Request, body: OsintStartRequest, user: str 
 @app.get("/osint/status/{task_id}")
 async def osint_status(task_id: str, user: str = Depends(get_current_user)):
     task = osint_scan_task.AsyncResult(task_id)
-    if task.state == "PENDING":
-        return {"task_id": task_id, "status": "pending"}
-    elif task.state == "SUCCESS":
+    if task.state == "SUCCESS":
         return {"task_id": task_id, "status": "completed", "result": task.result}
     elif task.state == "FAILURE":
         return {"task_id": task_id, "status": "failed", "error": str(task.info)}
+    elif task.state == "PENDING":
+        # Celery result may have expired from Redis — check database
+        scan = get_osint_by_task_id(task_id)
+        if scan:
+            return {"task_id": task_id, "status": "completed", "result": scan}
+        return {"task_id": task_id, "status": "pending"}
     else:
         return {"task_id": task_id, "status": task.state}
 
