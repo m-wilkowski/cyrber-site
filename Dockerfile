@@ -92,6 +92,36 @@ RUN git clone --depth 1 https://github.com/Dionach/CMSmap.git /opt/cmsmap && \
     chmod +x /opt/cmsmap/cmsmap.py
 # droopescan (Drupal/Joomla/WordPress/SilverStripe/Moodle scanner)
 RUN pip install droopescan --break-system-packages
+# subfinder (passive subdomain enumeration by ProjectDiscovery)
+RUN SUBFINDER_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/subfinder/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
+    curl -L "https://github.com/projectdiscovery/subfinder/releases/latest/download/subfinder_${SUBFINDER_VERSION}_linux_amd64.zip" -o /tmp/subfinder.zip && \
+    unzip /tmp/subfinder.zip subfinder -d /usr/local/bin/ && \
+    chmod +x /usr/local/bin/subfinder && \
+    rm /tmp/subfinder.zip
+# httpx (HTTP probing and technology detection by ProjectDiscovery)
+RUN HTTPX_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/httpx/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
+    curl -L "https://github.com/projectdiscovery/httpx/releases/latest/download/httpx_${HTTPX_VERSION}_linux_amd64.zip" -o /tmp/httpx.zip && \
+    unzip /tmp/httpx.zip httpx -d /usr/local/bin/ && \
+    chmod +x /usr/local/bin/httpx && \
+    rm /tmp/httpx.zip
+# naabu (fast port scanner by ProjectDiscovery)
+RUN NAABU_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/naabu/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
+    curl -L "https://github.com/projectdiscovery/naabu/releases/latest/download/naabu_${NAABU_VERSION}_linux_amd64.zip" -o /tmp/naabu.zip && \
+    unzip /tmp/naabu.zip naabu -d /usr/local/bin/ && \
+    chmod +x /usr/local/bin/naabu && \
+    rm /tmp/naabu.zip
+# katana (web crawler by ProjectDiscovery)
+RUN KATANA_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/katana/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
+    curl -L "https://github.com/projectdiscovery/katana/releases/latest/download/katana_${KATANA_VERSION}_linux_amd64.zip" -o /tmp/katana.zip && \
+    unzip /tmp/katana.zip katana -d /usr/local/bin/ && \
+    chmod +x /usr/local/bin/katana && \
+    rm /tmp/katana.zip
+# dnsx (DNS toolkit by ProjectDiscovery)
+RUN DNSX_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/dnsx/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
+    curl -L "https://github.com/projectdiscovery/dnsx/releases/latest/download/dnsx_${DNSX_VERSION}_linux_amd64.zip" -o /tmp/dnsx.zip && \
+    unzip /tmp/dnsx.zip dnsx -d /usr/local/bin/ && \
+    chmod +x /usr/local/bin/dnsx && \
+    rm /tmp/dnsx.zip
 # retire.js (vulnerable JavaScript library detection)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \

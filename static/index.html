@@ -2407,6 +2407,342 @@ function renderExtended(res) {
     h+=mkSec('// RETIRE.JS — VULNERABLE JAVASCRIPT ('+rjVulnCnt+' vulnerable / '+rjSm.total_libs+' libs)',rc,false);
   }
 
+  // SUBFINDER — PASSIVE SUBDOMAIN ENUMERATION
+  var sf=res.subfinder||{};
+  if(sf.target&&!sf.skipped&&sf.total_count>0){
+    var sfc='';
+    sfc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px">';
+    sfc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL SUBDOMAINS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+sf.total_count+'</div></div>';
+    sfc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SOURCES</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(sf.sources||[]).length+'</div></div>';
+    var sfIps=sf.ip_addresses||[];
+    if(sfIps.length) sfc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">UNIQUE IPs</div><div style="color:var(--white);font-size:20px;font-weight:700">'+sfIps.length+'</div></div>';
+    sfc+='</div>';
+    // Sources badges
+    var sfSrc=sf.sources||[];
+    if(sfSrc.length){
+      sfc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">DATA SOURCES</div>';
+      sfc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      sfSrc.forEach(function(s){sfc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid var(--green);color:var(--green);background:rgba(61,220,132,.06)">'+s+'</span>';});
+      sfc+='</div>';
+    }
+    // Subdomains list
+    var sfSubs=sf.subdomains||[];
+    if(sfSubs.length){
+      sfc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">DISCOVERED SUBDOMAINS ('+sfSubs.length+')</div>';
+      sfc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      sfSubs.slice(0,100).forEach(function(s){sfc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--accent2);background:rgba(74,143,212,.04)">'+s+'</span>';});
+      if(sfSubs.length>100){var _sfSmId='sm'+(++_smC);sfc+='<span id="'+_sfSmId+'" style="display:none">';sfSubs.slice(100).forEach(function(s){sfc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--accent2);background:rgba(74,143,212,.04)">'+s+'</span>';});sfc+='</span> <button class="show-more-btn" onclick="showAll(\''+_sfSmId+'\',this)">SHOW ALL '+sfSubs.length+' &#9660;</button>';}
+      sfc+='</div>';
+    }
+    // IP addresses
+    if(sfIps.length){
+      sfc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">IP ADDRESSES ('+sfIps.length+')</div>';
+      sfc+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+      sfIps.slice(0,50).forEach(function(ip){sfc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--white);background:rgba(74,143,212,.06)">'+ip+'</span>';});
+      if(sfIps.length>50){var _sfIpSmId='sm'+(++_smC);sfc+='<span id="'+_sfIpSmId+'" style="display:none">';sfIps.slice(50).forEach(function(ip){sfc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--white);background:rgba(74,143,212,.06)">'+ip+'</span>';});sfc+='</span> <button class="show-more-btn" onclick="showAll(\''+_sfIpSmId+'\',this)">SHOW ALL '+sfIps.length+' &#9660;</button>';}
+      sfc+='</div>';
+    }
+    h+=mkSec('// SUBFINDER — PASSIVE SUBDOMAIN ENUMERATION ('+sf.total_count+' subdomains)',sfc,false);
+  }
+
+  // HTTPX — HTTP PROBING
+  var hx=res.httpx||{};
+  var hxRes=hx.results||[];
+  if(hxRes.length){
+    var hxc='';
+    var hxSm=hx.summary||{};
+    var hxStatusCol=function(c){return c>=200&&c<300?'var(--green)':c>=300&&c<400?'var(--yellow)':c>=400&&c<500?'var(--orange)':'var(--red)';};
+    var hxStatusBg=function(c){return c>=200&&c<300?'rgba(61,220,132,.08)':c>=300&&c<400?'rgba(245,197,24,.08)':c>=400&&c<500?'rgba(255,140,0,.08)':'rgba(255,68,68,.08)';};
+    // Stats grid
+    hxc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">';
+    hxc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">PROBED HOSTS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+hxSm.probed+'</div></div>';
+    var hxLive=hxSm.live||0;
+    var hxLiveCol=hxLive?'var(--green)':'var(--red)';
+    hxc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">LIVE HOSTS</div><div style="color:'+hxLiveCol+';font-size:20px;font-weight:700">'+hxLive+'</div></div>';
+    hxc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TECHNOLOGIES</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(hxSm.technologies_count||0)+'</div></div>';
+    hxc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">WEB SERVERS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(hxSm.servers_count||0)+'</div></div>';
+    hxc+='</div>';
+    // Status code distribution badges
+    var hxCodes=hx.status_codes||{};
+    var hxCodesKeys=Object.keys(hxCodes).sort();
+    if(hxCodesKeys.length){
+      hxc+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+      hxCodesKeys.forEach(function(code){
+        var cnt=hxCodes[code];
+        var cc=hxStatusCol(parseInt(code));
+        var cb=hxStatusBg(parseInt(code));
+        hxc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid '+cc+';color:'+cc+';background:'+cb+'">'+code+': '+cnt+'</span>';
+      });
+      hxc+='</div>';
+    }
+    // Technologies badges
+    var hxTechs=hx.technologies||[];
+    if(hxTechs.length){
+      hxc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">DETECTED TECHNOLOGIES ('+hxTechs.length+')</div>';
+      hxc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      hxTechs.forEach(function(t){hxc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid var(--accent);color:var(--accent);background:rgba(74,143,212,.06)">'+t+'</span>';});
+      hxc+='</div>';
+    }
+    // Web servers badges
+    var hxSrvs=hx.web_servers||[];
+    if(hxSrvs.length){
+      hxc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">WEB SERVERS</div>';
+      hxc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      hxSrvs.forEach(function(s){hxc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid var(--purple);color:var(--purple);background:rgba(155,89,182,.06)">'+s+'</span>';});
+      hxc+='</div>';
+    }
+    // Results table
+    hxc+='<table class="dt"><thead><tr><th>STATUS</th><th>URL</th><th>TITLE</th><th>SERVER</th><th>TECHNOLOGIES</th></tr></thead><tbody>';
+    var _hxSmId=hxRes.length>30?'sm'+(++_smC):'';
+    hxRes.forEach(function(r,idx){
+      if(idx===30&&_hxSmId) hxc+='</tbody><tbody id="'+_hxSmId+'" style="display:none">';
+      var sc=r.status_code||0;
+      var col=hxStatusCol(sc);
+      var bg=hxStatusBg(sc);
+      var title=(r.title||'').substring(0,60);
+      var techStr=(r.technologies||[]).slice(0,3).join(', ');
+      var url=(r.url||'').substring(0,80);
+      var server=r.web_server||'';
+      var cdnHtml=r.cdn?' <span style="color:var(--purple);font-size:9px">[CDN: '+r.cdn+']</span>':'';
+      hxc+='<tr>';
+      hxc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+col+';color:'+col+';background:'+bg+'">'+sc+'</span></td>';
+      hxc+='<td class="mono" style="font-size:10px">'+url+'</td>';
+      hxc+='<td style="font-size:10px">'+title+'</td>';
+      hxc+='<td style="font-size:10px">'+server+cdnHtml+'</td>';
+      hxc+='<td style="font-size:10px">'+techStr+'</td>';
+      hxc+='</tr>';
+    });
+    if(_hxSmId) hxc+='</tbody><tbody><tr><td colspan="5" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_hxSmId+'\',this)">SHOW ALL '+hxRes.length+' RESULTS &#9660;</button></td></tr>';
+    hxc+='</tbody></table>';
+    h+=mkSec('// HTTPX — HTTP PROBING ('+hxLive+' live / '+hxSm.probed+' probed, '+hxTechs.length+' technologies)',hxc,false);
+  }
+
+  // NAABU — FAST PORT SCANNER
+  var nb=res.naabu||{};
+  var nbRes=nb.results||[];
+  if(nbRes.length){
+    var nbc='';
+    var nbSm=nb.summary||{};
+    // Stats grid
+    nbc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">';
+    nbc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SCANNED HOSTS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(nbSm.scanned||0)+'</div></div>';
+    var nbHostsOpen=nbSm.hosts_with_ports||0;
+    var nbHostsCol=nbHostsOpen?'var(--orange)':'var(--green)';
+    nbc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">HOSTS WITH PORTS</div><div style="color:'+nbHostsCol+';font-size:20px;font-weight:700">'+nbHostsOpen+'</div></div>';
+    var nbTotalOpen=nbSm.total_open||0;
+    nbc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL OPEN PORTS</div><div style="color:var(--orange);font-size:20px;font-weight:700">'+nbTotalOpen+'</div></div>';
+    nbc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">UNIQUE PORTS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(nbSm.unique_ports||0)+'</div></div>';
+    nbc+='</div>';
+    // Port categories
+    var nbCats=nb.categories||{};
+    var nbCatKeys=Object.keys(nbCats);
+    if(nbCatKeys.length){
+      var catCol={web:'var(--green)',mail:'var(--yellow)',database:'var(--red)',remote:'var(--orange)',file:'var(--purple)',dns:'var(--accent)'};
+      var catBg={web:'rgba(61,220,132,.08)',mail:'rgba(245,197,24,.08)',database:'rgba(255,68,68,.08)',remote:'rgba(255,140,0,.08)',file:'rgba(155,89,182,.08)',dns:'rgba(74,143,212,.08)'};
+      nbc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">PORT CATEGORIES</div>';
+      nbc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      nbCatKeys.forEach(function(cat){
+        var cc=catCol[cat]||'var(--accent)';
+        var cb=catBg[cat]||'rgba(74,143,212,.08)';
+        var ports=nbCats[cat].join(', ');
+        nbc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid '+cc+';color:'+cc+';background:'+cb+'">'+cat.toUpperCase()+': '+ports+'</span>';
+      });
+      nbc+='</div>';
+    }
+    // Unique ports badges
+    var nbUniq=nb.unique_ports||[];
+    if(nbUniq.length){
+      nbc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">UNIQUE OPEN PORTS ('+nbUniq.length+')</div>';
+      nbc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      var riskPorts=[3306,5432,1433,27017,6379,23,445,139];
+      var warnPorts=[22,3389,5900,21];
+      nbUniq.forEach(function(p){
+        var pc=riskPorts.indexOf(p)>=0?'var(--red)':warnPorts.indexOf(p)>=0?'var(--orange)':(p===80||p===443)?'var(--green)':'var(--white)';
+        var pb=riskPorts.indexOf(p)>=0?'rgba(255,68,68,.10)':warnPorts.indexOf(p)>=0?'rgba(255,140,0,.08)':'rgba(74,143,212,.04)';
+        nbc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid '+pc+';color:'+pc+';background:'+pb+'">'+p+'</span>';
+      });
+      nbc+='</div>';
+    }
+    // Results table
+    nbc+='<table class="dt"><thead><tr><th>PORT</th><th>HOST</th><th>PROTOCOL</th></tr></thead><tbody>';
+    var _nbSmId=nbRes.length>40?'sm'+(++_smC):'';
+    nbRes.forEach(function(r,idx){
+      if(idx===40&&_nbSmId) nbc+='</tbody><tbody id="'+_nbSmId+'" style="display:none">';
+      var port=r.port||0;
+      var pc=riskPorts.indexOf(port)>=0?'var(--red)':warnPorts.indexOf(port)>=0?'var(--orange)':(port===80||port===443)?'var(--green)':'var(--white)';
+      nbc+='<tr>';
+      nbc+='<td><span style="font-family:Share Tech Mono,monospace;font-weight:700;color:'+pc+'">'+port+'</span></td>';
+      nbc+='<td class="mono" style="font-size:11px">'+r.host+'</td>';
+      nbc+='<td>'+r.protocol+'</td>';
+      nbc+='</tr>';
+    });
+    if(_nbSmId) nbc+='</tbody><tbody><tr><td colspan="3" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_nbSmId+'\',this)">SHOW ALL '+nbRes.length+' RESULTS &#9660;</button></td></tr>';
+    nbc+='</tbody></table>';
+    h+=mkSec('// NAABU — FAST PORT SCANNER ('+nbTotalOpen+' open ports / '+(nbSm.scanned||0)+' hosts)',nbc,false);
+  }
+
+  // KATANA — WEB CRAWLER
+  var kt=res.katana||{};
+  if(kt.total_urls>0&&!kt.skipped){
+    var ktc='';
+    var ktSm=kt.summary||{};
+    // Stats grid
+    ktc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">';
+    ktc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL URLs</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(ktSm.total_urls||0)+'</div></div>';
+    ktc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">ENDPOINTS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(ktSm.endpoints||0)+'</div></div>';
+    ktc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">JS FILES</div><div style="color:var(--yellow);font-size:20px;font-weight:700">'+(ktSm.js_files||0)+'</div></div>';
+    var ktFormsCnt=ktSm.forms||0;
+    var ktFormsCol=ktFormsCnt?'var(--orange)':'var(--green)';
+    ktc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">FORMS</div><div style="color:'+ktFormsCol+';font-size:20px;font-weight:700">'+ktFormsCnt+'</div></div>';
+    var ktApiCnt=ktSm.api_endpoints||0;
+    ktc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">API ENDPOINTS</div><div style="color:var(--purple);font-size:20px;font-weight:700">'+ktApiCnt+'</div></div>';
+    var ktIntCnt=ktSm.interesting_files||0;
+    var ktIntCol=ktIntCnt?'var(--red)':'var(--green)';
+    ktc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">INTERESTING</div><div style="color:'+ktIntCol+';font-size:20px;font-weight:700">'+ktIntCnt+'</div></div>';
+    ktc+='</div>';
+    // Interesting files (security-relevant, show first)
+    var ktInt=kt.interesting_files||[];
+    if(ktInt.length){
+      ktc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--red);margin-bottom:8px">INTERESTING FILES ('+ktInt.length+')</div>';
+      ktc+='<table class="dt"><thead><tr><th>URL</th><th>METHOD</th><th>STATUS</th></tr></thead><tbody>';
+      ktInt.slice(0,20).forEach(function(f){
+        ktc+='<tr><td class="mono" style="font-size:10px;color:var(--red)">'+(f.url||'').substring(0,100)+'</td><td>'+f.method+'</td><td>'+(f.status_code||'')+'</td></tr>';
+      });
+      if(ktInt.length>20) ktc+='<tr><td colspan="3" class="muted">... i '+(ktInt.length-20)+' więcej</td></tr>';
+      ktc+='</tbody></table>';
+    }
+    // API endpoints
+    var ktApi=kt.api_endpoints||[];
+    if(ktApi.length){
+      ktc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--purple);margin:12px 0 8px">API ENDPOINTS ('+ktApi.length+')</div>';
+      ktc+='<table class="dt"><thead><tr><th>URL</th><th>METHOD</th><th>STATUS</th></tr></thead><tbody>';
+      ktApi.slice(0,20).forEach(function(e){
+        ktc+='<tr><td class="mono" style="font-size:10px;color:var(--purple)">'+(e.url||'').substring(0,100)+'</td><td>'+e.method+'</td><td>'+(e.status_code||'')+'</td></tr>';
+      });
+      if(ktApi.length>20) ktc+='<tr><td colspan="3" class="muted">... i '+(ktApi.length-20)+' więcej</td></tr>';
+      ktc+='</tbody></table>';
+    }
+    // Forms
+    var ktForms=kt.forms||[];
+    if(ktForms.length){
+      ktc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--orange);margin:12px 0 8px">FORMS ('+ktForms.length+')</div>';
+      ktc+='<table class="dt"><thead><tr><th>URL</th><th>METHOD</th></tr></thead><tbody>';
+      ktForms.slice(0,15).forEach(function(f){
+        ktc+='<tr><td class="mono" style="font-size:10px;color:var(--orange)">'+(f.url||'').substring(0,100)+'</td><td>'+f.method+'</td></tr>';
+      });
+      if(ktForms.length>15) ktc+='<tr><td colspan="2" class="muted">... i '+(ktForms.length-15)+' więcej</td></tr>';
+      ktc+='</tbody></table>';
+    }
+    // JS files badges
+    var ktJs=kt.js_files||[];
+    if(ktJs.length){
+      ktc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--yellow);margin:12px 0 8px">JAVASCRIPT FILES ('+ktJs.length+')</div>';
+      ktc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      ktJs.slice(0,30).forEach(function(f){
+        var path='';try{path=new URL(f.url).pathname;}catch(e){path=f.url;}
+        ktc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.06)">'+path+'</span>';
+      });
+      if(ktJs.length>30){var _ktJsSmId='sm'+(++_smC);ktc+='<span id="'+_ktJsSmId+'" style="display:none">';ktJs.slice(30).forEach(function(f){var path='';try{path=new URL(f.url).pathname;}catch(e){path=f.url;}ktc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.06)">'+path+'</span>';});ktc+='</span> <button class="show-more-btn" onclick="showAll(\''+_ktJsSmId+'\',this)">SHOW ALL '+ktJs.length+' &#9660;</button>';}
+      ktc+='</div>';
+    }
+    // Endpoints table
+    var ktEps=kt.endpoints||[];
+    if(ktEps.length){
+      ktc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:12px 0 8px">CRAWLED ENDPOINTS ('+ktEps.length+')</div>';
+      ktc+='<table class="dt"><thead><tr><th>URL</th><th>METHOD</th><th>STATUS</th></tr></thead><tbody>';
+      var _ktEpSmId=ktEps.length>30?'sm'+(++_smC):'';
+      ktEps.forEach(function(e,idx){
+        if(idx===30&&_ktEpSmId) ktc+='</tbody><tbody id="'+_ktEpSmId+'" style="display:none">';
+        ktc+='<tr><td class="mono" style="font-size:10px">'+(e.url||'').substring(0,100)+'</td><td>'+e.method+'</td><td>'+(e.status_code||'')+'</td></tr>';
+      });
+      if(_ktEpSmId) ktc+='</tbody><tbody><tr><td colspan="3" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_ktEpSmId+'\',this)">SHOW ALL '+ktEps.length+' ENDPOINTS &#9660;</button></td></tr>';
+      ktc+='</tbody></table>';
+    }
+    h+=mkSec('// KATANA — WEB CRAWLER ('+(ktSm.total_urls||0)+' URLs, '+ktIntCnt+' interesting, '+ktApiCnt+' API, '+ktFormsCnt+' forms)',ktc,ktIntCnt>0);
+  }
+
+  // DNSX — DNS RESOLUTION
+  var dx=res.dnsx||{};
+  if(dx.total_resolved>0&&!dx.skipped){
+    var dxc='';
+    var dxSm=dx.summary||{};
+    // Stats grid
+    dxc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">';
+    dxc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">QUERIED</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(dxSm.queried||0)+'</div></div>';
+    dxc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">RESOLVED</div><div style="color:var(--green);font-size:20px;font-weight:700">'+(dxSm.resolved||0)+'</div></div>';
+    var dxUnres=dxSm.unresolved||0;
+    if(dxUnres) dxc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">UNRESOLVED</div><div style="color:var(--orange);font-size:20px;font-weight:700">'+dxUnres+'</div></div>';
+    dxc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">UNIQUE IPs</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(dxSm.unique_ips||0)+'</div></div>';
+    dxc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">MX SERVERS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(dxSm.mx_servers||0)+'</div></div>';
+    dxc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">NS SERVERS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(dxSm.ns_servers||0)+'</div></div>';
+    dxc+='</div>';
+    // Record type badges
+    var dxRt=dx.record_types||[];
+    if(dxRt.length){
+      dxc+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">';
+      dxRt.forEach(function(rt){dxc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid var(--accent);color:var(--accent);background:rgba(74,143,212,.06)">'+rt+'</span>';});
+      dxc+='</div>';
+    }
+    // Dangling CNAMEs (subdomain takeover risk)
+    var dxDangle=dx.dangling_cnames||[];
+    if(dxDangle.length){
+      dxc+='<div style="border:1px solid rgba(255,68,68,.3);background:rgba(255,68,68,.04);padding:12px;margin-bottom:16px">';
+      dxc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--red);margin-bottom:8px;font-weight:700">DANGLING CNAMEs — POTENTIAL SUBDOMAIN TAKEOVER ('+dxDangle.length+')</div>';
+      dxc+='<table class="dt"><thead><tr><th>HOST</th><th>CNAME TARGET</th></tr></thead><tbody>';
+      dxDangle.forEach(function(d){
+        dxc+='<tr><td style="color:var(--red);font-weight:700">'+d.host+'</td><td class="mono" style="font-size:10px">'+(d.cname||[]).join(', ')+'</td></tr>';
+      });
+      dxc+='</tbody></table></div>';
+    }
+    // Security TXT records
+    var dxSecTxt=dx.security_txt||[];
+    if(dxSecTxt.length){
+      dxc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">SECURITY-RELEVANT TXT RECORDS ('+dxSecTxt.length+')</div>';
+      dxc+='<div style="margin-bottom:16px">';
+      dxSecTxt.slice(0,15).forEach(function(t){
+        var isSpf=t.toLowerCase().indexOf('spf')>=0;
+        var isDmarc=t.toLowerCase().indexOf('dmarc')>=0;
+        var isDkim=t.toLowerCase().indexOf('dkim')>=0;
+        var tc=isSpf?'var(--green)':isDmarc?'var(--accent)':isDkim?'var(--purple)':'var(--silver)';
+        dxc+='<div style="font-size:10px;padding:4px 8px;border-bottom:1px solid var(--border);color:'+tc+';word-break:break-all">'+t+'</div>';
+      });
+      dxc+='</div>';
+    }
+    // MX servers
+    var dxMx=dx.all_mx||[];
+    if(dxMx.length){
+      dxc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">MX SERVERS ('+dxMx.length+')</div>';
+      dxc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      dxMx.forEach(function(m){dxc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.06)">'+m+'</span>';});
+      dxc+='</div>';
+    }
+    // NS servers
+    var dxNs=dx.all_ns||[];
+    if(dxNs.length){
+      dxc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">NS SERVERS ('+dxNs.length+')</div>';
+      dxc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      dxNs.forEach(function(n){dxc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 10px;border:1px solid var(--purple);color:var(--purple);background:rgba(155,89,182,.06)">'+n+'</span>';});
+      dxc+='</div>';
+    }
+    // DNS records table
+    var dxRes=dx.results||[];
+    if(dxRes.length){
+      dxc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:12px 0 8px">DNS RECORDS ('+dxRes.length+')</div>';
+      dxc+='<table class="dt"><thead><tr><th>HOST</th><th>A RECORDS</th><th>CNAME</th></tr></thead><tbody>';
+      var _dxSmId=dxRes.length>40?'sm'+(++_smC):'';
+      dxRes.forEach(function(r,idx){
+        if(idx===40&&_dxSmId) dxc+='</tbody><tbody id="'+_dxSmId+'" style="display:none">';
+        var aStr=(r.a||[]).slice(0,3).join(', ');
+        var cnameStr=(r.cname||[]).slice(0,2).join(', ');
+        dxc+='<tr><td class="mono" style="font-size:10px">'+r.host+'</td><td style="font-size:10px">'+aStr+'</td><td style="font-size:10px;color:var(--yellow)">'+cnameStr+'</td></tr>';
+      });
+      if(_dxSmId) dxc+='</tbody><tbody><tr><td colspan="3" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_dxSmId+'\',this)">SHOW ALL '+dxRes.length+' RECORDS &#9660;</button></td></tr>';
+      dxc+='</tbody></table>';
+    }
+    var dxDangleWarn=dxDangle.length>0;
+    h+=mkSec('// DNSX — DNS RESOLUTION ('+(dxSm.resolved||0)+' resolved / '+(dxSm.queried||0)+' queried'+(dxDangle.length?' · '+dxDangle.length+' DANGLING':'')+' )',dxc,dxDangleWarn);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];
@@ -2508,7 +2844,7 @@ function loadScanDetail(taskId) {
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
       nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
-      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, mitre:s.mitre||null,
+      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -2753,7 +3089,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

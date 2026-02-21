@@ -429,6 +429,245 @@ def _amass_html(amass: dict) -> str:
         html += f"<div class='muted' style='margin:10px 0 4px'>IP ADDRESSES ({len(ips)})</div><div>{ips_html}{extra}</div>"
     return html
 
+def _subfinder_html(subfinder: dict) -> str:
+    if not subfinder or subfinder.get("skipped") or not subfinder.get("total_count"):
+        return "<p class='muted'>Brak danych Subfinder.</p>"
+    html = ""
+    # Stats
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>SUBDOMAINS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{subfinder.get('total_count',0)}</span></div>"
+    html += f"<div><span class='muted'>SOURCES</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{len(subfinder.get('sources',[]))}</span></div>"
+    ips = subfinder.get("ip_addresses", [])
+    if ips:
+        html += f"<div><span class='muted'>UNIQUE IPs</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{len(ips)}</span></div>"
+    html += "</div>"
+    # Sources
+    sources = subfinder.get("sources", [])
+    if sources:
+        src_html = " ".join(f"<span style='color:#2ecc71;font-size:10px;border:1px solid rgba(46,204,113,.4);padding:2px 6px;margin:2px'>{s}</span>" for s in sources)
+        html += f"<div style='margin-bottom:12px'><span class='muted'>SOURCES:</span> {src_html}</div>"
+    # Subdomains
+    subs = subfinder.get("subdomains", [])
+    if subs:
+        subs_html = " ".join(f"<span class='mono' style='font-size:10px;color:#7ab3e8'>{s}</span>" for s in subs[:60])
+        extra = f" <span class='muted'>... i {len(subs)-60} więcej</span>" if len(subs) > 60 else ""
+        html += f"<div class='muted' style='margin-bottom:4px'>SUBDOMAINS ({len(subs)})</div><div>{subs_html}{extra}</div>"
+    # IPs
+    if ips:
+        ips_html = " ".join(f"<span class='mono' style='font-size:10px'>{ip}</span>" for ip in ips[:30])
+        extra = f" <span class='muted'>... i {len(ips)-30} więcej</span>" if len(ips) > 30 else ""
+        html += f"<div class='muted' style='margin:10px 0 4px'>IP ADDRESSES ({len(ips)})</div><div>{ips_html}{extra}</div>"
+    return html
+
+def _httpx_html(httpx: dict) -> str:
+    if not httpx or httpx.get("skipped") or not httpx.get("total_results"):
+        return "<p class='muted'>Brak danych httpx.</p>"
+    summary = httpx.get("summary", {})
+    html = ""
+    # Stats
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>PROBED HOSTS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{summary.get('probed', 0)}</span></div>"
+    live = summary.get("live", 0)
+    live_col = "#3ddc84" if live else "#ff4444"
+    html += f"<div><span class='muted'>LIVE HOSTS</span><br><span style='font-size:20px;font-weight:700;color:{live_col}'>{live}</span></div>"
+    html += f"<div><span class='muted'>TECHNOLOGIES</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{summary.get('technologies_count', 0)}</span></div>"
+    html += f"<div><span class='muted'>WEB SERVERS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{summary.get('servers_count', 0)}</span></div>"
+    html += "</div>"
+    # Technologies badges
+    techs = httpx.get("technologies", [])
+    if techs:
+        tech_html = " ".join(f"<span style='color:#4a8fd4;font-size:10px;border:1px solid rgba(74,143,212,.4);padding:2px 6px;margin:2px'>{t}</span>" for t in techs[:30])
+        extra = f" <span class='muted'>... i {len(techs)-30} więcej</span>" if len(techs) > 30 else ""
+        html += f"<div style='margin-bottom:12px'><span class='muted'>DETECTED TECHNOLOGIES:</span> {tech_html}{extra}</div>"
+    # Web servers badges
+    servers = httpx.get("web_servers", [])
+    if servers:
+        srv_html = " ".join(f"<span style='color:#9b59b6;font-size:10px;border:1px solid rgba(155,89,182,.4);padding:2px 6px;margin:2px'>{s}</span>" for s in servers)
+        html += f"<div style='margin-bottom:12px'><span class='muted'>WEB SERVERS:</span> {srv_html}</div>"
+    # Results table
+    results = httpx.get("results", [])
+    if results:
+        status_color = lambda c: "#3ddc84" if 200 <= c < 300 else "#f5c518" if 300 <= c < 400 else "#ff8c00" if 400 <= c < 500 else "#ff4444"
+        rows = ""
+        for r in results[:40]:
+            sc = r.get("status_code", 0)
+            color = status_color(sc)
+            title = (r.get("title", "") or "")[:60]
+            tech_str = ", ".join(r.get("technologies", [])[:3])
+            url = r.get("url", "")[:80]
+            server = r.get("web_server", "")
+            cdn = r.get("cdn", "")
+            cdn_html = f" <span style='color:#9b59b6;font-size:9px'>[CDN: {cdn}]</span>" if cdn else ""
+            rows += f"<tr><td style='color:{color};font-weight:700'>{sc}</td><td class='mono' style='font-size:10px'>{url}</td><td style='font-size:10px'>{title}</td><td style='font-size:10px'>{server}{cdn_html}</td><td style='font-size:10px'>{tech_str}</td></tr>"
+        extra = f"<p class='muted'>... i {len(results)-40} więcej</p>" if len(results) > 40 else ""
+        html += f"""<table>
+            <thead><tr><th>STATUS</th><th>URL</th><th>TITLE</th><th>SERVER</th><th>TECHNOLOGIES</th></tr></thead>
+            <tbody>{rows}</tbody>
+        </table>{extra}"""
+    return html
+
+def _naabu_html(naabu: dict) -> str:
+    if not naabu or naabu.get("skipped") or not naabu.get("total_open_ports"):
+        return "<p class='muted'>Brak danych Naabu.</p>"
+    summary = naabu.get("summary", {})
+    html = ""
+    # Stats
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>SCANNED HOSTS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{summary.get('scanned', 0)}</span></div>"
+    hosts_open = summary.get("hosts_with_ports", 0)
+    hosts_col = "#ff8c00" if hosts_open else "#3ddc84"
+    html += f"<div><span class='muted'>HOSTS WITH OPEN PORTS</span><br><span style='font-size:20px;font-weight:700;color:{hosts_col}'>{hosts_open}</span></div>"
+    html += f"<div><span class='muted'>TOTAL OPEN PORTS</span><br><span style='font-size:20px;font-weight:700;color:#ff8c00'>{summary.get('total_open', 0)}</span></div>"
+    html += f"<div><span class='muted'>UNIQUE PORTS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{summary.get('unique_ports', 0)}</span></div>"
+    html += "</div>"
+    # Port categories
+    categories = naabu.get("categories", {})
+    if categories:
+        cat_colors = {"web": "#3ddc84", "mail": "#f5c518", "database": "#ff4444", "remote": "#ff8c00", "file": "#9b59b6", "dns": "#4a8fd4"}
+        cat_html = ""
+        for cat, ports in categories.items():
+            color = cat_colors.get(cat, "#4a8fd4")
+            ports_str = ", ".join(str(p) for p in ports)
+            cat_html += f"<span style='color:{color};font-size:10px;border:1px solid {color};padding:2px 8px;margin:2px'>{cat.upper()}: {ports_str}</span> "
+        html += f"<div style='margin-bottom:12px'><span class='muted'>PORT CATEGORIES:</span> {cat_html}</div>"
+    # Unique ports badges
+    unique_ports = naabu.get("unique_ports", [])
+    if unique_ports:
+        ports_html = " ".join(f"<span class='mono' style='font-size:10px;color:#e8f0fc;border:1px solid rgba(74,143,212,.3);padding:2px 6px;margin:2px'>{p}</span>" for p in unique_ports[:50])
+        extra = f" <span class='muted'>... i {len(unique_ports)-50} więcej</span>" if len(unique_ports) > 50 else ""
+        html += f"<div style='margin-bottom:12px'><span class='muted'>UNIQUE OPEN PORTS ({len(unique_ports)})</span><br>{ports_html}{extra}</div>"
+    # Results table
+    results = naabu.get("results", [])
+    if results:
+        rows = ""
+        for r in results[:50]:
+            port = r.get("port", 0)
+            # Color high-risk ports
+            p_color = "#ff4444" if port in (3306, 5432, 1433, 27017, 6379, 23, 445, 139) else "#ff8c00" if port in (22, 3389, 5900, 21) else "#3ddc84" if port in (80, 443) else "#e8f0fc"
+            rows += f"<tr><td class='mono' style='color:{p_color};font-weight:700'>{port}</td><td>{r.get('host','')}</td><td>{r.get('protocol','tcp')}</td></tr>"
+        extra = f"<p class='muted'>... i {len(results)-50} więcej</p>" if len(results) > 50 else ""
+        html += f"""<table>
+            <thead><tr><th>PORT</th><th>HOST</th><th>PROTOCOL</th></tr></thead>
+            <tbody>{rows}</tbody>
+        </table>{extra}"""
+    return html
+
+def _katana_html(katana: dict) -> str:
+    if not katana or katana.get("skipped") or not katana.get("total_urls"):
+        return "<p class='muted'>Brak danych Katana.</p>"
+    summary = katana.get("summary", {})
+    html = ""
+    # Stats
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>TOTAL URLs</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{summary.get('total_urls', 0)}</span></div>"
+    html += f"<div><span class='muted'>ENDPOINTS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{summary.get('endpoints', 0)}</span></div>"
+    js_cnt = summary.get("js_files", 0)
+    html += f"<div><span class='muted'>JS FILES</span><br><span style='font-size:20px;font-weight:700;color:#f5c518'>{js_cnt}</span></div>"
+    forms_cnt = summary.get("forms", 0)
+    forms_col = "#ff8c00" if forms_cnt else "#3ddc84"
+    html += f"<div><span class='muted'>FORMS</span><br><span style='font-size:20px;font-weight:700;color:{forms_col}'>{forms_cnt}</span></div>"
+    api_cnt = summary.get("api_endpoints", 0)
+    html += f"<div><span class='muted'>API ENDPOINTS</span><br><span style='font-size:20px;font-weight:700;color:#9b59b6'>{api_cnt}</span></div>"
+    interesting_cnt = summary.get("interesting_files", 0)
+    int_col = "#ff4444" if interesting_cnt else "#3ddc84"
+    html += f"<div><span class='muted'>INTERESTING FILES</span><br><span style='font-size:20px;font-weight:700;color:{int_col}'>{interesting_cnt}</span></div>"
+    html += "</div>"
+    # Interesting files (security-relevant)
+    interesting = katana.get("interesting_files", [])
+    if interesting:
+        rows = "".join(f"<tr><td class='mono' style='font-size:10px;color:#ff4444'>{f.get('url','')[:100]}</td><td>{f.get('method','GET')}</td><td>{f.get('status_code','')}</td></tr>" for f in interesting[:20])
+        html += f"<div class='muted' style='margin-bottom:4px'>INTERESTING FILES ({len(interesting)})</div>"
+        html += f"<table><thead><tr><th>URL</th><th>METHOD</th><th>STATUS</th></tr></thead><tbody>{rows}</tbody></table>"
+    # API endpoints
+    api = katana.get("api_endpoints", [])
+    if api:
+        rows = "".join(f"<tr><td class='mono' style='font-size:10px;color:#9b59b6'>{e.get('url','')[:100]}</td><td>{e.get('method','GET')}</td><td>{e.get('status_code','')}</td></tr>" for e in api[:20])
+        extra = f"<p class='muted'>... i {len(api)-20} więcej</p>" if len(api) > 20 else ""
+        html += f"<div class='muted' style='margin:10px 0 4px'>API ENDPOINTS ({len(api)})</div>"
+        html += f"<table><thead><tr><th>URL</th><th>METHOD</th><th>STATUS</th></tr></thead><tbody>{rows}</tbody></table>{extra}"
+    # Forms
+    forms_list = katana.get("forms", [])
+    if forms_list:
+        rows = "".join(f"<tr><td class='mono' style='font-size:10px;color:#ff8c00'>{f.get('url','')[:100]}</td><td>{f.get('method','GET')}</td></tr>" for f in forms_list[:15])
+        html += f"<div class='muted' style='margin:10px 0 4px'>FORMS ({len(forms_list)})</div>"
+        html += f"<table><thead><tr><th>URL</th><th>METHOD</th></tr></thead><tbody>{rows}</tbody></table>"
+    # JS files
+    js = katana.get("js_files", [])
+    if js:
+        js_html = " ".join(f"<span class='mono' style='font-size:9px;color:#f5c518'>{urlparse_path(f.get('url',''))}</span>" for f in js[:30])
+        extra = f" <span class='muted'>... i {len(js)-30} więcej</span>" if len(js) > 30 else ""
+        html += f"<div class='muted' style='margin:10px 0 4px'>JAVASCRIPT FILES ({len(js)})</div><div>{js_html}{extra}</div>"
+    # Endpoints sample
+    eps = katana.get("endpoints", [])
+    if eps:
+        rows = "".join(f"<tr><td class='mono' style='font-size:10px'>{e.get('url','')[:100]}</td><td>{e.get('method','GET')}</td><td>{e.get('status_code','')}</td></tr>" for e in eps[:30])
+        extra = f"<p class='muted'>... i {len(eps)-30} więcej</p>" if len(eps) > 30 else ""
+        html += f"<div class='muted' style='margin:10px 0 4px'>CRAWLED ENDPOINTS ({len(eps)})</div>"
+        html += f"<table><thead><tr><th>URL</th><th>METHOD</th><th>STATUS</th></tr></thead><tbody>{rows}</tbody></table>{extra}"
+    return html
+
+def urlparse_path(url):
+    """Extract path from URL for display."""
+    try:
+        from urllib.parse import urlparse as _up
+        return _up(url).path or url
+    except Exception:
+        return url
+
+def _dnsx_html(dnsx: dict) -> str:
+    if not dnsx or dnsx.get("skipped") or not dnsx.get("total_resolved"):
+        return "<p class='muted'>Brak danych dnsx.</p>"
+    summary = dnsx.get("summary", {})
+    html = ""
+    # Stats
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>QUERIED</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{summary.get('queried', 0)}</span></div>"
+    html += f"<div><span class='muted'>RESOLVED</span><br><span style='font-size:20px;font-weight:700;color:#3ddc84'>{summary.get('resolved', 0)}</span></div>"
+    unresolved = summary.get("unresolved", 0)
+    html += f"<div><span class='muted'>UNRESOLVED</span><br><span style='font-size:20px;font-weight:700;color:#ff8c00'>{unresolved}</span></div>"
+    html += f"<div><span class='muted'>UNIQUE IPs</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{summary.get('unique_ips', 0)}</span></div>"
+    html += f"<div><span class='muted'>MX SERVERS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{summary.get('mx_servers', 0)}</span></div>"
+    html += f"<div><span class='muted'>NS SERVERS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{summary.get('ns_servers', 0)}</span></div>"
+    html += "</div>"
+    # Record type badges
+    record_types = dnsx.get("record_types", [])
+    if record_types:
+        rt_html = " ".join(f"<span style='color:#4a8fd4;font-size:10px;border:1px solid rgba(74,143,212,.4);padding:2px 8px;margin:2px'>{rt}</span>" for rt in record_types)
+        html += f"<div style='margin-bottom:12px'><span class='muted'>RECORD TYPES:</span> {rt_html}</div>"
+    # Dangling CNAMEs (subdomain takeover risk)
+    dangling = dnsx.get("dangling_cnames", [])
+    if dangling:
+        rows = "".join(f"<tr><td style='color:#ff4444;font-weight:700'>{d.get('host','')}</td><td class='mono' style='font-size:10px'>{', '.join(d.get('cname', []))}</td></tr>" for d in dangling[:20])
+        html += f"<div style='margin-bottom:12px;border:1px solid rgba(255,68,68,.3);padding:10px'><span style='color:#ff4444;font-size:11px;font-weight:700'>DANGLING CNAMEs — POTENTIAL SUBDOMAIN TAKEOVER ({len(dangling)})</span>"
+        html += f"<table><thead><tr><th>HOST</th><th>CNAME TARGET</th></tr></thead><tbody>{rows}</tbody></table></div>"
+    # Security TXT records
+    sec_txt = dnsx.get("security_txt", [])
+    if sec_txt:
+        txt_html = "".join(f"<div style='font-size:10px;padding:4px 8px;border-bottom:1px solid rgba(74,143,212,.1);word-break:break-all'>{t}</div>" for t in sec_txt[:15])
+        html += f"<div class='muted' style='margin-bottom:4px'>SECURITY-RELEVANT TXT RECORDS ({len(sec_txt)})</div>{txt_html}"
+    # MX servers
+    mx = dnsx.get("all_mx", [])
+    if mx:
+        mx_html = " ".join(f"<span class='mono' style='font-size:10px;color:#f5c518'>{m}</span>" for m in mx[:20])
+        html += f"<div class='muted' style='margin:10px 0 4px'>MX SERVERS ({len(mx)})</div><div>{mx_html}</div>"
+    # NS servers
+    ns = dnsx.get("all_ns", [])
+    if ns:
+        ns_html = " ".join(f"<span class='mono' style='font-size:10px;color:#9b59b6'>{n}</span>" for n in ns[:20])
+        html += f"<div class='muted' style='margin:10px 0 4px'>NS SERVERS ({len(ns)})</div><div>{ns_html}</div>"
+    # Results table (top entries)
+    results = dnsx.get("results", [])
+    if results:
+        rows = ""
+        for r in results[:40]:
+            a_str = ", ".join(r.get("a", [])[:3])
+            cname_str = ", ".join(r.get("cname", [])[:2])
+            rows += f"<tr><td class='mono' style='font-size:10px'>{r.get('host','')}</td><td style='font-size:10px'>{a_str}</td><td style='font-size:10px;color:#f5c518'>{cname_str}</td></tr>"
+        extra = f"<p class='muted'>... i {len(results)-40} więcej</p>" if len(results) > 40 else ""
+        html += f"<div class='muted' style='margin:10px 0 4px'>DNS RECORDS ({len(results)})</div>"
+        html += f"<table><thead><tr><th>HOST</th><th>A RECORDS</th><th>CNAME</th></tr></thead><tbody>{rows}</tbody></table>{extra}"
+    return html
+
 def _cwe_html(cwe: dict) -> str:
     cwes = cwe.get("cwes", [])
     if not cwes:
@@ -862,6 +1101,11 @@ def generate_report(scan_data: dict) -> bytes:
     cmsmap = scan_data.get("cmsmap", {})
     droopescan = scan_data.get("droopescan", {})
     retirejs = scan_data.get("retirejs", {})
+    subfinder = scan_data.get("subfinder", {})
+    httpx = scan_data.get("httpx", {})
+    naabu = scan_data.get("naabu", {})
+    katana = scan_data.get("katana", {})
+    dnsx = scan_data.get("dnsx", {})
 
     color = _risk_color(risk)
 
@@ -1121,6 +1365,31 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// RETIRE.JS — VULNERABLE JAVASCRIPT ({retirejs.get('summary', {}).get('vulnerable_libs', 0)} vulnerable / {retirejs.get('summary', {}).get('total_libs', 0)} libs)</div>
   {_retirejs_html(retirejs)}
+</div>
+
+<div class="section">
+  <div class="section-title">// SUBFINDER — PASSIVE SUBDOMAIN ENUMERATION ({subfinder.get('total_count', 0)} subdomains)</div>
+  {_subfinder_html(subfinder)}
+</div>
+
+<div class="section">
+  <div class="section-title">// HTTPX — HTTP PROBING ({httpx.get('summary', {}).get('live', 0)} live / {httpx.get('summary', {}).get('probed', 0)} probed)</div>
+  {_httpx_html(httpx)}
+</div>
+
+<div class="section">
+  <div class="section-title">// NAABU — FAST PORT SCANNER ({naabu.get('summary', {}).get('total_open', 0)} open ports / {naabu.get('summary', {}).get('scanned', 0)} hosts)</div>
+  {_naabu_html(naabu)}
+</div>
+
+<div class="section">
+  <div class="section-title">// KATANA — WEB CRAWLER ({katana.get('summary', {}).get('total_urls', 0)} URLs / {katana.get('summary', {}).get('interesting_files', 0)} interesting)</div>
+  {_katana_html(katana)}
+</div>
+
+<div class="section">
+  <div class="section-title">// DNSX — DNS RESOLUTION ({dnsx.get('summary', {}).get('resolved', 0)} resolved / {dnsx.get('summary', {}).get('queried', 0)} queried)</div>
+  {_dnsx_html(dnsx)}
 </div>
 
 <div class="section">

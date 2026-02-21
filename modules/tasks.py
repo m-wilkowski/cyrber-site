@@ -33,6 +33,11 @@ from modules.joomscan_scan import joomscan_scan
 from modules.cmsmap_scan import cmsmap_scan
 from modules.droopescan_scan import droopescan_scan
 from modules.retirejs_scan import retirejs_scan
+from modules.subfinder_scan import subfinder_scan
+from modules.httpx_scan import httpx_scan
+from modules.naabu_scan import naabu_scan
+from modules.katana_scan import katana_scan
+from modules.dnsx_scan import dnsx_scan
 from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
@@ -79,6 +84,15 @@ def full_scan_task(target: str):
     whois = whois_scan(target)
     dnsrecon = dnsrecon_scan(target)
     amass = amass_scan(target)
+    subfinder = subfinder_scan(target)
+    # Combine subdomains from amass + subfinder for httpx probing
+    _httpx_subs = list(set(
+        (amass.get("subdomains") or []) + (subfinder.get("subdomains") or [])
+    ))
+    httpx = httpx_scan(target, subdomains=_httpx_subs)
+    naabu = naabu_scan(target, subdomains=_httpx_subs)
+    katana = katana_scan(target)
+    dnsx = dnsx_scan(target, subdomains=_httpx_subs)
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -138,6 +152,16 @@ def full_scan_task(target: str):
         result["droopescan"] = droopescan
     if not retirejs.get("skipped") and retirejs.get("libraries"):
         result["retirejs"] = retirejs
+    if not subfinder.get("skipped") and subfinder.get("total_count", 0) > 0:
+        result["subfinder"] = subfinder
+    if not httpx.get("skipped") and httpx.get("total_results", 0) > 0:
+        result["httpx"] = httpx
+    if not naabu.get("skipped") and naabu.get("total_open_ports", 0) > 0:
+        result["naabu"] = naabu
+    if not katana.get("skipped") and katana.get("total_urls", 0) > 0:
+        result["katana"] = katana
+    if not dnsx.get("skipped") and dnsx.get("total_resolved", 0) > 0:
+        result["dnsx"] = dnsx
     cwe = cwe_mapping(result)
     if cwe.get("total", 0) > 0:
         result["cwe"] = cwe

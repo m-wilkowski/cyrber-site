@@ -333,6 +333,11 @@ from modules.joomscan_scan import joomscan_scan
 from modules.cmsmap_scan import cmsmap_scan
 from modules.droopescan_scan import droopescan_scan
 from modules.retirejs_scan import retirejs_scan
+from modules.subfinder_scan import subfinder_scan
+from modules.httpx_scan import httpx_scan
+from modules.naabu_scan import naabu_scan
+from modules.katana_scan import katana_scan
+from modules.dnsx_scan import dnsx_scan
 
 @app.get("/scan/wpscan")
 async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -361,6 +366,26 @@ async def run_droopescan(target: str = Query(...), user: str = Depends(get_curre
 @app.get("/scan/retirejs")
 async def run_retirejs(target: str = Query(...), user: str = Depends(get_current_user)):
     return retirejs_scan(target)
+
+@app.get("/scan/subfinder")
+async def run_subfinder(target: str = Query(...), user: str = Depends(get_current_user)):
+    return subfinder_scan(target)
+
+@app.get("/scan/httpx")
+async def run_httpx(target: str = Query(...), user: str = Depends(get_current_user)):
+    return httpx_scan(target)
+
+@app.get("/scan/naabu")
+async def run_naabu(target: str = Query(...), user: str = Depends(get_current_user)):
+    return naabu_scan(target)
+
+@app.get("/scan/katana")
+async def run_katana(target: str = Query(...), user: str = Depends(get_current_user)):
+    return katana_scan(target)
+
+@app.get("/scan/dnsx")
+async def run_dnsx(target: str = Query(...), user: str = Depends(get_current_user)):
+    return dnsx_scan(target)
 
 from modules.tasks import osint_scan_task
 from modules.database import get_osint_history, get_osint_by_task_id
@@ -704,6 +729,38 @@ async def multi_scan(request: Request, body: MultiTargetScan, user: str = Depend
         tasks.append({"task_id": task.id, "target": target, "status": "started"})
     audit(request, user, "multi_scan", f"{len(expanded)} targets")
     return {"count": len(tasks), "tasks": tasks}
+
+# ── Notifications ──
+from modules.notify import (
+    send_scan_notification,
+    SMTP_HOST, SMTP_USER, SMTP_PASS, SMTP_TO,
+    SLACK_WEBHOOK_URL, DISCORD_WEBHOOK_URL,
+    TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
+)
+
+@app.get("/notifications/status")
+async def notifications_status(user: str = Depends(get_current_user)):
+    return {
+        "email": bool(SMTP_HOST and SMTP_USER and SMTP_PASS and SMTP_TO),
+        "slack": bool(SLACK_WEBHOOK_URL),
+        "discord": bool(DISCORD_WEBHOOK_URL),
+        "telegram": bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID),
+    }
+
+@app.post("/notifications/test")
+@limiter.limit("3/minute")
+async def notifications_test(request: Request, user: str = Depends(get_current_user)):
+    test_result = {
+        "target": "test.example.com",
+        "findings_count": 42,
+        "analysis": {
+            "risk_level": "MEDIUM",
+            "summary": "This is a test notification from CYRBER to verify your notification channels are configured correctly.",
+        }
+    }
+    ok = send_scan_notification("test.example.com", "test-0000-0000", test_result)
+    audit(request, user, "notifications_test")
+    return {"sent": ok, "message": "Test notification dispatched to all configured channels"}
 
 # ── Audit logs endpoint ──
 @app.get("/audit")
