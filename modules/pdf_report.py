@@ -1827,6 +1827,50 @@ def _sslyze_html(sslyze: dict) -> str:
         html = "<p class='muted'>Brak danych.</p>"
     return html
 
+def _searchsploit_html(searchsploit: dict) -> str:
+    if not searchsploit or searchsploit.get("skipped"):
+        return "<p class='muted'>Brak danych SearchSploit (narzędzie niedostępne lub brak serwisów z wersjami).</p>"
+    html = ""
+    summary = searchsploit.get("summary", {})
+    # Stats grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>TOTAL</span><br><span style='font-size:20px;font-weight:700;color:#ff4444'>{searchsploit.get('total_exploits', 0)}</span></div>"
+    rem = summary.get("remote", 0)
+    html += f"<div><span class='muted'>REMOTE</span><br><span style='font-size:20px;font-weight:700;color:{'#ff4444' if rem else '#3ddc84'}'>{rem}</span></div>"
+    loc = summary.get("local", 0)
+    html += f"<div><span class='muted'>LOCAL</span><br><span style='font-size:20px;font-weight:700;color:{'#f5c518' if loc else '#3ddc84'}'>{loc}</span></div>"
+    dos = summary.get("dos", 0)
+    html += f"<div><span class='muted'>DoS</span><br><span style='font-size:20px;font-weight:700;color:{'#f5c518' if dos else '#3ddc84'}'>{dos}</span></div>"
+    wap = summary.get("webapps", 0)
+    html += f"<div><span class='muted'>WEBAPPS</span><br><span style='font-size:20px;font-weight:700;color:{'#f5c518' if wap else '#3ddc84'}'>{wap}</span></div>"
+    html += f"<div><span class='muted'>SERVICES</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{searchsploit.get('services_scanned', 0)}</span></div>"
+    html += "</div>"
+    # Remote alert
+    if rem > 0:
+        crit_svcs = ", ".join(searchsploit.get("critical_services", []))
+        html += f"<div style='border:1px solid #ff4444;background:rgba(255,68,68,.08);padding:10px;margin-bottom:12px'>"
+        html += f"<span style='font-weight:700;color:#ff4444;font-size:11px'>&#9888; REMOTE EXPLOITS FOUND</span>"
+        html += f"<div style='font-size:10px;color:#8a9bb5;margin-top:4px'>{rem} remote exploits for: {crit_svcs}</div>"
+        html += "</div>"
+    # By service tables
+    by_service = searchsploit.get("by_service", {})
+    for svc, exs in by_service.items():
+        html += f"<div class='muted' style='margin:10px 0 4px'>{svc.upper()} ({len(exs)} exploits)</div>"
+        rows = ""
+        for e in exs[:15]:
+            t_col = "#ff4444" if e.get("type") == "remote" else "#f5c518" if e.get("type") in ("local", "dos") else "#5eead4"
+            rows += f"<tr><td style='font-size:9px;color:#5eead4'><a href='{e.get('url','')}' style='color:#5eead4'>{e.get('edb_id','')}</a></td>"
+            rows += f"<td style='font-size:9px;color:#e8f0fc'>{e.get('title','')[:80]}</td>"
+            rows += f"<td><span style='font-size:8px;padding:1px 5px;border:1px solid {t_col};color:{t_col}'>{e.get('type','').upper()}</span></td>"
+            rows += f"<td style='font-size:9px'>{e.get('platform','')}</td>"
+            rows += f"<td style='font-size:9px;color:#8a9bb5'>{e.get('date','')}</td></tr>"
+        if len(exs) > 15:
+            rows += f"<tr><td colspan='5' style='font-size:9px;color:#8a9bb5'>...and {len(exs)-15} more</td></tr>"
+        html += f"<table><thead><tr><th>EDB-ID</th><th>TITLE</th><th>TYPE</th><th>PLATFORM</th><th>DATE</th></tr></thead><tbody>{rows}</tbody></table>"
+    if not html.strip():
+        html = "<p class='muted'>Brak danych.</p>"
+    return html
+
 def _mitre_html(mitre: dict) -> str:
     techniques = mitre.get("techniques", [])
     if not techniques:
@@ -1907,6 +1951,7 @@ def generate_report(scan_data: dict) -> bytes:
     onesixtyone = scan_data.get("onesixtyone", {})
     ikescan = scan_data.get("ikescan", {})
     sslyze = scan_data.get("sslyze", {})
+    searchsploit = scan_data.get("searchsploit", {})
 
     color = _risk_color(risk)
 
@@ -2261,6 +2306,11 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// SSLyze — SSL/TLS ANALYSIS ({sslyze.get('total_accepted_ciphers', 0)} ciphers · {sslyze.get('total_weak_ciphers', 0)} weak · {sslyze.get('total_vulnerabilities', 0)} vulns)</div>
   {_sslyze_html(sslyze)}
+</div>
+
+<div class="section">
+  <div class="section-title">// SEARCHSPLOIT — EXPLOIT-DB ({searchsploit.get('total_exploits', 0)} exploits · {searchsploit.get('services_scanned', 0)} services · {searchsploit.get('summary', {}).get('remote', 0)} remote)</div>
+  {_searchsploit_html(searchsploit)}
 </div>
 
 <div class="section">

@@ -152,6 +152,8 @@ RUN apt-get update && apt-get install -y onesixtyone && rm -rf /var/lib/apt/list
 RUN apt-get update && apt-get install -y ike-scan && rm -rf /var/lib/apt/lists/*
 # sslyze (SSL/TLS configuration analysis and vulnerability scanning)
 RUN pip install sslyze --break-system-packages
+# searchsploit (exploit-db CLI search tool)
+RUN apt-get update && apt-get install -y exploitdb && rm -rf /var/lib/apt/lists/*
 # retire.js (vulnerable JavaScript library detection)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \

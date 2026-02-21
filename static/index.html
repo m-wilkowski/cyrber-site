@@ -2247,6 +2247,53 @@ function renderExtended(res) {
     h+=mkSec(sslTitle,sslc,sslWarn);
   }
 
+  // SearchSploit — EXPLOIT-DB SEARCH
+  var sspl=res.searchsploit||{};
+  if(!sspl.skipped&&sspl.total_exploits>0){
+    var splc='';
+    var splSum=sspl.summary||{};
+    // Stats grid
+    splc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-bottom:20px">';
+    splc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL EXPLOITS</div><div style="color:var(--red);font-size:20px;font-weight:700">'+sspl.total_exploits+'</div></div>';
+    splc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">REMOTE</div><div style="color:'+(splSum.remote?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+(splSum.remote||0)+'</div></div>';
+    splc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">LOCAL</div><div style="color:'+(splSum.local?'var(--yellow)':'var(--green)')+';font-size:20px;font-weight:700">'+(splSum.local||0)+'</div></div>';
+    splc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">DoS</div><div style="color:'+(splSum.dos?'var(--yellow)':'var(--green)')+';font-size:20px;font-weight:700">'+(splSum.dos||0)+'</div></div>';
+    splc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">WEBAPPS</div><div style="color:'+(splSum.webapps?'var(--yellow)':'var(--green)')+';font-size:20px;font-weight:700">'+(splSum.webapps||0)+'</div></div>';
+    splc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SERVICES</div><div style="color:var(--white);font-size:20px;font-weight:700">'+sspl.services_scanned+'</div></div>';
+    splc+='</div>';
+    // Remote alert
+    if(splSum.remote>0){
+      splc+='<div style="border:1px solid var(--red);background:rgba(255,68,68,.08);padding:12px;margin-bottom:16px">';
+      splc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;font-weight:700;color:var(--red)">&#9888; REMOTE EXPLOITS FOUND</span>';
+      splc+='<div style="font-size:11px;color:var(--silver);margin-top:4px">'+splSum.remote+' remote exploits found for: '+(sspl.critical_services||[]).join(', ')+'</div>';
+      splc+='</div>';
+    }
+    // Grouped by service
+    var splByS=sspl.by_service||{};
+    var splSkeys=Object.keys(splByS);
+    splSkeys.forEach(function(svc){
+      var exs=splByS[svc];
+      splc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">'+svc.toUpperCase()+' ('+exs.length+' exploits)</div>';
+      splc+='<table class="dt"><thead><tr><th>EDB-ID</th><th>TITLE</th><th>TYPE</th><th>PLATFORM</th><th>DATE</th></tr></thead><tbody>';
+      var splShow=exs.slice(0,15);
+      splShow.forEach(function(e){
+        var tCol=e.type==='remote'?'var(--red)':e.type==='local'?'var(--yellow)':e.type==='dos'?'var(--yellow)':e.type==='webapps'?'var(--accent)':'var(--silver)';
+        splc+='<tr>';
+        splc+='<td><a href="'+e.url+'" target="_blank" style="color:var(--accent);text-decoration:underline;font-family:Share Tech Mono,monospace;font-size:10px">'+e.edb_id+'</a></td>';
+        splc+='<td style="font-size:10px;color:var(--white);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e.title+'</td>';
+        splc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 6px;border:1px solid '+tCol+';color:'+tCol+'">'+e.type.toUpperCase()+'</span></td>';
+        splc+='<td style="font-size:10px">'+e.platform+'</td>';
+        splc+='<td style="font-size:10px;color:var(--silver)">'+e.date+'</td>';
+        splc+='</tr>';
+      });
+      if(exs.length>15) splc+='<tr><td colspan="5" style="font-size:10px;color:var(--silver)">...and '+(exs.length-15)+' more</td></tr>';
+      splc+='</tbody></table>';
+    });
+    var splWarn=splSum.remote>0;
+    var splTitle='// SEARCHSPLOIT — EXPLOIT-DB ('+sspl.total_exploits+' exploits · '+splSkeys.length+' services · '+(splSum.remote||0)+' remote)';
+    h+=mkSec(splTitle,splc,splWarn);
+  }
+
   // AbuseIPDB
   if(res.abuseipdb&&!res.abuseipdb.skipped&&!res.abuseipdb.error){
     var ab=res.abuseipdb;
@@ -3726,7 +3773,7 @@ function loadScanDetail(taskId) {
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
       nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
-      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, netdiscover:s.netdiscover||null, arpscan:s.arpscan||null, fping:s.fping||null, traceroute:s.traceroute||null, nbtscan:s.nbtscan||null, snmpwalk:s.snmpwalk||null, netexec:s.netexec||null, bloodhound:s.bloodhound||null, responder:s.responder||null, fierce:s.fierce||null, smbmap:s.smbmap||null, onesixtyone:s.onesixtyone||null, ikescan:s.ikescan||null, sslyze:s.sslyze||null, mitre:s.mitre||null,
+      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, netdiscover:s.netdiscover||null, arpscan:s.arpscan||null, fping:s.fping||null, traceroute:s.traceroute||null, nbtscan:s.nbtscan||null, snmpwalk:s.snmpwalk||null, netexec:s.netexec||null, bloodhound:s.bloodhound||null, responder:s.responder||null, fierce:s.fierce||null, smbmap:s.smbmap||null, onesixtyone:s.onesixtyone||null, ikescan:s.ikescan||null, sslyze:s.sslyze||null, searchsploit:s.searchsploit||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -3971,7 +4018,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','netexec','bloodhound','responder','fierce','smbmap','onesixtyone','ikescan','sslyze','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','netexec','bloodhound','responder','fierce','smbmap','onesixtyone','ikescan','sslyze','searchsploit','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;
