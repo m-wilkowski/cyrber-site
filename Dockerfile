@@ -154,6 +154,8 @@ RUN apt-get update && apt-get install -y ike-scan && rm -rf /var/lib/apt/lists/*
 RUN pip install sslyze --break-system-packages
 # searchsploit (exploit-db CLI search tool)
 RUN apt-get update && apt-get install -y exploitdb && rm -rf /var/lib/apt/lists/*
+# impacket (Active Directory attack toolkit — Kerberoasting, AS-REP, secretsdump, lookupsid)
+RUN pip install impacket --break-system-packages
 # retire.js (vulnerable JavaScript library detection)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \

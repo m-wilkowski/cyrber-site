@@ -53,6 +53,7 @@ from modules.onesixtyone_scan import onesixtyone_scan
 from modules.ikescan_scan import ikescan_scan
 from modules.sslyze_scan import sslyze_scan
 from modules.searchsploit_scan import searchsploit_scan
+from modules.impacket_scan import impacket_scan
 from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
@@ -221,6 +222,9 @@ def full_scan_task(target: str):
     searchsploit = searchsploit_scan(target, result)
     if not searchsploit.get("skipped") and searchsploit.get("total_exploits", 0) > 0:
         result["searchsploit"] = searchsploit
+    impacket = impacket_scan(target, result)
+    if not impacket.get("skipped"):
+        result["impacket"] = impacket
     cwe = cwe_mapping(result)
     if cwe.get("total", 0) > 0:
         result["cwe"] = cwe

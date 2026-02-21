@@ -353,6 +353,7 @@ from modules.onesixtyone_scan import onesixtyone_scan
 from modules.ikescan_scan import ikescan_scan
 from modules.sslyze_scan import sslyze_scan
 from modules.searchsploit_scan import searchsploit_scan
+from modules.impacket_scan import impacket_scan
 
 @app.get("/scan/wpscan")
 async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -461,6 +462,10 @@ async def run_sslyze(target: str = Query(...), user: str = Depends(get_current_u
 @app.get("/scan/searchsploit")
 async def run_searchsploit(target: str = Query(...), user: str = Depends(get_current_user)):
     return searchsploit_scan(target)
+
+@app.get("/scan/impacket")
+async def run_impacket(target: str = Query(...), user: str = Depends(get_current_user)):
+    return impacket_scan(target)
 
 from modules.tasks import osint_scan_task
 from modules.database import get_osint_history, get_osint_by_task_id

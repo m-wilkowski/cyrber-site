@@ -2294,6 +2294,92 @@ function renderExtended(res) {
     h+=mkSec(splTitle,splc,splWarn);
   }
 
+  // Impacket — ACTIVE DIRECTORY ATTACKS
+  var imp=res.impacket||{};
+  if(!imp.skipped&&imp.total_operations>0){
+    var impc='';
+    var impSum=imp.summary||{};
+    // Stats grid
+    impc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">';
+    impc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">KERBEROASTABLE</div><div style="color:'+(impSum.kerberoastable?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+(impSum.kerberoastable||0)+'</div></div>';
+    impc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">AS-REP HASHES</div><div style="color:'+(impSum.asreproastable?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+(impSum.asreproastable||0)+'</div></div>';
+    impc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SIDs FOUND</div><div style="color:'+(impSum.sids_found?'var(--yellow)':'var(--silver)')+';font-size:20px;font-weight:700">'+(impSum.sids_found||0)+'</div></div>';
+    impc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SECRETS</div><div style="color:'+(impSum.secrets_found?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+(impSum.secrets_found||0)+'</div></div>';
+    impc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">OPERATIONS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+imp.total_operations+'</div></div>';
+    impc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">TOTAL HASHES</div><div style="color:'+(impSum.total_hashes?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+(impSum.total_hashes||0)+'</div></div>';
+    impc+='</div>';
+    // Operations badges
+    var impOps=imp.operations_run||[];
+    if(impOps.length){
+      impc+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">';
+      impOps.forEach(function(op){impc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:3px 8px;border:1px solid var(--accent);color:var(--accent)">'+op+'</span>';});
+      impc+='</div>';
+    }
+    // Kerberoastable hashes alert + table
+    var impKerb=imp.kerberoastable_hashes||[];
+    if(impKerb.length){
+      impc+='<div style="border:1px solid var(--red);background:rgba(255,68,68,.08);padding:12px;margin-bottom:16px">';
+      impc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;font-weight:700;color:var(--red)">&#9888; KERBEROASTABLE ACCOUNTS ('+impKerb.length+')</span>';
+      impc+='<div style="font-size:10px;color:var(--silver);margin-top:4px">Service accounts with SPNs whose TGS tickets can be cracked offline</div>';
+      impc+='</div>';
+      impc+='<table class="dt"><thead><tr><th>USERNAME</th><th>SPN</th><th>HASH (masked)</th></tr></thead><tbody>';
+      impKerb.forEach(function(h){impc+='<tr><td style="font-family:Share Tech Mono,monospace;font-size:10px;font-weight:700;color:var(--red)">'+h.username+'</td><td style="font-size:10px">'+h.spn+'</td><td style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver);word-break:break-all">'+h.hash+'</td></tr>';});
+      impc+='</tbody></table>';
+    }
+    // AS-REP hashes alert + table
+    var impAsrep=imp.asreproastable_hashes||[];
+    if(impAsrep.length){
+      impc+='<div style="border:1px solid var(--red);background:rgba(255,68,68,.08);padding:12px;margin:16px 0">';
+      impc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;font-weight:700;color:var(--red)">&#9888; AS-REP ROASTABLE ACCOUNTS ('+impAsrep.length+')</span>';
+      impc+='<div style="font-size:10px;color:var(--silver);margin-top:4px">Accounts without Kerberos pre-authentication</div>';
+      impc+='</div>';
+      impc+='<table class="dt"><thead><tr><th>USERNAME</th><th>HASH (masked)</th></tr></thead><tbody>';
+      impAsrep.forEach(function(h){impc+='<tr><td style="font-family:Share Tech Mono,monospace;font-size:10px;font-weight:700;color:var(--red)">'+h.username+'</td><td style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver);word-break:break-all">'+h.hash+'</td></tr>';});
+      impc+='</tbody></table>';
+    }
+    // Secrets alert + table
+    var impSec=imp.secrets||[];
+    if(impSec.length){
+      impc+='<div style="border:1px solid var(--red);background:rgba(255,68,68,.08);padding:12px;margin:16px 0">';
+      impc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;font-weight:700;color:var(--red)">&#9888; CREDENTIAL DUMP ('+impSec.length+' secrets)</span>';
+      impc+='</div>';
+      impc+='<table class="dt"><thead><tr><th>ACCOUNT</th><th>TYPE</th><th>VALUE (masked)</th></tr></thead><tbody>';
+      impSec.slice(0,20).forEach(function(s){impc+='<tr><td style="font-family:Share Tech Mono,monospace;font-size:10px;font-weight:700;color:var(--red)">'+s.account+'</td><td style="font-size:10px">'+s.secret_type+'</td><td style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver);word-break:break-all">'+s.value+'</td></tr>';});
+      if(impSec.length>20) impc+='<tr><td colspan="3" style="font-size:10px;color:var(--silver)">...and '+(impSec.length-20)+' more</td></tr>';
+      impc+='</tbody></table>';
+    }
+    // SID enumeration table
+    var impSids=imp.sid_enumeration||[];
+    if(impSids.length){
+      impc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:16px 0 6px">SID ENUMERATION ('+impSids.length+')</div>';
+      impc+='<table class="dt"><thead><tr><th>SID</th><th>USERNAME</th><th>DOMAIN</th><th>TYPE</th></tr></thead><tbody>';
+      impSids.slice(0,30).forEach(function(s){impc+='<tr><td style="font-family:Share Tech Mono,monospace;font-size:10px">'+s.sid+'</td><td style="font-size:10px;font-weight:700;color:var(--white)">'+s.username+'</td><td style="font-size:10px">'+s.domain+'</td><td style="font-size:10px;color:var(--silver)">'+s.type+'</td></tr>';});
+      if(impSids.length>30) impc+='<tr><td colspan="4" style="font-size:10px;color:var(--silver)">...and '+(impSids.length-30)+' more</td></tr>';
+      impc+='</tbody></table>';
+    }
+    // Vulnerabilities
+    var impVulns=imp.vulnerabilities||[];
+    if(impVulns.length){
+      impc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:16px 0 8px">VULNERABILITIES ('+impVulns.length+')</div>';
+      impVulns.forEach(function(v){
+        var vCol=v.severity==='critical'?'var(--red)':v.severity==='high'?'var(--red)':v.severity==='medium'?'var(--yellow)':'var(--silver)';
+        var vBg=v.severity==='critical'?'rgba(255,68,68,.06)':v.severity==='high'?'rgba(255,68,68,.04)':v.severity==='medium'?'rgba(245,197,24,.04)':'rgba(138,155,181,.04)';
+        impc+='<div style="border:1px solid '+vCol+';background:'+vBg+';padding:12px;margin-bottom:8px">';
+        impc+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+        impc+='<span style="font-weight:700;color:var(--white);font-size:12px">'+v.title+'</span>';
+        impc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid '+vCol+';color:'+vCol+'">'+v.severity.toUpperCase()+'</span>';
+        impc+='</div>';
+        impc+='<div style="font-size:11px;color:var(--silver);margin-bottom:6px">'+v.description+'</div>';
+        if(v.mitre) impc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 6px;border:1px solid var(--accent);color:var(--accent);margin-right:6px">'+v.mitre+'</span>';
+        if(v.remediation) impc+='<div style="font-size:10px;color:var(--green);margin-top:6px;border-left:2px solid var(--green);padding-left:8px">'+v.remediation+'</div>';
+        impc+='</div>';
+      });
+    }
+    var impWarn=impSum.total_hashes>0||impSum.secrets_found>0;
+    var impTitle='// IMPACKET — AD ATTACKS ('+(impSum.total_hashes||0)+' hashes · '+(impSum.sids_found||0)+' SIDs · '+(impSum.secrets_found||0)+' secrets)';
+    h+=mkSec(impTitle,impc,impWarn);
+  }
+
   // AbuseIPDB
   if(res.abuseipdb&&!res.abuseipdb.skipped&&!res.abuseipdb.error){
     var ab=res.abuseipdb;
@@ -3773,7 +3859,7 @@ function loadScanDetail(taskId) {
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
       nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
-      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, netdiscover:s.netdiscover||null, arpscan:s.arpscan||null, fping:s.fping||null, traceroute:s.traceroute||null, nbtscan:s.nbtscan||null, snmpwalk:s.snmpwalk||null, netexec:s.netexec||null, bloodhound:s.bloodhound||null, responder:s.responder||null, fierce:s.fierce||null, smbmap:s.smbmap||null, onesixtyone:s.onesixtyone||null, ikescan:s.ikescan||null, sslyze:s.sslyze||null, searchsploit:s.searchsploit||null, mitre:s.mitre||null,
+      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, netdiscover:s.netdiscover||null, arpscan:s.arpscan||null, fping:s.fping||null, traceroute:s.traceroute||null, nbtscan:s.nbtscan||null, snmpwalk:s.snmpwalk||null, netexec:s.netexec||null, bloodhound:s.bloodhound||null, responder:s.responder||null, fierce:s.fierce||null, smbmap:s.smbmap||null, onesixtyone:s.onesixtyone||null, ikescan:s.ikescan||null, sslyze:s.sslyze||null, searchsploit:s.searchsploit||null, impacket:s.impacket||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -4018,7 +4104,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','netexec','bloodhound','responder','fierce','smbmap','onesixtyone','ikescan','sslyze','searchsploit','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','netexec','bloodhound','responder','fierce','smbmap','onesixtyone','ikescan','sslyze','searchsploit','impacket','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

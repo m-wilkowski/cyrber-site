@@ -1871,6 +1871,85 @@ def _searchsploit_html(searchsploit: dict) -> str:
         html = "<p class='muted'>Brak danych.</p>"
     return html
 
+def _impacket_html(impacket: dict) -> str:
+    if not impacket or impacket.get("skipped"):
+        return "<p class='muted'>Brak danych Impacket (narzędzie niedostępne lub brak usług AD).</p>"
+    html = ""
+    summary = impacket.get("summary", {})
+    # Stats grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    kerb = summary.get("kerberoastable", 0)
+    html += f"<div><span class='muted'>KERBEROASTABLE</span><br><span style='font-size:20px;font-weight:700;color:{'#ff4444' if kerb else '#3ddc84'}'>{kerb}</span></div>"
+    asrep = summary.get("asreproastable", 0)
+    html += f"<div><span class='muted'>AS-REP</span><br><span style='font-size:20px;font-weight:700;color:{'#ff4444' if asrep else '#3ddc84'}'>{asrep}</span></div>"
+    sids = summary.get("sids_found", 0)
+    html += f"<div><span class='muted'>SIDs</span><br><span style='font-size:20px;font-weight:700;color:{'#f5c518' if sids else '#8a9bb5'}'>{sids}</span></div>"
+    sec = summary.get("secrets_found", 0)
+    html += f"<div><span class='muted'>SECRETS</span><br><span style='font-size:20px;font-weight:700;color:{'#ff4444' if sec else '#3ddc84'}'>{sec}</span></div>"
+    html += f"<div><span class='muted'>OPERATIONS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{impacket.get('total_operations', 0)}</span></div>"
+    html += "</div>"
+    # Operations badges
+    ops = impacket.get("operations_run", [])
+    if ops:
+        badges = "".join(f"<span style='display:inline-block;font-size:9px;padding:2px 8px;border:1px solid #5eead4;color:#5eead4;margin-right:4px'>{op}</span>" for op in ops)
+        html += f"<div style='margin-bottom:12px'>{badges}</div>"
+    # Kerberoastable hashes
+    kerb_hashes = impacket.get("kerberoastable_hashes", [])
+    if kerb_hashes:
+        html += "<div style='border:1px solid #ff4444;background:rgba(255,68,68,.08);padding:10px;margin-bottom:10px'>"
+        html += f"<span style='font-weight:700;color:#ff4444;font-size:11px'>&#9888; KERBEROASTABLE ({len(kerb_hashes)})</span></div>"
+        rows = ""
+        for h in kerb_hashes:
+            rows += f"<tr><td style='font-weight:700;font-size:9px;color:#ff4444'>{h.get('username','')}</td><td style='font-size:9px'>{h.get('spn','')}</td><td style='font-size:8px;color:#8a9bb5;word-break:break-all'>{h.get('hash','')}</td></tr>"
+        html += f"<table><thead><tr><th>USERNAME</th><th>SPN</th><th>HASH</th></tr></thead><tbody>{rows}</tbody></table>"
+    # AS-REP hashes
+    asrep_hashes = impacket.get("asreproastable_hashes", [])
+    if asrep_hashes:
+        html += "<div style='border:1px solid #ff4444;background:rgba(255,68,68,.08);padding:10px;margin:10px 0'>"
+        html += f"<span style='font-weight:700;color:#ff4444;font-size:11px'>&#9888; AS-REP ROASTABLE ({len(asrep_hashes)})</span></div>"
+        rows = ""
+        for h in asrep_hashes:
+            rows += f"<tr><td style='font-weight:700;font-size:9px;color:#ff4444'>{h.get('username','')}</td><td style='font-size:8px;color:#8a9bb5;word-break:break-all'>{h.get('hash','')}</td></tr>"
+        html += f"<table><thead><tr><th>USERNAME</th><th>HASH</th></tr></thead><tbody>{rows}</tbody></table>"
+    # Secrets
+    secrets = impacket.get("secrets", [])
+    if secrets:
+        html += "<div style='border:1px solid #ff4444;background:rgba(255,68,68,.08);padding:10px;margin:10px 0'>"
+        html += f"<span style='font-weight:700;color:#ff4444;font-size:11px'>&#9888; SECRETS ({len(secrets)})</span></div>"
+        rows = ""
+        for s in secrets[:20]:
+            rows += f"<tr><td style='font-weight:700;font-size:9px;color:#ff4444'>{s.get('account','')}</td><td style='font-size:9px'>{s.get('secret_type','')}</td><td style='font-size:8px;color:#8a9bb5;word-break:break-all'>{s.get('value','')}</td></tr>"
+        if len(secrets) > 20:
+            rows += f"<tr><td colspan='3' style='font-size:9px;color:#8a9bb5'>...and {len(secrets)-20} more</td></tr>"
+        html += f"<table><thead><tr><th>ACCOUNT</th><th>TYPE</th><th>VALUE</th></tr></thead><tbody>{rows}</tbody></table>"
+    # SID enumeration
+    sid_enum = impacket.get("sid_enumeration", [])
+    if sid_enum:
+        html += f"<div class='muted' style='margin:10px 0 4px'>SID ENUMERATION ({len(sid_enum)})</div>"
+        rows = ""
+        for s in sid_enum[:30]:
+            rows += f"<tr><td style='font-size:9px'>{s.get('sid','')}</td><td style='font-size:9px;font-weight:700;color:#e8f0fc'>{s.get('username','')}</td><td style='font-size:9px'>{s.get('domain','')}</td><td style='font-size:9px;color:#8a9bb5'>{s.get('type','')}</td></tr>"
+        if len(sid_enum) > 30:
+            rows += f"<tr><td colspan='4' style='font-size:9px;color:#8a9bb5'>...and {len(sid_enum)-30} more</td></tr>"
+        html += f"<table><thead><tr><th>SID</th><th>USERNAME</th><th>DOMAIN</th><th>TYPE</th></tr></thead><tbody>{rows}</tbody></table>"
+    # Vulnerabilities
+    vulns = impacket.get("vulnerabilities", [])
+    if vulns:
+        for v in vulns:
+            sev = v.get("severity", "medium")
+            v_col = "#ff4444" if sev in ("critical", "high") else "#f5c518" if sev == "medium" else "#8a9bb5"
+            mitre_badge = f"<span style='font-size:9px;padding:2px 6px;border:1px solid #5eead4;color:#5eead4;margin-left:6px'>{v['mitre']}</span>" if v.get("mitre") else ""
+            html += f"<div style='border:1px solid {v_col};padding:10px;margin-bottom:6px'>"
+            html += f"<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='font-weight:700;color:#e8f0fc;font-size:11px'>{v['title']}</span><span style='font-size:9px;padding:2px 6px;border:1px solid {v_col};color:{v_col}'>{sev.upper()}</span></div>"
+            html += f"<div style='font-size:10px;color:#8a9bb5;margin-bottom:4px'>{v.get('description','')}</div>"
+            html += mitre_badge
+            if v.get("remediation"):
+                html += f"<div style='font-size:9px;color:#3ddc84;margin-top:6px;border-left:2px solid #3ddc84;padding-left:6px'>{v['remediation']}</div>"
+            html += "</div>"
+    if not html.strip():
+        html = "<p class='muted'>Brak danych.</p>"
+    return html
+
 def _mitre_html(mitre: dict) -> str:
     techniques = mitre.get("techniques", [])
     if not techniques:
@@ -1952,6 +2031,7 @@ def generate_report(scan_data: dict) -> bytes:
     ikescan = scan_data.get("ikescan", {})
     sslyze = scan_data.get("sslyze", {})
     searchsploit = scan_data.get("searchsploit", {})
+    impacket = scan_data.get("impacket", {})
 
     color = _risk_color(risk)
 
@@ -2311,6 +2391,11 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// SEARCHSPLOIT — EXPLOIT-DB ({searchsploit.get('total_exploits', 0)} exploits · {searchsploit.get('services_scanned', 0)} services · {searchsploit.get('summary', {}).get('remote', 0)} remote)</div>
   {_searchsploit_html(searchsploit)}
+</div>
+
+<div class="section">
+  <div class="section-title">// IMPACKET — AD ATTACKS ({impacket.get('summary', {}).get('total_hashes', 0)} hashes · {impacket.get('summary', {}).get('sids_found', 0)} SIDs · {impacket.get('summary', {}).get('secrets_found', 0)} secrets)</div>
+  {_impacket_html(impacket)}
 </div>
 
 <div class="section">
