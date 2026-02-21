@@ -428,6 +428,42 @@ footer {
     font-size: 8px;
   }
 }
+
+/* ── MODAL ── */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:200; backdrop-filter:blur(8px); overflow-y:auto; padding:40px 20px; }
+.modal-overlay.open { display:flex; align-items:flex-start; justify-content:center; }
+.modal-box { background:var(--navy2); border:1px solid var(--border); max-width:900px; width:100%; padding:32px; position:relative; }
+.modal-close { position:absolute; top:12px; right:16px; background:none; border:none; color:var(--silver); font-size:24px; cursor:pointer; }
+.modal-close:hover { color:var(--white); }
+.modal-title { font-family:'Orbitron',sans-serif; font-size:16px; font-weight:700; letter-spacing:.1em; margin-bottom:4px; color:var(--white); }
+.modal-subtitle { font-size:11px; color:var(--silver); margin-bottom:20px; }
+.modal-risk-row { display:flex; gap:20px; align-items:center; margin-bottom:20px; }
+.modal-score-circle { width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-direction:column; flex-shrink:0; }
+.modal-score-num { font-family:'Orbitron',sans-serif; font-size:22px; font-weight:900; }
+.modal-score-lbl { font-size:7px; letter-spacing:.15em; color:var(--silver); }
+.modal-summary { font-size:13px; line-height:1.7; color:var(--white); }
+.modal-modules { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px; margin-top:16px; }
+.modal-mod { font-size:11px; padding:8px 12px; background:rgba(74,143,212,.04); border:1px solid var(--border2); display:flex; justify-content:space-between; }
+.modal-mod-name { color:var(--white); text-transform:uppercase; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:.1em; }
+.modal-mod-badge { font-size:9px; font-weight:600; padding:1px 6px; border-radius:2px; }
+.modal-actions { margin-top:24px; display:flex; gap:12px; }
+.modal-btn { font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:600; letter-spacing:.1em; padding:8px 20px; cursor:pointer; border:1px solid var(--accent); color:var(--accent); background:transparent; transition:all .2s; text-decoration:none; }
+.modal-btn:hover { background:var(--accent); color:var(--navy); }
+.modal-btn-primary { background:var(--accent); color:var(--navy); }
+.modal-btn-primary:hover { background:var(--accent2); }
+
+/* ── FILTERS ── */
+.filters-row { display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+.filter-select { font-family:'Share Tech Mono',monospace; font-size:11px; background:var(--navy); color:var(--white); border:1px solid var(--border); padding:6px 12px; outline:none; cursor:pointer; }
+.filter-select:focus { border-color:var(--accent); }
+.filter-label { font-size:9px; letter-spacing:.2em; color:var(--silver); }
+
+/* ── MINI RISK SCORE ── */
+.mini-risk { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; font-family:'Orbitron',sans-serif; font-size:9px; font-weight:700; border:2px solid; }
+
+/* ── TABLE ROW CLICKABLE ── */
+.scan-table tbody tr { cursor:pointer; transition:background .15s; }
+.scan-table tbody tr:hover { background:rgba(74,143,212,.06); }
 </style>
 </head>
 <body>
@@ -475,7 +511,7 @@ footer {
       <div class="kpi-sub" id="kpiFindingsSub">loading...</div>
     </div>
     <div class="kpi" style="--accent-color: var(--purple)">
-      <div class="kpi-label">AVG FINDINGS / SCAN</div>
+      <div class="kpi-label">AVG RISK SCORE</div>
       <div class="kpi-value" id="kpiAvg">—</div>
       <div class="kpi-sub" id="kpiAvgSub">loading...</div>
     </div>
@@ -542,6 +578,10 @@ footer {
       <span>RECENT SCANS</span>
       <span id="tableCount" style="color:var(--silver)"></span>
     </div>
+    <div class="filters-row" id="filtersRow">
+      <div><div class="filter-label">PROFILE</div><select class="filter-select" id="filterProfile" onchange="applyFilters()"><option value="">ALL</option><option value="SZCZENIAK">SZCZENIAK</option><option value="STRAZNIK">STRAZNIK</option><option value="CERBER">CERBER</option></select></div>
+      <div><div class="filter-label">RISK</div><select class="filter-select" id="filterRisk" onchange="applyFilters()"><option value="">ALL</option><option value="KRYTYCZNE">KRYTYCZNE</option><option value="WYSOKIE">WYSOKIE</option><option value="ŚREDNIE">ŚREDNIE</option><option value="NISKIE">NISKIE</option></select></div>
+    </div>
     <div id="tableBody">
       <div class="loading pulse">LOADING DATA...</div>
     </div>
@@ -549,6 +589,13 @@ footer {
 
   <footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.1.0</footer>
 
+</div>
+
+<div class="modal-overlay" id="scanModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <div id="modalContent"></div>
+  </div>
 </div>
 
 <script>
@@ -591,6 +638,7 @@ function loadDashboard() {
   authFetch(API +'/scans?limit=100')
     .then(function(r) { return r.json(); })
     .then(function(scans) {
+      window._allScans = scans;
       renderKPIs(scans);
       renderTimeline(scans);
       renderRiskDonut(scans);
@@ -613,7 +661,13 @@ function renderKPIs(scans) {
     return s.risk_level === 'WYSOKIE' || s.risk_level === 'KRYTYCZNE';
   }).length;
   var totalFindings = scans.reduce(function(acc, s) { return acc + (s.findings_count || 0); }, 0);
-  var avg = total > 0 ? (totalFindings / total).toFixed(1) : 0;
+
+  var riskScoreMap = { KRYTYCZNE: 90, WYSOKIE: 70, ŚREDNIE: 40, NISKIE: 15 };
+  var totalRiskScore = scans.reduce(function(acc, s) {
+    return acc + (riskScoreMap[s.risk_level] || 0);
+  }, 0);
+  var avgRisk = total > 0 ? Math.round(totalRiskScore / total) : 0;
+  var avgRiskColor = avgRisk >= 80 ? 'var(--red)' : avgRisk >= 50 ? 'var(--orange)' : avgRisk >= 20 ? 'var(--yellow)' : 'var(--green)';
 
   document.getElementById('kpiTotal').textContent = total;
   document.getElementById('kpiTotalSub').textContent = 'completed scans';
@@ -621,8 +675,9 @@ function renderKPIs(scans) {
   document.getElementById('kpiHighSub').textContent = Math.round(highCrit/Math.max(total,1)*100) + '% of all scans';
   document.getElementById('kpiFindings').textContent = totalFindings;
   document.getElementById('kpiFindingsSub').textContent = 'vulnerabilities detected';
-  document.getElementById('kpiAvg').textContent = avg;
-  document.getElementById('kpiAvgSub').textContent = 'findings per scan';
+  document.getElementById('kpiAvg').textContent = avgRisk;
+  document.getElementById('kpiAvg').style.color = avgRiskColor;
+  document.getElementById('kpiAvgSub').textContent = 'avg risk (0-90 scale)';
 }
 
 function renderTimeline(scans) {
@@ -872,6 +927,7 @@ function renderTrend(scans) {
 }
 
 function renderTable(scans) {
+  window._dashScans = scans;
   var recent = scans.slice().sort(function(a,b) {
     return new Date(b.created_at) - new Date(a.created_at);
   }).slice(0,15);
@@ -883,8 +939,10 @@ function renderTable(scans) {
     return;
   }
 
+  var riskScoreMap = { KRYTYCZNE: 90, WYSOKIE: 70, ŚREDNIE: 40, NISKIE: 15 };
+
   var html = '<table class="scan-table"><thead><tr>' +
-    '<th>TARGET</th><th>PROFILE</th><th>DATE</th><th>FINDINGS</th><th>RISK</th><th>DURATION</th>' +
+    '<th>TARGET</th><th>PROFILE</th><th>DATE</th><th>FINDINGS</th><th>RISK</th><th>SCORE</th><th>DURATION</th>' +
     '</tr></thead><tbody>';
 
   recent.forEach(function(s) {
@@ -899,12 +957,15 @@ function renderTable(scans) {
     var risk = s.risk_level || 'N/A';
     var prof = (s.profile || 'STRAZNIK').toUpperCase();
     var profColor = prof === 'SZCZENIAK' ? '#4a8fd4' : prof === 'CERBER' ? '#ff4444' : '#f5c518';
-    html += '<tr>' +
+    var miniScore = riskScoreMap[s.risk_level] || 0;
+    var miniColor = miniScore >= 80 ? 'var(--red)' : miniScore >= 50 ? 'var(--orange)' : miniScore >= 20 ? 'var(--yellow)' : 'var(--green)';
+    html += '<tr onclick="openModal(\'' + s.task_id + '\')">' +
       '<td class="target">' + s.target + '</td>' +
       '<td><span style="font-family:Orbitron,sans-serif;font-size:10px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:3px;color:' + profColor + ';border:1px solid ' + profColor + ';background:rgba(0,0,0,.2)">' + prof + '</span></td>' +
       '<td>' + date + '</td>' +
       '<td>' + (s.findings_count || 0) + '</td>' +
       '<td><span class="risk-badge risk-' + risk + '">' + risk + '</span></td>' +
+      '<td><span class="mini-risk" style="color:' + miniColor + ';border-color:' + miniColor + '">' + miniScore + '</span></td>' +
       '<td>' + dur + '</td>' +
     '</tr>';
   });
@@ -959,6 +1020,95 @@ function loadPhishing() {
     .catch(function() {
       // GoPhish not available — hide section silently
     });
+}
+
+window._dashScans = [];
+window._allScans = [];
+
+function openModal(taskId) {
+  var scan = window._allScans.find(function(s) { return s.task_id === taskId; });
+  if (!scan) return;
+
+  authFetch(API + '/scans/' + taskId)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      renderModal(scan, data);
+      document.getElementById('scanModal').classList.add('open');
+    });
+}
+
+function closeModal() {
+  document.getElementById('scanModal').classList.remove('open');
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+
+function renderModal(scan, detail) {
+  var el = document.getElementById('modalContent');
+  var ai = detail.ai_analysis || {};
+  var score = ai.risk_score || 0;
+  var scoreColor = score >= 80 ? 'var(--red)' : score >= 50 ? 'var(--orange)' : score >= 20 ? 'var(--yellow)' : 'var(--green)';
+  var risk = scan.risk_level || 'N/A';
+  var profile = scan.profile || 'STRAZNIK';
+  var profColor = profile === 'SZCZENIAK' ? '#4a8fd4' : profile === 'CERBER' ? '#ff4444' : '#f5c518';
+
+  var h = '';
+  h += '<div class="modal-title">' + scan.target + '</div>';
+  h += '<div class="modal-subtitle">';
+  h += '<span style="color:' + profColor + ';font-weight:600">' + profile + '</span>';
+  h += ' &middot; ' + (scan.completed_at ? new Date(scan.completed_at).toLocaleString('pl-PL') : 'pending');
+  h += ' &middot; ' + (scan.findings_count || 0) + ' findings</div>';
+
+  h += '<div class="modal-risk-row">';
+  h += '<div class="modal-score-circle" style="border:3px solid ' + scoreColor + '">';
+  h += '<div class="modal-score-num" style="color:' + scoreColor + '">' + score + '</div>';
+  h += '<div class="modal-score-lbl">RISK</div></div>';
+  h += '<div class="modal-summary">' + (ai.executive_summary || detail.summary || scan.summary || 'No analysis available.') + '</div>';
+  h += '</div>';
+
+  var moduleKeys = ['nuclei','whatweb','gobuster','testssl','sqlmap','nikto','masscan','zap','wapiti','wpscan','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','netexec','enum4linux','bloodhound','responder','fierce','smbmap','onesixtyone','ikescan','sslyze','searchsploit','impacket','amass','harvester','ipinfo','whois','dnsrecon'];
+  var hasModules = false;
+  var mh = '';
+  moduleKeys.forEach(function(k) {
+    var mod = detail[k];
+    if (!mod || mod.skipped) return;
+    hasModules = true;
+    var badge = '<span class="modal-mod-badge" style="color:var(--green);border:1px solid var(--green)">OK</span>';
+    var fc = 0;
+    if (mod.findings && mod.findings.length) fc = mod.findings.length;
+    else if (mod.vulnerabilities && mod.vulnerabilities.length) fc = mod.vulnerabilities.length;
+    else if (mod.total_count) fc = mod.total_count;
+    else if (mod.total_hosts) fc = mod.total_hosts;
+    else if (mod.total_exploits) fc = mod.total_exploits;
+    if (fc > 0) badge = '<span class="modal-mod-badge" style="color:var(--yellow);border:1px solid var(--yellow)">' + fc + '</span>';
+    if (mod.vulnerable) badge = '<span class="modal-mod-badge" style="color:var(--red);border:1px solid var(--red)">VULN</span>';
+    mh += '<div class="modal-mod"><span class="modal-mod-name">' + k + '</span>' + badge + '</div>';
+  });
+  if (hasModules) {
+    h += '<div style="font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px;margin-top:16px">MODULES</div>';
+    h += '<div class="modal-modules">' + mh + '</div>';
+  }
+
+  h += '<div class="modal-actions">';
+  h += '<a class="modal-btn modal-btn-primary" href="/ui#scan=' + scan.task_id + '" target="_blank">VIEW FULL REPORT</a>';
+  h += '<a class="modal-btn" href="' + API + '/scans/' + scan.task_id + '/pdf" target="_blank">DOWNLOAD PDF</a>';
+  h += '<button class="modal-btn" onclick="closeModal()">CLOSE</button>';
+  h += '</div>';
+
+  el.innerHTML = h;
+}
+
+function applyFilters() {
+  var profVal = document.getElementById('filterProfile').value;
+  var riskVal = document.getElementById('filterRisk').value;
+  var filtered = window._allScans.filter(function(s) {
+    if (profVal && (s.profile || 'STRAZNIK') !== profVal) return false;
+    if (riskVal && (s.risk_level || '') !== riskVal) return false;
+    return true;
+  });
+  renderTable(filtered);
 }
 
 document.addEventListener('DOMContentLoaded', function() {

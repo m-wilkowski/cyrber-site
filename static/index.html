@@ -1147,6 +1147,161 @@ nav {
 .ai-dl-30 { color: var(--yellow); }
 .ai-dl-90 { color: var(--green); }
 
+/* ── RESULTS LAYOUT WITH SIDEBAR ── */
+.results-layout { display:flex; gap:0; position:relative; }
+.results-sidebar {
+  width:200px; flex-shrink:0;
+  position:sticky; top:60px; align-self:flex-start;
+  max-height:calc(100vh - 70px); overflow-y:auto;
+  background:rgba(8,12,24,.92); border-right:1px solid var(--border);
+  padding:12px 0; z-index:10;
+  scrollbar-width:thin; scrollbar-color:rgba(74,143,212,.2) transparent;
+}
+.results-sidebar::-webkit-scrollbar { width:4px; }
+.results-sidebar::-webkit-scrollbar-thumb { background:rgba(74,143,212,.2); border-radius:2px; }
+.sidebar-title {
+  font-family:'Orbitron',sans-serif; font-size:8px; font-weight:700;
+  letter-spacing:.2em; color:var(--accent); padding:8px 14px 10px;
+  border-bottom:1px solid var(--border2); margin-bottom:4px;
+}
+.sidebar-item {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 14px; cursor:pointer; font-size:11px; color:var(--silver);
+  transition:all .15s; border-left:2px solid transparent;
+  text-decoration:none;
+}
+.sidebar-item:hover { background:rgba(74,143,212,.05); color:var(--white); }
+.sidebar-item.active { border-left-color:var(--accent); color:var(--accent); background:rgba(74,143,212,.06); }
+.sidebar-badge {
+  font-size:8px; font-weight:700; padding:1px 5px; border-radius:2px;
+  font-family:'Share Tech Mono',monospace; letter-spacing:.05em;
+}
+.sb-crit { color:#ff4444; border:1px solid rgba(255,68,68,.4); background:rgba(255,68,68,.08); }
+.sb-high { color:var(--orange); border:1px solid rgba(255,140,0,.4); background:rgba(255,140,0,.08); }
+.sb-med  { color:var(--yellow); border:1px solid rgba(245,197,24,.4); background:rgba(245,197,24,.08); }
+.sb-ok   { color:var(--green); border:1px solid rgba(61,220,132,.3); background:rgba(61,220,132,.06); }
+.sb-info { color:var(--silver); border:1px solid rgba(138,155,181,.3); background:rgba(138,155,181,.04); }
+.results-main { flex:1; min-width:0; }
+
+/* ── SECTION HEADERS ── */
+.sec-hdr {
+  display:flex; align-items:center; gap:10px; padding:10px 16px;
+  background:rgba(12,18,32,.85); border:1px solid var(--border2);
+  border-bottom:none; cursor:pointer; user-select:none; transition:background .15s;
+}
+.sec-hdr:hover { background:rgba(74,143,212,.04); }
+.sec-hdr.open { border-bottom:1px solid var(--border2); }
+.sec-icon { font-size:13px; flex-shrink:0; width:20px; text-align:center; }
+.sec-title {
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  letter-spacing:.2em; color:var(--accent); flex:1;
+}
+.sec-badges { display:flex; gap:6px; align-items:center; }
+.sec-risk-badge {
+  font-size:8px; font-weight:700; padding:2px 7px; border-radius:2px;
+  font-family:'Share Tech Mono',monospace;
+}
+.sec-toggle {
+  background:none; border:none; color:var(--silver); font-size:11px;
+  cursor:pointer; transition:transform .2s; padding:0 4px;
+}
+.sec-hdr.open .sec-toggle { transform:rotate(180deg); }
+.sec-body {
+  border:1px solid var(--border2); border-top:none;
+  padding:16px 20px; display:none;
+  background:rgba(12,18,32,.75); backdrop-filter:blur(6px);
+  margin-bottom:10px;
+}
+.sec-body.open { display:block; }
+
+/* ── JUMP TO TOP ── */
+.jump-top {
+  position:fixed; bottom:24px; right:24px; z-index:50;
+  width:40px; height:40px; border-radius:50%;
+  background:var(--accent); color:var(--navy); border:none;
+  font-size:16px; cursor:pointer; opacity:0; pointer-events:none;
+  transition:opacity .3s, transform .3s; transform:translateY(10px);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 2px 12px rgba(74,143,212,.3);
+}
+.jump-top.visible { opacity:1; pointer-events:auto; transform:translateY(0); }
+.jump-top:hover { background:var(--accent2); }
+
+/* ── STICKY PDF ── */
+.sticky-pdf {
+  position:fixed; top:64px; right:24px; z-index:50;
+  opacity:0; pointer-events:none; transition:opacity .3s;
+}
+.sticky-pdf.visible { opacity:1; pointer-events:auto; }
+.sticky-pdf a {
+  font-family:'Orbitron',sans-serif; font-size:10px; font-weight:700;
+  letter-spacing:.1em; padding:8px 16px;
+  background:var(--accent); color:var(--navy); text-decoration:none;
+  display:inline-block; box-shadow:0 2px 12px rgba(74,143,212,.3);
+}
+.sticky-pdf a:hover { background:var(--accent2); }
+
+/* ── PROGRESS STEPS ── */
+.scan-steps {
+  display:flex; align-items:center; gap:0; margin:12px 0 8px;
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+}
+.scan-step {
+  display:flex; align-items:center; gap:6px; padding:6px 12px;
+  color:var(--silver); opacity:.4; transition:all .3s;
+}
+.scan-step.active { opacity:1; color:var(--accent); }
+.scan-step.done { opacity:1; color:var(--green); }
+.scan-step-dot {
+  width:8px; height:8px; border-radius:50%;
+  border:1px solid currentColor; flex-shrink:0;
+}
+.scan-step.active .scan-step-dot { background:var(--accent); box-shadow:0 0 6px var(--accent); }
+.scan-step.done .scan-step-dot { background:var(--green); }
+.scan-step-line { width:20px; height:1px; background:var(--border); flex-shrink:0; }
+.scan-eta {
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  color:var(--silver); margin-top:4px;
+}
+
+/* ── SKELETON LOADER ── */
+.skeleton { display:none; }
+.skeleton.on { display:block; }
+.skel-block {
+  background:linear-gradient(90deg,rgba(74,143,212,.04) 25%,rgba(74,143,212,.08) 50%,rgba(74,143,212,.04) 75%);
+  background-size:200% 100%; animation:skelShimmer 1.5s infinite; border-radius:4px;
+}
+@keyframes skelShimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.skel-row { display:flex; gap:16px; margin-bottom:12px; }
+.skel-circle { width:80px; height:80px; border-radius:50%; }
+.skel-lines { flex:1; display:flex; flex-direction:column; gap:8px; }
+.skel-line { height:14px; }
+.skel-line-sm { height:10px; width:60%; }
+.skel-card { height:120px; margin-bottom:12px; }
+
+/* ── RESPONSIVE SIDEBAR ── */
+.sidebar-toggle {
+  display:none; position:fixed; top:64px; left:12px; z-index:55;
+  width:36px; height:36px; border-radius:4px;
+  background:var(--accent); color:var(--navy); border:none;
+  font-size:16px; cursor:pointer; align-items:center; justify-content:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);
+}
+@media (max-width:1200px) {
+  .results-sidebar {
+    position:fixed; left:-220px; top:56px; height:calc(100vh - 56px);
+    z-index:60; transition:left .3s; width:220px;
+    box-shadow:4px 0 20px rgba(0,0,0,.5);
+  }
+  .results-sidebar.open { left:0; }
+  .sidebar-toggle { display:flex; }
+  .sidebar-toggle.open { left:224px; }
+  .results-main { width:100%; }
+}
+@media (max-width:768px) {
+  .dt { display:block; overflow-x:auto; white-space:nowrap; }
+}
+
 </style>
 </head>
 <body>
@@ -1242,47 +1397,71 @@ nav {
     </div>
     <div class="prog-wrap" id="pw">
       <div class="prog-bg"><div class="prog-fill sweep" id="pf"></div></div>
+      <div class="scan-steps" id="scanSteps" style="display:none">
+        <div class="scan-step" id="step-recon"><span class="scan-step-dot"></span>RECON</div>
+        <div class="scan-step-line"></div>
+        <div class="scan-step" id="step-web"><span class="scan-step-dot"></span>WEB SCAN</div>
+        <div class="scan-step-line"></div>
+        <div class="scan-step" id="step-net"><span class="scan-step-dot"></span>NETWORK</div>
+        <div class="scan-step-line"></div>
+        <div class="scan-step" id="step-ai"><span class="scan-step-dot"></span>AI ANALYSIS</div>
+      </div>
+      <div class="scan-eta" id="scanEta"></div>
     </div>
     <div class="log" id="log"></div>
   </div>
 
   <div class="results" id="res">
-    
-    <div class="pdf-row">
-      <a class="btn-pdf pdf-main" id="pdfBtn" href="#" onclick="downloadPdf(event)" style="display:none">⬇ DOWNLOAD PDF REPORT</a>
+    <div class="skeleton" id="skelLoader">
+      <div class="skel-row"><div class="skel-block skel-circle"></div><div class="skel-lines"><div class="skel-block skel-line"></div><div class="skel-block skel-line-sm"></div></div></div>
+      <div class="skel-block skel-card"></div>
+      <div class="skel-block skel-card"></div>
+      <div class="skel-block skel-card"></div>
     </div>
 
-    <div class="risk-row">
-      <div>
-        <div class="risk-lbl">THREAT LEVEL</div>
-        <div class="risk-badge" id="rb">—</div>
+    <div class="results-layout" id="resLayout" style="display:none">
+      <nav class="results-sidebar" id="resSidebar">
+        <div class="sidebar-title">SECTIONS</div>
+        <div id="sidebarItems"></div>
+      </nav>
+      <div class="results-main" id="resMain">
+        <div class="pdf-row">
+          <a class="btn-pdf pdf-main" id="pdfBtn" href="#" onclick="downloadPdf(event)" style="display:none">⬇ DOWNLOAD PDF REPORT</a>
+        </div>
+
+        <div class="risk-row" id="secOverview">
+          <div>
+            <div class="risk-lbl">THREAT LEVEL</div>
+            <div class="risk-badge" id="rb">—</div>
+          </div>
+          <div class="meta" id="scanMeta"></div>
+        </div>
+
+        <div id="aiAnalysis" class="ai-section" style="display:none"></div>
+
+        <div class="card">
+          <div class="card-lbl">EXECUTIVE SUMMARY</div>
+          <div class="summary" id="sum"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-lbl">CRITICAL FINDINGS</div>
+          <ul class="issues" id="iss"></ul>
+        </div>
+
+        <div class="card">
+          <div class="card-lbl">VULNERABILITY DISTRIBUTION</div>
+          <div class="sev-row" id="sevrow"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-lbl">REMEDIATION RECOMMENDATIONS</div>
+          <div class="rec" id="rec"></div>
+        </div>
+
+        <div id="extSections"></div>
       </div>
-      <div class="meta" id="scanMeta"></div>
     </div>
-
-    <div id="aiAnalysis" class="ai-section" style="display:none"></div>
-
-    <div class="card">
-      <div class="card-lbl">EXECUTIVE SUMMARY</div>
-      <div class="summary" id="sum"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-lbl">CRITICAL FINDINGS</div>
-      <ul class="issues" id="iss"></ul>
-    </div>
-
-    <div class="card">
-      <div class="card-lbl">VULNERABILITY DISTRIBUTION</div>
-      <div class="sev-row" id="sevrow"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-lbl">REMEDIATION RECOMMENDATIONS</div>
-      <div class="rec" id="rec"></div>
-    </div>
-
-    <div id="extSections"></div>
   </div>
 
   
@@ -1301,6 +1480,10 @@ nav {
 
   <footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.1.0</footer>
 </div>
+
+<button class="jump-top" id="jumpTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">&#9650;</button>
+<div class="sticky-pdf" id="stickyPdf"><a id="stickyPdfLink" href="#">PDF REPORT</a></div>
+<button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">&#9776;</button>
 
 <script>
 // Logo injected by build script
@@ -1426,6 +1609,7 @@ function startScan() {
   document.getElementById('log').style.display = 'none';
   document.getElementById('pw').classList.add('on');
   document.getElementById('pf').classList.add('sweep');
+  showSkeleton();
   t0 = Date.now();
   setSt('Initiating scan on: ' + target + ' [' + selectedProfile + ']', 'active');
   log('Target: ' + target);
@@ -1450,6 +1634,8 @@ function startScan() {
       log('ERROR: ' + e.message);
       document.getElementById('scanBtn').disabled = false;
       document.getElementById('pw').classList.remove('on');
+      hideScanSteps();
+      var sk=document.getElementById('skelLoader');if(sk) sk.classList.remove('on');
     });
 }
 
@@ -1468,8 +1654,11 @@ function pollStatus(tid) {
         log('FAILED: ' + d.error);
         document.getElementById('scanBtn').disabled = false;
         document.getElementById('pw').classList.remove('on');
+        hideScanSteps();
+        var sk=document.getElementById('skelLoader');if(sk) sk.classList.remove('on');
       } else {
         setSt('Scanning... ' + elapsed + 's elapsed', 'active');
+        updateScanSteps(elapsed);
       }
     })
     .catch(function(e) { log('Poll error: ' + e.message); });
@@ -1514,13 +1703,44 @@ function renderResults(res, elapsed) {
   if(window._lastTaskId){var pb=document.getElementById('pdfBtn');pb.href=API+'/scans/'+window._lastTaskId+'/pdf';pb.style.display='inline-block';}
   renderAiAnalysis(res);
   renderExtended(res);
+  hideSkeleton();
+  hideScanSteps();
   document.getElementById('res').classList.add('on');
   document.getElementById('scanBtn').disabled=false;
   document.getElementById('res').scrollIntoView({behavior:'smooth'});
 }
 
-function mkSec(title,content,open){
-  return '<div class="res-section"><div class="res-section-hdr"'+(open?' data-open="1"':'')+'><div class="res-section-title">'+title+'</div><div class="res-section-arrow">›</div></div><div class="res-section-body'+(open?' open':'')+'">'+content+'</div></div>';
+var _secIconMap={
+  'HAKERA':'\u26A0','EXPLOIT':'\u26D3','NUCLEI':'\u2622','PORTY':'\u2693','WHATWEB':'\uD83C\uDF10','GOBUSTER':'\uD83D\uDCC1',
+  'TESTSSL':'\uD83D\uDD12','SQLMAP':'\uD83D\uDC89','NIKTO':'\uD83D\uDD75','MASSCAN':'\uD83D\uDCE1','HARVESTER':'\uD83D\uDCE7',
+  'MITRE':'\uD83C\uDFAF','WHOIS':'\uD83D\uDD0D','DNS':'\uD83C\uDF10','AMASS':'\uD83D\uDDFA','SUBFINDER':'\uD83D\uDD0E',
+  'HTTPX':'\u21C4','NAABU':'\uD83D\uDEA2','KATANA':'\uD83D\uDDD1','CWE':'\uD83D\uDEE1','OWASP':'\uD83D\uDCCB',
+  'WPSCAN':'W','ZAP':'\u26A1','WAPITI':'\uD83D\uDC1B','IMPACKET':'\uD83C\uDFF4','BLOODHOUND':'\uD83D\uDC15',
+  'NETEXEC':'\uD83D\uDDA5','SMBMAP':'\uD83D\uDCC2','SNMPWALK':'\uD83D\uDCCA','NBTSCAN':'\uD83D\uDCE0',
+  'FPING':'\uD83C\uDFD3','TRACEROUTE':'\u2194','NETDISCOVER':'\uD83D\uDD0C','ARPSCAN':'\uD83D\uDCF6',
+  'SSLYZE':'\uD83D\uDD10','SEARCHSPLOIT':'\uD83D\uDCA3','IPINFO':'\uD83C\uDF0D','ABUSE':'\u26D4','OTX':'\uD83D\uDCE1',
+  'ABUSEIPDB':'\u26D4','RETIREJS':'\uD83D\uDCE6','JOOMSCAN':'J','CMSMAP':'C','DROOPESCAN':'D',
+  'FIERCE':'\uD83D\uDD25','ONESIXTYONE':'\uD83D\uDCFB','IKESCAN':'\uD83D\uDD11','RESPONDER':'\uD83C\uDFA3',
+  'ENUM4LINUX':'\uD83D\uDCBB','AI':'\uD83E\uDDE0','NVD':'\uD83D\uDCDA','EXPLOITDB':'\uD83D\uDCA5'
+};
+var _secRiskMap={};
+function _secIcon(t){var u=t.toUpperCase();for(var k in _secIconMap) if(u.indexOf(k)>-1) return _secIconMap[k]; return '\u25CF';}
+function _secId(t){return 'sec-'+t.replace(/[^a-zA-Z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').toLowerCase();}
+function mkSec(title,content,open,riskBadge){
+  var id=_secId(title);
+  var icon=_secIcon(title);
+  var badge=riskBadge||'';
+  var s='<div class="res-section" id="'+id+'" data-sec-title="'+title.replace(/"/g,'&quot;')+'">';
+  s+='<div class="sec-hdr'+(open?' open':'')+'">';
+  s+='<span class="sec-icon">'+icon+'</span>';
+  s+='<span class="sec-title">'+title+'</span>';
+  if(badge) s+='<span class="sec-badges">'+badge+'</span>';
+  s+='<button class="sec-toggle">&#9660;</button>';
+  s+='</div>';
+  s+='<div class="sec-body'+(open?' open':'')+'">'+content+'</div>';
+  s+='</div>';
+  _secRiskMap[id]=badge;
+  return s;
 }
 
 var _smC=0;
@@ -4078,12 +4298,13 @@ function renderExtended(res) {
   }
 
   ext.innerHTML=h;
-  ext.querySelectorAll('.res-section-hdr').forEach(function(hdr){
+  ext.querySelectorAll('.sec-hdr').forEach(function(hdr){
     hdr.addEventListener('click',function(){
       hdr.classList.toggle('open');
       hdr.nextElementSibling.classList.toggle('open');
     });
   });
+  buildSidebar();
 }
 
 document.getElementById('tgt').addEventListener('keydown', function(e) {
@@ -4529,6 +4750,149 @@ function viewMultiResult(taskId) {
       // Scroll to results
       document.getElementById('res').scrollIntoView({behavior: 'smooth', block: 'start'});
     });
+}
+
+/* ── SIDEBAR BUILDER ── */
+function buildSidebar(){
+  var items=document.getElementById('sidebarItems');
+  if(!items) return;
+  var html='';
+  // Static top sections
+  var overview=document.getElementById('secOverview');
+  if(overview) html+='<a class="sidebar-item active" href="#secOverview" data-sid="secOverview">Overview</a>';
+  var aiSec=document.getElementById('aiAnalysis');
+  if(aiSec && aiSec.style.display!=='none') html+='<a class="sidebar-item" href="#aiAnalysis" data-sid="aiAnalysis">AI Analysis</a>';
+  // Dynamic sections from renderExtended
+  document.querySelectorAll('#extSections .res-section').forEach(function(sec){
+    var t=sec.getAttribute('data-sec-title')||'';
+    var short=t.replace(/^\/\/\s*/,'').replace(/\s*\(.*/,'').substring(0,28);
+    var id=sec.id;
+    // Detect risk badge from section content
+    var badge='';
+    var body=sec.querySelector('.sec-body');
+    if(body){
+      var critMatch=body.querySelectorAll('[style*="ff2222"],[style*="ff4444"]').length;
+      var highMatch=body.querySelectorAll('[style*="ff8c00"],[style*="--red"]').length;
+      if(critMatch>0) badge='<span class="sidebar-badge sb-crit">'+critMatch+'</span>';
+      else if(highMatch>0) badge='<span class="sidebar-badge sb-high">'+highMatch+'</span>';
+    }
+    // Check if section was auto-opened (indicates findings)
+    var hdr=sec.querySelector('.sec-hdr');
+    if(hdr && hdr.classList.contains('open') && !badge) badge='<span class="sidebar-badge sb-med">!</span>';
+    html+='<a class="sidebar-item" href="#'+id+'" data-sid="'+id+'">'+short+badge+'</a>';
+  });
+  items.innerHTML=html;
+  // Smooth scroll
+  items.querySelectorAll('.sidebar-item').forEach(function(a){
+    a.addEventListener('click',function(e){
+      e.preventDefault();
+      var target=document.getElementById(a.getAttribute('data-sid'));
+      if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  });
+  initScrollSpy();
+}
+
+/* ── SCROLL SPY ── */
+var _scrollSpyRaf=null;
+function initScrollSpy(){
+  var items=document.querySelectorAll('#sidebarItems .sidebar-item');
+  if(!items.length) return;
+  function update(){
+    var ids=[];
+    items.forEach(function(a){ ids.push(a.getAttribute('data-sid')); });
+    var active=ids[0];
+    for(var i=ids.length-1;i>=0;i--){
+      var el=document.getElementById(ids[i]);
+      if(el && el.getBoundingClientRect().top<=120){ active=ids[i]; break; }
+    }
+    items.forEach(function(a){
+      a.classList.toggle('active',a.getAttribute('data-sid')===active);
+    });
+  }
+  window.addEventListener('scroll',function(){
+    if(_scrollSpyRaf) cancelAnimationFrame(_scrollSpyRaf);
+    _scrollSpyRaf=requestAnimationFrame(update);
+  },{passive:true});
+}
+
+/* ── JUMP TO TOP ── */
+(function(){
+  var btn=document.getElementById('jumpTop');
+  if(!btn) return;
+  window.addEventListener('scroll',function(){
+    btn.classList.toggle('visible',window.scrollY>400);
+  },{passive:true});
+})();
+
+/* ── STICKY PDF ── */
+(function(){
+  var sp=document.getElementById('stickyPdf');
+  if(!sp) return;
+  window.addEventListener('scroll',function(){
+    var res=document.getElementById('res');
+    if(!res || !res.classList.contains('on')){ sp.classList.remove('visible'); return; }
+    var rect=res.getBoundingClientRect();
+    sp.classList.toggle('visible', rect.top<0 && rect.bottom>200);
+    // Sync href with main PDF button
+    var main=document.getElementById('pdfBtn');
+    var link=document.getElementById('stickyPdfLink');
+    if(main && link) link.href=main.href;
+  },{passive:true});
+})();
+
+/* ── SIDEBAR TOGGLE (responsive) ── */
+function toggleSidebar(){
+  var sb=document.getElementById('resSidebar');
+  var btn=document.getElementById('sidebarToggle');
+  if(sb){ sb.classList.toggle('open'); }
+  if(btn){ btn.classList.toggle('open'); }
+}
+
+/* ── PROGRESS STEPS ── */
+var _stepPhases=['step-recon','step-web','step-net','step-ai'];
+var _stepTimings=[0,25,55,80]; // rough % thresholds
+function updateScanSteps(elapsed){
+  var steps=document.getElementById('scanSteps');
+  var eta=document.getElementById('scanEta');
+  if(!steps) return;
+  steps.style.display='flex';
+  // Estimate phase based on elapsed time relative to expected total
+  var profileTimes={'SZCZENIAK':120,'STRAZNIK':600,'CERBER':1200};
+  var totalEst=profileTimes[(window._lastProfile||selectedProfile||'STRAZNIK').toUpperCase()]||600;
+  var pct=Math.min(Math.round((elapsed/totalEst)*100),99);
+  var phase=0;
+  for(var i=_stepTimings.length-1;i>=0;i--){ if(pct>=_stepTimings[i]){phase=i;break;} }
+  _stepPhases.forEach(function(id,idx){
+    var el=document.getElementById(id);
+    if(!el) return;
+    el.className='scan-step'+(idx<phase?' done':(idx===phase?' active':''));
+  });
+  if(eta){
+    var remain=Math.max(0,totalEst-elapsed);
+    eta.textContent=remain>0?'~'+Math.ceil(remain/60)+'min remaining':'finalizing...';
+  }
+}
+function hideScanSteps(){
+  var steps=document.getElementById('scanSteps');
+  var eta=document.getElementById('scanEta');
+  if(steps) steps.style.display='none';
+  if(eta) eta.textContent='';
+  _stepPhases.forEach(function(id){ var el=document.getElementById(id); if(el) el.className='scan-step done'; });
+}
+
+/* ── SKELETON LOADER ── */
+function showSkeleton(){
+  var sk=document.getElementById('skelLoader');
+  var lay=document.getElementById('resLayout');
+  if(sk) sk.classList.add('on');
+  if(lay) lay.style.display='none';
+}
+function hideSkeleton(){
+  var sk=document.getElementById('skelLoader');
+  var lay=document.getElementById('resLayout');
+  if(sk) sk.classList.remove('on');
+  if(lay) lay.style.display='flex';
 }
 
 </script>
