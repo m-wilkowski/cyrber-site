@@ -31,6 +31,8 @@ from modules.zap_scan import zap_scan
 from modules.wapiti_scan import wapiti_scan
 from modules.joomscan_scan import joomscan_scan
 from modules.cmsmap_scan import cmsmap_scan
+from modules.droopescan_scan import droopescan_scan
+from modules.retirejs_scan import retirejs_scan
 from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
@@ -60,6 +62,8 @@ def full_scan_task(target: str):
     wapiti = wapiti_scan(target)
     joomscan = joomscan_scan(target)
     cmsmap = cmsmap_scan(target)
+    droopescan = droopescan_scan(target)
+    retirejs = retirejs_scan(target)
     whatweb = whatweb_scan(target)
     wpscan = wpscan_scan(target)
     gobuster = gobuster_scan(target)
@@ -130,6 +134,10 @@ def full_scan_task(target: str):
         result["joomscan"] = joomscan
     if not cmsmap.get("skipped"):
         result["cmsmap"] = cmsmap
+    if not droopescan.get("skipped"):
+        result["droopescan"] = droopescan
+    if not retirejs.get("skipped") and retirejs.get("libraries"):
+        result["retirejs"] = retirejs
     cwe = cwe_mapping(result)
     if cwe.get("total", 0) > 0:
         result["cwe"] = cwe

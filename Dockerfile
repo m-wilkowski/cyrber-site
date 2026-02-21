@@ -90,6 +90,13 @@ RUN git clone --depth 1 https://github.com/Dionach/CMSmap.git /opt/cmsmap && \
     pip install -r /opt/cmsmap/requirements.txt --break-system-packages && \
     ln -s /opt/cmsmap/cmsmap.py /usr/local/bin/cmsmap && \
     chmod +x /opt/cmsmap/cmsmap.py
+# droopescan (Drupal/Joomla/WordPress/SilverStripe/Moodle scanner)
+RUN pip install droopescan --break-system-packages
+# retire.js (vulnerable JavaScript library detection)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g retire && \
+    rm -rf /var/lib/apt/lists/*
 # wordlist
 RUN mkdir -p /usr/share/wordlists/dirb && \
     curl -L https://raw.githubusercontent.com/v0re/dirb/master/wordlists/common.txt \

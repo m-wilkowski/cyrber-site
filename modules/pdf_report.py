@@ -522,6 +522,105 @@ def _wpscan_html(wpscan: dict) -> str:
             html += "</div>"
     return html or "<p class='muted'>Brak danych WPScan.</p>"
 
+def _retirejs_html(retirejs: dict) -> str:
+    libs = retirejs.get("libraries", [])
+    if not libs:
+        return "<p class='muted'>Brak wyników Retire.js.</p>"
+    summary = retirejs.get("summary", {})
+    sev_color = {"critical": "#ff4444", "high": "#ff8c00", "medium": "#f5c518", "low": "#3ddc84"}
+    # Summary badges
+    badges = ""
+    for level in ["critical", "high", "medium", "low"]:
+        cnt = summary.get(level, 0)
+        if cnt:
+            badges += f"<span style='color:{sev_color[level]};font-size:10px;border:1px solid {sev_color[level]};padding:2px 8px;margin-right:6px'>{level.upper()}: {cnt}</span>"
+    # Stats
+    html = f"<div style='margin-bottom:10px'>{badges}</div>"
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>JS LIBRARIES</span><br><span style='font-size:18px;font-weight:700;color:#e8f0fc'>{summary.get('total_libs', 0)}</span></div>"
+    vuln_cnt = summary.get("vulnerable_libs", 0)
+    vuln_col = "#ff4444" if vuln_cnt else "#3ddc84"
+    html += f"<div><span class='muted'>VULNERABLE</span><br><span style='font-size:18px;font-weight:700;color:{vuln_col}'>{vuln_cnt}</span></div>"
+    html += f"<div><span class='muted'>TOTAL VULNS</span><br><span style='font-size:18px;font-weight:700;color:#ff8c00'>{summary.get('total_vulns', 0)}</span></div>"
+    html += "</div>"
+    # Libraries table
+    rows = ""
+    for lib in libs[:25]:
+        component = lib.get("component", "")
+        version = lib.get("version", "")
+        vulns = lib.get("vulnerabilities", [])
+        if vulns:
+            highest_sev = "low"
+            for v in vulns:
+                s = v.get("severity", "low")
+                if s == "critical":
+                    highest_sev = "critical"
+                    break
+                elif s == "high" and highest_sev not in ("critical",):
+                    highest_sev = "high"
+                elif s == "medium" and highest_sev not in ("critical", "high"):
+                    highest_sev = "medium"
+            color = sev_color.get(highest_sev, "#f5c518")
+            cves_all = []
+            summaries = []
+            for v in vulns:
+                cves_all.extend(v.get("cve", []))
+                if v.get("summary"):
+                    summaries.append(v["summary"])
+            cve_html = " ".join(f"<a href='https://nvd.nist.gov/vuln/detail/{c}' style='color:#4a8fd4;font-size:10px'>{c}</a>" for c in cves_all[:4])
+            desc = "; ".join(summaries[:2])[:120]
+            rows += f"<tr><td style='color:{color};font-weight:700'>{highest_sev.upper()}</td><td>{component}</td><td class='mono'>{version}</td><td>{cve_html}</td><td style='font-size:10px'>{desc}</td></tr>"
+        else:
+            rows += f"<tr><td style='color:#3ddc84'>OK</td><td>{component}</td><td class='mono'>{version}</td><td></td><td class='muted'>No known vulnerabilities</td></tr>"
+    extra = f"<p class='muted'>... i {len(libs)-25} więcej</p>" if len(libs) > 25 else ""
+    html += f"""<table>
+        <thead><tr><th>STATUS</th><th>LIBRARY</th><th>VERSION</th><th>CVE</th><th>DETAILS</th></tr></thead>
+        <tbody>{rows}</tbody>
+    </table>{extra}"""
+    return html
+
+def _droopescan_html(droopescan: dict) -> str:
+    if not droopescan or droopescan.get("skipped"):
+        return "<p class='muted'>No supported CMS detected or Droopescan skipped.</p>"
+    html = ""
+    # CMS badge
+    cms = droopescan.get("cms_detected", "unknown")
+    cms_color = {"Drupal": "#0678be", "Joomla": "#f44321", "WordPress": "#21759b", "SilverStripe": "#005ae1", "Moodle": "#f98012"}.get(cms, "#4a8fd4")
+    html += f"<div style='margin-bottom:12px'><span style='font-size:10px;padding:4px 12px;border:1px solid {cms_color};color:{cms_color}'>{cms.upper()}</span></div>"
+    # Possible versions
+    versions = droopescan.get("cms_version", [])
+    if versions:
+        ver_tags = " ".join(f"<span class='mono' style='font-size:10px;color:#e8f0fc;border:1px solid rgba(74,143,212,.3);padding:2px 6px;margin:2px'>{v}</span>" for v in versions[:15])
+        extra = f" <span class='muted'>... i {len(versions)-15} więcej</span>" if len(versions) > 15 else ""
+        html += f"<div style='margin-bottom:12px'><span class='muted'>POSSIBLE VERSIONS ({len(versions)})</span><br>{ver_tags}{extra}</div>"
+    # Summary stats
+    summary = droopescan.get("summary", {})
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    html += f"<div><span class='muted'>PLUGINS</span><br><span style='font-size:18px;font-weight:700;color:#e8f0fc'>{summary.get('plugins_count', 0)}</span></div>"
+    html += f"<div><span class='muted'>THEMES</span><br><span style='font-size:18px;font-weight:700;color:#e8f0fc'>{summary.get('themes_count', 0)}</span></div>"
+    html += f"<div><span class='muted'>INTERESTING URLs</span><br><span style='font-size:18px;font-weight:700;color:#f5c518'>{summary.get('interesting_count', 0)}</span></div>"
+    html += "</div>"
+    # Plugins table
+    plugins = droopescan.get("plugins", [])
+    if plugins:
+        rows = "".join(f"<tr><td>{p.get('name','')}</td><td class='mono' style='font-size:10px'>{p.get('url','')}</td></tr>" for p in plugins[:30])
+        extra = f"<p class='muted'>... i {len(plugins)-30} więcej</p>" if len(plugins) > 30 else ""
+        html += f"<div class='muted' style='margin-bottom:4px'>PLUGINS ({len(plugins)})</div>"
+        html += f"<table><thead><tr><th>PLUGIN</th><th>URL</th></tr></thead><tbody>{rows}</tbody></table>{extra}"
+    # Themes table
+    themes = droopescan.get("themes", [])
+    if themes:
+        rows = "".join(f"<tr><td>{t.get('name','')}</td><td class='mono' style='font-size:10px'>{t.get('url','')}</td></tr>" for t in themes[:20])
+        html += f"<div class='muted' style='margin:10px 0 4px'>THEMES ({len(themes)})</div>"
+        html += f"<table><thead><tr><th>THEME</th><th>URL</th></tr></thead><tbody>{rows}</tbody></table>"
+    # Interesting URLs
+    interesting = droopescan.get("interesting_urls", [])
+    if interesting:
+        rows = "".join(f"<tr><td class='mono' style='font-size:10px;color:#f5c518'>{u.get('url','')}</td><td style='font-size:10px'>{u.get('description','')}</td></tr>" for u in interesting[:15])
+        html += f"<div class='muted' style='margin:10px 0 4px'>INTERESTING URLs ({len(interesting)})</div>"
+        html += f"<table><thead><tr><th>URL</th><th>DESCRIPTION</th></tr></thead><tbody>{rows}</tbody></table>"
+    return html or "<p class='muted'>Brak danych Droopescan.</p>"
+
 def _cmsmap_html(cmsmap: dict) -> str:
     if not cmsmap or cmsmap.get("skipped"):
         return "<p class='muted'>No CMS detected or CMSmap skipped.</p>"
@@ -761,6 +860,8 @@ def generate_report(scan_data: dict) -> bytes:
     wapiti = scan_data.get("wapiti", {})
     joomscan = scan_data.get("joomscan", {})
     cmsmap = scan_data.get("cmsmap", {})
+    droopescan = scan_data.get("droopescan", {})
+    retirejs = scan_data.get("retirejs", {})
 
     color = _risk_color(risk)
 
@@ -1010,6 +1111,16 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// CMSMAP — CMS SCANNER ({cmsmap.get('cms_detected', 'N/A')} · {cmsmap.get('summary', {}).get('total_vulns', 0)} vulnerabilities)</div>
   {_cmsmap_html(cmsmap)}
+</div>
+
+<div class="section">
+  <div class="section-title">// DROOPESCAN — CMS ENUMERATION ({droopescan.get('cms_detected', 'N/A')} · {droopescan.get('summary', {}).get('plugins_count', 0)} plugins)</div>
+  {_droopescan_html(droopescan)}
+</div>
+
+<div class="section">
+  <div class="section-title">// RETIRE.JS — VULNERABLE JAVASCRIPT ({retirejs.get('summary', {}).get('vulnerable_libs', 0)} vulnerable / {retirejs.get('summary', {}).get('total_libs', 0)} libs)</div>
+  {_retirejs_html(retirejs)}
 </div>
 
 <div class="section">

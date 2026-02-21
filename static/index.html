@@ -2277,6 +2277,136 @@ function renderExtended(res) {
     h+=mkSec('// CMSMAP — CMS SCANNER ('+cmsmap.cms_detected+cmsVerStr+', '+cmsTot+' vulns)',cc,false);
   }
 
+  // DROOPESCAN
+  var droop=res.droopescan||{};
+  var droopPlugins=droop.plugins||[];
+  var droopThemes=droop.themes||[];
+  var droopUrls=droop.interesting_urls||[];
+  var droopVersions=droop.cms_version||[];
+  if(droopPlugins.length||droopThemes.length||droopUrls.length||droopVersions.length){
+    var dc='';
+    // CMS badge
+    var droopCms=droop.cms_detected||'unknown';
+    var droopColMap={Drupal:'#0678be',Joomla:'#f44321',WordPress:'#21759b',SilverStripe:'#005ae1',Moodle:'#f98012'};
+    var droopCol=droopColMap[droopCms]||'var(--accent)';
+    dc+='<div style="margin-bottom:12px"><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid '+droopCol+';color:'+droopCol+'">'+droopCms.toUpperCase()+'</span></div>';
+    // Possible versions
+    if(droopVersions.length){
+      var verTags='';
+      droopVersions.slice(0,15).forEach(function(v){verTags+='<span class="mono" style="font-size:10px;color:var(--white);border:1px solid var(--border);padding:2px 6px;margin:2px">'+v+'</span>';});
+      var verExtra=droopVersions.length>15?' <span style="color:var(--silver);font-size:10px">... i '+(droopVersions.length-15)+' more</span>':'';
+      dc+='<div style="margin-bottom:12px"><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">POSSIBLE VERSIONS ('+droopVersions.length+')</span><br>'+verTags+verExtra+'</div>';
+    }
+    // Stats
+    var droopSm=droop.summary||{};
+    dc+='<div style="display:flex;gap:24px;margin-bottom:12px">';
+    dc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">PLUGINS</span><br><span style="font-size:18px;font-weight:700;color:var(--white)">'+(droopSm.plugins_count||0)+'</span></div>';
+    dc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">THEMES</span><br><span style="font-size:18px;font-weight:700;color:var(--white)">'+(droopSm.themes_count||0)+'</span></div>';
+    dc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">INTERESTING URLs</span><br><span style="font-size:18px;font-weight:700;color:var(--yellow)">'+(droopSm.interesting_count||0)+'</span></div>';
+    dc+='</div>';
+    // Plugins table
+    if(droopPlugins.length){
+      dc+='<div style="color:var(--silver);font-size:10px;letter-spacing:.15em;margin-bottom:4px">PLUGINS ('+droopPlugins.length+')</div>';
+      dc+='<table class="dt"><thead><tr><th>PLUGIN</th><th>URL</th></tr></thead><tbody>';
+      var _droopPSmId=droopPlugins.length>30?'sm'+(++_smC):'';
+      droopPlugins.forEach(function(p,idx){
+        if(idx===30&&_droopPSmId) dc+='</tbody><tbody id="'+_droopPSmId+'" style="display:none">';
+        dc+='<tr><td>'+p.name+'</td><td class="mono" style="font-size:10px">'+(p.url||'')+'</td></tr>';
+      });
+      if(_droopPSmId) dc+='</tbody><tbody><tr><td colspan="2" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_droopPSmId+'\',this)">SHOW ALL '+droopPlugins.length+' PLUGINS &#9660;</button></td></tr>';
+      dc+='</tbody></table>';
+    }
+    // Themes table
+    if(droopThemes.length){
+      dc+='<div style="color:var(--silver);font-size:10px;letter-spacing:.15em;margin:10px 0 4px">THEMES ('+droopThemes.length+')</div>';
+      dc+='<table class="dt"><thead><tr><th>THEME</th><th>URL</th></tr></thead><tbody>';
+      droopThemes.forEach(function(t){
+        dc+='<tr><td>'+t.name+'</td><td class="mono" style="font-size:10px">'+(t.url||'')+'</td></tr>';
+      });
+      dc+='</tbody></table>';
+    }
+    // Interesting URLs
+    if(droopUrls.length){
+      dc+='<div style="color:var(--silver);font-size:10px;letter-spacing:.15em;margin:10px 0 4px">INTERESTING URLs ('+droopUrls.length+')</div>';
+      dc+='<table class="dt"><thead><tr><th>URL</th><th>DESCRIPTION</th></tr></thead><tbody>';
+      droopUrls.forEach(function(u){
+        dc+='<tr><td class="mono" style="font-size:10px;color:var(--yellow)">'+(u.url||'')+'</td><td style="font-size:10px">'+(u.description||'')+'</td></tr>';
+      });
+      dc+='</tbody></table>';
+    }
+    h+=mkSec('// DROOPESCAN — CMS ENUMERATION ('+droopCms+', '+(droopSm.plugins_count||0)+' plugins, '+(droopSm.themes_count||0)+' themes)',dc,false);
+  }
+
+  // RETIRE.JS
+  var retirejs=res.retirejs||{};
+  var rjLibs=retirejs.libraries||[];
+  if(rjLibs.length){
+    var rc='';
+    var rjSm=retirejs.summary||{};
+    var rjSevCol={critical:'var(--red)',high:'var(--orange)',medium:'var(--yellow)',low:'var(--green)'};
+    var rjSevBg={critical:'rgba(255,68,68,.10)',high:'rgba(255,140,0,.08)',medium:'rgba(245,197,24,.08)',low:'rgba(61,220,132,.08)'};
+    // Severity badges
+    rc+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">';
+    if(rjSm.critical) rc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">CRITICAL: '+rjSm.critical+'</span>';
+    if(rjSm.high) rc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--orange);color:var(--orange);background:rgba(255,140,0,.08)">HIGH: '+rjSm.high+'</span>';
+    if(rjSm.medium) rc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+rjSm.medium+'</span>';
+    if(rjSm.low) rc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--green);color:var(--green);background:rgba(61,220,132,.08)">LOW: '+rjSm.low+'</span>';
+    rc+='</div>';
+    // Stats
+    rc+='<div style="display:flex;gap:24px;margin-bottom:12px">';
+    rc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">JS LIBRARIES</span><br><span style="font-size:18px;font-weight:700;color:var(--white)">'+rjSm.total_libs+'</span></div>';
+    var rjVulnCnt=rjSm.vulnerable_libs||0;
+    var rjVulnCol=rjVulnCnt?'var(--red)':'var(--green)';
+    rc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">VULNERABLE</span><br><span style="font-size:18px;font-weight:700;color:'+rjVulnCol+'">'+rjVulnCnt+'</span></div>';
+    rc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">TOTAL VULNS</span><br><span style="font-size:18px;font-weight:700;color:var(--orange)">'+(rjSm.total_vulns||0)+'</span></div>';
+    rc+='</div>';
+    // Libraries table
+    rc+='<table class="dt"><thead><tr><th>STATUS</th><th>LIBRARY</th><th>VERSION</th><th>CVE</th><th>DETAILS</th></tr></thead><tbody>';
+    var _rjSmId=rjLibs.length>25?'sm'+(++_smC):'';
+    rjLibs.forEach(function(lib,idx){
+      if(idx===25&&_rjSmId) rc+='</tbody><tbody id="'+_rjSmId+'" style="display:none">';
+      var vulns=lib.vulnerabilities||[];
+      if(vulns.length){
+        var highestSev='low';
+        vulns.forEach(function(v){
+          if(v.severity==='critical') highestSev='critical';
+          else if(v.severity==='high'&&highestSev!=='critical') highestSev='high';
+          else if(v.severity==='medium'&&highestSev!=='critical'&&highestSev!=='high') highestSev='medium';
+        });
+        var sc=rjSevCol[highestSev]||'var(--yellow)';
+        var sb=rjSevBg[highestSev]||'rgba(245,197,24,.08)';
+        var cveHtml='';
+        var descs=[];
+        vulns.forEach(function(v){
+          (v.cve||[]).slice(0,3).forEach(function(c){
+            cveHtml+='<a href="https://nvd.nist.gov/vuln/detail/'+c+'" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--border);font-size:10px">'+c+'</a> ';
+          });
+          if(v.summary) descs.push(v.summary);
+        });
+        var descTxt=descs.slice(0,2).join('; ');
+        if(descTxt.length>120) descTxt=descTxt.substring(0,117)+'...';
+        rc+='<tr>';
+        rc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+sc+';color:'+sc+';background:'+sb+'">'+highestSev.toUpperCase()+'</span></td>';
+        rc+='<td>'+lib.component+'</td>';
+        rc+='<td class="mono">'+lib.version+'</td>';
+        rc+='<td>'+cveHtml+'</td>';
+        rc+='<td style="font-size:10px">'+descTxt+'</td>';
+        rc+='</tr>';
+      } else {
+        rc+='<tr>';
+        rc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid var(--green);color:var(--green);background:rgba(61,220,132,.08)">OK</span></td>';
+        rc+='<td>'+lib.component+'</td>';
+        rc+='<td class="mono">'+lib.version+'</td>';
+        rc+='<td></td>';
+        rc+='<td style="font-size:10px;color:var(--silver)">No known vulnerabilities</td>';
+        rc+='</tr>';
+      }
+    });
+    if(_rjSmId) rc+='</tbody><tbody><tr><td colspan="5" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_rjSmId+'\',this)">SHOW ALL '+rjLibs.length+' LIBRARIES &#9660;</button></td></tr>';
+    rc+='</tbody></table>';
+    h+=mkSec('// RETIRE.JS — VULNERABLE JAVASCRIPT ('+rjVulnCnt+' vulnerable / '+rjSm.total_libs+' libs)',rc,false);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];
@@ -2378,7 +2508,7 @@ function loadScanDetail(taskId) {
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
       nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
-      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, mitre:s.mitre||null,
+      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -2623,7 +2753,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

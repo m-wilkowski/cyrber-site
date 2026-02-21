@@ -331,6 +331,8 @@ from modules.zap_scan import zap_scan
 from modules.wapiti_scan import wapiti_scan
 from modules.joomscan_scan import joomscan_scan
 from modules.cmsmap_scan import cmsmap_scan
+from modules.droopescan_scan import droopescan_scan
+from modules.retirejs_scan import retirejs_scan
 
 @app.get("/scan/wpscan")
 async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -351,6 +353,14 @@ async def run_joomscan(target: str = Query(...), user: str = Depends(get_current
 @app.get("/scan/cmsmap")
 async def run_cmsmap(target: str = Query(...), user: str = Depends(get_current_user)):
     return cmsmap_scan(target)
+
+@app.get("/scan/droopescan")
+async def run_droopescan(target: str = Query(...), user: str = Depends(get_current_user)):
+    return droopescan_scan(target)
+
+@app.get("/scan/retirejs")
+async def run_retirejs(target: str = Query(...), user: str = Depends(get_current_user)):
+    return retirejs_scan(target)
 
 from modules.tasks import osint_scan_task
 from modules.database import get_osint_history, get_osint_by_task_id
