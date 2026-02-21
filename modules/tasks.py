@@ -58,6 +58,7 @@ from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
 from modules.scan_profiles import should_run_module
+from modules.ai_analysis import analyze_scan_results as ai_analyze
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
@@ -248,6 +249,7 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
     result["hacker_narrative"] = narrative
     mitre = mitre_map(result)
     result["mitre"] = mitre
+    result["ai_analysis"] = ai_analyze(result)
     save_scan(task_id, target, result, profile=profile)
     send_scan_notification(target, task_id, result)
     return result

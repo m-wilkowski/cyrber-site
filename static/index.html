@@ -991,6 +991,162 @@ nav {
   .profile-cards { grid-template-columns: 1fr; }
 }
 
+/* ── AI ANALYSIS ── */
+.ai-section { margin-bottom: 18px; }
+.ai-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 16px;
+  padding: 20px;
+  background: rgba(12,18,32,.85);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+.ai-score-ring {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+}
+.ai-score-ring svg { transform: rotate(-90deg); }
+.ai-score-bg { fill: none; stroke: rgba(255,255,255,.06); stroke-width: 8; }
+.ai-score-fg { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset .8s ease, stroke .3s; }
+.ai-score-text {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 26px;
+  font-weight: 900;
+}
+.ai-score-lbl {
+  position: absolute;
+  bottom: 16px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  letter-spacing: .2em;
+  color: var(--silver);
+  white-space: nowrap;
+}
+.ai-header-body { flex: 1; }
+.ai-header-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .15em;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.ai-exec-summary {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--white);
+}
+
+.ai-narrative-card {
+  background: rgba(12,18,32,.75);
+  border: 1px solid var(--border2);
+  padding: 20px;
+  margin-bottom: 12px;
+}
+.ai-narrative-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .3em;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+.ai-narrative-text {
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--white);
+  font-style: italic;
+  border-left: 3px solid var(--accent);
+  padding-left: 16px;
+}
+
+.ai-chain-list { list-style: none; padding: 0; }
+.ai-chain-step {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border2);
+}
+.ai-chain-step:last-child { border-bottom: none; }
+.ai-step-num {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px; font-weight: 700;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.ai-step-body { min-width: 0; }
+.ai-step-technique { font-size: 13px; font-weight: 600; color: var(--white); margin-bottom: 2px; }
+.ai-step-meta {
+  font-size: 10px;
+  color: var(--silver);
+  font-family: 'Share Tech Mono', monospace;
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.ai-step-meta span { opacity: .8; }
+.ai-step-impact { font-size: 11px; color: var(--silver); margin-top: 3px; }
+.ai-lh-critical { color: var(--red); }
+.ai-lh-high { color: var(--orange); }
+.ai-lh-medium { color: var(--yellow); }
+.ai-lh-low { color: var(--green); }
+
+.ai-impact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ai-impact-card {
+  background: rgba(12,18,32,.75);
+  border: 1px solid var(--border2);
+  padding: 14px 16px;
+}
+.ai-impact-label {
+  font-size: 9px;
+  letter-spacing: .2em;
+  color: var(--silver);
+  margin-bottom: 6px;
+}
+.ai-impact-value {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.ai-remed-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.ai-remed-table th {
+  text-align: left;
+  font-size: 9px;
+  letter-spacing: .15em;
+  color: var(--accent);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.ai-remed-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border2);
+  color: var(--white);
+}
+.ai-remed-table tr:hover { background: rgba(74,143,212,.03); }
+.ai-dl-natychmiast { color: var(--red); font-weight: 600; }
+.ai-dl-7 { color: var(--orange); }
+.ai-dl-30 { color: var(--yellow); }
+.ai-dl-90 { color: var(--green); }
+
 </style>
 </head>
 <body>
@@ -1103,6 +1259,8 @@ nav {
       </div>
       <div class="meta" id="scanMeta"></div>
     </div>
+
+    <div id="aiAnalysis" class="ai-section" style="display:none"></div>
 
     <div class="card">
       <div class="card-lbl">EXECUTIVE SUMMARY</div>
@@ -1354,6 +1512,7 @@ function renderResults(res, elapsed) {
   setTimeout(function(){document.getElementById('pw').classList.remove('on');pf.style.width='0';},800);
   setSt('Reconnaissance complete · '+(res.findings_count||0)+' findings · Risk: '+risk,'done');
   if(window._lastTaskId){var pb=document.getElementById('pdfBtn');pb.href=API+'/scans/'+window._lastTaskId+'/pdf';pb.style.display='inline-block';}
+  renderAiAnalysis(res);
   renderExtended(res);
   document.getElementById('res').classList.add('on');
   document.getElementById('scanBtn').disabled=false;
@@ -3931,6 +4090,127 @@ document.getElementById('tgt').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') startScan();
 });
 
+function renderAiAnalysis(res) {
+  var ai = res.ai_analysis;
+  var el = document.getElementById('aiAnalysis');
+  if (!el) return;
+  if (!ai || (!ai.executive_summary && !ai.attack_narrative)) {
+    el.style.display = 'none';
+    return;
+  }
+  var score = ai.risk_score || 0;
+  var circumference = 2 * Math.PI * 42;
+  var offset = circumference - (score / 100) * circumference;
+  var scoreColor = score >= 80 ? 'var(--red)' : score >= 50 ? 'var(--orange)' : score >= 20 ? 'var(--yellow)' : 'var(--green)';
+
+  var h = '';
+
+  // Header with risk score ring + executive summary
+  h += '<div class="ai-header">';
+  h += '<div class="ai-score-ring">';
+  h += '<svg width="100" height="100" viewBox="0 0 100 100">';
+  h += '<circle class="ai-score-bg" cx="50" cy="50" r="42"/>';
+  h += '<circle class="ai-score-fg" cx="50" cy="50" r="42" style="stroke:' + scoreColor + ';stroke-dasharray:' + circumference.toFixed(1) + ';stroke-dashoffset:' + offset.toFixed(1) + '"/>';
+  h += '</svg>';
+  h += '<div class="ai-score-text" style="color:' + scoreColor + '">' + score + '</div>';
+  h += '<div class="ai-score-lbl">RISK SCORE</div>';
+  h += '</div>';
+  h += '<div class="ai-header-body">';
+  h += '<div class="ai-header-title">// AI SECURITY ANALYSIS</div>';
+  h += '<div class="ai-exec-summary">' + (ai.executive_summary || '') + '</div>';
+  h += '</div></div>';
+
+  // Attack narrative
+  if (ai.attack_narrative) {
+    h += '<div class="ai-narrative-card">';
+    h += '<div class="ai-narrative-title">// ATTACK NARRATIVE</div>';
+    h += '<div class="ai-narrative-text">' + ai.attack_narrative.replace(/\n/g, '<br>') + '</div>';
+    h += '</div>';
+  }
+
+  // Exploit chain
+  var chain = ai.exploit_chain || [];
+  if (chain.length > 0) {
+    h += '<div class="ai-narrative-card">';
+    h += '<div class="ai-narrative-title">// EXPLOIT CHAIN (' + chain.length + ' STEPS)</div>';
+    h += '<ul class="ai-chain-list">';
+    chain.forEach(function(step) {
+      var lhClass = 'ai-lh-' + (step.likelihood || 'medium').toLowerCase();
+      h += '<li class="ai-chain-step">';
+      h += '<div class="ai-step-num">' + (step.step || '') + '</div>';
+      h += '<div class="ai-step-body">';
+      h += '<div class="ai-step-technique">' + (step.technique || '') + '</div>';
+      h += '<div class="ai-step-meta">';
+      if (step.tool) h += '<span>TOOL: ' + step.tool + '</span>';
+      if (step.cve) h += '<span>CVE: ' + step.cve + '</span>';
+      if (step.mitre) h += '<span>MITRE: ' + step.mitre + '</span>';
+      if (step.likelihood) h += '<span class="' + lhClass + '">' + step.likelihood + '</span>';
+      h += '</div>';
+      if (step.impact) h += '<div class="ai-step-impact">' + step.impact + '</div>';
+      h += '</div></li>';
+    });
+    h += '</ul></div>';
+  }
+
+  // Business impact grid
+  var bi = ai.business_impact;
+  if (bi) {
+    h += '<div class="ai-narrative-card">';
+    h += '<div class="ai-narrative-title">// BUSINESS IMPACT</div>';
+    h += '<div class="ai-impact-grid">';
+    if (bi.financial_risk_eur) {
+      var fmtEur = new Intl.NumberFormat('de-DE').format(bi.financial_risk_eur);
+      h += '<div class="ai-impact-card"><div class="ai-impact-label">FINANCIAL RISK</div><div class="ai-impact-value" style="color:var(--red)">' + fmtEur + ' EUR</div></div>';
+    }
+    if (bi.data_at_risk) {
+      h += '<div class="ai-impact-card"><div class="ai-impact-label">DATA AT RISK</div><div class="ai-impact-value" style="font-size:13px;color:var(--white)">' + bi.data_at_risk + '</div></div>';
+    }
+    if (bi.downtime_hours) {
+      h += '<div class="ai-impact-card"><div class="ai-impact-label">ESTIMATED DOWNTIME</div><div class="ai-impact-value" style="color:var(--orange)">' + bi.downtime_hours + 'h</div></div>';
+    }
+    if (bi.reputation_damage) {
+      var rdColor = bi.reputation_damage === 'Critical' ? 'var(--red)' : bi.reputation_damage === 'High' ? 'var(--orange)' : bi.reputation_damage === 'Medium' ? 'var(--yellow)' : 'var(--green)';
+      h += '<div class="ai-impact-card"><div class="ai-impact-label">REPUTATION DAMAGE</div><div class="ai-impact-value" style="color:' + rdColor + '">' + bi.reputation_damage + '</div></div>';
+    }
+    h += '</div>';
+    var cv = bi.compliance_violations || [];
+    if (cv.length > 0) {
+      h += '<div style="margin-top:8px;font-size:11px;color:var(--silver)">COMPLIANCE: ';
+      cv.forEach(function(v) {
+        h += '<span style="display:inline-block;border:1px solid var(--red);color:var(--red);padding:1px 8px;margin:2px 4px;border-radius:3px;font-size:10px;font-weight:600">' + v + '</span>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+  }
+
+  // Remediation priority table
+  var rp = ai.remediation_priority || [];
+  if (rp.length > 0) {
+    h += '<div class="ai-narrative-card">';
+    h += '<div class="ai-narrative-title">// REMEDIATION PRIORITY</div>';
+    h += '<table class="ai-remed-table"><thead><tr>';
+    h += '<th>#</th><th>ACTION</th><th>EFFORT</th><th>IMPACT</th><th>DEADLINE</th>';
+    h += '</tr></thead><tbody>';
+    rp.forEach(function(r) {
+      var dl = (r.deadline || '').toLowerCase();
+      var dlClass = dl.indexOf('natychmiast') >= 0 ? 'ai-dl-natychmiast' : dl.indexOf('7') >= 0 ? 'ai-dl-7' : dl.indexOf('30') >= 0 ? 'ai-dl-30' : 'ai-dl-90';
+      var impClass = 'ai-lh-' + (r.impact || 'medium').toLowerCase();
+      h += '<tr>';
+      h += '<td style="font-weight:700;color:var(--accent)">' + (r.priority || '') + '</td>';
+      h += '<td>' + (r.title || '') + '</td>';
+      h += '<td>' + (r.effort || '') + '</td>';
+      h += '<td class="' + impClass + '">' + (r.impact || '') + '</td>';
+      h += '<td class="' + dlClass + '">' + (r.deadline || '') + '</td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+
+  el.innerHTML = h;
+  el.style.display = 'block';
+}
+
 function loadHistory() {
   authFetch(API +'/scans')
     .then(function(r) { return r.json(); })
@@ -3993,6 +4273,7 @@ function loadScanDetail(taskId) {
       nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
       cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, netdiscover:s.netdiscover||null, arpscan:s.arpscan||null, fping:s.fping||null, traceroute:s.traceroute||null, nbtscan:s.nbtscan||null, snmpwalk:s.snmpwalk||null, netexec:s.netexec||null, bloodhound:s.bloodhound||null, responder:s.responder||null, fierce:s.fierce||null, smbmap:s.smbmap||null, onesixtyone:s.onesixtyone||null, ikescan:s.ikescan||null, sslyze:s.sslyze||null, searchsploit:s.searchsploit||null, impacket:s.impacket||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
+      ai_analysis:s.ai_analysis||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
     };

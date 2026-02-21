@@ -143,7 +143,7 @@ def get_scan_by_task_id(task_id: str):
         }
         if s.raw_data:
             raw = json.loads(s.raw_data)
-            for key in ["ports", "nuclei", "gobuster", "whatweb", "testssl", "sqlmap", "nikto", "harvester", "masscan", "exploit_chains", "hacker_narrative", "fp_filter", "ipinfo", "enum4linux", "mitre", "abuseipdb", "otx", "exploitdb", "nvd", "whois", "dnsrecon", "amass", "cwe", "owasp", "wpscan", "zap", "wapiti", "joomscan", "cmsmap", "droopescan", "retirejs", "subfinder", "httpx", "naabu", "katana", "dnsx", "netdiscover", "arpscan", "fping", "traceroute", "nbtscan", "snmpwalk", "netexec", "bloodhound", "responder", "fierce", "smbmap", "onesixtyone", "ikescan", "sslyze", "searchsploit", "impacket"]:
+            for key in ["ports", "nuclei", "gobuster", "whatweb", "testssl", "sqlmap", "nikto", "harvester", "masscan", "exploit_chains", "hacker_narrative", "fp_filter", "ipinfo", "enum4linux", "mitre", "abuseipdb", "otx", "exploitdb", "nvd", "whois", "dnsrecon", "amass", "cwe", "owasp", "wpscan", "zap", "wapiti", "joomscan", "cmsmap", "droopescan", "retirejs", "subfinder", "httpx", "naabu", "katana", "dnsx", "netdiscover", "arpscan", "fping", "traceroute", "nbtscan", "snmpwalk", "netexec", "bloodhound", "responder", "fierce", "smbmap", "onesixtyone", "ikescan", "sslyze", "searchsploit", "impacket", "ai_analysis"]:
                 if key in raw:
                     base[key] = raw[key]
         return base

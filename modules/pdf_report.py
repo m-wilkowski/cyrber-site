@@ -1971,6 +1971,121 @@ def _mitre_html(mitre: dict) -> str:
         <tbody>{rows}</tbody>
     </table>"""
 
+def _ai_analysis_html(ai: dict) -> str:
+    if not ai or (not ai.get("executive_summary") and not ai.get("attack_narrative")):
+        return ""
+
+    score = ai.get("risk_score", 0)
+    score_color = "#ff4444" if score >= 80 else "#ff8c00" if score >= 50 else "#f5c518" if score >= 20 else "#3ddc84"
+    risk_level = ai.get("risk_level", "Medium")
+    rl_color = {"Critical": "#ff4444", "High": "#ff8c00", "Medium": "#f5c518", "Low": "#3ddc84"}.get(risk_level, "#4a8fd4")
+
+    html = ""
+
+    # Risk score + executive summary
+    html += f"""<div style='display:flex;gap:20px;align-items:flex-start;margin-bottom:16px'>
+        <div style='text-align:center;flex-shrink:0;border:3px solid {score_color};border-radius:50%;width:80px;height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center'>
+            <span style='font-size:28px;font-weight:700;color:{score_color}'>{score}</span>
+            <span style='font-size:7px;letter-spacing:.2em;color:#4a8fd4'>RISK SCORE</span>
+        </div>
+        <div>
+            <div style='font-size:11px;letter-spacing:.2em;color:{rl_color};margin-bottom:6px'>RISK LEVEL: {risk_level.upper()}</div>
+            <div style='font-size:13px;line-height:1.75'>{ai.get('executive_summary', '')}</div>
+        </div>
+    </div>"""
+
+    # Attack narrative
+    narrative = ai.get("attack_narrative", "")
+    if narrative:
+        html += f"""<div style='border-left:3px solid #4a8fd4;padding:12px 16px;margin-bottom:16px;background:rgba(74,143,212,0.04)'>
+            <div style='font-size:9px;letter-spacing:.3em;color:#4a8fd4;margin-bottom:8px'>ATTACK NARRATIVE</div>
+            <div style='font-size:12px;line-height:1.85;font-style:italic'>{narrative}</div>
+        </div>"""
+
+    # Exploit chain
+    chain = ai.get("exploit_chain", [])
+    if chain:
+        steps_html = ""
+        lh_color = {"Critical": "#ff4444", "High": "#ff8c00", "Medium": "#f5c518", "Low": "#3ddc84"}
+        for step in chain:
+            lh = step.get("likelihood", "Medium")
+            lc = lh_color.get(lh, "#4a8fd4")
+            cve_str = f" · CVE: {step['cve']}" if step.get("cve") else ""
+            mitre_str = f" · {step['mitre']}" if step.get("mitre") else ""
+            steps_html += f"""<div style='display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(74,143,212,0.08)'>
+                <span style='font-size:10px;color:#4a8fd4;min-width:22px;font-weight:700'>#{step.get('step','')}</span>
+                <div>
+                    <div style='font-size:12px;font-weight:600;color:#e8f0fc'>{step.get('technique','')}</div>
+                    <div style='font-size:9px;color:#8a9bb5'>TOOL: {step.get('tool','')}{cve_str}{mitre_str} · <span style='color:{lc}'>{lh}</span></div>
+                    <div style='font-size:10px;color:#8a9bb5;margin-top:2px'>{step.get('impact','')}</div>
+                </div>
+            </div>"""
+        html += f"""<div style='margin-bottom:16px'>
+            <div style='font-size:9px;letter-spacing:.3em;color:#4a8fd4;margin-bottom:8px'>EXPLOIT CHAIN ({len(chain)} STEPS)</div>
+            {steps_html}
+        </div>"""
+
+    # Business impact
+    bi = ai.get("business_impact", {})
+    if bi:
+        fin = bi.get("financial_risk_eur", 0)
+        fin_str = f"{fin:,.0f}".replace(",", ".") if fin else "—"
+        rd = bi.get("reputation_damage", "Medium")
+        rd_color = {"Critical": "#ff4444", "High": "#ff8c00", "Medium": "#f5c518", "Low": "#3ddc84"}.get(rd, "#4a8fd4")
+        cv = bi.get("compliance_violations", [])
+        cv_html = " ".join(f"<span style='color:#ff4444;border:1px solid #ff4444;padding:1px 6px;font-size:9px;margin-right:4px'>{v}</span>" for v in cv) if cv else "—"
+        html += f"""<div style='margin-bottom:16px'>
+            <div style='font-size:9px;letter-spacing:.3em;color:#4a8fd4;margin-bottom:8px'>BUSINESS IMPACT</div>
+            <div style='display:flex;gap:16px;flex-wrap:wrap'>
+                <div style='border:1px solid rgba(74,143,212,0.2);padding:10px 14px;flex:1;min-width:120px'>
+                    <div class='muted'>FINANCIAL RISK</div>
+                    <div style='font-size:18px;font-weight:700;color:#ff4444'>{fin_str} EUR</div>
+                </div>
+                <div style='border:1px solid rgba(74,143,212,0.2);padding:10px 14px;flex:1;min-width:120px'>
+                    <div class='muted'>DOWNTIME</div>
+                    <div style='font-size:18px;font-weight:700;color:#ff8c00'>{bi.get('downtime_hours', 0)}h</div>
+                </div>
+                <div style='border:1px solid rgba(74,143,212,0.2);padding:10px 14px;flex:1;min-width:120px'>
+                    <div class='muted'>REPUTATION</div>
+                    <div style='font-size:18px;font-weight:700;color:{rd_color}'>{rd}</div>
+                </div>
+            </div>
+            <div style='margin-top:8px;font-size:10px;color:#8a9bb5'>DATA AT RISK: {bi.get('data_at_risk', '—')}</div>
+            <div style='margin-top:4px;font-size:10px;color:#8a9bb5'>COMPLIANCE: {cv_html}</div>
+        </div>"""
+
+    # Remediation priority
+    rp = ai.get("remediation_priority", [])
+    if rp:
+        dl_color = {"natychmiast": "#ff4444", "7 dni": "#ff8c00", "30 dni": "#f5c518", "90 dni": "#3ddc84"}
+        rows = ""
+        for r in rp:
+            dl = r.get("deadline", "")
+            dc = "#4a8fd4"
+            for k, v in dl_color.items():
+                if k in dl.lower():
+                    dc = v
+                    break
+            imp = r.get("impact", "Medium")
+            ic = lh_color.get(imp, "#4a8fd4") if chain else {"Critical": "#ff4444", "High": "#ff8c00", "Medium": "#f5c518", "Low": "#3ddc84"}.get(imp, "#4a8fd4")
+            rows += f"""<tr>
+                <td style='font-weight:700;color:#4a8fd4'>{r.get('priority','')}</td>
+                <td>{r.get('title','')}</td>
+                <td>{r.get('effort','')}</td>
+                <td style='color:{ic}'>{imp}</td>
+                <td style='color:{dc};font-weight:600'>{dl}</td>
+            </tr>"""
+        html += f"""<div style='margin-bottom:16px'>
+            <div style='font-size:9px;letter-spacing:.3em;color:#4a8fd4;margin-bottom:8px'>REMEDIATION PRIORITY</div>
+            <table>
+                <thead><tr><th>#</th><th>ACTION</th><th>EFFORT</th><th>IMPACT</th><th>DEADLINE</th></tr></thead>
+                <tbody>{rows}</tbody>
+            </table>
+        </div>"""
+
+    return html
+
+
 def generate_report(scan_data: dict) -> bytes:
     target = scan_data.get("target", "unknown")
     analysis = scan_data.get("analysis", {})
@@ -2032,6 +2147,7 @@ def generate_report(scan_data: dict) -> bytes:
     sslyze = scan_data.get("sslyze", {})
     searchsploit = scan_data.get("searchsploit", {})
     impacket = scan_data.get("impacket", {})
+    ai_data = scan_data.get("ai_analysis", {})
 
     color = _risk_color(risk)
 
@@ -2137,6 +2253,11 @@ def generate_report(scan_data: dict) -> bytes:
 </div>
 
 {fp_html}
+
+<div class="section">
+  <div class="section-title">// AI SECURITY ANALYSIS</div>
+  {_ai_analysis_html(ai_data)}
+</div>
 
 <div class="section">
   <div class="section-title">// PERSPEKTYWA HAKERA</div>
