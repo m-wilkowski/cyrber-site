@@ -134,6 +134,11 @@ RUN apt-get update && apt-get install -y traceroute && rm -rf /var/lib/apt/lists
 RUN apt-get update && apt-get install -y nbtscan && rm -rf /var/lib/apt/lists/*
 # snmp (SNMP enumeration tools: snmpwalk, snmpget, snmpbulkwalk)
 RUN apt-get update && apt-get install -y snmp && rm -rf /var/lib/apt/lists/*
+# netexec (SMB/WinRM/LDAP/MSSQL network enumeration)
+RUN pip install netexec --break-system-packages || \
+    git clone https://github.com/Pennyw0rth/NetExec.git /opt/netexec && \
+    pip install -r /opt/netexec/requirements.txt --break-system-packages && \
+    ln -s /opt/netexec/netexec /usr/local/bin/netexec
 # retire.js (vulnerable JavaScript library detection)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \

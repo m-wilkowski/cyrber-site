@@ -2984,6 +2984,74 @@ function renderExtended(res) {
     h+=mkSec('// SNMPWALK — SNMP ENUMERATION ('+snmp.total_interfaces+' interfaces · '+snmp.active_interfaces+' active'+(snmp.total_services?' · '+snmp.total_services+' services':'')+' · '+( snmp.snmp_version||'v2c')+' )',snc,snmpWarn);
   }
 
+  // NETEXEC — SMB ENUMERATION
+  var nxc=res.netexec||{};
+  if(!nxc.skipped&&nxc.smb_info){
+    var nxcc='';
+    var nxcSmb=nxc.smb_info||{};
+    // SMB info grid
+    nxcc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px">';
+    if(nxcSmb.hostname) nxcc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">HOSTNAME</div><div style="color:var(--white);font-size:16px;font-weight:700">'+nxcSmb.hostname+'</div></div>';
+    if(nxcSmb.os) nxcc+='<div style="grid-column:span 2"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">OPERATING SYSTEM</div><div style="color:var(--silver);font-size:11px">'+nxcSmb.os+'</div></div>';
+    if(nxcSmb.domain) nxcc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">DOMAIN</div><div style="color:var(--yellow);font-size:14px;font-weight:700">'+nxcSmb.domain+'</div></div>';
+    nxcc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">SHARES</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(nxc.total_shares||0)+'</div></div>';
+    nxcc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">USERS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(nxc.total_users||0)+'</div></div>';
+    nxcc+='</div>';
+    // Vulnerability badges
+    var nxcVulns=nxc.vulnerabilities||[];
+    if(nxcVulns.length){
+      nxcc+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+      nxcVulns.forEach(function(v){
+        var vc=v.severity==='critical'?'var(--red)':v.severity==='high'?'var(--red)':v.severity==='medium'?'var(--orange)':'var(--yellow)';
+        var vbg=v.severity==='critical'?'rgba(255,68,68,.12)':v.severity==='high'?'rgba(255,68,68,.08)':v.severity==='medium'?'rgba(255,140,0,.08)':'rgba(245,197,24,.06)';
+        nxcc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid '+vc+';color:'+vc+';background:'+vbg+'">'+v.severity.toUpperCase()+': '+v.title+'</span>';
+      });
+      nxcc+='</div>';
+    }
+    // Relay targets warning
+    var nxcRelay=nxc.relay_targets||[];
+    if(nxcRelay.length){
+      nxcc+='<div style="border:1px solid rgba(255,68,68,.3);background:rgba(255,68,68,.04);padding:12px;margin-bottom:16px">';
+      nxcc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--red);margin-bottom:8px;font-weight:700">NTLM RELAY TARGETS — NO SMB SIGNING ('+nxcRelay.length+')</div>';
+      nxcRelay.forEach(function(ip){nxcc+='<div style="font-size:11px;padding:2px 0;color:var(--red);font-family:Share Tech Mono,monospace;border-bottom:1px solid rgba(255,68,68,.1)">'+ip+'</div>';});
+      nxcc+='</div>';
+    }
+    // Shares table
+    var nxcShares=nxc.shares||[];
+    if(nxcShares.length){
+      nxcc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:6px">SMB SHARES ('+nxcShares.length+')</div>';
+      nxcc+='<table class="dt"><thead><tr><th>SHARE NAME</th><th>ACCESS</th></tr></thead><tbody>';
+      nxcShares.forEach(function(sh){
+        var accColor=sh.access==='READ,WRITE'?'var(--red)':sh.access==='WRITE'?'var(--red)':sh.access==='READ'?'var(--yellow)':'var(--silver)';
+        var accBg=sh.access==='READ,WRITE'?'rgba(255,68,68,.10)':sh.access==='WRITE'?'rgba(255,68,68,.08)':sh.access==='READ'?'rgba(245,197,24,.08)':'transparent';
+        nxcc+='<tr><td style="font-weight:700;font-family:Share Tech Mono,monospace;font-size:11px">'+sh.name+'</td><td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+accColor+';color:'+accColor+';background:'+accBg+'">'+sh.access+'</span></td></tr>';
+      });
+      nxcc+='</tbody></table>';
+    }
+    // Users list
+    var nxcUsers=nxc.users||[];
+    if(nxcUsers.length){
+      nxcc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">ENUMERATED USERS ('+nxcUsers.length+')</div>';
+      nxcc+='<table class="dt"><thead><tr><th>USERNAME</th><th>DESCRIPTION</th></tr></thead><tbody>';
+      nxcUsers.forEach(function(u){nxcc+='<tr><td style="font-weight:700;font-family:Share Tech Mono,monospace;font-size:11px;color:var(--yellow)">'+u.username+'</td><td style="font-size:10px;color:var(--silver)">'+(u.description||'—')+'</td></tr>';});
+      nxcc+='</tbody></table>';
+    }
+    // Password policy
+    var nxcPol=nxc.password_policy||{};
+    if(Object.keys(nxcPol).length){
+      nxcc+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin:12px 0 6px">PASSWORD POLICY</div>';
+      nxcc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:12px">';
+      if(nxcPol.min_length!=null){var mlColor=nxcPol.min_length<8?'var(--red)':nxcPol.min_length<12?'var(--yellow)':'var(--green)';nxcc+='<div><div style="font-size:9px;color:var(--accent)">MIN LENGTH</div><div style="font-size:18px;font-weight:700;color:'+mlColor+'">'+nxcPol.min_length+'</div></div>';}
+      if(nxcPol.complexity!=null){var cxColor=nxcPol.complexity?'var(--green)':'var(--red)';nxcc+='<div><div style="font-size:9px;color:var(--accent)">COMPLEXITY</div><div style="font-size:14px;font-weight:700;color:'+cxColor+'">'+(nxcPol.complexity?'ENABLED':'DISABLED')+'</div></div>';}
+      if(nxcPol.lockout_threshold!=null){var ltColor=nxcPol.lockout_threshold===0?'var(--red)':nxcPol.lockout_threshold<5?'var(--yellow)':'var(--green)';nxcc+='<div><div style="font-size:9px;color:var(--accent)">LOCKOUT THRESHOLD</div><div style="font-size:18px;font-weight:700;color:'+ltColor+'">'+nxcPol.lockout_threshold+'</div></div>';}
+      if(nxcPol.lockout_duration_min!=null) nxcc+='<div><div style="font-size:9px;color:var(--accent)">LOCKOUT DURATION</div><div style="font-size:14px;font-weight:700;color:var(--silver)">'+nxcPol.lockout_duration_min+' min</div></div>';
+      if(nxcPol.max_age_days!=null) nxcc+='<div><div style="font-size:9px;color:var(--accent)">MAX PASSWORD AGE</div><div style="font-size:14px;font-weight:700;color:var(--silver)">'+nxcPol.max_age_days+' days</div></div>';
+      nxcc+='</div>';
+    }
+    var nxcWarn=nxcVulns.some(function(v){return v.severity==='critical'||v.severity==='high';});
+    h+=mkSec('// NETEXEC — SMB ENUMERATION ('+(nxcSmb.hostname||'?')+' · '+(nxcSmb.domain||'?')+(nxc.total_shares?' · '+nxc.total_shares+' shares':'')+(nxc.total_users?' · '+nxc.total_users+' users':'')+(nxcVulns.length?' · '+nxcVulns.length+' vulns':'')+' )',nxcc,nxcWarn);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];
@@ -3085,7 +3153,7 @@ function loadScanDetail(taskId) {
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
       nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
-      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, netdiscover:s.netdiscover||null, arpscan:s.arpscan||null, fping:s.fping||null, traceroute:s.traceroute||null, nbtscan:s.nbtscan||null, snmpwalk:s.snmpwalk||null, mitre:s.mitre||null,
+      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, droopescan:s.droopescan||null, retirejs:s.retirejs||null, subfinder:s.subfinder||null, httpx:s.httpx||null, naabu:s.naabu||null, katana:s.katana||null, dnsx:s.dnsx||null, netdiscover:s.netdiscover||null, arpscan:s.arpscan||null, fping:s.fping||null, traceroute:s.traceroute||null, nbtscan:s.nbtscan||null, snmpwalk:s.snmpwalk||null, netexec:s.netexec||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -3330,7 +3398,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','netexec','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

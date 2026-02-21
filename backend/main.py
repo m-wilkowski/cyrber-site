@@ -344,6 +344,7 @@ from modules.fping_scan import fping_scan
 from modules.traceroute_scan import traceroute_scan
 from modules.nbtscan_scan import nbtscan_scan
 from modules.snmpwalk_scan import snmpwalk_scan
+from modules.netexec_scan import netexec_scan
 
 @app.get("/scan/wpscan")
 async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -416,6 +417,10 @@ async def run_nbtscan(target: str = Query(...), user: str = Depends(get_current_
 @app.get("/scan/snmpwalk")
 async def run_snmpwalk(target: str = Query(...), user: str = Depends(get_current_user)):
     return snmpwalk_scan(target)
+
+@app.get("/scan/netexec")
+async def run_netexec(target: str = Query(...), user: str = Depends(get_current_user)):
+    return netexec_scan(target)
 
 from modules.tasks import osint_scan_task
 from modules.database import get_osint_history, get_osint_by_task_id

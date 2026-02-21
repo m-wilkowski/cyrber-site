@@ -878,6 +878,71 @@ def _snmpwalk_html(snmpwalk: dict) -> str:
         html += f"<div style='margin-top:10px'><span class='muted'>RUNNING SERVICES ({len(services)})</span><br>{svc_badges}{extra_svc}</div>"
     return html
 
+def _netexec_html(netexec: dict) -> str:
+    if not netexec or netexec.get("skipped") or not netexec.get("smb_info"):
+        return "<p class='muted'>Brak danych NetExec.</p>"
+    html = ""
+    smb = netexec.get("smb_info", {})
+    # SMB info grid
+    html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px'>"
+    if smb.get("hostname"):
+        html += f"<div><span class='muted'>HOSTNAME</span><br><span style='font-size:16px;font-weight:700;color:#e8f0fc'>{smb['hostname']}</span></div>"
+    if smb.get("os"):
+        html += f"<div><span class='muted'>OS</span><br><span style='font-size:11px;color:#b8ccec'>{smb['os']}</span></div>"
+    if smb.get("domain"):
+        html += f"<div><span class='muted'>DOMAIN</span><br><span style='font-size:14px;font-weight:700;color:#f5c518'>{smb['domain']}</span></div>"
+    html += f"<div><span class='muted'>SHARES</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{netexec.get('total_shares', 0)}</span></div>"
+    html += f"<div><span class='muted'>USERS</span><br><span style='font-size:20px;font-weight:700;color:#e8f0fc'>{netexec.get('total_users', 0)}</span></div>"
+    html += "</div>"
+    # Vulnerability badges
+    vulns = netexec.get("vulnerabilities", [])
+    if vulns:
+        sev_color = {"critical": "#ff4444", "high": "#ff4444", "medium": "#ff8c00", "low": "#f5c518"}
+        badges = ""
+        for v in vulns:
+            color = sev_color.get(v.get("severity", "medium"), "#f5c518")
+            badges += f"<span style='font-size:10px;color:{color};border:1px solid {color};padding:2px 8px;margin-right:6px'>{v.get('severity','').upper()}: {v.get('title','')}</span>"
+        html += f"<div style='margin-bottom:12px'>{badges}</div>"
+    # Relay targets
+    relay = netexec.get("relay_targets", [])
+    if relay:
+        items = "".join(f"<div style='font-size:11px;padding:2px 0;color:#ff4444;font-family:monospace;border-bottom:1px solid rgba(255,68,68,.1)'>{ip}</div>" for ip in relay[:20])
+        extra = f"<p class='muted'>... i {len(relay)-20} więcej</p>" if len(relay) > 20 else ""
+        html += f"<div style='border:1px solid rgba(255,68,68,.3);padding:10px;margin-bottom:12px'><span style='color:#ff4444;font-size:11px;font-weight:700'>NTLM RELAY TARGETS — NO SMB SIGNING ({len(relay)})</span>{items}{extra}</div>"
+    # Shares table
+    shares = netexec.get("shares", [])
+    if shares:
+        rows = ""
+        for s in shares:
+            acc = s.get("access", "NO ACCESS")
+            acc_color = "#ff4444" if "WRITE" in acc else "#f5c518" if acc == "READ" else "#8a9bb5"
+            rows += f"<tr><td class='mono' style='font-size:11px'>{s.get('name','')}</td><td style='color:{acc_color};font-size:10px'>{acc}</td></tr>"
+        html += f"<table><thead><tr><th>SHARE</th><th>ACCESS</th></tr></thead><tbody>{rows}</tbody></table>"
+    # Users
+    users = netexec.get("users", [])
+    if users:
+        rows = ""
+        for u in users[:30]:
+            rows += f"<tr><td class='mono' style='font-size:11px;color:#f5c518'>{u.get('username','')}</td><td style='font-size:10px'>{u.get('description','')}</td></tr>"
+        extra = f"<p class='muted'>... i {len(users)-30} więcej</p>" if len(users) > 30 else ""
+        html += f"<div style='margin-top:8px'><table><thead><tr><th>USERNAME</th><th>DESCRIPTION</th></tr></thead><tbody>{rows}</tbody></table>{extra}</div>"
+    # Password policy
+    pol = netexec.get("password_policy", {})
+    if pol:
+        html += "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-top:10px'>"
+        if pol.get("min_length") is not None:
+            ml_color = "#ff4444" if pol["min_length"] < 8 else "#f5c518" if pol["min_length"] < 12 else "#3ddc84"
+            html += f"<div><span class='muted'>MIN LENGTH</span><br><span style='font-size:18px;font-weight:700;color:{ml_color}'>{pol['min_length']}</span></div>"
+        if pol.get("complexity") is not None:
+            cx_color = "#3ddc84" if pol["complexity"] else "#ff4444"
+            cx_text = "ENABLED" if pol["complexity"] else "DISABLED"
+            html += f"<div><span class='muted'>COMPLEXITY</span><br><span style='font-size:14px;font-weight:700;color:{cx_color}'>{cx_text}</span></div>"
+        if pol.get("lockout_threshold") is not None:
+            lt_color = "#ff4444" if pol["lockout_threshold"] == 0 else "#f5c518" if pol["lockout_threshold"] < 5 else "#3ddc84"
+            html += f"<div><span class='muted'>LOCKOUT THRESHOLD</span><br><span style='font-size:18px;font-weight:700;color:{lt_color}'>{pol['lockout_threshold']}</span></div>"
+        html += "</div>"
+    return html
+
 def _cwe_html(cwe: dict) -> str:
     cwes = cwe.get("cwes", [])
     if not cwes:
@@ -1322,6 +1387,7 @@ def generate_report(scan_data: dict) -> bytes:
     traceroute = scan_data.get("traceroute", {})
     nbtscan = scan_data.get("nbtscan", {})
     snmpwalk = scan_data.get("snmpwalk", {})
+    netexec = scan_data.get("netexec", {})
 
     color = _risk_color(risk)
 
@@ -1636,6 +1702,11 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// SNMPWALK — SNMP ENUMERATION ({snmpwalk.get('total_interfaces', 0)} interfaces, {snmpwalk.get('active_interfaces', 0)} active, {snmpwalk.get('total_services', 0)} services)</div>
   {_snmpwalk_html(snmpwalk)}
+</div>
+
+<div class="section">
+  <div class="section-title">// NETEXEC — SMB ENUMERATION ({netexec.get('smb_info', {{}}).get('hostname', 'N/A')} · {netexec.get('total_shares', 0)} shares, {netexec.get('total_users', 0)} users, {netexec.get('total_vulnerabilities', 0)} vulns)</div>
+  {_netexec_html(netexec)}
 </div>
 
 <div class="section">

@@ -44,6 +44,7 @@ from modules.fping_scan import fping_scan
 from modules.traceroute_scan import traceroute_scan
 from modules.nbtscan_scan import nbtscan_scan
 from modules.snmpwalk_scan import snmpwalk_scan
+from modules.netexec_scan import netexec_scan
 from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
@@ -105,6 +106,7 @@ def full_scan_task(target: str):
     traceroute = traceroute_scan(target)
     nbtscan = nbtscan_scan(target)
     snmpwalk = snmpwalk_scan(target)
+    netexec = netexec_scan(target)
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -186,6 +188,8 @@ def full_scan_task(target: str):
         result["nbtscan"] = nbtscan
     if not snmpwalk.get("skipped") and snmpwalk.get("total_interfaces", 0) > 0:
         result["snmpwalk"] = snmpwalk
+    if not netexec.get("skipped"):
+        result["netexec"] = netexec
     cwe = cwe_mapping(result)
     if cwe.get("total", 0) > 0:
         result["cwe"] = cwe
