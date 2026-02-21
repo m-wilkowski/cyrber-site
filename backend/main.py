@@ -113,6 +113,10 @@ async def scheduler():
 async def phishing_page():
     return FileResponse("static/phishing.html")
 
+@app.get("/osint")
+async def osint_page():
+    return FileResponse("static/osint.html", media_type="text/html")
+
 @app.get("/")
 async def root():
     return {"status": "CYRBER online"}
@@ -218,6 +222,8 @@ from modules.nvd_scan import nvd_scan
 from modules.whois_scan import whois_scan
 from modules.dnsrecon_scan import dnsrecon_scan
 from modules.amass_scan import amass_scan
+from modules.cwe_mapping import cwe_mapping
+from modules.owasp_mapping import owasp_mapping
 
 @app.get("/scan/gobuster")
 async def run_gobuster(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -300,6 +306,52 @@ async def run_dnsrecon(target: str = Query(...), user: str = Depends(get_current
 @app.get("/scan/amass")
 async def run_amass(target: str = Query(...), user: str = Depends(get_current_user)):
     return amass_scan(target)
+
+@app.get("/scan/cwe")
+async def run_cwe(task_id: str = Query(...), user: str = Depends(get_current_user)):
+    scan = get_scan_by_task_id(task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return cwe_mapping(scan)
+
+@app.get("/scan/owasp")
+async def run_owasp(task_id: str = Query(...), user: str = Depends(get_current_user)):
+    scan = get_scan_by_task_id(task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return owasp_mapping(scan)
+
+from modules.wpscan_scan import wpscan_scan
+from modules.zap_scan import zap_scan
+
+@app.get("/scan/wpscan")
+async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_user)):
+    return wpscan_scan(target)
+
+@app.get("/scan/zap")
+async def run_zap(target: str = Query(...), user: str = Depends(get_current_user)):
+    return zap_scan(target)
+
+from modules.tasks import osint_scan_task
+
+@app.get("/osint/start")
+@limiter.limit("5/minute")
+async def osint_start(request: Request, target: str = Query(...), user: str = Depends(get_current_user)):
+    task = osint_scan_task.delay(target)
+    audit(request, user, "osint_start", target)
+    return {"task_id": task.id, "status": "started", "target": target}
+
+@app.get("/osint/status/{task_id}")
+async def osint_status(task_id: str, user: str = Depends(get_current_user)):
+    task = osint_scan_task.AsyncResult(task_id)
+    if task.state == "PENDING":
+        return {"task_id": task_id, "status": "pending"}
+    elif task.state == "SUCCESS":
+        return {"task_id": task_id, "status": "completed", "result": task.result}
+    elif task.state == "FAILURE":
+        return {"task_id": task_id, "status": "failed", "error": str(task.info)}
+    else:
+        return {"task_id": task_id, "status": task.state}
 
 from modules.webhook import WazuhAlert, extract_target
 

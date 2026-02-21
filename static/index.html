@@ -345,8 +345,8 @@ body::after {
 }
 
 .card {
-  background: rgba(12,18,32,.75);
-  border: 1px solid var(--border2);
+  background: rgba(12,18,32,.82);
+  border: 1px solid var(--border);
   padding: 24px;
   margin-bottom: 14px;
   position: relative;
@@ -598,6 +598,8 @@ footer {
 .dt td{padding:7px 10px;border-bottom:1px solid rgba(74,143,212,.06);color:var(--silver)}
 .dt td:first-child{color:var(--white);font-family:'Share Tech Mono',monospace}
 .dt tr:hover td{background:rgba(74,143,212,.04)}
+.show-more-btn{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.15em;padding:6px 16px;border:1px solid var(--accent);background:rgba(74,143,212,.06);color:var(--accent);cursor:pointer;transition:all .2s;margin-top:4px}
+.show-more-btn:hover{background:rgba(74,143,212,.15);box-shadow:0 0 10px rgba(74,143,212,.2)}
 .sqli-box{display:flex;align-items:center;gap:16px;border:1px solid;padding:12px 16px}
 .sqli-status{font-size:14px;font-weight:700;letter-spacing:.05em}
 .fp-bar{display:flex;gap:14px;align-items:center;background:rgba(61,220,132,.06);border:1px solid rgba(61,220,132,.2);padding:7px 14px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--green);margin-bottom:10px}
@@ -926,6 +928,7 @@ nav {
     <a class="nav-link" href="/dashboard">DASHBOARD</a>
     <a class="nav-link" href="/scheduler">SCHEDULER</a>
     <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="/osint">OSINT</a>
     <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
   </div>
 </nav>
@@ -1229,7 +1232,11 @@ function mkSec(title,content,open){
   return '<div class="res-section"><div class="res-section-hdr"'+(open?' data-open="1"':'')+'><div class="res-section-title">'+title+'</div><div class="res-section-arrow">›</div></div><div class="res-section-body'+(open?' open':'')+'">'+content+'</div></div>';
 }
 
+var _smC=0;
+function showAll(id,btn){var el=document.getElementById(id);if(el){el.style.display='';btn.parentNode.removeChild(btn);}}
+
 function renderExtended(res) {
+  _smC=0;
   var ext=document.getElementById('extSections');
   if(!ext) return;
   var h='';
@@ -1282,7 +1289,9 @@ function renderExtended(res) {
     nfc+='<table class="dt"><thead><tr><th>VULNERABILITY</th><th>SEVERITY</th><th>MATCHED AT</th><th>TEMPLATE</th></tr></thead><tbody>';
     var sevOrd={critical:0,high:1,medium:2,low:3,info:4};
     var nfSorted=nfAll.slice().sort(function(a,b){var sa=((a.info&&a.info.severity)||a.severity||'info').toLowerCase();var sb=((b.info&&b.info.severity)||b.severity||'info').toLowerCase();return(sevOrd[sa]||5)-(sevOrd[sb]||5);});
-    nfSorted.slice(0,30).forEach(function(f){
+    var _nfSmId=nfAll.length>30?'sm'+(++_smC):'';
+    nfSorted.forEach(function(f,idx){
+      if(idx===30&&_nfSmId) nfc+='</tbody><tbody id="'+_nfSmId+'" style="display:none">';
       var sev=((f.info&&f.info.severity)||f.severity||'info').toLowerCase();
       var sevCol={critical:'#ff2222',high:'var(--red)',medium:'var(--yellow)',low:'var(--silver)',info:'var(--accent)'}[sev]||'var(--accent)';
       var sevBg={critical:'rgba(255,34,34,.12)',high:'rgba(255,68,68,.10)',medium:'rgba(245,197,24,.08)',low:'transparent',info:'transparent'}[sev]||'transparent';
@@ -1294,7 +1303,7 @@ function renderExtended(res) {
       nfc+='<td style="font-size:11px;max-width:clamp(200px,35vw,600px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+matched+'</td>';
       nfc+='<td style="font-size:11px;color:var(--silver)">'+tmpl+'</td></tr>';
     });
-    if(nfAll.length>30) nfc+='<tr><td colspan="4" style="color:rgba(184,204,236,.35);font-size:10px">... i '+(nfAll.length-30)+' więcej</td></tr>';
+    if(_nfSmId) nfc+='</tbody><tbody><tr><td colspan="4" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_nfSmId+'\',this)">SHOW ALL '+nfAll.length+' RESULTS &#9660;</button></td></tr>';
     nfc+='</tbody></table>';
     h+=mkSec('// NUCLEI — VULNERABILITY SCANNER ('+nfAll.length+' findings)',nfc,false);
   }
@@ -1349,11 +1358,93 @@ function renderExtended(res) {
     h+=mkSec('// WHATWEB — TECHNOLOGIES',wwc,false);
   }
 
+  // WPSCAN — WORDPRESS SECURITY
+  var wp=res.wpscan||{};
+  if(wp.target&&!wp.skipped){
+    var wpc='';
+    // WordPress version badge
+    var wpv=wp.wordpress_version||{};
+    var verStatus=wpv.status||'unknown';
+    var verCol=verStatus==='latest'?'var(--green)':verStatus==='outdated'?'var(--red)':'var(--yellow)';
+    var verBg=verStatus==='latest'?'rgba(61,220,132,.08)':verStatus==='outdated'?'rgba(255,68,68,.08)':'rgba(245,197,24,.08)';
+    wpc+='<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">';
+    wpc+='<div style="font-family:Orbitron,sans-serif;font-size:24px;font-weight:900;color:var(--white)">WordPress '+(wpv.version||'?')+'</div>';
+    wpc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid '+verCol+';color:'+verCol+';background:'+verBg+'">'+verStatus.toUpperCase()+'</span>';
+    wpc+='</div>';
+    // Stats grid
+    wpc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">';
+    wpc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">VULNERABILITIES</div><div style="color:'+(wp.vulnerabilities_count?'var(--red)':'var(--green)')+';font-size:20px;font-weight:700">'+wp.vulnerabilities_count+'</div></div>';
+    wpc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">PLUGINS</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(wp.plugins_count||0)+'</div></div>';
+    wpc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">THEMES</div><div style="color:var(--white);font-size:20px;font-weight:700">'+(wp.themes_count||0)+'</div></div>';
+    wpc+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent)">USERS</div><div style="color:'+(wp.users_count?'var(--yellow)':'var(--white)')+';font-size:20px;font-weight:700">'+(wp.users_count||0)+'</div></div>';
+    wpc+='</div>';
+    // WordPress version vulnerabilities
+    var wpvVulns=wpv.vulnerabilities||[];
+    if(wpvVulns.length){
+      wpc+='<div style="padding:12px 16px;margin-bottom:16px;border:1px solid var(--red);background:rgba(255,68,68,.08);font-family:Share Tech Mono,monospace;font-size:12px;color:var(--red)">&#9888; WordPress core has '+wpvVulns.length+' known vulnerabilities</div>';
+    }
+    // Plugins table
+    var wpPlugins=wp.plugins||[];
+    if(wpPlugins.length){
+      wpc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">PLUGINS ('+wpPlugins.length+')</div>';
+      wpc+='<table class="dt"><thead><tr><th>PLUGIN</th><th>VERSION</th><th>VULNERABILITIES</th></tr></thead><tbody>';
+      wpPlugins.forEach(function(p){
+        var vulnCount=p.vulnerabilities?p.vulnerabilities.length:0;
+        var vulnCol=vulnCount?'var(--red)':'var(--green)';
+        var vulnBg=vulnCount?'rgba(255,68,68,.08)':'transparent';
+        var vulnText=vulnCount?vulnCount+' VULN':'CLEAN';
+        wpc+='<tr><td style="color:var(--white)">'+p.name+'</td>';
+        wpc+='<td>'+(p.version||'?')+'</td>';
+        wpc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+vulnCol+';color:'+vulnCol+';background:'+vulnBg+'">'+vulnText+'</span>';
+        if(vulnCount){p.vulnerabilities.forEach(function(v){wpc+='<div style="font-size:10px;color:var(--silver);margin-top:4px">'+v.title+(v.fixed_in?' <span style="color:var(--accent)">(fixed in '+v.fixed_in+')</span>':'')+'</div>';});}
+        wpc+='</td></tr>';
+      });
+      wpc+='</tbody></table>';
+    }
+    // Themes table
+    var wpThemes=wp.themes||[];
+    if(wpThemes.length){
+      wpc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:16px 0 8px">THEMES ('+wpThemes.length+')</div>';
+      wpc+='<table class="dt"><thead><tr><th>THEME</th><th>VERSION</th><th>VULNERABILITIES</th></tr></thead><tbody>';
+      wpThemes.forEach(function(t){
+        var vulnCount=t.vulnerabilities?t.vulnerabilities.length:0;
+        var vulnCol=vulnCount?'var(--red)':'var(--green)';
+        wpc+='<tr><td style="color:var(--white)">'+t.name+'</td><td>'+(t.version||'?')+'</td>';
+        wpc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+vulnCol+';color:'+vulnCol+'">'+(vulnCount?vulnCount+' VULN':'CLEAN')+'</span></td></tr>';
+      });
+      wpc+='</tbody></table>';
+    }
+    // Users alert
+    var wpUsers=wp.users||[];
+    if(wpUsers.length){
+      wpc+='<div style="padding:12px 16px;margin:16px 0;border:1px solid var(--yellow);background:rgba(245,197,24,.08);font-family:Share Tech Mono,monospace;font-size:12px;color:var(--yellow)">&#9888; '+wpUsers.length+' WordPress users enumerated — usernames exposed</div>';
+      wpc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
+      wpUsers.forEach(function(u){wpc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.06)">'+u.username+'</span>';});
+      wpc+='</div>';
+    }
+    // Interesting findings
+    var wpFindings=wp.interesting_findings||[];
+    if(wpFindings.length){
+      wpc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:16px 0 8px">INTERESTING FINDINGS ('+wpFindings.length+')</div>';
+      wpFindings.forEach(function(f){
+        wpc+='<div style="border:1px solid var(--border);padding:8px 12px;margin-bottom:6px;background:rgba(74,143,212,.03)">';
+        wpc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid var(--accent);color:var(--accent);margin-right:8px">'+(f.type||'INFO')+'</span>';
+        if(f.url) wpc+='<a href="'+f.url+'" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent2);text-decoration:none;border-bottom:1px solid var(--border)">'+f.url+'</a>';
+        if(f.description) wpc+='<div style="font-size:11px;color:var(--silver);margin-top:4px">'+f.description+'</div>';
+        wpc+='</div>';
+      });
+    }
+    var wpTitle='// WPSCAN — WORDPRESS SECURITY';
+    if(wp.vulnerabilities_count>0) wpTitle+=' ['+wp.vulnerabilities_count+' VULNS]';
+    h+=mkSec(wpTitle,wpc,wp.vulnerabilities_count>0);
+  }
+
   var gf=(res.gobuster&&res.gobuster.findings)||[];
   if(gf.length){
     var gb='<table class="dt"><thead><tr><th>ŚCIEŻKA</th><th>STATUS</th><th>ROZMIAR</th></tr></thead><tbody>';
-    gf.slice(0,30).forEach(function(f){gb+='<tr><td>'+f.path+'</td><td>'+f.status+'</td><td>'+(f.size||'—')+'</td></tr>';});
-    if(gf.length>30) gb+='<tr><td colspan="3" style="color:rgba(184,204,236,.35);font-size:10px">... i '+(gf.length-30)+' więcej</td></tr>';
+    var _gbSmId=gf.length>30?'sm'+(++_smC):'';
+    gf.forEach(function(f,idx){if(idx===30&&_gbSmId)gb+='</tbody><tbody id="'+_gbSmId+'" style="display:none">';gb+='<tr><td>'+f.path+'</td><td>'+f.status+'</td><td>'+(f.size||'—')+'</td></tr>';});
+    if(_gbSmId) gb+='</tbody><tbody><tr><td colspan="3" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_gbSmId+'\',this)">SHOW ALL '+gf.length+' RESULTS &#9660;</button></td></tr>';
     h+=mkSec('// KATALOGI — GOBUSTER ('+gf.length+')',gb+'</tbody></table>',false);
   }
 
@@ -1382,8 +1473,9 @@ function renderExtended(res) {
   var nk=(res.nikto&&res.nikto.findings)||[];
   if(nk.length){
     var nt='<table class="dt"><thead><tr><th>OPIS</th><th>URL</th><th>OSVDB</th></tr></thead><tbody>';
-    nk.slice(0,40).forEach(function(f){nt+='<tr><td>'+f.description+'</td><td>'+(f.url||'—')+'</td><td>'+(f.osvdb||'—')+'</td></tr>';});
-    if(nk.length>40) nt+='<tr><td colspan="3" style="color:rgba(184,204,236,.35);font-size:10px">... i '+(nk.length-40)+' więcej</td></tr>';
+    var _nkSmId=nk.length>40?'sm'+(++_smC):'';
+    nk.forEach(function(f,idx){if(idx===40&&_nkSmId)nt+='</tbody><tbody id="'+_nkSmId+'" style="display:none">';nt+='<tr><td>'+f.description+'</td><td>'+(f.url||'—')+'</td><td>'+(f.osvdb||'—')+'</td></tr>';});
+    if(_nkSmId) nt+='</tbody><tbody><tr><td colspan="3" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_nkSmId+'\',this)">SHOW ALL '+nk.length+' RESULTS &#9660;</button></td></tr>';
     h+=mkSec('// NIKTO — WEB VULNS ('+nk.length+')',nt+'</tbody></table>',false);
   }
 
@@ -1401,7 +1493,7 @@ function renderExtended(res) {
       if(subs.length){
         ht+='<div><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px">SUBDOMAINS ('+subs.length+')</div>';
         ht+='<div style="font-family:Share Tech Mono,monospace;font-size:11px;color:var(--silver);line-height:1.8">'+subs.slice(0,30).join('<br>');
-        if(subs.length>30) ht+='<br><span style="color:rgba(184,204,236,.35);font-size:10px">... i '+(subs.length-30)+' więcej</span>';
+        if(subs.length>30){var _hvSmId='sm'+(++_smC);ht+='<span id="'+_hvSmId+'" style="display:none"><br>'+subs.slice(30).join('<br>')+'</span><br><button class="show-more-btn" onclick="showAll(\''+_hvSmId+'\',this)">SHOW ALL '+subs.length+' SUBDOMAINS &#9660;</button>';}
         ht+='</div></div>';
       }
       h+=mkSec('// OSINT — theHarvester ('+subs.length+' subdomains, '+emails.length+' emails)',ht,false);
@@ -1412,43 +1504,10 @@ function renderExtended(res) {
   var mp=(res.masscan&&res.masscan.ports)||[];
   if(mp.length){
     var mt='<table class="dt"><thead><tr><th>PORT</th><th>PROTOCOL</th><th>STATUS</th><th>IP</th></tr></thead><tbody>';
-    mp.slice(0,50).forEach(function(p){mt+='<tr><td>'+p.port+'</td><td>'+p.protocol+'</td><td>'+p.status+'</td><td>'+(p.ip||'—')+'</td></tr>';});
-    if(mp.length>50) mt+='<tr><td colspan="4" style="color:rgba(184,204,236,.35);font-size:10px">... i '+(mp.length-50)+' więcej</td></tr>';
+    var _mpSmId=mp.length>50?'sm'+(++_smC):'';
+    mp.forEach(function(p,idx){if(idx===50&&_mpSmId)mt+='</tbody><tbody id="'+_mpSmId+'" style="display:none">';mt+='<tr><td>'+p.port+'</td><td>'+p.protocol+'</td><td>'+p.status+'</td><td>'+(p.ip||'—')+'</td></tr>';});
+    if(_mpSmId) mt+='</tbody><tbody><tr><td colspan="4" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_mpSmId+'\',this)">SHOW ALL '+mp.length+' RESULTS &#9660;</button></td></tr>';
     h+=mkSec('// MASSCAN — FAST PORT SCAN ('+mp.length+' portów)',mt+'</tbody></table>',false);
-  }
-
-  // Censys
-  if(res.censys&&res.censys.found){
-    var cx=res.censys;
-    var cc='';
-    // Header info
-    var asys=cx.autonomous_system||{};
-    cc+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">';
-    cc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">IP</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(cx.ip||'—')+'</div></div>';
-    cc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">AUTONOMOUS SYSTEM</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(asys.name||(asys.asn?'AS'+asys.asn:'')||'—')+'</div></div>';
-    cc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">BGP PREFIX</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(asys.bgp_prefix||'—')+'</div></div>';
-    cc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">LOCATION</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(cx.geo?((cx.geo.city||'')+(cx.geo.city&&cx.geo.country?', ':'')+cx.geo.country):'—')+'</div></div>';
-    cc+='<div style="background:var(--navy3);border:1px solid var(--border);padding:10px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:4px">OS</div><div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--white)">'+(cx.os||'—')+'</div></div>';
-    cc+='</div>';
-    // Labels
-    var labels=cx.labels||[];
-    if(labels.length){
-      cc+='<div style="margin-bottom:12px"><div style="font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:6px">LABELS</div>';
-      cc+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
-      labels.forEach(function(l){cc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:3px 8px;border:1px solid var(--border);color:var(--silver)">'+l+'</span>';});
-      cc+='</div></div>';
-    }
-    // Services
-    var svcs=cx.services||[];
-    if(svcs.length){
-      cc+='<table class="dt"><thead><tr><th>PORT</th><th>PROTO</th><th>SERVICE</th><th>PRODUCT</th><th>VERSION</th><th>BANNER</th></tr></thead><tbody>';
-      svcs.forEach(function(s){
-        cc+='<tr><td>'+s.port+'</td><td>'+(s.transport_protocol||'TCP')+'</td><td>'+(s.service_name||'—')+'</td><td>'+(s.product||'—')+'</td><td>'+(s.version||'—')+'</td><td style="max-width:clamp(200px,35vw,600px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.banner||'—')+'</td></tr>';
-      });
-      cc+='</tbody></table>';
-    }
-    var censysTitle='// CENSYS INTELLIGENCE — '+svcs.length+' services'+(labels.length?' ['+labels.join(', ')+']':'');
-    h+=mkSec(censysTitle,cc,false);
   }
 
   // IPInfo
@@ -1877,7 +1936,7 @@ function renderExtended(res) {
       dc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:16px 0 8px">DISCOVERED SUBDOMAINS ('+subs.length+')</div>';
       dc+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
       subs.slice(0,50).forEach(function(s){dc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--accent2);background:rgba(74,143,212,.04)">'+s+'</span>';});
-      if(subs.length>50) dc+='<span style="font-size:10px;color:rgba(184,204,236,.35);padding:3px 10px">... i '+(subs.length-50)+' więcej</span>';
+      if(subs.length>50){var _dsSmId='sm'+(++_smC);dc+='<span id="'+_dsSmId+'" style="display:none">';subs.slice(50).forEach(function(s){dc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--accent2);background:rgba(74,143,212,.04)">'+s+'</span>';});dc+='</span> <button class="show-more-btn" onclick="showAll(\''+_dsSmId+'\',this)">SHOW ALL '+subs.length+' &#9660;</button>';}
       dc+='</div>';
     }
     var dnsTitle='// DNSRECON — DNS RECONNAISSANCE';
@@ -1910,7 +1969,7 @@ function renderExtended(res) {
       amc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">DISCOVERED SUBDOMAINS ('+amSubs.length+')</div>';
       amc+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">';
       amSubs.slice(0,100).forEach(function(s){amc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--accent2);background:rgba(74,143,212,.04)">'+s+'</span>';});
-      if(amSubs.length>100) amc+='<span style="font-size:10px;color:rgba(184,204,236,.35);padding:3px 10px">... i '+(amSubs.length-100)+' więcej</span>';
+      if(amSubs.length>100){var _asSmId='sm'+(++_smC);amc+='<span id="'+_asSmId+'" style="display:none">';amSubs.slice(100).forEach(function(s){amc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--accent2);background:rgba(74,143,212,.04)">'+s+'</span>';});amc+='</span> <button class="show-more-btn" onclick="showAll(\''+_asSmId+'\',this)">SHOW ALL '+amSubs.length+' &#9660;</button>';}
       amc+='</div>';
     }
     // IP addresses
@@ -1919,10 +1978,108 @@ function renderExtended(res) {
       amc+='<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:8px">IP ADDRESSES ('+amIps.length+')</div>';
       amc+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
       amIps.slice(0,50).forEach(function(ip){amc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--white);background:rgba(74,143,212,.06)">'+ip+'</span>';});
-      if(amIps.length>50) amc+='<span style="font-size:10px;color:rgba(184,204,236,.35);padding:3px 10px">... i '+(amIps.length-50)+' więcej</span>';
+      if(amIps.length>50){var _aiSmId='sm'+(++_smC);amc+='<span id="'+_aiSmId+'" style="display:none">';amIps.slice(50).forEach(function(ip){amc+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--white);background:rgba(74,143,212,.06)">'+ip+'</span>';});amc+='</span> <button class="show-more-btn" onclick="showAll(\''+_aiSmId+'\',this)">SHOW ALL '+amIps.length+' &#9660;</button>';}
       amc+='</div>';
     }
     h+=mkSec('// AMASS — SUBDOMAIN ENUMERATION ('+am.total_count+' subdomains)',amc,false);
+  }
+
+  // CWE MAPPING
+  var cwe=res.cwe||{};
+  var cwes=cwe.cwes||[];
+  if(cwes.length){
+    var cwc='';
+    cwc+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">';
+    cwc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--accent);color:var(--accent)">TOTAL: '+cwe.total+'</span>';
+    if(cwe.high_count) cwc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+cwe.high_count+'</span>';
+    if(cwe.medium_count) cwc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">MEDIUM: '+cwe.medium_count+'</span>';
+    if(cwe.low_count) cwc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--silver);color:var(--silver);background:rgba(138,155,181,.06)">LOW: '+cwe.low_count+'</span>';
+    cwc+='</div>';
+    cwc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px">';
+    cwes.forEach(function(c){
+      var lCol={High:'var(--red)',Medium:'var(--yellow)',Low:'var(--silver)'}[c.likelihood]||'var(--silver)';
+      var lBg={High:'rgba(255,68,68,.10)',Medium:'rgba(245,197,24,.08)',Low:'transparent'}[c.likelihood]||'transparent';
+      cwc+='<div style="border:1px solid var(--border);padding:12px;background:rgba(74,143,212,.03)">';
+      cwc+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+      cwc+='<a href="'+c.url+'" target="_blank" rel="noopener" style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--accent);text-decoration:none;border-bottom:1px solid var(--border)">'+c.cwe_id+'</a>';
+      cwc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid '+lCol+';color:'+lCol+';background:'+lBg+'">'+c.likelihood.toUpperCase()+'</span>';
+      cwc+='</div>';
+      cwc+='<div style="color:var(--white);font-size:13px;font-weight:600;margin-bottom:4px">'+c.name+'</div>';
+      cwc+='<div style="font-size:10px;color:var(--silver);padding:2px 0"><span style="border:1px solid var(--border);padding:1px 6px;font-size:9px">'+c.category+'</span></div>';
+      if(c.description) cwc+='<div style="font-size:11px;color:var(--silver);margin-top:6px;line-height:1.4">'+c.description.substring(0,150)+(c.description.length>150?'...':'')+'</div>';
+      cwc+='</div>';
+    });
+    cwc+='</div>';
+    h+=mkSec('// CWE — COMMON WEAKNESS ENUMERATION ('+cwe.total+' weaknesses)',cwc,false);
+  }
+
+  // OWASP TOP 10
+  var ow=res.owasp||{};
+  var owCats=ow.categories||[];
+  if(owCats.length){
+    var owc='';
+    owc+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">';
+    owc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--accent);color:var(--accent)">DETECTED: '+ow.detected_count+' / '+ow.total+'</span>';
+    owc+='</div>';
+    owc+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px">';
+    owCats.forEach(function(cat){
+      var det=cat.detected;
+      var borderCol=det?'var(--accent)':'var(--border2)';
+      var bgCol=det?'rgba(74,143,212,.04)':'rgba(74,143,212,.01)';
+      var riskCol={Critical:'var(--red)',High:'var(--orange)',Medium:'var(--yellow)',None:'var(--silver)'}[cat.risk_level]||'var(--silver)';
+      var riskBg={Critical:'rgba(255,68,68,.10)',High:'rgba(255,140,0,.08)',Medium:'rgba(245,197,24,.08)',None:'transparent'}[cat.risk_level]||'transparent';
+      owc+='<div style="border:1px solid '+borderCol+';padding:14px;background:'+bgCol+';opacity:'+(det?'1':'.45')+'">';
+      owc+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+      owc+='<span style="font-family:Share Tech Mono,monospace;font-size:13px;color:'+(det?'var(--white)':'var(--silver)')+'">'+cat.id+' — '+cat.name+'</span>';
+      if(det) owc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid '+riskCol+';color:'+riskCol+';background:'+riskBg+'">'+cat.risk_level.toUpperCase()+'</span>';
+      else owc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid var(--silver);color:var(--silver)">NOT DETECTED</span>';
+      owc+='</div>';
+      if(det&&cat.description) owc+='<div style="font-size:11px;color:var(--silver);line-height:1.4;margin-bottom:8px">'+cat.description.substring(0,120)+'</div>';
+      if(det&&cat.triggered_by&&cat.triggered_by.length){
+        owc+='<div style="display:flex;flex-wrap:wrap;gap:4px">';
+        cat.triggered_by.forEach(function(t){owc+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;padding:2px 8px;border:1px solid var(--border);color:var(--accent2);background:rgba(74,143,212,.04)">'+t+'</span>';});
+        owc+='</div>';
+      }
+      owc+='</div>';
+    });
+    owc+='</div>';
+    h+=mkSec('// OWASP TOP 10 2021 ('+ow.detected_count+'/10 detected)',owc,false);
+  }
+
+  // OWASP ZAP
+  var zap=res.zap||{};
+  var zapAlerts=zap.alerts||[];
+  if(zapAlerts.length){
+    var zc='';
+    var zapSum=zap.summary||{};
+    zc+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">';
+    if(zapSum.high) zc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--red);color:var(--red);background:rgba(255,68,68,.08)">HIGH: '+zapSum.high+'</span>';
+    if(zapSum.medium) zc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--orange);color:var(--orange);background:rgba(255,140,0,.08)">MEDIUM: '+zapSum.medium+'</span>';
+    if(zapSum.low) zc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.08)">LOW: '+zapSum.low+'</span>';
+    if(zapSum.informational) zc+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid var(--silver);color:var(--silver);background:rgba(138,155,181,.06)">INFO: '+zapSum.informational+'</span>';
+    zc+='</div>';
+    if(zap.spider_urls_found) zc+='<div style="font-size:11px;color:var(--silver);margin-bottom:12px">Spider crawled <span style="color:var(--white);font-weight:700">'+zap.spider_urls_found+'</span> URLs</div>';
+    zc+='<table class="dt"><thead><tr><th>RISK</th><th>ALERT</th><th>URL</th><th>CONFIDENCE</th><th>CWE</th></tr></thead><tbody>';
+    var zapRiskCol={High:'var(--red)',Medium:'var(--orange)',Low:'var(--yellow)',Informational:'var(--silver)'};
+    var zapRiskBg={High:'rgba(255,68,68,.10)',Medium:'rgba(255,140,0,.08)',Low:'rgba(245,197,24,.08)',Informational:'transparent'};
+    var _zapSmId=zapAlerts.length>30?'sm'+(++_smC):'';
+    zapAlerts.forEach(function(a,idx){
+      if(idx===30&&_zapSmId) zc+='</tbody><tbody id="'+_zapSmId+'" style="display:none">';
+      var rc=zapRiskCol[a.risk]||'var(--silver)';
+      var rb=zapRiskBg[a.risk]||'transparent';
+      var shortUrl=(a.url||'').length>60?(a.url.substring(0,57)+'...'):a.url;
+      var cweLink=a.cweid&&a.cweid!=='0'?'<a href="https://cwe.mitre.org/data/definitions/'+a.cweid+'.html" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--border)">CWE-'+a.cweid+'</a>':'—';
+      zc+='<tr>';
+      zc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+rc+';color:'+rc+';background:'+rb+'">'+a.risk.toUpperCase()+'</span></td>';
+      zc+='<td style="color:var(--white)">'+a.alert_name+'</td>';
+      zc+='<td style="font-size:11px;max-width:clamp(200px,35vw,600px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(a.url||'')+'">'+shortUrl+'</td>';
+      zc+='<td style="font-size:11px">'+a.confidence+'</td>';
+      zc+='<td>'+cweLink+'</td>';
+      zc+='</tr>';
+    });
+    if(_zapSmId) zc+='</tbody><tbody><tr><td colspan="5" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_zapSmId+'\',this)">SHOW ALL '+zapAlerts.length+' ALERTS &#9660;</button></td></tr>';
+    zc+='</tbody></table>';
+    h+=mkSec('// OWASP ZAP — DYNAMIC ANALYSIS ('+zapSum.total+' alerts)',zc,false);
   }
 
   // MITRE ATT&CK
@@ -2022,10 +2179,11 @@ function loadScanDetail(taskId) {
       ports:s.ports||[], gobuster:s.gobuster||{}, sqlmap:s.sqlmap||null,
       testssl:s.testssl||null, nikto:s.nikto||null,
       harvester:s.harvester||null, masscan:s.masscan||null,
-      censys:s.censys||null, ipinfo:s.ipinfo||null,
+      ipinfo:s.ipinfo||null,
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
-      nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, mitre:s.mitre||null,
+      nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
+      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -2270,7 +2428,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','censys','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

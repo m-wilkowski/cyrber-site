@@ -179,6 +179,19 @@
     transition: all .2s;
   }
   .btn:hover { background: rgba(74,143,212,.15); }
+  .btn-primary {
+    background: linear-gradient(140deg, #183568, #0e2040);
+    color: var(--white); font-family: 'Orbitron', monospace;
+    font-weight: 700; letter-spacing: .22em; padding: 13px 28px;
+    position: relative; overflow: hidden;
+  }
+  .btn-primary::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(74,143,212,.25), transparent);
+    transform: translateX(-120%); transition: transform .45s;
+  }
+  .btn-primary:hover:not(:disabled)::after { transform: translateX(120%); }
+  .btn-primary:hover:not(:disabled) { background: linear-gradient(140deg, #244a90, #162d5c); box-shadow: 0 0 22px rgba(74,143,212,.35); }
   .btn-danger { border-color: var(--red); color: var(--red); }
   .btn-danger:hover { background: rgba(255,68,68,.15); }
 
@@ -271,6 +284,7 @@
     <a class="nav-link" href="/dashboard">DASHBOARD</a>
     <a class="nav-link active" href="/scheduler">SCHEDULER</a>
     <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="/osint">OSINT</a>
     <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
   </div>
 </nav>
@@ -292,7 +306,7 @@
         <label>INTERWAŁ (GODZINY)</label>
         <input type="number" id="interval" value="24" min="1">
       </div>
-      <button class="btn" onclick="addSchedule()">+ DODAJ</button>
+      <button class="btn btn-primary" onclick="addSchedule()">+ DODAJ</button>
     </div>
     <div id="msg"></div>
   </div>

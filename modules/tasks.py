@@ -24,6 +24,11 @@ from modules.nvd_scan import nvd_scan
 from modules.whois_scan import whois_scan
 from modules.dnsrecon_scan import dnsrecon_scan
 from modules.amass_scan import amass_scan
+from modules.cwe_mapping import cwe_mapping
+from modules.owasp_mapping import owasp_mapping
+from modules.wpscan_scan import wpscan_scan
+from modules.zap_scan import zap_scan
+from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
 
@@ -48,7 +53,9 @@ def full_scan_task(target: str):
     nmap = nmap_scan(target)
     nuclei = nuclei_scan(target)
     nuclei_filtered = filter_false_positives(nuclei, target)
+    zap = zap_scan(target)
     whatweb = whatweb_scan(target)
+    wpscan = wpscan_scan(target)
     gobuster = gobuster_scan(target)
     testssl = testssl_scan(target)
     sqlmap = sqlmap_scan(target)
@@ -107,6 +114,16 @@ def full_scan_task(target: str):
         result["dnsrecon"] = dnsrecon
     if not amass.get("skipped") and amass.get("total_count", 0) > 0:
         result["amass"] = amass
+    if not wpscan.get("skipped"):
+        result["wpscan"] = wpscan
+    if not zap.get("skipped"):
+        result["zap"] = zap
+    cwe = cwe_mapping(result)
+    if cwe.get("total", 0) > 0:
+        result["cwe"] = cwe
+    owasp = owasp_mapping(result)
+    if owasp.get("detected_count", 0) > 0:
+        result["owasp"] = owasp
     result["fp_filter"] = nuclei_filtered.get("fp_filter", {})
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})
@@ -117,6 +134,10 @@ def full_scan_task(target: str):
     save_scan(task_id, target, result)
     send_scan_notification(target, task_id, result)
     return result
+
+@celery_app.task
+def osint_scan_task(target: str):
+    return osint_scan(target)
 
 from modules.agent import run_agent
 

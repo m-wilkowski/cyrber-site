@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYRBER — OSINT Panel</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:    #080c18;
+    --navy2:   #0c1220;
+    --navy3:   #101828;
+    --panel:   #0a1020;
+    --accent:  #4a8fd4;
+    --accent2: #7ab3e8;
+    --purple:  #9b59b6;
+    --silver:  #8a9bb5;
+    --white:   #e8eef8;
+    --border:  rgba(74,143,212,.18);
+    --border2: rgba(74,143,212,.10);
+    --red:     #ff4444;
+    --yellow:  #f5c518;
+    --green:   #3ddc84;
+    --orange:  #ff8c00;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--navy);
+    color: var(--white);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 15% 60%, rgba(20,40,80,0.55) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 85% 15%, rgba(10,20,50,0.7) 0%, transparent 60%),
+      radial-gradient(ellipse 100% 30% at 50% 100%, rgba(74,143,212,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(74,143,212,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,143,212,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px; height: 56px;
+    background: rgba(8,12,24,.92);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+  }
+
+  .nav-brand {
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px; font-weight: 900; letter-spacing: .15em;
+    color: var(--white); text-decoration: none;
+  }
+  .nav-brand span { font-size: 10px; font-weight: 400; color: var(--accent); letter-spacing: .3em; display: block; margin-top: -2px; }
+  .nav-links { display: flex; gap: 4px; }
+  .nav-link {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: .15em;
+    color: var(--silver); text-decoration: none; padding: 6px 14px;
+    border: 1px solid transparent; transition: all .2s;
+  }
+  .nav-link:hover { color: var(--accent); border-color: var(--border); }
+  .nav-link.active { color: var(--accent); border-color: var(--accent); }
+
+  /* ── LAYOUT ── */
+  .wrapper {
+    max-width: 1920px; margin: 0 auto;
+    padding: 32px clamp(16px, 3vw, 48px) 80px;
+    position: relative; z-index: 1;
+  }
+  @media (min-width: 2560px) { .wrapper { max-width: 2400px; } }
+
+  .page-header { margin-bottom: 32px; }
+  .page-title { font-family: 'Orbitron', sans-serif; font-size: 11px; letter-spacing: .3em; color: var(--accent); margin-bottom: 6px; }
+  .page-title-main { font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 900; letter-spacing: .1em; color: var(--white); }
+
+  /* ── CARD ── */
+  .card {
+    background: rgba(12,18,32,.82);
+    border: 1px solid var(--border);
+    padding: 24px; margin-bottom: 24px;
+    backdrop-filter: blur(12px);
+  }
+  .card h2 { font-size: 11px; letter-spacing: .2em; color: var(--silver); margin-bottom: 20px; }
+
+  .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+  label { font-size: 10px; letter-spacing: .15em; color: var(--silver); }
+  input {
+    background: var(--navy3); border: 1px solid var(--border); color: var(--white);
+    font-family: 'Share Tech Mono', monospace; font-size: 13px;
+    padding: 10px 14px; outline: none; width: 100%;
+  }
+  input:focus { border-color: var(--accent); }
+
+  .btn {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: .15em;
+    padding: 10px 24px; border: 1px solid var(--accent); background: transparent;
+    color: var(--accent); cursor: pointer; white-space: nowrap; transition: all .2s;
+  }
+  .btn:hover { background: rgba(74,143,212,.15); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary {
+    background: linear-gradient(140deg, #183568, #0e2040);
+    color: var(--white); font-family: 'Orbitron', monospace;
+    font-weight: 700; letter-spacing: .22em; padding: 13px 28px;
+    position: relative; overflow: hidden;
+  }
+  .btn-primary::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(74,143,212,.25), transparent);
+    transform: translateX(-120%); transition: transform .45s;
+  }
+  .btn-primary:hover:not(:disabled)::after { transform: translateX(120%); }
+  .btn-primary:hover:not(:disabled) { background: linear-gradient(140deg, #244a90, #162d5c); box-shadow: 0 0 22px rgba(74,143,212,.35); }
+
+  .status-bar {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    padding: 10px 14px; margin-top: 12px;
+    border-left: 3px solid var(--accent);
+    background: rgba(74,143,212,.08);
+    display: none;
+  }
+  .status-bar.on { display: block; }
+  .status-bar.error { border-color: var(--red); background: rgba(255,68,68,.08); color: var(--red); }
+
+  /* ── RESULTS GRID ── */
+  .results { display: none; }
+  .results.on { display: block; }
+
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: rgba(74,143,212,.04); border: 1px solid var(--border); padding: 16px; text-align: center;
+  }
+  .stat-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: .2em; color: var(--accent); margin-bottom: 4px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: var(--white); }
+
+  .section-hdr {
+    font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: .2em;
+    color: var(--silver); padding: 10px 0; border-bottom: 1px solid var(--border);
+    cursor: pointer; user-select: none; margin-top: 20px;
+  }
+  .section-hdr::before { content: '▸ '; color: var(--accent); }
+  .section-hdr.open::before { content: '▾ '; }
+  .section-body { display: none; padding: 16px 0; }
+  .section-body.open { display: block; }
+
+  .tag {
+    display: inline-block; font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    padding: 3px 10px; border: 1px solid var(--border); margin: 3px;
+    color: var(--accent2); background: rgba(74,143,212,.04);
+  }
+  .tag-email { border-color: var(--purple); color: var(--purple); background: rgba(155,89,182,.06); }
+  .tag-ip { color: var(--white); background: rgba(74,143,212,.06); }
+
+  .risk-alert {
+    font-family: 'Share Tech Mono', monospace; font-size: 12px;
+    padding: 12px 16px; margin-bottom: 10px;
+    border: 1px solid; display: flex; align-items: center; gap: 10px;
+  }
+  .risk-critical { border-color: var(--red); color: var(--red); background: rgba(255,68,68,.10); }
+  .risk-high { border-color: var(--orange); color: var(--orange); background: rgba(255,140,0,.08); }
+  .risk-medium { border-color: var(--yellow); color: var(--yellow); background: rgba(245,197,24,.08); }
+  .risk-info { border-color: var(--silver); color: var(--silver); background: rgba(138,155,181,.06); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; font-size: 10px; letter-spacing: .15em; color: var(--silver); padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid rgba(74,143,212,.08); }
+
+  .whois-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .whois-item .wl { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: .2em; color: var(--accent); }
+  .whois-item .wv { color: var(--white); font-size: 13px; margin-top: 2px; }
+
+  .badge { display: inline-block; font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: .1em; padding: 2px 8px; border: 1px solid; }
+  .show-more-btn { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: .15em; padding: 6px 16px; border: 1px solid var(--accent); background: rgba(74,143,212,.06); color: var(--accent); cursor: pointer; transition: all .2s; margin: 6px 3px; }
+  .show-more-btn:hover { background: rgba(74,143,212,.15); box-shadow: 0 0 10px rgba(74,143,212,.2); }
+
+  /* ── PROGRESS TRACKER ── */
+  .progress-card { display: none; }
+  .progress-card.on { display: block; }
+
+  .progress-bar-track {
+    height: 3px; background: var(--navy3); margin-bottom: 24px; position: relative; overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--green));
+    transition: width .8s ease; position: relative;
+  }
+  .progress-bar-fill::after {
+    content: ''; position: absolute; right: 0; top: -2px; width: 7px; height: 7px;
+    background: var(--green); border-radius: 50%; box-shadow: 0 0 10px var(--green);
+  }
+
+  .progress-step {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 0; border-bottom: 1px solid rgba(74,143,212,.06);
+    font-family: 'Share Tech Mono', monospace; font-size: 12px;
+    transition: opacity .3s;
+  }
+  .progress-step:last-child { border-bottom: none; }
+
+  .step-icon {
+    width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0; transition: all .4s;
+  }
+
+  .step-pending .step-icon {
+    border: 1px solid rgba(138,155,181,.25); color: rgba(138,155,181,.35); background: transparent;
+  }
+  .step-pending .step-label { color: rgba(138,155,181,.4); }
+  .step-pending .step-desc { color: rgba(138,155,181,.25); }
+
+  .step-active .step-icon {
+    border: 1px solid var(--accent); color: var(--accent);
+    background: rgba(74,143,212,.1); animation: stepPulse 1.5s ease-in-out infinite;
+  }
+  .step-active .step-label { color: var(--accent); }
+  .step-active .step-desc { color: var(--silver); }
+
+  .step-done .step-icon {
+    border: 1px solid var(--green); color: var(--green);
+    background: rgba(61,220,132,.1); animation: none;
+  }
+  .step-done .step-label { color: var(--green); }
+  .step-done .step-desc { color: rgba(61,220,132,.5); }
+
+  @keyframes stepPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(74,143,212,.3); }
+    50% { box-shadow: 0 0 12px 3px rgba(74,143,212,.25); }
+  }
+
+  .step-label { font-weight: 600; font-size: 13px; letter-spacing: .08em; transition: color .4s; }
+  .step-desc { font-size: 11px; letter-spacing: .05em; margin-left: auto; transition: color .4s; }
+
+  .progress-elapsed {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: .15em;
+    color: var(--silver); text-align: right; margin-top: 12px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; margin-top: 52px; padding-top: 20px;
+    border-top: 1px solid var(--border2);
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    color: rgba(74,143,212,.18); letter-spacing: .22em;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .form-row { flex-direction: column; }
+    .form-group { min-width: 100%; }
+    .btn { width: 100%; text-align: center; }
+    nav { padding: 0 16px; }
+    .nav-link { font-size: 10px; padding: 5px 10px; letter-spacing: .1em; }
+    .nav-brand { font-size: 15px; }
+    .page-title-main { font-size: 22px; }
+  }
+  @media (max-width: 480px) {
+    .nav-brand span { display: none; }
+    .wrapper { padding: 20px 12px 40px; }
+    .card { padding: 16px; }
+    .page-title-main { font-size: 18px; }
+    footer { font-size: 8px; }
+  }
+</style>
+</head>
+<body>
+<nav>
+  <a class="nav-brand" href="/ui">CYRBER<span>AUTONOMOUS RECON</span></a>
+  <div class="nav-links">
+    <a class="nav-link" href="/ui">SCAN</a>
+    <a class="nav-link" href="/dashboard">DASHBOARD</a>
+    <a class="nav-link" href="/scheduler">SCHEDULER</a>
+    <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link active" href="/osint">OSINT</a>
+    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
+  </div>
+</nav>
+
+<div class="wrapper">
+  <div class="page-header">
+    <div class="page-title">OPEN SOURCE INTELLIGENCE</div>
+    <div class="page-title-main">OSINT PANEL</div>
+  </div>
+
+  <div class="card">
+    <h2>// TARGET RECONNAISSANCE</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>TARGET (DOMAIN / IP)</label>
+        <input type="text" id="target" placeholder="example.com">
+      </div>
+      <button class="btn btn-primary" id="launchBtn" onclick="launchOsint()">LAUNCH OSINT SCAN</button>
+    </div>
+    <div class="status-bar" id="status"></div>
+  </div>
+
+  <div class="card progress-card" id="progressCard">
+    <h2>// SCAN PROGRESS</h2>
+    <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+    <div id="progressSteps">
+      <div class="progress-step step-pending" id="step0">
+        <div class="step-icon">&#8212;</div>
+        <div class="step-label">theHarvester</div>
+        <div class="step-desc">emails / subdomains</div>
+      </div>
+      <div class="progress-step step-pending" id="step1">
+        <div class="step-icon">&#8212;</div>
+        <div class="step-label">WHOIS</div>
+        <div class="step-desc">domain registration</div>
+      </div>
+      <div class="progress-step step-pending" id="step2">
+        <div class="step-icon">&#8212;</div>
+        <div class="step-label">DNSRecon</div>
+        <div class="step-desc">DNS records</div>
+      </div>
+      <div class="progress-step step-pending" id="step3">
+        <div class="step-icon">&#8212;</div>
+        <div class="step-label">Amass</div>
+        <div class="step-desc">passive subdomain enum</div>
+      </div>
+      <div class="progress-step step-pending" id="step4">
+        <div class="step-icon">&#8212;</div>
+        <div class="step-label">Aggregating results</div>
+        <div class="step-desc">merging &amp; risk analysis</div>
+      </div>
+    </div>
+    <div class="progress-elapsed" id="progressElapsed">00:00</div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="card">
+      <h2>// OSINT PROFILE SUMMARY</h2>
+      <div class="summary-grid" id="summaryGrid"></div>
+    </div>
+
+    <div id="moduleErrorsSection"></div>
+    <div id="riskSection"></div>
+
+    <div class="card">
+      <h2>// INTELLIGENCE DATA</h2>
+
+      <div class="section-hdr open" onclick="toggleSec(this)">EMAILS</div>
+      <div class="section-body open" id="secEmails"><span style="color:var(--silver);font-size:12px">No data</span></div>
+
+      <div class="section-hdr" onclick="toggleSec(this)">SUBDOMAINS</div>
+      <div class="section-body" id="secSubdomains"><span style="color:var(--silver);font-size:12px">No data</span></div>
+
+      <div class="section-hdr" onclick="toggleSec(this)">IP ADDRESSES</div>
+      <div class="section-body" id="secIPs"><span style="color:var(--silver);font-size:12px">No data</span></div>
+
+      <div class="section-hdr" onclick="toggleSec(this)">DNS RECORDS</div>
+      <div class="section-body" id="secDNS"><span style="color:var(--silver);font-size:12px">No data</span></div>
+
+      <div class="section-hdr" onclick="toggleSec(this)">WHOIS</div>
+      <div class="section-body" id="secWhois"><span style="color:var(--silver);font-size:12px">No data</span></div>
+
+      <div class="section-hdr" onclick="toggleSec(this)">DATA SOURCES</div>
+      <div class="section-body" id="secSources"><span style="color:var(--silver);font-size:12px">No data</span></div>
+    </div>
+  </div>
+
+  <footer>CYRBER &middot; AUTONOMOUS RECON &middot; AUTHORIZED TARGETS ONLY &middot; v0.1.0</footer>
+</div>
+
+<script>
+var API = '';
+
+// ── JWT Auth ──
+function getToken() { return localStorage.getItem('cyrber_token'); }
+if (!getToken()) window.location.href = '/login';
+
+function authHeaders(extra) {
+  var token = getToken();
+  if (!token) { window.location.href = '/login'; return {}; }
+  var h = {'Authorization': 'Bearer ' + token};
+  if (extra) Object.assign(h, extra);
+  return h;
+}
+
+async function authFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = authHeaders(opts.headers || {});
+  var r = await fetch(url, opts);
+  if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
+  return r;
+}
+
+function toggleSec(hdr) {
+  hdr.classList.toggle('open');
+  hdr.nextElementSibling.classList.toggle('open');
+}
+
+var _smC=0;
+function showAll(id,btn){var el=document.getElementById(id);if(el){el.style.display='';btn.parentNode.removeChild(btn);}}
+
+function setStatus(msg, isError) {
+  var el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status-bar on' + (isError ? ' error' : '');
+}
+
+function hideStatus() {
+  document.getElementById('status').className = 'status-bar';
+}
+
+var pollTimer = null;
+var stepTimer = null;
+var elapsedTimer = null;
+var currentStep = -1;
+var scanStartTime = 0;
+var TOTAL_STEPS = 5;
+
+var STEP_ICONS = { pending: '\u2014', active: '\u23F3', done: '\u2713' };
+
+function resetProgress() {
+  currentStep = -1;
+  for (var i = 0; i < TOTAL_STEPS; i++) {
+    var el = document.getElementById('step' + i);
+    el.className = 'progress-step step-pending';
+    el.querySelector('.step-icon').textContent = STEP_ICONS.pending;
+  }
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressElapsed').textContent = '00:00';
+}
+
+function advanceStep() {
+  // Mark current as done
+  if (currentStep >= 0 && currentStep < TOTAL_STEPS) {
+    var prev = document.getElementById('step' + currentStep);
+    prev.className = 'progress-step step-done';
+    prev.querySelector('.step-icon').textContent = STEP_ICONS.done;
+  }
+  currentStep++;
+  if (currentStep < TOTAL_STEPS) {
+    var cur = document.getElementById('step' + currentStep);
+    cur.className = 'progress-step step-active';
+    cur.querySelector('.step-icon').textContent = STEP_ICONS.active;
+    var pct = Math.round(((currentStep + 0.5) / TOTAL_STEPS) * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+  }
+}
+
+function completeAllSteps() {
+  for (var i = 0; i < TOTAL_STEPS; i++) {
+    var el = document.getElementById('step' + i);
+    el.className = 'progress-step step-done';
+    el.querySelector('.step-icon').textContent = STEP_ICONS.done;
+  }
+  document.getElementById('progressFill').style.width = '100%';
+}
+
+function startElapsedTimer() {
+  scanStartTime = Date.now();
+  elapsedTimer = setInterval(function() {
+    var sec = Math.floor((Date.now() - scanStartTime) / 1000);
+    var m = String(Math.floor(sec / 60)).padStart(2, '0');
+    var s = String(sec % 60).padStart(2, '0');
+    document.getElementById('progressElapsed').textContent = m + ':' + s;
+  }, 1000);
+}
+
+function stopTimers() {
+  if (stepTimer) { clearInterval(stepTimer); stepTimer = null; }
+  if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function showProgress() {
+  document.getElementById('progressCard').classList.add('on');
+  resetProgress();
+  advanceStep();
+  startElapsedTimer();
+  stepTimer = setInterval(function() {
+    if (currentStep < TOTAL_STEPS - 1) {
+      advanceStep();
+    }
+  }, 8000);
+}
+
+function hideProgress() {
+  completeAllSteps();
+  stopTimers();
+  setTimeout(function() {
+    document.getElementById('progressCard').classList.remove('on');
+  }, 1200);
+}
+
+async function launchOsint() {
+  var target = document.getElementById('target').value.trim();
+  if (!target) { setStatus('Enter target first', true); return; }
+
+  document.getElementById('launchBtn').disabled = true;
+  document.getElementById('results').classList.remove('on');
+  document.getElementById('moduleErrorsSection').innerHTML = '';
+  document.getElementById('riskSection').innerHTML = '';
+  setStatus('Launching OSINT scan for ' + target + '...');
+
+  try {
+    var r = await authFetch(API + '/osint/start?target=' + encodeURIComponent(target));
+    var d = await r.json();
+    if (!d.task_id) { setStatus('Error: ' + (d.detail || 'unknown'), true); document.getElementById('launchBtn').disabled = false; return; }
+    setStatus('Task ' + d.task_id.slice(0,8) + ' started \u2014 scanning...');
+    showProgress();
+    pollStatus(d.task_id);
+  } catch(e) {
+    setStatus('Connection error: ' + e.message, true);
+    document.getElementById('launchBtn').disabled = false;
+  }
+}
+
+function pollStatus(taskId) {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async function() {
+    try {
+      var r = await authFetch(API + '/osint/status/' + taskId);
+      var d = await r.json();
+      if (d.status === 'completed') {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        setStatus('Scan completed!');
+        setTimeout(hideStatus, 3000);
+        document.getElementById('launchBtn').disabled = false;
+        hideProgress();
+        setTimeout(function() { renderResults(d.result); }, 1300);
+      } else if (d.status === 'failed') {
+        stopTimers();
+        document.getElementById('progressCard').classList.remove('on');
+        setStatus('Scan failed: ' + (d.error || 'unknown'), true);
+        document.getElementById('launchBtn').disabled = false;
+      } else {
+        setStatus('Scanning... (' + d.status + ')');
+      }
+    } catch(e) {
+      // keep polling
+    }
+  }, 3000);
+}
+
+function renderResults(data) {
+  document.getElementById('results').classList.add('on');
+
+  var s = data.summary || {};
+  var grid = document.getElementById('summaryGrid');
+  grid.innerHTML =
+    '<div class="stat-card"><div class="stat-label">EMAILS</div><div class="stat-value">' + (s.total_emails||0) + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">SUBDOMAINS</div><div class="stat-value">' + (s.total_subdomains||0) + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">IP ADDRESSES</div><div class="stat-value">' + (s.total_ips||0) + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">RISK INDICATORS</div><div class="stat-value" style="color:' + (s.risk_count > 0 ? 'var(--red)' : 'var(--green)') + '">' + (s.risk_count||0) + '</div></div>' +
+    '<div class="stat-card"><div class="stat-label">DATA SOURCES</div><div class="stat-value">' + (s.sources_count||0) + '</div></div>' +
+    (s.errors_count > 0 ? '<div class="stat-card"><div class="stat-label">MODULE ERRORS</div><div class="stat-value" style="color:var(--orange)">' + s.errors_count + '</div></div>' : '');
+
+  // Module errors (diagnostics)
+  var modErrors = data.module_errors || [];
+  var meEl = document.getElementById('moduleErrorsSection');
+  if (modErrors.length) {
+    var meHtml = '<div class="card" style="border-color:var(--orange)"><h2 style="color:var(--orange)">// MODULE ERRORS</h2>';
+    meHtml += '<div style="font-size:12px;color:var(--silver);margin-bottom:10px">Some OSINT modules could not execute. This may indicate missing tools in the environment.</div>';
+    modErrors.forEach(function(err) {
+      meHtml += '<div class="risk-alert risk-medium" style="border-color:var(--orange)"><span style="font-size:14px">&#9888;</span><div style="font-size:12px;color:var(--orange)">' + err + '</div></div>';
+    });
+    meHtml += '</div>';
+    meEl.innerHTML = meHtml;
+  } else {
+    meEl.innerHTML = '';
+  }
+
+  // Risk indicators
+  var riskEl = document.getElementById('riskSection');
+  var risks = data.risk_indicators || [];
+  if (risks.length) {
+    var rh = '<div class="card"><h2>// RISK INDICATORS</h2>';
+    risks.forEach(function(ri) {
+      rh += '<div class="risk-alert risk-' + ri.severity + '"><span style="font-size:14px">&#9888;</span><div><div style="font-weight:600">' + ri.title + '</div><div style="font-size:11px;opacity:.8">' + ri.description + '</div></div></div>';
+    });
+    rh += '</div>';
+    riskEl.innerHTML = rh;
+  } else {
+    riskEl.innerHTML = '';
+  }
+
+  // Emails
+  var emails = data.emails || [];
+  var eEl = document.getElementById('secEmails');
+  if (emails.length) {
+    eEl.innerHTML = '<div style="margin-bottom:8px"><span class="badge" style="border-color:var(--purple);color:var(--purple)">' + emails.length + ' emails found</span></div>' +
+      emails.map(function(e) { return '<span class="tag tag-email">&#9993; ' + e + '</span>'; }).join('');
+  } else {
+    eEl.innerHTML = '<span style="color:var(--silver);font-size:12px">No emails discovered</span>';
+  }
+
+  // Subdomains
+  var subs = data.subdomains || [];
+  var sEl = document.getElementById('secSubdomains');
+  if (subs.length) {
+    var sh = '<div style="margin-bottom:8px"><span class="badge" style="border-color:var(--accent);color:var(--accent)">' + subs.length + ' subdomains</span></div><div>';
+    subs.slice(0, 200).forEach(function(s) { sh += '<span class="tag">' + s + '</span>'; });
+    if (subs.length > 200) { var _id='osm'+(++_smC); sh += '<span id="'+_id+'" style="display:none">'; subs.slice(200).forEach(function(s){ sh += '<span class="tag">' + s + '</span>'; }); sh += '</span> <button class="show-more-btn" onclick="showAll(\''+_id+'\',this)">SHOW ALL ' + subs.length + ' &#9660;</button>'; }
+    sh += '</div>';
+    sEl.innerHTML = sh;
+  } else {
+    sEl.innerHTML = '<span style="color:var(--silver);font-size:12px">No subdomains discovered</span>';
+  }
+
+  // IP Addresses
+  var ips = data.ip_addresses || [];
+  var iEl = document.getElementById('secIPs');
+  if (ips.length) {
+    var ih = '<div style="margin-bottom:8px"><span class="badge" style="border-color:var(--accent);color:var(--accent)">' + ips.length + ' IPs</span></div>';
+    ih += ips.slice(0, 100).map(function(ip) { return '<span class="tag tag-ip">' + ip + '</span>'; }).join('');
+    if (ips.length > 100) { var _id='osm'+(++_smC); ih += '<span id="'+_id+'" style="display:none">'; ips.slice(100).forEach(function(ip){ ih += '<span class="tag tag-ip">' + ip + '</span>'; }); ih += '</span> <button class="show-more-btn" onclick="showAll(\''+_id+'\',this)">SHOW ALL ' + ips.length + ' &#9660;</button>'; }
+    iEl.innerHTML = ih;
+  } else {
+    iEl.innerHTML = '<span style="color:var(--silver);font-size:12px">No IP addresses discovered</span>';
+  }
+
+  // DNS Records
+  var dns = data.dns_records || {};
+  var dEl = document.getElementById('secDNS');
+  var dh = '';
+  var aRecs = dns.a_records || [];
+  if (aRecs.length) {
+    dh += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">A / AAAA RECORDS (' + aRecs.length + ')</div>';
+    dh += '<table><thead><tr><th>HOSTNAME</th><th>IP</th><th>TYPE</th></tr></thead><tbody>';
+    aRecs.forEach(function(r) { dh += '<tr><td style="color:var(--white)">' + (r.hostname||'') + '</td><td>' + (r.ip||'') + '</td><td>' + (r.type||'A') + '</td></tr>'; });
+    dh += '</tbody></table>';
+  }
+  var mxRecs = dns.mx_records || [];
+  if (mxRecs.length) {
+    dh += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">MX RECORDS (' + mxRecs.length + ')</div>';
+    dh += '<table><thead><tr><th>EXCHANGE</th><th>PRIORITY</th></tr></thead><tbody>';
+    mxRecs.forEach(function(r) { dh += '<tr><td style="color:var(--white)">' + (r.exchange||'') + '</td><td>' + (r.priority||'') + '</td></tr>'; });
+    dh += '</tbody></table>';
+  }
+  var nsRecs = dns.ns_records || [];
+  if (nsRecs.length) {
+    dh += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">NS RECORDS (' + nsRecs.length + ')</div>';
+    dh += '<div>';
+    nsRecs.forEach(function(ns) { dh += '<span class="tag tag-ip">' + ns + '</span>'; });
+    dh += '</div>';
+  }
+  var txtRecs = dns.txt_records || [];
+  if (txtRecs.length) {
+    dh += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">TXT RECORDS (' + txtRecs.length + ')</div>';
+    txtRecs.forEach(function(r) {
+      var tCol = r.type === 'SPF' ? 'var(--green)' : r.type === 'DMARC' ? 'var(--green)' : r.type === 'DKIM' ? 'var(--accent)' : 'var(--silver)';
+      dh += '<div style="margin-bottom:6px"><span class="badge" style="border-color:' + tCol + ';color:' + tCol + '">' + r.type + '</span> <span style="font-size:12px;color:var(--white);word-break:break-all;margin-left:6px">' + (r.value||'') + '</span></div>';
+    });
+  }
+  var srvRecs = dns.srv_records || [];
+  if (srvRecs.length) {
+    dh += '<div style="font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin:14px 0 6px">SRV RECORDS (' + srvRecs.length + ')</div>';
+    dh += '<table><thead><tr><th>SERVICE</th><th>TARGET</th><th>PORT</th><th>PRIORITY</th></tr></thead><tbody>';
+    srvRecs.forEach(function(r) { dh += '<tr><td style="color:var(--white)">' + (r.service||'') + '</td><td>' + (r.target||'') + '</td><td>' + (r.port||'') + '</td><td>' + (r.priority||'') + '</td></tr>'; });
+    dh += '</tbody></table>';
+  }
+  dEl.innerHTML = dh || '<span style="color:var(--silver);font-size:12px">No DNS records</span>';
+
+  // WHOIS
+  var wh = data.whois_info || {};
+  var wEl = document.getElementById('secWhois');
+  if (wh.target || wh.domain_name) {
+    var wc = '<div class="whois-grid">';
+    if (wh.type === 'domain') {
+      var fields = [['DOMAIN', wh.domain_name], ['REGISTRAR', wh.registrar],
+        ['REGISTERED', (wh.registration_date||'').split('T')[0]], ['EXPIRES', (wh.expiration_date||'').split('T')[0]],
+        ['UPDATED', (wh.last_updated||'').split('T')[0]]];
+      fields.forEach(function(f) { if (f[1]) wc += '<div class="whois-item"><div class="wl">' + f[0] + '</div><div class="wv">' + f[1] + '</div></div>'; });
+      if (wh.days_until_expiry !== null && wh.days_until_expiry !== undefined) {
+        var expCol = wh.days_until_expiry > 90 ? 'var(--green)' : wh.days_until_expiry >= 30 ? 'var(--yellow)' : 'var(--red)';
+        wc += '<div class="whois-item"><div class="wl">EXPIRES IN</div><div class="wv" style="color:' + expCol + '">' + wh.days_until_expiry + ' days</div></div>';
+      }
+      if (wh.privacy_protected) wc += '<div class="whois-item"><div class="wl">PRIVACY</div><div class="wv" style="color:var(--purple)">Protected</div></div>';
+      wc += '</div>';
+      var ns = wh.name_servers || [];
+      if (ns.length) {
+        wc += '<div style="margin-top:12px;font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">NAME SERVERS</div>';
+        ns.forEach(function(n) { wc += '<span class="tag tag-ip">' + n + '</span>'; });
+      }
+    } else {
+      var fields = [['ASN', wh.asn], ['REGISTRY', wh.asn_registry], ['COUNTRY', wh.asn_country_code], ['DESCRIPTION', wh.asn_description]];
+      fields.forEach(function(f) { if (f[1]) wc += '<div class="whois-item"><div class="wl">' + f[0] + '</div><div class="wv">' + f[1] + '</div></div>'; });
+      if (wh.network && wh.network.cidr) wc += '<div class="whois-item"><div class="wl">NETWORK</div><div class="wv">' + wh.network.cidr + '</div></div>';
+      wc += '</div>';
+    }
+    wEl.innerHTML = wc;
+  } else {
+    wEl.innerHTML = '<span style="color:var(--silver);font-size:12px">No WHOIS data</span>';
+  }
+
+  // Data sources
+  var sources = data.data_sources || [];
+  var srcEl = document.getElementById('secSources');
+  if (sources.length) {
+    var sh = '<div>';
+    sources.forEach(function(src) {
+      var detail = '';
+      if (src.emails) detail += src.emails + ' emails ';
+      if (src.subdomains) detail += src.subdomains + ' subdomains ';
+      if (src.records) detail += src.records + ' records ';
+      sh += '<span class="tag" style="border-color:var(--purple);color:var(--purple)">' + src.source + (detail ? ' <span style="color:var(--silver);font-size:10px">(' + detail.trim() + ')</span>' : '') + '</span>';
+    });
+    sh += '</div>';
+    srcEl.innerHTML = sh;
+  } else {
+    srcEl.innerHTML = '<span style="color:var(--silver);font-size:12px">No sources</span>';
+  }
+}
+
+document.getElementById('target').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') launchOsint();
+});
+</script>
+</body>
+</html>

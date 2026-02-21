@@ -32,8 +32,8 @@ RUN curl -L "https://github.com/OJ/gobuster/releases/latest/download/gobuster_Li
 RUN git clone --depth 1 https://github.com/urbanadventurer/WhatWeb.git /opt/whatweb && \
     ln -s /opt/whatweb/whatweb /usr/local/bin/whatweb && \
     chmod +x /opt/whatweb/whatweb
-# theHarvester
-RUN pip install --no-cache-dir theHarvester
+# theHarvester (4.6.0 supports Python 3.11; latest requires 3.12+)
+RUN pip install --no-cache-dir git+https://github.com/laramies/theHarvester.git@4.6.0
 # testssl
 RUN git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl
 ENV TESTSSL_PATH=/opt/testssl/testssl.sh
@@ -51,20 +51,16 @@ RUN git clone --depth 1 https://github.com/cddmp/enum4linux-ng.git /opt/enum4lin
     ln -s /opt/enum4linux-ng/enum4linux-ng.py /usr/local/bin/enum4linux-ng && \
     chmod +x /opt/enum4linux-ng/enum4linux-ng.py
 # dnsrecon
-RUN pip install dnsrecon --break-system-packages || \
-    git clone https://github.com/darkoperator/dnsrecon.git /opt/dnsrecon && \
-    pip install -r /opt/dnsrecon/requirements.txt && \
-    ln -s /opt/dnsrecon/dnsrecon.py /usr/local/bin/dnsrecon && \
-    chmod +x /opt/dnsrecon/dnsrecon.py
+RUN pip install dnsrecon
 # amass
-RUN AMASS_VERSION=$(curl -s https://api.github.com/repos/owasp-amass/amass/releases/latest \
-    | grep tag_name | cut -d'"' -f4) && \
-    curl -L "https://github.com/owasp-amass/amass/releases/latest/download/amass_Linux_amd64.zip" \
-    -o /tmp/amass.zip && \
-    unzip /tmp/amass.zip -d /tmp/amass && \
-    mv /tmp/amass/amass_Linux_amd64/amass /usr/local/bin/amass && \
+RUN curl -L "https://github.com/owasp-amass/amass/releases/latest/download/amass_linux_amd64.tar.gz" \
+    -o /tmp/amass.tar.gz && \
+    tar xzf /tmp/amass.tar.gz -C /tmp && \
+    mv /tmp/amass_linux_amd64/amass /usr/local/bin/amass && \
     chmod +x /usr/local/bin/amass && \
-    rm -rf /tmp/amass /tmp/amass.zip
+    rm -rf /tmp/amass.tar.gz /tmp/amass_linux_amd64
+# wpscan
+RUN gem install wpscan --no-document
 # wordlist
 RUN mkdir -p /usr/share/wordlists/dirb && \
     curl -L https://raw.githubusercontent.com/v0re/dirb/master/wordlists/common.txt \

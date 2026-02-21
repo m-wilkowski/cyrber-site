@@ -128,6 +128,36 @@ def _nikto_html(nikto: dict) -> str:
         <tbody>{rows}</tbody>
     </table>{extra}"""
 
+def _whatweb_html(whatweb: dict) -> str:
+    if not whatweb:
+        return "<p class='muted'>Brak danych WhatWeb.</p>"
+    plugins = whatweb.get("plugins", whatweb.get("technologies", []))
+    raw = whatweb.get("raw", "")
+    if not plugins and not raw:
+        return "<p class='muted'>Brak danych WhatWeb.</p>"
+    html = ""
+    if plugins:
+        tags = ""
+        for p in plugins[:30]:
+            name = p if isinstance(p, str) else (p.get("name", "") or p.get("plugin", ""))
+            ver = p.get("version", "") if isinstance(p, dict) else ""
+            if name:
+                ver_html = f' <span style="color:#4a8fd4">{ver}</span>' if ver else ''
+                tags += f"<span style='font-size:11px;border:1px solid rgba(74,143,212,.3);padding:2px 8px;margin:2px;color:#e8f0fc'>{name}{ver_html}</span>"
+        html += f"<div style='display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px'>{tags}</div>"
+    elif raw:
+        lines = [l.strip() for l in raw.split("\n") if l.strip()]
+        tags = " ".join(f"<span style='font-size:10px;border:1px solid rgba(74,143,212,.3);padding:2px 8px;margin:2px;color:#e8f0fc'>{l[:80]}</span>" for l in lines[:20])
+        html += f"<div style='display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px'>{tags}</div>"
+    grid = ""
+    for label, key in [("TARGET", "target"), ("HTTP STATUS", "http_status"), ("TITLE", "title"), ("COUNTRY", "country"), ("IP", "ip")]:
+        val = whatweb.get(key, "") or whatweb.get(key.replace("http_", ""), "")
+        if val:
+            grid += f"<div><span class='muted'>{label}</span><br><span style='color:#e8f0fc'>{val}</span></div>"
+    if grid:
+        html += f"<div style='display:flex;flex-wrap:wrap;gap:16px'>{grid}</div>"
+    return html if html else "<p class='muted'>Brak danych WhatWeb.</p>"
+
 def _nuclei_html(nuclei: dict) -> str:
     findings = nuclei.get("findings", []) if isinstance(nuclei, dict) else []
     if not findings:
@@ -399,6 +429,128 @@ def _amass_html(amass: dict) -> str:
         html += f"<div class='muted' style='margin:10px 0 4px'>IP ADDRESSES ({len(ips)})</div><div>{ips_html}{extra}</div>"
     return html
 
+def _cwe_html(cwe: dict) -> str:
+    cwes = cwe.get("cwes", [])
+    if not cwes:
+        return "<p class='muted'>Brak mapowań CWE.</p>"
+    lik_color = {"High": "#ff4444", "Medium": "#f5c518", "Low": "#8a9bb5"}
+    badges = ""
+    for level in ["High", "Medium", "Low"]:
+        cnt = cwe.get(f"{level.lower()}_count", 0)
+        if cnt:
+            badges += f"<span style='color:{lik_color[level]};font-size:10px;border:1px solid {lik_color[level]};padding:2px 8px;margin-right:6px'>{level.upper()}: {cnt}</span>"
+    rows = ""
+    for c in cwes[:30]:
+        color = lik_color.get(c.get("likelihood", "Medium"), "#8a9bb5")
+        desc = (c.get("description", "") or "")[:100]
+        rows += f"<tr><td class='mono'><a href='{c.get('url','')}' style='color:#4a8fd4'>{c.get('cwe_id','')}</a></td><td>{c.get('name','')}</td><td>{c.get('category','')}</td><td style='color:{color}'>{c.get('likelihood','').upper()}</td><td style='font-size:10px'>{desc}</td></tr>"
+    return f"""<div style='margin-bottom:10px'>{badges}</div>
+    <table>
+        <thead><tr><th>CWE ID</th><th>NAME</th><th>CATEGORY</th><th>LIKELIHOOD</th><th>DESCRIPTION</th></tr></thead>
+        <tbody>{rows}</tbody>
+    </table>"""
+
+def _owasp_html(owasp: dict) -> str:
+    categories = owasp.get("categories", [])
+    if not categories:
+        return "<p class='muted'>Brak mapowań OWASP.</p>"
+    risk_color = {"Critical": "#ff4444", "High": "#ff8c00", "Medium": "#f5c518", "None": "#8a9bb5"}
+    html = f"<div style='margin-bottom:10px'><span class='muted'>DETECTED:</span> <span style='font-size:14px;font-weight:700;color:#e8f0fc'>{owasp.get('detected_count',0)} / {owasp.get('total',10)}</span></div>"
+    for cat in categories:
+        det = cat.get("detected", False)
+        color = risk_color.get(cat.get("risk_level", "None"), "#8a9bb5")
+        opacity = "1" if det else "0.45"
+        badge = f"<span style='color:{color};font-size:10px;border:1px solid {color};padding:2px 8px'>{cat['risk_level'].upper()}</span>" if det else "<span style='color:#8a9bb5;font-size:10px;border:1px solid #8a9bb5;padding:2px 8px'>NOT DETECTED</span>"
+        triggers = ""
+        if det and cat.get("triggered_by"):
+            triggers = "<br>" + " ".join(f"<span style='font-size:9px;color:#7ab3e8;border:1px solid rgba(74,143,212,.2);padding:1px 6px;margin:1px'>{t}</span>" for t in cat["triggered_by"][:5])
+        html += f"<div style='border:1px solid rgba(74,143,212,{0.2 if det else 0.08});padding:10px;margin-bottom:6px;opacity:{opacity}'><span style='font-size:12px;color:{'#e8f0fc' if det else '#8a9bb5'}'><b>{cat['id']}</b> — {cat['name']}</span> {badge}{triggers}</div>"
+    return html
+
+def _wpscan_html(wpscan: dict) -> str:
+    if not wpscan or wpscan.get("skipped"):
+        return "<p class='muted'>WordPress not detected or WPScan skipped.</p>"
+    html = ""
+    # Version info
+    wpv = wpscan.get("wordpress_version", {})
+    ver = wpv.get("version", "unknown")
+    status = wpv.get("status", "unknown")
+    ver_color = {"latest": "#3ddc84", "outdated": "#ff4444"}.get(status, "#f5c518")
+    html += f"<div style='margin-bottom:12px'><span style='font-size:16px;font-weight:700;color:#e8f0fc'>WordPress {ver}</span> "
+    html += f"<span style='color:{ver_color};font-size:10px;border:1px solid {ver_color};padding:2px 8px'>{status.upper()}</span></div>"
+    # Stats
+    html += f"<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    vuln_count = wpscan.get("vulnerabilities_count", 0)
+    vuln_col = "#ff4444" if vuln_count else "#3ddc84"
+    html += f"<div><span class='muted'>VULNERABILITIES</span><br><span style='font-size:18px;font-weight:700;color:{vuln_col}'>{vuln_count}</span></div>"
+    html += f"<div><span class='muted'>PLUGINS</span><br><span style='font-size:18px;font-weight:700;color:#e8f0fc'>{wpscan.get('plugins_count', 0)}</span></div>"
+    html += f"<div><span class='muted'>THEMES</span><br><span style='font-size:18px;font-weight:700;color:#e8f0fc'>{wpscan.get('themes_count', 0)}</span></div>"
+    html += f"<div><span class='muted'>USERS</span><br><span style='font-size:18px;font-weight:700;color:#e8f0fc'>{wpscan.get('users_count', 0)}</span></div>"
+    html += "</div>"
+    # Plugins
+    plugins = wpscan.get("plugins", [])
+    if plugins:
+        rows = ""
+        for p in plugins[:20]:
+            vulns = p.get("vulnerabilities", [])
+            v_col = "#ff4444" if vulns else "#3ddc84"
+            v_text = f"{len(vulns)} VULN" if vulns else "CLEAN"
+            vuln_detail = ""
+            for v in vulns[:3]:
+                fixed = f" (fixed in {v['fixed_in']})" if v.get("fixed_in") else ""
+                vuln_detail += f"<br><span style='font-size:9px;color:#8a9bb5'>{v.get('title','')}{fixed}</span>"
+            rows += f"<tr><td>{p['name']}</td><td class='mono'>{p.get('version','?')}</td><td style='color:{v_col}'>{v_text}{vuln_detail}</td></tr>"
+        html += f"<div class='muted' style='margin-bottom:4px'>PLUGINS ({len(plugins)})</div>"
+        html += f"<table><thead><tr><th>PLUGIN</th><th>VERSION</th><th>VULNERABILITIES</th></tr></thead><tbody>{rows}</tbody></table>"
+    # Users
+    users = wpscan.get("users", [])
+    if users:
+        users_html = " ".join(f"<span class='mono' style='font-size:10px;color:#f5c518;border:1px solid #f5c518;padding:1px 6px'>{u['username']}</span>" for u in users[:20])
+        html += f"<div style='margin:10px 0;border:1px solid #f5c518;background:rgba(245,197,24,.08);padding:8px 12px;font-size:11px;color:#f5c518'>⚠ {len(users)} users enumerated</div>"
+        html += f"<div>{users_html}</div>"
+    # Interesting findings
+    findings = wpscan.get("interesting_findings", [])
+    if findings:
+        html += f"<div class='muted' style='margin:10px 0 4px'>INTERESTING FINDINGS ({len(findings)})</div>"
+        for f in findings[:10]:
+            html += f"<div style='font-size:10px;border:1px solid rgba(74,143,212,.15);padding:6px 10px;margin-bottom:4px'>"
+            html += f"<span class='mono' style='color:#4a8fd4'>{f.get('type','')}</span> "
+            if f.get("url"):
+                html += f"<span style='color:#7ab3e8'>{f['url']}</span> "
+            if f.get("description"):
+                html += f"<span style='color:#8a9bb5'>{f['description'][:100]}</span>"
+            html += "</div>"
+    return html or "<p class='muted'>Brak danych WPScan.</p>"
+
+def _zap_html(zap: dict) -> str:
+    alerts = zap.get("alerts", [])
+    if not alerts:
+        return "<p class='muted'>Brak wyników OWASP ZAP.</p>"
+    summary = zap.get("summary", {})
+    risk_color = {"High": "#ff4444", "Medium": "#ff8c00", "Low": "#f5c518", "Informational": "#8a9bb5"}
+    badges = ""
+    for level in ["High", "Medium", "Low", "Informational"]:
+        cnt = summary.get(level.lower(), 0)
+        if cnt:
+            label = "INFO" if level == "Informational" else level.upper()
+            badges += f"<span style='color:{risk_color[level]};font-size:10px;border:1px solid {risk_color[level]};padding:2px 8px;margin-right:6px'>{label}: {cnt}</span>"
+    spider = zap.get("spider_urls_found", 0)
+    spider_html = f"<div class='muted' style='margin:6px 0'>Spider crawled {spider} URLs</div>" if spider else ""
+    rows = ""
+    for a in alerts[:30]:
+        color = risk_color.get(a.get("risk", "Informational"), "#8a9bb5")
+        url = (a.get("url", "") or "")[:80]
+        cwe = a.get("cweid", "")
+        cwe_html = f"<a href='https://cwe.mitre.org/data/definitions/{cwe}.html' style='color:#4a8fd4'>CWE-{cwe}</a>" if cwe and cwe != "0" else ""
+        rows += f"<tr><td style='color:{color};font-weight:700'>{a.get('risk','').upper()}</td><td>{a.get('alert_name','')}</td><td class='mono' style='font-size:10px'>{url}</td><td>{a.get('confidence','')}</td><td>{cwe_html}</td></tr>"
+    extra = f"<p class='muted'>... i {len(alerts)-30} więcej</p>" if len(alerts) > 30 else ""
+    return f"""<div style='margin-bottom:10px'>{badges}</div>
+    {spider_html}
+    <table>
+        <thead><tr><th>RISK</th><th>ALERT</th><th>URL</th><th>CONFIDENCE</th><th>CWE</th></tr></thead>
+        <tbody>{rows}</tbody>
+    </table>{extra}"""
+
 def _mitre_html(mitre: dict) -> str:
     techniques = mitre.get("techniques", [])
     if not techniques:
@@ -430,6 +582,7 @@ def generate_report(scan_data: dict) -> bytes:
     recommendations = analysis.get("recommendations", scan_data.get("recommendations", ""))
     completed_at = scan_data.get("completed_at", datetime.utcnow().isoformat())
     ports = scan_data.get("ports", [])
+    whatweb = scan_data.get("whatweb", {})
     gobuster = scan_data.get("gobuster", {})
     testssl = scan_data.get("testssl", {})
     sqlmap = scan_data.get("sqlmap", {})
@@ -450,6 +603,10 @@ def generate_report(scan_data: dict) -> bytes:
     mitre = scan_data.get("mitre", {})
     dnsrecon = scan_data.get("dnsrecon", {})
     amass = scan_data.get("amass", {})
+    cwe = scan_data.get("cwe", {})
+    owasp = scan_data.get("owasp", {})
+    wpscan = scan_data.get("wpscan", {})
+    zap = scan_data.get("zap", {})
 
     color = _risk_color(risk)
 
@@ -587,6 +744,16 @@ def generate_report(scan_data: dict) -> bytes:
 </div>
 
 <div class="section">
+  <div class="section-title">// WHATWEB — TECHNOLOGIES</div>
+  {_whatweb_html(whatweb)}
+</div>
+
+<div class="section">
+  <div class="section-title">// WPSCAN — WORDPRESS SECURITY</div>
+  {_wpscan_html(wpscan)}
+</div>
+
+<div class="section">
   <div class="section-title">// SQL INJECTION (SQLMAP)</div>
   {_sqlmap_html(sqlmap)}
 </div>
@@ -659,6 +826,21 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// NVD — CVE DETAILS ({len(nvd.get('cves', []))})</div>
   {_nvd_html(nvd)}
+</div>
+
+<div class="section">
+  <div class="section-title">// CWE — COMMON WEAKNESS ENUMERATION ({len(cwe.get('cwes', []))} weaknesses)</div>
+  {_cwe_html(cwe)}
+</div>
+
+<div class="section">
+  <div class="section-title">// OWASP TOP 10 2021 ({owasp.get('detected_count', 0)}/10 detected)</div>
+  {_owasp_html(owasp)}
+</div>
+
+<div class="section">
+  <div class="section-title">// OWASP ZAP — DYNAMIC ANALYSIS ({zap.get('summary', {}).get('total', 0)} alerts)</div>
+  {_zap_html(zap)}
 </div>
 
 <div class="section">
