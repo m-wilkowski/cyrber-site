@@ -85,6 +85,11 @@ RUN git clone --depth 1 https://github.com/OWASP/joomscan.git /opt/joomscan && \
     chmod +x /opt/joomscan/joomscan.pl && \
     apt-get update && apt-get install -y libwww-perl && rm -rf /var/lib/apt/lists/* && \
     ln -s /opt/joomscan/joomscan.pl /usr/local/bin/joomscan
+# cmsmap (multi-CMS vulnerability scanner)
+RUN git clone --depth 1 https://github.com/Dionach/CMSmap.git /opt/cmsmap && \
+    pip install -r /opt/cmsmap/requirements.txt --break-system-packages && \
+    ln -s /opt/cmsmap/cmsmap.py /usr/local/bin/cmsmap && \
+    chmod +x /opt/cmsmap/cmsmap.py
 # wordlist
 RUN mkdir -p /usr/share/wordlists/dirb && \
     curl -L https://raw.githubusercontent.com/v0re/dirb/master/wordlists/common.txt \

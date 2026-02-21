@@ -522,6 +522,73 @@ def _wpscan_html(wpscan: dict) -> str:
             html += "</div>"
     return html or "<p class='muted'>Brak danych WPScan.</p>"
 
+def _cmsmap_html(cmsmap: dict) -> str:
+    if not cmsmap or cmsmap.get("skipped"):
+        return "<p class='muted'>No CMS detected or CMSmap skipped.</p>"
+    html = ""
+    # CMS detected badge
+    cms = cmsmap.get("cms_detected", "unknown")
+    cms_ver = cmsmap.get("cms_version", "")
+    cms_color = {"WordPress": "#21759b", "Joomla": "#f44321", "Drupal": "#0678be"}.get(cms, "#4a8fd4")
+    ver_str = f" {cms_ver}" if cms_ver else ""
+    html += f"<div style='margin-bottom:12px'><span style='font-size:10px;padding:4px 12px;border:1px solid {cms_color};color:{cms_color};background:rgba({",".join(str(int(cms_color[i:i+2],16)) for i in (1,3,5))},.12)'>{cms.upper()}{ver_str}</span></div>"
+    # Summary stats
+    summary = cmsmap.get("summary", {})
+    html += "<div style='display:flex;gap:24px;margin-bottom:12px'>"
+    total = summary.get("total_vulns", 0)
+    total_col = "#ff4444" if total else "#3ddc84"
+    html += f"<div><span class='muted'>VULNERABILITIES</span><br><span style='font-size:18px;font-weight:700;color:{total_col}'>{total}</span></div>"
+    for lbl, key, color in [("HIGH", "high", "#ff4444"), ("MEDIUM", "medium", "#f5c518"), ("LOW", "low", "#3ddc84")]:
+        cnt = summary.get(key, 0)
+        if cnt:
+            html += f"<div><span class='muted'>{lbl}</span><br><span style='font-size:18px;font-weight:700;color:{color}'>{cnt}</span></div>"
+    html += "</div>"
+    # Users alert
+    users = cmsmap.get("users", [])
+    if users:
+        users_tags = " ".join(f"<span class='mono' style='font-size:10px;color:#f5c518;border:1px solid #f5c518;padding:1px 6px'>{u}</span>" for u in users[:20])
+        html += f"<div style='border:1px solid #f5c518;background:rgba(245,197,24,.08);padding:8px 12px;margin-bottom:12px;font-size:11px;color:#f5c518'>&#9888; {len(users)} users enumerated: {users_tags}</div>"
+    # Vulnerabilities table
+    vulns = cmsmap.get("vulnerabilities", [])
+    if vulns:
+        sev_color = {"High": "#ff4444", "Medium": "#f5c518", "Low": "#3ddc84"}
+        rows = ""
+        for v in vulns[:25]:
+            color = sev_color.get(v.get("severity", "Medium"), "#f5c518")
+            cve = v.get("cve", "")
+            cve_html = ""
+            if cve:
+                for c in cve.split(", "):
+                    cve_html += f"<a href='https://nvd.nist.gov/vuln/detail/{c}' style='color:#4a8fd4;font-size:10px'>{c}</a> "
+            rows += f"<tr><td style='color:{color};font-weight:700'>{v.get('severity','').upper()}</td><td>{v.get('title','')}</td><td>{cve_html}</td><td style='font-size:10px'>{v.get('description','')}</td></tr>"
+        extra = f"<p class='muted'>... i {len(vulns)-25} więcej</p>" if len(vulns) > 25 else ""
+        html += f"""<div class='muted' style='margin-bottom:4px'>VULNERABILITIES ({len(vulns)})</div>
+        <table>
+            <thead><tr><th>SEVERITY</th><th>TITLE</th><th>CVE</th><th>DESCRIPTION</th></tr></thead>
+            <tbody>{rows}</tbody>
+        </table>{extra}"""
+    # Plugins table
+    plugins = cmsmap.get("plugins", [])
+    if plugins:
+        rows = ""
+        for p in plugins[:20]:
+            v_col = "#ff4444" if p.get("vulnerable") else "#3ddc84"
+            v_text = "VULNERABLE" if p.get("vulnerable") else "OK"
+            rows += f"<tr><td>{p.get('name','')}</td><td class='mono'>{p.get('version','?')}</td><td style='color:{v_col}'>{v_text}</td></tr>"
+        html += f"<div class='muted' style='margin:10px 0 4px'>PLUGINS ({len(plugins)})</div>"
+        html += f"<table><thead><tr><th>PLUGIN</th><th>VERSION</th><th>STATUS</th></tr></thead><tbody>{rows}</tbody></table>"
+    # Themes table
+    themes = cmsmap.get("themes", [])
+    if themes:
+        rows = ""
+        for t in themes[:10]:
+            v_col = "#ff4444" if t.get("vulnerable") else "#3ddc84"
+            v_text = "VULNERABLE" if t.get("vulnerable") else "OK"
+            rows += f"<tr><td>{t.get('name','')}</td><td class='mono'>{t.get('version','?')}</td><td style='color:{v_col}'>{v_text}</td></tr>"
+        html += f"<div class='muted' style='margin:10px 0 4px'>THEMES ({len(themes)})</div>"
+        html += f"<table><thead><tr><th>THEME</th><th>VERSION</th><th>STATUS</th></tr></thead><tbody>{rows}</tbody></table>"
+    return html or "<p class='muted'>Brak danych CMSmap.</p>"
+
 def _joomscan_html(joomscan: dict) -> str:
     if not joomscan or joomscan.get("skipped"):
         return "<p class='muted'>Joomla not detected or Joomscan skipped.</p>"
@@ -693,6 +760,7 @@ def generate_report(scan_data: dict) -> bytes:
     zap = scan_data.get("zap", {})
     wapiti = scan_data.get("wapiti", {})
     joomscan = scan_data.get("joomscan", {})
+    cmsmap = scan_data.get("cmsmap", {})
 
     color = _risk_color(risk)
 
@@ -937,6 +1005,11 @@ def generate_report(scan_data: dict) -> bytes:
 <div class="section">
   <div class="section-title">// JOOMSCAN — JOOMLA SECURITY ({joomscan.get('summary', {}).get('total_vulns', 0)} vulnerabilities)</div>
   {_joomscan_html(joomscan)}
+</div>
+
+<div class="section">
+  <div class="section-title">// CMSMAP — CMS SCANNER ({cmsmap.get('cms_detected', 'N/A')} · {cmsmap.get('summary', {}).get('total_vulns', 0)} vulnerabilities)</div>
+  {_cmsmap_html(cmsmap)}
 </div>
 
 <div class="section">

@@ -2194,6 +2194,89 @@ function renderExtended(res) {
     h+=mkSec('// JOOMSCAN — JOOMLA SECURITY ('+jvCnt+' vulns, '+(joomSum.components_count||0)+' components)',jc,false);
   }
 
+  // CMSMAP
+  var cmsmap=res.cmsmap||{};
+  if(cmsmap.cms_detected&&cmsmap.cms_detected!=='unknown'){
+    var cc='';
+    // CMS badge
+    var cmsColMap={WordPress:'#21759b',Joomla:'#f44321',Drupal:'#0678be'};
+    var cmsBg={WordPress:'rgba(33,117,155,.12)',Joomla:'rgba(244,67,33,.12)',Drupal:'rgba(6,120,190,.12)'};
+    var cmsCol=cmsColMap[cmsmap.cms_detected]||'var(--accent)';
+    var cmsBgC=cmsBg[cmsmap.cms_detected]||'rgba(74,143,212,.08)';
+    var cmsVerStr=cmsmap.cms_version?' '+cmsmap.cms_version:'';
+    cc+='<div style="margin-bottom:12px"><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:4px 12px;border:1px solid '+cmsCol+';color:'+cmsCol+';background:'+cmsBgC+'">'+cmsmap.cms_detected.toUpperCase()+cmsVerStr+'</span></div>';
+    // Summary stats
+    var cmsSm=cmsmap.summary||{};
+    cc+='<div style="display:flex;gap:24px;margin-bottom:12px">';
+    var cmsTot=cmsSm.total_vulns||0;
+    var cmsTotCol=cmsTot?'var(--red)':'var(--green)';
+    cc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">VULNERABILITIES</span><br><span style="font-size:18px;font-weight:700;color:'+cmsTotCol+'">'+cmsTot+'</span></div>';
+    if(cmsSm.high) cc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">HIGH</span><br><span style="font-size:18px;font-weight:700;color:var(--red)">'+cmsSm.high+'</span></div>';
+    if(cmsSm.medium) cc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">MEDIUM</span><br><span style="font-size:18px;font-weight:700;color:var(--yellow)">'+cmsSm.medium+'</span></div>';
+    if(cmsSm.low) cc+='<div><span style="color:var(--silver);font-size:10px;letter-spacing:.15em">LOW</span><br><span style="font-size:18px;font-weight:700;color:var(--green)">'+cmsSm.low+'</span></div>';
+    cc+='</div>';
+    // Users alert
+    var cmsUsers=cmsmap.users||[];
+    if(cmsUsers.length){
+      var usrTags='';
+      cmsUsers.forEach(function(u){usrTags+='<span class="mono" style="font-size:10px;color:var(--yellow);border:1px solid var(--yellow);padding:1px 6px">'+u+'</span> ';});
+      cc+='<div style="border:1px solid var(--yellow);background:rgba(245,197,24,.08);padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--yellow)">&#9888; '+cmsUsers.length+' users enumerated: '+usrTags+'</div>';
+    }
+    // Vulnerabilities table
+    var cmsVulns=cmsmap.vulnerabilities||[];
+    if(cmsVulns.length){
+      var cmsSevCol={High:'var(--red)',Medium:'var(--yellow)',Low:'var(--green)'};
+      var cmsSevBg={High:'rgba(255,68,68,.10)',Medium:'rgba(245,197,24,.08)',Low:'rgba(61,220,132,.08)'};
+      cc+='<div style="color:var(--silver);font-size:10px;letter-spacing:.15em;margin-bottom:4px">VULNERABILITIES ('+cmsVulns.length+')</div>';
+      cc+='<table class="dt"><thead><tr><th>SEVERITY</th><th>TITLE</th><th>CVE</th><th>DESCRIPTION</th></tr></thead><tbody>';
+      var _cmsSmId=cmsVulns.length>25?'sm'+(++_smC):'';
+      cmsVulns.forEach(function(v,idx){
+        if(idx===25&&_cmsSmId) cc+='</tbody><tbody id="'+_cmsSmId+'" style="display:none">';
+        var sc=cmsSevCol[v.severity]||'var(--silver)';
+        var sb=cmsSevBg[v.severity]||'transparent';
+        var cveHtml='';
+        if(v.cve){
+          v.cve.split(', ').forEach(function(c){
+            cveHtml+='<a href="https://nvd.nist.gov/vuln/detail/'+c+'" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--border);font-size:10px">'+c+'</a> ';
+          });
+        }
+        cc+='<tr>';
+        cc+='<td><span style="font-family:Share Tech Mono,monospace;font-size:10px;padding:2px 8px;border:1px solid '+sc+';color:'+sc+';background:'+sb+'">'+(v.severity||'').toUpperCase()+'</span></td>';
+        cc+='<td>'+v.title+'</td>';
+        cc+='<td>'+cveHtml+'</td>';
+        cc+='<td style="font-size:10px">'+(v.description||'')+'</td>';
+        cc+='</tr>';
+      });
+      if(_cmsSmId) cc+='</tbody><tbody><tr><td colspan="4" style="text-align:center;padding:10px"><button class="show-more-btn" onclick="showAll(\''+_cmsSmId+'\',this)">SHOW ALL '+cmsVulns.length+' VULNS &#9660;</button></td></tr>';
+      cc+='</tbody></table>';
+    }
+    // Plugins table
+    var cmsPlugins=cmsmap.plugins||[];
+    if(cmsPlugins.length){
+      cc+='<div style="color:var(--silver);font-size:10px;letter-spacing:.15em;margin:10px 0 4px">PLUGINS ('+cmsPlugins.length+')</div>';
+      cc+='<table class="dt"><thead><tr><th>PLUGIN</th><th>VERSION</th><th>STATUS</th></tr></thead><tbody>';
+      cmsPlugins.forEach(function(p){
+        var pCol=p.vulnerable?'var(--red)':'var(--green)';
+        var pTxt=p.vulnerable?'VULNERABLE':'OK';
+        cc+='<tr><td>'+p.name+'</td><td class="mono">'+(p.version||'?')+'</td><td style="color:'+pCol+'">'+pTxt+'</td></tr>';
+      });
+      cc+='</tbody></table>';
+    }
+    // Themes table
+    var cmsThemes=cmsmap.themes||[];
+    if(cmsThemes.length){
+      cc+='<div style="color:var(--silver);font-size:10px;letter-spacing:.15em;margin:10px 0 4px">THEMES ('+cmsThemes.length+')</div>';
+      cc+='<table class="dt"><thead><tr><th>THEME</th><th>VERSION</th><th>STATUS</th></tr></thead><tbody>';
+      cmsThemes.forEach(function(t){
+        var tCol=t.vulnerable?'var(--red)':'var(--green)';
+        var tTxt=t.vulnerable?'VULNERABLE':'OK';
+        cc+='<tr><td>'+t.name+'</td><td class="mono">'+(t.version||'?')+'</td><td style="color:'+tCol+'">'+tTxt+'</td></tr>';
+      });
+      cc+='</tbody></table>';
+    }
+    h+=mkSec('// CMSMAP — CMS SCANNER ('+cmsmap.cms_detected+cmsVerStr+', '+cmsTot+' vulns)',cc,false);
+  }
+
   // MITRE ATT&CK
   var mitre=res.mitre||{};
   var mtechs=mitre.techniques||[];
@@ -2295,7 +2378,7 @@ function loadScanDetail(taskId) {
       enum4linux:s.enum4linux||null, abuseipdb:s.abuseipdb||null,
       otx:s.otx||null, exploitdb:s.exploitdb||null,
       nvd:s.nvd||null, whois:s.whois||null, dnsrecon:s.dnsrecon||null, amass:s.amass||null, wpscan:s.wpscan||null,
-      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, mitre:s.mitre||null,
+      cwe:s.cwe||null, owasp:s.owasp||null, zap:s.zap||null, wapiti:s.wapiti||null, joomscan:s.joomscan||null, cmsmap:s.cmsmap||null, mitre:s.mitre||null,
       fp_filter:s.fp_filter||null,
       exploit_chains:chainsData.exploit_chains||chainsData||{},
       hacker_narrative:narrData.hacker_narrative||narrData||{}
@@ -2540,7 +2623,7 @@ function viewMultiResult(taskId) {
         findings_count: scan.findings_count
       };
       // Copy extended data
-      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
+      ['ports','nuclei','gobuster','whatweb','testssl','sqlmap','nikto','harvester','masscan','ipinfo','enum4linux','abuseipdb','otx','exploitdb','nvd','whois','dnsrecon','amass','cwe','owasp','wpscan','zap','wapiti','joomscan','cmsmap','exploit_chains','hacker_narrative','fp_filter','mitre'].forEach(function(k) {
         if (scan[k]) fakeResult[k] = scan[k];
       });
       window._lastTaskId = taskId;

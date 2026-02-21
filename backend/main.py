@@ -330,6 +330,7 @@ from modules.wpscan_scan import wpscan_scan
 from modules.zap_scan import zap_scan
 from modules.wapiti_scan import wapiti_scan
 from modules.joomscan_scan import joomscan_scan
+from modules.cmsmap_scan import cmsmap_scan
 
 @app.get("/scan/wpscan")
 async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_user)):
@@ -346,6 +347,10 @@ async def run_wapiti(target: str = Query(...), user: str = Depends(get_current_u
 @app.get("/scan/joomscan")
 async def run_joomscan(target: str = Query(...), user: str = Depends(get_current_user)):
     return joomscan_scan(target)
+
+@app.get("/scan/cmsmap")
+async def run_cmsmap(target: str = Query(...), user: str = Depends(get_current_user)):
+    return cmsmap_scan(target)
 
 from modules.tasks import osint_scan_task
 from modules.database import get_osint_history, get_osint_by_task_id
