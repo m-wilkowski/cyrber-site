@@ -8,5 +8,6 @@ tasks:
   false_positive_filter: "claude-haiku-4-5-20251001"  # Proste - najtańszy
   llm_analyze: "claude-haiku-4-5-20251001"            # Proste - najtańszy
   agent: "claude-sonnet-4-20250514"                   # Agent - balans
+  phishing_email: "claude-sonnet-4-20250514"           # Generowanie emaili phishingowych
 
 default: "claude-sonnet-4-20250514"

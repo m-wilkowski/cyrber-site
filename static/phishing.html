@@ -329,6 +329,193 @@
     footer { font-size: 8px; }
     .stat-val { font-size: 22px; }
   }
+
+  /* ── WIZARD ── */
+  .wiz-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .wiz-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    opacity: .45;
+    transition: opacity .2s;
+  }
+  .wiz-step.active { opacity: 1; }
+  .wiz-step.done { opacity: .75; }
+  .wiz-step-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--silver);
+    transition: all .2s;
+  }
+  .wiz-step.active .wiz-step-dot {
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(74,143,212,.6);
+  }
+  .wiz-step.done .wiz-step-dot {
+    background: var(--green);
+  }
+  .wiz-step-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .12em;
+    color: var(--silver);
+  }
+  .wiz-step.active .wiz-step-label { color: var(--accent); }
+  .wiz-step.done .wiz-step-label { color: var(--green); }
+  .wiz-step-line {
+    width: 20px; height: 1px;
+    background: var(--border);
+    margin: 0 8px;
+  }
+
+  .wiz-panel { display: none; animation: fadeup .35s ease; }
+  .wiz-panel.on { display: block; }
+
+  .wiz-nav {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    justify-content: flex-end;
+  }
+
+  .recon-intel { margin-top: 16px; }
+  .recon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .recon-box {
+    background: var(--navy3);
+    border: 1px solid var(--border);
+    padding: 12px;
+  }
+  .recon-box-label {
+    font-size: 9px;
+    letter-spacing: .15em;
+    color: var(--silver);
+    margin-bottom: 6px;
+  }
+  .recon-box-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--white);
+    word-break: break-all;
+  }
+
+  .vector-cards {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .vector-card {
+    flex: 1;
+    min-width: 220px;
+    background: var(--navy3);
+    border: 2px solid var(--border);
+    padding: 20px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .vector-card:hover { border-color: var(--accent); }
+  .vector-card.selected {
+    border-color: var(--accent);
+    background: rgba(74,143,212,.08);
+    box-shadow: 0 0 16px rgba(74,143,212,.15);
+  }
+  .vector-card-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    margin-bottom: 8px;
+  }
+  .vector-card-desc {
+    font-size: 11px;
+    color: var(--silver);
+    line-height: 1.5;
+  }
+  .vector-card-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .status-dot.online { background: var(--green); box-shadow: 0 0 6px rgba(61,220,132,.5); }
+  .status-dot.offline { background: var(--red); }
+
+  .btn-ai {
+    border-color: var(--purple);
+    color: var(--purple);
+  }
+  .btn-ai:hover { background: rgba(155,89,182,.15); }
+  .btn-ai.loading {
+    pointer-events: none;
+    opacity: .7;
+  }
+  .btn-ai.loading::after {
+    content: '';
+    animation: aidots 1.2s infinite;
+  }
+  @keyframes aidots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+  }
+
+  .phishlet-select { display: none; margin-top: 12px; }
+  .phishlet-select.on { display: block; }
+
+  .review-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .review-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .review-table td:first-child {
+    font-size: 10px;
+    letter-spacing: .12em;
+    color: var(--silver);
+    width: 140px;
+    white-space: nowrap;
+  }
+  .review-table td:last-child {
+    color: var(--white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    word-break: break-all;
+  }
+
+  select {
+    background: var(--navy3);
+    border: 1px solid var(--border);
+    color: var(--white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    width: 100%;
+  }
+  select:focus { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -350,57 +537,179 @@
     <div class="page-title-main">PHISHING CAMPAIGNS</div>
   </div>
 
-  <!-- NEW CAMPAIGN -->
+  <!-- NEW CAMPAIGN — WIZARD -->
   <div class="card">
     <h2>// NOWA KAMPANIA</h2>
 
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="form-group">
-        <label>NAZWA KAMPANII</label>
-        <input type="text" id="campName" placeholder="Q1 2026 Awareness Test">
+    <!-- Step indicators -->
+    <div class="wiz-steps">
+      <div class="wiz-step active" data-step="1" onclick="wizGotoStep(1)">
+        <div class="wiz-step-dot"></div>
+        <div class="wiz-step-label">RECON DATA</div>
       </div>
-      <div class="form-group">
-        <label>DOMENA NADAWCY</label>
-        <input type="text" id="campDomain" placeholder="security-test.example.com">
+      <div class="wiz-step-line"></div>
+      <div class="wiz-step" data-step="2" onclick="wizGotoStep(2)">
+        <div class="wiz-step-dot"></div>
+        <div class="wiz-step-label">ATTACK VECTOR</div>
       </div>
-    </div>
-
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="form-group">
-        <label>SZABLON EMAILA (TEMAT)</label>
-        <input type="text" id="campSubject" placeholder="Pilne: Zresetuj hasło do konta firmowego">
+      <div class="wiz-step-line"></div>
+      <div class="wiz-step" data-step="3" onclick="wizGotoStep(3)">
+        <div class="wiz-step-dot"></div>
+        <div class="wiz-step-label">KAMPANIA</div>
       </div>
-    </div>
-
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="form-group">
-        <label>TREŚĆ EMAILA (HTML)</label>
-        <textarea id="campBody" placeholder="<p>Drogi pracowniku,</p><p>Wykryliśmy podejrzaną aktywność na Twoim koncie. Kliknij <a href='{{.URL}}'>tutaj</a> aby zweryfikować tożsamość.</p>"></textarea>
+      <div class="wiz-step-line"></div>
+      <div class="wiz-step" data-step="4" onclick="wizGotoStep(4)">
+        <div class="wiz-step-dot"></div>
+        <div class="wiz-step-label">REVIEW &amp; LAUNCH</div>
       </div>
     </div>
 
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="form-group">
-        <label>LANDING PAGE URL</label>
-        <input type="text" id="campLanding" placeholder="https://security-test.example.com/verify">
+    <!-- Step 1: RECON DATA -->
+    <div class="wiz-panel on" id="wizStep1">
+      <div class="form-group" style="margin-bottom:12px">
+        <label>WYBIERZ SKAN ROZPOZNAWCZY</label>
+        <select id="wizScanSelect">
+          <option value="">-- Brak (pomiń recon) --</option>
+        </select>
+      </div>
+      <div class="recon-intel" id="wizReconIntel" style="display:none">
+        <div class="recon-grid" id="reconGrid"></div>
+      </div>
+      <div class="wiz-nav">
+        <button class="btn" onclick="wizNext(1)">DALEJ &rarr;</button>
       </div>
     </div>
 
-    <div class="form-group" style="margin-bottom:12px">
-      <label>ODBIORCY (jeden email na linię)</label>
-      <textarea id="campTargets" placeholder="jan.kowalski@firma.pl&#10;anna.nowak@firma.pl&#10;piotr.wisniewski@firma.pl" style="min-height:100px"></textarea>
+    <!-- Step 2: ATTACK VECTOR -->
+    <div class="wiz-panel" id="wizStep2">
+      <div class="vector-cards">
+        <div class="vector-card selected" id="vecGophish" onclick="wizSelectVector('gophish')">
+          <div class="vector-card-title">GOPHISH</div>
+          <div class="vector-card-desc">Klasyczny phishing emailowy z trackingiem otwarć, kliknięć i przesłanych danych. Pełna integracja z REST API.</div>
+          <div class="vector-card-status">
+            <span class="status-dot offline" id="gophishDot"></span>
+            <span id="gophishStatus">SPRAWDZAM...</span>
+          </div>
+        </div>
+        <div class="vector-card" id="vecEvilginx" onclick="wizSelectVector('evilginx')">
+          <div class="vector-card-title">EVILGINX2</div>
+          <div class="vector-card-desc">Man-in-the-middle reverse proxy przechwytujący sesje i tokeny MFA w czasie rzeczywistym.</div>
+          <div class="vector-card-status">
+            <span class="status-dot offline" id="evilginxDot"></span>
+            <span id="evilginxStatus">SPRAWDZAM...</span>
+          </div>
+        </div>
+      </div>
+      <div class="phishlet-select" id="phishletSection">
+        <div class="form-group" style="margin-top:12px">
+          <label>PHISHLET</label>
+          <select id="wizPhishletSelect">
+            <option value="">-- Wybierz phishlet --</option>
+          </select>
+        </div>
+      </div>
+      <div class="wiz-nav">
+        <button class="btn" onclick="wizBack(2)">&larr; WSTECZ</button>
+        <button class="btn" onclick="wizNext(2)">DALEJ &rarr;</button>
+      </div>
     </div>
 
-    <div class="consent">
-      <input type="checkbox" id="consentCheck">
-      <label for="consentCheck">Potwierdzam posiadanie pisemnej zgody na przeprowadzenie testu social engineering wobec wymienionych odbiorców. Kampania jest prowadzona wyłącznie w celach edukacyjnych / audytowych na rzecz autoryzowanej organizacji.</label>
+    <!-- Step 3: KAMPANIA -->
+    <div class="wiz-panel" id="wizStep3">
+      <!-- GoPhish fields -->
+      <div id="gophishFields">
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>NAZWA KAMPANII</label>
+            <input type="text" id="campName" placeholder="Q1 2026 Awareness Test">
+          </div>
+          <div class="form-group">
+            <label>DOMENA NADAWCY</label>
+            <input type="text" id="campDomain" placeholder="security-test.example.com">
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-bottom:12px;align-items:flex-end">
+          <div class="form-group">
+            <label>SZABLON EMAILA (TEMAT)</label>
+            <input type="text" id="campSubject" placeholder="Pilne: Zresetuj hasło do konta firmowego">
+          </div>
+          <button class="btn btn-ai" id="aiGenBtn" onclick="wizAiGenerate()">AI GENERATE</button>
+        </div>
+
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>TREŚĆ EMAILA (HTML)</label>
+            <textarea id="campBody" placeholder="<p>Drogi pracowniku,</p><p>Wykryliśmy podejrzaną aktywność na Twoim koncie. Kliknij <a href='{{.URL}}'>tutaj</a> aby zweryfikować tożsamość.</p>"></textarea>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>LANDING PAGE URL</label>
+            <input type="text" id="campLanding" placeholder="https://security-test.example.com/verify">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:12px">
+          <label>ODBIORCY (jeden email na linię)</label>
+          <textarea id="campTargets" placeholder="jan.kowalski@firma.pl&#10;anna.nowak@firma.pl&#10;piotr.wisniewski@firma.pl" style="min-height:100px"></textarea>
+        </div>
+
+        <div id="wizAiMsg"></div>
+      </div>
+
+      <!-- Evilginx fields -->
+      <div id="evilginxFields" style="display:none">
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>NAZWA KAMPANII</label>
+            <input type="text" id="evilCampName" placeholder="Evilginx MFA Bypass Test">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>PHISHLET</label>
+            <input type="text" id="evilPhishlet" readonly placeholder="Wybierz w Step 2">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>LURE URL</label>
+            <input type="text" id="evilLureUrl" placeholder="https://login.example-corp.com">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>REDIRECT URL (po przechwyceniu)</label>
+            <input type="text" id="evilRedirectUrl" placeholder="https://real-login.example.com">
+          </div>
+        </div>
+        <div class="msg warn">Evilginx2 nie ma pełnego REST API — konfiguracja wymaga dostępu do CLI. Ustawienia tutaj służą jako szablon.</div>
+      </div>
+
+      <div class="wiz-nav">
+        <button class="btn" onclick="wizBack(3)">&larr; WSTECZ</button>
+        <button class="btn" onclick="wizNext(3)">DALEJ &rarr;</button>
+      </div>
     </div>
 
-    <div class="form-row">
-      <button class="btn btn-primary" id="launchBtn" onclick="launchCampaign()" disabled>URUCHOM KAMPANIĘ</button>
-    </div>
+    <!-- Step 4: REVIEW & LAUNCH -->
+    <div class="wiz-panel" id="wizStep4">
+      <table class="review-table" id="reviewTable"></table>
 
-    <div id="msg"></div>
+      <div class="consent">
+        <input type="checkbox" id="consentCheck">
+        <label for="consentCheck">Potwierdzam posiadanie pisemnej zgody na przeprowadzenie testu social engineering wobec wymienionych odbiorców. Kampania jest prowadzona wyłącznie w celach edukacyjnych / audytowych na rzecz autoryzowanej organizacji.</label>
+      </div>
+
+      <div class="wiz-nav">
+        <button class="btn" onclick="wizBack(4)">&larr; WSTECZ</button>
+        <button class="btn btn-primary" id="launchBtn" onclick="launchCampaign()" disabled>URUCHOM KAMPANIĘ</button>
+      </div>
+
+      <div id="msg"></div>
+    </div>
   </div>
 
   <!-- ACTIVE CAMPAIGNS -->
@@ -441,11 +750,6 @@ async function authFetch(url, opts) {
   if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
   return r;
 }
-
-// ── consent checkbox enables launch button ──
-document.getElementById('consentCheck').addEventListener('change', function() {
-  document.getElementById('launchBtn').disabled = !this.checked;
-});
 
 // ── load campaigns ──
 async function fetchCampaigns() {
@@ -607,6 +911,318 @@ function showMsg(text, isError) {
   setTimeout(function(){ el.textContent = ''; el.className = ''; }, 5000);
 }
 
+// ══════════════════════════════════════════
+// ── WIZARD STATE & LOGIC ──
+// ══════════════════════════════════════════
+
+var wizState = {
+  currentStep: 1,
+  selectedScan: null,   // full scan data object
+  vector: 'gophish',
+  gophishAvailable: false,
+  evilginxAvailable: false,
+  phishlets: []
+};
+
+function wizGotoStep(n) {
+  // Only allow going to steps <= max completed + 1
+  if (n < 1 || n > 4) return;
+  wizState.currentStep = n;
+
+  // Update step indicators
+  document.querySelectorAll('.wiz-step').forEach(function(el) {
+    var s = parseInt(el.getAttribute('data-step'));
+    el.classList.remove('active', 'done');
+    if (s === n) el.classList.add('active');
+    else if (s < n) el.classList.add('done');
+  });
+
+  // Show/hide panels
+  for (var i = 1; i <= 4; i++) {
+    var panel = document.getElementById('wizStep' + i);
+    if (panel) panel.classList.toggle('on', i === n);
+  }
+
+  // Step-specific init
+  if (n === 2) wizCheckAvailability();
+  if (n === 3) wizInitStep3();
+  if (n === 4) wizBuildReview();
+}
+
+function wizNext(fromStep) { wizGotoStep(fromStep + 1); }
+function wizBack(fromStep) { wizGotoStep(fromStep - 1); }
+
+// ── Step 1: Load scans ──
+async function wizLoadScans() {
+  try {
+    var r = await authFetch('/scans?limit=50');
+    var data = await r.json();
+    var sel = document.getElementById('wizScanSelect');
+    var scans = (data.scans || data || []);
+    scans.forEach(function(s) {
+      if (s.status !== 'completed') return;
+      var opt = document.createElement('option');
+      opt.value = s.task_id;
+      opt.textContent = s.target + ' (' + (s.created_at || s.timestamp || '').slice(0, 16) + ')';
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    console.error('wizLoadScans:', e);
+  }
+}
+
+async function wizOnScanSelect() {
+  var sel = document.getElementById('wizScanSelect');
+  var taskId = sel.value;
+  var intel = document.getElementById('wizReconIntel');
+  var grid = document.getElementById('reconGrid');
+
+  if (!taskId) {
+    intel.style.display = 'none';
+    wizState.selectedScan = null;
+    return;
+  }
+
+  try {
+    var r = await authFetch('/scans/' + taskId);
+    var data = await r.json();
+    wizState.selectedScan = data;
+
+    var target = data.target || '—';
+    var analysis = data.analysis || {};
+    var riskLevel = analysis.risk_level || data.risk_level || '—';
+    var riskScore = analysis.risk_score || data.risk_score || 0;
+
+    // Technologies from whatweb — can be dicts {name, version}
+    var techs = [];
+    var ww = data.whatweb || {};
+    var rawTechs = ww.technologies || analysis.technologies || [];
+    rawTechs.forEach(function(t) {
+      if (typeof t === 'string') techs.push(t);
+      else if (t && t.name) techs.push(t.name + (t.version ? '/' + t.version : ''));
+    });
+
+    // Emails from harvester
+    var emails = [];
+    var harv = data.harvester || {};
+    emails = harv.emails || analysis.emails || [];
+
+    // Top vulnerabilities
+    var vulns = [];
+    var nuclei = data.nuclei || {};
+    var nucleiFindings = nuclei.findings || nuclei.vulnerabilities || [];
+    nucleiFindings.slice(0, 5).forEach(function(v) {
+      vulns.push((v.severity || '?').toUpperCase() + ': ' + (v.name || v.template_id || v.info || ''));
+    });
+
+    // Build grid
+    var html = '';
+    html += '<div class="recon-box"><div class="recon-box-label">CEL</div><div class="recon-box-value">' + escHtml(target) + '</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">RYZYKO</div><div class="recon-box-value" style="color:' + riskColor(riskLevel) + '">' + escHtml(riskLevel) + ' (' + riskScore + '/100)</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">TECHNOLOGIE</div><div class="recon-box-value">' + (techs.length ? escHtml(techs.join(', ')) : '—') + '</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">EMAILE</div><div class="recon-box-value">' + (emails.length ? escHtml(emails.join(', ')) : '—') + '</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">TOP PODATNOŚCI</div><div class="recon-box-value">' + (vulns.length ? escHtml(vulns.join('; ')) : '—') + '</div></div>';
+
+    grid.innerHTML = html;
+    intel.style.display = 'block';
+
+    // Auto-fill campaign name and targets
+    document.getElementById('campName').value = 'Phishing Test — ' + target;
+    if (emails.length) {
+      document.getElementById('campTargets').value = emails.join('\n');
+    }
+  } catch(e) {
+    console.error('wizOnScanSelect:', e);
+    intel.style.display = 'none';
+    wizState.selectedScan = null;
+  }
+}
+
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function riskColor(level) {
+  var l = (level || '').toUpperCase();
+  if (l === 'CRITICAL' || l === 'HIGH') return 'var(--red)';
+  if (l === 'MEDIUM') return 'var(--orange)';
+  if (l === 'LOW') return 'var(--yellow)';
+  return 'var(--silver)';
+}
+
+// ── Step 2: Check availability ──
+async function wizCheckAvailability() {
+  // GoPhish
+  try {
+    var r = await authFetch('/phishing/campaigns');
+    if (r.ok) {
+      wizState.gophishAvailable = true;
+      document.getElementById('gophishDot').className = 'status-dot online';
+      document.getElementById('gophishStatus').textContent = 'ONLINE';
+    } else {
+      throw new Error();
+    }
+  } catch(e) {
+    wizState.gophishAvailable = false;
+    document.getElementById('gophishDot').className = 'status-dot offline';
+    document.getElementById('gophishStatus').textContent = 'OFFLINE';
+  }
+
+  // Evilginx
+  try {
+    var r2 = await authFetch('/evilginx/stats');
+    if (r2.ok) {
+      wizState.evilginxAvailable = true;
+      document.getElementById('evilginxDot').className = 'status-dot online';
+      document.getElementById('evilginxStatus').textContent = 'ONLINE';
+
+      // Load phishlets
+      var stats = await r2.json();
+      wizState.phishlets = stats.phishlets || [];
+      var pSel = document.getElementById('wizPhishletSelect');
+      pSel.innerHTML = '<option value="">-- Wybierz phishlet --</option>';
+      wizState.phishlets.forEach(function(p) {
+        var name = typeof p === 'string' ? p : (p.name || p.hostname || '');
+        if (!name) return;
+        var opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name + (p.status ? ' [' + p.status + ']' : '');
+        pSel.appendChild(opt);
+      });
+    } else {
+      throw new Error();
+    }
+  } catch(e) {
+    wizState.evilginxAvailable = false;
+    document.getElementById('evilginxDot').className = 'status-dot offline';
+    document.getElementById('evilginxStatus').textContent = 'OFFLINE';
+  }
+}
+
+function wizSelectVector(vec) {
+  wizState.vector = vec;
+  document.getElementById('vecGophish').classList.toggle('selected', vec === 'gophish');
+  document.getElementById('vecEvilginx').classList.toggle('selected', vec === 'evilginx');
+  document.getElementById('phishletSection').classList.toggle('on', vec === 'evilginx');
+}
+
+// ── Step 3: Init fields ──
+function wizInitStep3() {
+  var isGophish = wizState.vector === 'gophish';
+  document.getElementById('gophishFields').style.display = isGophish ? 'block' : 'none';
+  document.getElementById('evilginxFields').style.display = isGophish ? 'none' : 'block';
+
+  if (!isGophish) {
+    var phishlet = document.getElementById('wizPhishletSelect').value;
+    document.getElementById('evilPhishlet').value = phishlet || '';
+    if (wizState.selectedScan) {
+      document.getElementById('evilCampName').value = 'Evilginx — ' + (wizState.selectedScan.target || '');
+    }
+  }
+}
+
+// ── Step 3: AI Generate ──
+async function wizAiGenerate() {
+  var btn = document.getElementById('aiGenBtn');
+  var msgEl = document.getElementById('wizAiMsg');
+  btn.classList.add('loading');
+  btn.textContent = 'GENERATING';
+  msgEl.innerHTML = '';
+
+  var scan = wizState.selectedScan || {};
+  var analysis = scan.analysis || {};
+  var ww = scan.whatweb || {};
+  var rawTechs = ww.technologies || analysis.technologies || [];
+  var techs = rawTechs.map(function(t) {
+    return typeof t === 'string' ? t : (t.name + (t.version ? '/' + t.version : ''));
+  });
+
+  var harv = scan.harvester || {};
+  var emails = harv.emails || analysis.emails || [];
+
+  var nuclei = scan.nuclei || {};
+  var nucleiFindings = nuclei.findings || nuclei.vulnerabilities || [];
+  var vulns = nucleiFindings.slice(0, 10).map(function(v) {
+    return (v.name || v.template_id || '');
+  });
+
+  var payload = {
+    target: scan.target || '',
+    risk_level: analysis.risk_level || scan.risk_level || '',
+    risk_score: analysis.risk_score || scan.risk_score || 0,
+    technologies: techs.slice(0, 15),
+    emails: emails.slice(0, 10),
+    vulnerabilities: vulns,
+    executive_summary: analysis.executive_summary || analysis.summary || '',
+    language: 'pl'
+  };
+
+  try {
+    var r = await authFetch('/phishing/generate-email', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    var data = await r.json();
+    if (r.ok && data.subject) {
+      document.getElementById('campSubject').value = data.subject;
+      document.getElementById('campBody').value = data.body || '';
+      msgEl.innerHTML = '<div class="msg">Email wygenerowany przez AI (' + (data.provider || 'LLM') + '). Pretext: ' + escHtml(data.pretext || '') + '</div>';
+    } else {
+      msgEl.innerHTML = '<div class="msg error">' + escHtml(data.detail || 'Błąd generowania') + '</div>';
+    }
+  } catch(e) {
+    msgEl.innerHTML = '<div class="msg error">Błąd połączenia: ' + escHtml(e.message) + '</div>';
+  }
+
+  btn.classList.remove('loading');
+  btn.textContent = 'AI GENERATE';
+}
+
+// ── Step 4: Build review table ──
+function wizBuildReview() {
+  var tbl = document.getElementById('reviewTable');
+  var rows = [];
+
+  rows.push(['WEKTOR', wizState.vector === 'gophish' ? 'GoPhish (Email)' : 'Evilginx2 (MITM)']);
+
+  if (wizState.vector === 'gophish') {
+    rows.push(['NAZWA', document.getElementById('campName').value || '—']);
+    rows.push(['DOMENA', document.getElementById('campDomain').value || '—']);
+    rows.push(['TEMAT', document.getElementById('campSubject').value || '—']);
+    rows.push(['BODY', '<pre style="white-space:pre-wrap;font-size:11px;max-height:150px;overflow:auto;margin:0">' + escHtml(document.getElementById('campBody').value || '—') + '</pre>']);
+    rows.push(['LANDING', document.getElementById('campLanding').value || '—']);
+    var targets = document.getElementById('campTargets').value.trim().split('\n').filter(function(e){ return e.trim(); });
+    rows.push(['ODBIORCY', targets.length + ' adresów']);
+  } else {
+    rows.push(['NAZWA', document.getElementById('evilCampName').value || '—']);
+    rows.push(['PHISHLET', document.getElementById('evilPhishlet').value || '—']);
+    rows.push(['LURE URL', document.getElementById('evilLureUrl').value || '—']);
+    rows.push(['REDIRECT', document.getElementById('evilRedirectUrl').value || '—']);
+  }
+
+  if (wizState.selectedScan) {
+    rows.push(['RECON', wizState.selectedScan.target || '—']);
+  }
+
+  var html = '';
+  rows.forEach(function(r) {
+    html += '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>';
+  });
+  tbl.innerHTML = html;
+}
+
+// ── Event listeners ──
+document.getElementById('consentCheck').addEventListener('change', function() {
+  document.getElementById('launchBtn').disabled = !this.checked;
+});
+
+document.getElementById('wizScanSelect').addEventListener('change', wizOnScanSelect);
+
+// ── Init ──
+wizLoadScans();
 fetchCampaigns();
 setInterval(fetchCampaigns, 30000);
 </script>

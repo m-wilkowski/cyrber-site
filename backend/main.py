@@ -16,6 +16,7 @@ import os
 import secrets
 import ipaddress
 import unicodedata
+import json
 import re as _re
 import requests as http_requests
 
@@ -671,6 +672,68 @@ class PhishingCampaignCreate(BaseModel):
     email_body: str
     landing_url: str = ""
     targets: list[str]
+
+class PhishingEmailGenerate(BaseModel):
+    target: str
+    risk_level: str = ""
+    risk_score: int = 0
+    technologies: list[str] = []
+    emails: list[str] = []
+    vulnerabilities: list[str] = []
+    executive_summary: str = ""
+    language: str = "pl"
+
+@app.post("/phishing/generate-email")
+@limiter.limit("10/minute")
+async def phishing_generate_email(request: Request, data: PhishingEmailGenerate, user: str = Depends(get_current_user)):
+    try:
+        from modules.llm_provider import get_provider
+        provider = get_provider(task="phishing_email")
+
+        techs_str = ", ".join(data.technologies[:15]) if data.technologies else "brak danych"
+        vulns_str = ", ".join(data.vulnerabilities[:10]) if data.vulnerabilities else "brak danych"
+        emails_str = ", ".join(data.emails[:10]) if data.emails else "brak danych"
+
+        prompt = f"""Jesteś ekspertem od security awareness testing. Wygeneruj realistyczny email phishingowy (do celów autoryzowanego testu penetracyjnego) na podstawie danych rekonesansu.
+
+DANE REKONESANSU:
+- Cel: {data.target}
+- Poziom ryzyka: {data.risk_level} (score: {data.risk_score}/100)
+- Technologie: {techs_str}
+- Znalezione emaile: {emails_str}
+- Podatności: {vulns_str}
+- Podsumowanie: {data.executive_summary[:500] if data.executive_summary else 'brak'}
+
+WYMAGANIA:
+- Język: {"polski" if data.language == "pl" else data.language}
+- Email musi być przekonujący i dopasowany do kontekstu technologicznego celu
+- Body w HTML, użyj {{{{.URL}}}} jako placeholder na link GoPhish
+- Zwróć TYLKO JSON (bez markdown):
+
+{{"subject": "temat emaila", "body": "<p>treść HTML z linkiem <a href=\\"{{{{.URL}}}}\\">kliknij</a></p>", "pretext": "krótki opis pretekstu użytego w emailu"}}"""
+
+        response_text = provider.chat(prompt, max_tokens=1500)
+
+        # Parse JSON from LLM response (pattern from hacker_narrative.py)
+        clean = response_text.strip()
+        if clean.startswith("```"):
+            clean = clean.split("```")[1]
+            if clean.startswith("json"):
+                clean = clean[4:]
+        try:
+            result = json.loads(clean.strip())
+        except json.JSONDecodeError:
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
+            result = json.loads(response_text[start:end])
+
+        audit(request, user, "phishing_generate_email", data.target)
+        return {"status": "ok", "provider": provider.name, **result}
+
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse LLM response as JSON: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Email generation failed: {str(e)}")
 
 @app.post("/phishing/campaigns")
 async def phishing_create_campaign(request: Request, campaign: PhishingCampaignCreate, user: str = Depends(get_current_user)):
