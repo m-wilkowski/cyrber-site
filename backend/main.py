@@ -2,6 +2,8 @@ from fastapi import FastAPI, Query, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response, JSONResponse
+
+_NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -102,23 +104,23 @@ async def login_page():
 
 @app.get("/ui")
 async def ui():
-    return FileResponse("static/index.html")
+    return FileResponse("static/index.html", headers=_NO_CACHE)
 
 @app.get("/dashboard")
 async def dashboard():
-    return FileResponse("static/dashboard.html")
+    return FileResponse("static/dashboard.html", headers=_NO_CACHE)
 
 @app.get("/scheduler")
 async def scheduler():
-    return FileResponse("static/scheduler.html")
+    return FileResponse("static/scheduler.html", headers=_NO_CACHE)
 
 @app.get("/phishing")
 async def phishing_page():
-    return FileResponse("static/phishing.html")
+    return FileResponse("static/phishing.html", headers=_NO_CACHE)
 
 @app.get("/osint")
 async def osint_page():
-    return FileResponse("static/osint.html", media_type="text/html")
+    return FileResponse("static/osint.html", media_type="text/html", headers=_NO_CACHE)
 
 @app.get("/")
 async def root():
