@@ -1278,6 +1278,14 @@ nav {
 .sticky-pdf a:hover { background:var(--accent2); }
 
 /* ── PROGRESS STEPS ── */
+.scan-timeout {
+  border-left:3px solid #ff8800; background:rgba(255,136,0,0.05);
+  padding:12px 16px; color:rgba(255,255,255,0.7);
+  font-family:'Share Tech Mono',monospace; font-size:13px;
+  margin:16px 0; line-height:1.6;
+}
+.scan-timeout a { color:#ff8800; text-decoration:underline; }
+
 .scan-steps {
   display:flex; align-items:center; gap:0; margin:12px 0 8px;
   font-family:'Share Tech Mono',monospace; font-size:10px;
@@ -1663,7 +1671,22 @@ function startScan() {
       window._lastTaskId = d.task_id;
       window._lastProfile = d.profile || selectedProfile;
       log('Background scan running. Polling for results...');
-      pollTimer = setInterval(function() { pollStatus(d.task_id); }, 3000);
+      var pollCount = 0;
+      pollTimer = setInterval(function() {
+        pollCount++;
+        if (pollCount > 60) {
+          clearInterval(pollTimer);
+          setSt('Timeout', 'error');
+          log('TIMEOUT: scan exceeded 3 minutes');
+          document.getElementById('scanBtn').disabled = false;
+          document.getElementById('pw').classList.remove('on');
+          hideScanSteps();
+          var sk=document.getElementById('skelLoader');if(sk) sk.classList.remove('on');
+          document.getElementById('sum').innerHTML = '<div class="scan-timeout">\u26a0 Timeout: skan trwa ponad 3 minuty. Sprawdź status w <a href="/dashboard">Dashboard</a></div>';
+          return;
+        }
+        pollStatus(d.task_id);
+      }, 3000);
     })
     .catch(function(e) {
       setSt('Connection error: ' + e.message, 'error');
@@ -4575,11 +4598,22 @@ function startAgentScan() {
     });
 }
 
+var _agentPollCount = 0;
 function pollAgentStatus(taskId, target) {
+  _agentPollCount++;
+  if (_agentPollCount > 120) {
+    setSt('Timeout', 'error');
+    log('TIMEOUT: agent exceeded 10 minutes');
+    showProgress(false);
+    resetAgentButtons();
+    document.getElementById('sum').innerHTML = '<div class="scan-timeout">\u26a0 Timeout: agent trwa ponad 10 minut. Sprawdź status w <a href="/dashboard">Dashboard</a></div>';
+    return;
+  }
   authFetch(API +'/scan/status/' + taskId)
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.status === 'completed') {
+        _agentPollCount = 0;
         log('Agent completed assessment');
         showProgress(false);
         var res = d.result;
@@ -4605,6 +4639,7 @@ function pollAgentStatus(taskId, target) {
         resetAgentButtons();
         loadHistory();
       } else if (d.status === 'failed') {
+        _agentPollCount = 0;
         setSt('Agent failed: ' + (d.error || 'unknown'), 'error');
         showProgress(false);
         resetAgentButtons();
@@ -4720,7 +4755,23 @@ function startMultiScan() {
 
 function pollMultiTask(taskId, target, onDone) {
   var cardId = 'mc-' + target.replace(/[^a-zA-Z0-9]/g, '_');
+  var multiPollCount = 0;
   var timer = setInterval(function() {
+    multiPollCount++;
+    if (multiPollCount > 90) {
+      clearInterval(timer);
+      var card = document.getElementById(cardId);
+      if (card) {
+        var badge = card.querySelector('.multi-status');
+        badge.className = 'multi-status error';
+        badge.textContent = 'TIMEOUT';
+        badge.style.color = '#ff8800';
+        badge.style.borderColor = '#ff8800';
+      }
+      log(target + ' → TIMEOUT (6 min)');
+      onDone();
+      return;
+    }
     authFetch(API + '/scan/status/' + taskId)
       .then(function(r) { return r.json(); })
       .then(function(d) {
