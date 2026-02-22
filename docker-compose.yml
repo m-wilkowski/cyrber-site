@@ -57,6 +57,21 @@ services:
       - phishing
     restart: on-failure
 
+  evilginx:
+    image: kgretzky/evilginx2:latest
+    ports:
+      - "443:443"
+      - "80:80"
+      - "53:53/udp"
+    volumes:
+      - evilginx_data:/app
+    environment:
+      EVILGINX_DOMAIN: ${EVILGINX_DOMAIN:-}
+      EVILGINX_IP: ${EVILGINX_IP:-}
+    profiles:
+      - phishing
+    restart: on-failure
+
   api:
     build: .
     ports:
@@ -84,6 +99,7 @@ services:
       VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:-}
       GOPHISH_URL: ${GOPHISH_URL:-http://gophish:3333}
       GOPHISH_API_KEY: ${GOPHISH_API_KEY:-}
+      EVILGINX_URL: ${EVILGINX_URL:-http://evilginx:443}
       CYRBER_USER: ${CYRBER_USER:-admin}
       CYRBER_PASS: ${CYRBER_PASS:-cyrber2024}
       JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
@@ -108,6 +124,7 @@ services:
       - ./modules:/app/modules
       - ./backend:/app/backend
       - ./config:/app/config
+      - evilginx_data:/app/evilginx:ro
 
   worker:
     build: .
@@ -182,3 +199,4 @@ volumes:
   pgdata:
   ollama_data:
   gophish_data:
+  evilginx_data:

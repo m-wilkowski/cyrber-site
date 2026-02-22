@@ -803,6 +803,71 @@ async def phishing_campaign_results(campaign_id: int, user: str = Depends(get_cu
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
 
+# ── Evilginx2 proxy ──
+
+from modules.evilginx_phishing import (
+    is_available as evilginx_available,
+    get_sessions as evilginx_sessions,
+    get_session as evilginx_session,
+    delete_session as evilginx_delete,
+    list_phishlets as evilginx_phishlets,
+    get_phishlet as evilginx_phishlet,
+    get_stats as evilginx_stats,
+    get_config as evilginx_config,
+)
+
+def _require_evilginx():
+    if not evilginx_available():
+        raise HTTPException(
+            status_code=503,
+            detail="Evilginx2 not available — start with: docker compose --profile phishing up -d",
+        )
+
+@app.get("/evilginx/stats")
+async def evilginx_get_stats(user: str = Depends(get_current_user)):
+    return evilginx_stats()
+
+@app.get("/evilginx/sessions")
+async def evilginx_get_sessions(user: str = Depends(get_current_user)):
+    _require_evilginx()
+    return evilginx_sessions()
+
+@app.get("/evilginx/sessions/{session_id}")
+async def evilginx_get_session(session_id: str, user: str = Depends(get_current_user)):
+    _require_evilginx()
+    s = evilginx_session(session_id)
+    if not s:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return s
+
+@app.delete("/evilginx/sessions/{session_id}")
+async def evilginx_delete_session(request: Request, session_id: str, user: str = Depends(get_current_user)):
+    _require_evilginx()
+    if not evilginx_delete(session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
+    audit(request, user, "evilginx_session_delete", session_id)
+    return {"status": "deleted", "session_id": session_id}
+
+@app.get("/evilginx/phishlets")
+async def evilginx_get_phishlets(user: str = Depends(get_current_user)):
+    _require_evilginx()
+    return evilginx_phishlets()
+
+@app.get("/evilginx/phishlets/{name}")
+async def evilginx_get_phishlet(name: str, user: str = Depends(get_current_user)):
+    _require_evilginx()
+    p = evilginx_phishlet(name)
+    if not p:
+        raise HTTPException(status_code=404, detail="Phishlet not found")
+    return p
+
+@app.get("/evilginx/config")
+async def evilginx_get_config(user: str = Depends(get_current_user)):
+    _require_evilginx()
+    return evilginx_config()
+
+# ── Multi-target scan ──
+
 class MultiTargetScan(BaseModel):
     targets: list[str]
     profile: str = "STRAZNIK"
