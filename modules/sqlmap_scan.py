@@ -14,13 +14,13 @@ def scan(target: str) -> dict:
                 "--batch",
                 "--level=1",
                 "--risk=1",
-                "--timeout=30",
-                "--retries=1",
+                "--timeout=60",
+                "--retries=2",
                 "--output-dir=/tmp/sqlmap",
                 "--forms",
                 "--crawl=2"
             ],
-            capture_output=True, text=True, timeout=180
+            capture_output=True, text=True, timeout=300
         )
         output = result.stdout + result.stderr
         findings = []

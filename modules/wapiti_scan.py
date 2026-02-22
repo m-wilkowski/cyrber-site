@@ -33,12 +33,12 @@ def wapiti_scan(target: str) -> dict:
                 "-f", "json",
                 "-o", json_out,
                 "--flush-session",
-                "--timeout", "30",
-                "--max-scan-time", "300",
+                "--timeout", "120",
+                "--max-scan-time", "600",
             ],
             capture_output=True,
             text=True,
-            timeout=360,
+            timeout=660,
         )
     except FileNotFoundError:
         return {"skipped": True, "reason": "wapiti not installed"}

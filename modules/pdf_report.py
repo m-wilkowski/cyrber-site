@@ -2351,7 +2351,7 @@ def generate_report(scan_data: dict) -> bytes:
 </div>
 
 <div class="section">
-  <div class="section-title">// ENUM4LINUX-NG — SMB/AD ENUMERATION ({enum4linux.get('summary', {{}}).get('users_count', 0)} users, {enum4linux.get('summary', {{}}).get('shares_count', 0)} shares, {enum4linux.get('summary', {{}}).get('groups_count', 0)} groups)</div>
+  <div class="section-title">// ENUM4LINUX-NG — SMB/AD ENUMERATION ({enum4linux.get('summary', dict()).get('users_count', 0)} users, {enum4linux.get('summary', dict()).get('shares_count', 0)} shares, {enum4linux.get('summary', dict()).get('groups_count', 0)} groups)</div>
   {_enum4linux_html(enum4linux)}
 </div>
 
@@ -2471,7 +2471,7 @@ def generate_report(scan_data: dict) -> bytes:
 </div>
 
 <div class="section">
-  <div class="section-title">// NETEXEC — SMB ENUMERATION ({netexec.get('smb_info', {{}}).get('hostname', 'N/A')} · {netexec.get('total_shares', 0)} shares, {netexec.get('total_users', 0)} users, {netexec.get('total_vulnerabilities', 0)} vulns)</div>
+  <div class="section-title">// NETEXEC — SMB ENUMERATION ({netexec.get('smb_info', dict()).get('hostname', 'N/A')} · {netexec.get('total_shares', 0)} shares, {netexec.get('total_users', 0)} users, {netexec.get('total_vulnerabilities', 0)} vulns)</div>
   {_netexec_html(netexec)}
 </div>
 
