@@ -42,6 +42,8 @@ services:
       -config api.key=${ZAP_API_KEY:-cyrber-zap-key}
       -config api.addrs.addr.name=.*
       -config api.addrs.addr.regex=true
+    ports:
+      - "8090:8090"
     restart: unless-stopped
 
   gophish:
@@ -105,6 +107,7 @@ services:
       - ./static:/app/static
       - ./modules:/app/modules
       - ./backend:/app/backend
+      - ./config:/app/config
 
   worker:
     build: .
@@ -149,6 +152,7 @@ services:
     volumes:
       - ./modules:/app/modules
       - ./backend:/app/backend
+      - ./config:/app/config
 
   beat:
     build: .
@@ -167,6 +171,12 @@ services:
       redis:
         condition: service_healthy
     restart: on-failure
+
+  dvwa:
+    image: vulnerables/web-dvwa
+    ports:
+      - "8888:80"
+    restart: unless-stopped
 
 volumes:
   pgdata:

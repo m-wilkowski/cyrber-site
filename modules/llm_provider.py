@@ -11,11 +11,18 @@ Config via .env:
   CLAUDE_MODEL=claude-sonnet-4-20250514
   OLLAMA_URL=http://localhost:11434
   OLLAMA_MODEL=mistral
+
+Model routing via config/models.yaml (optional):
+  tasks:
+    ai_analysis: "claude-sonnet-4-20250514"
+    exploit_chains: "claude-opus-4-20250514"
+  default: "claude-sonnet-4-20250514"
 """
 
 import os
 import json
 import logging
+import pathlib
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 
@@ -23,6 +30,60 @@ from dotenv import load_dotenv
 load_dotenv()
 
 log = logging.getLogger("llm_provider")
+
+
+# ── Model config loading ─────────────────────────────────────
+
+_model_config: dict | None = None
+
+_CONFIG_PATHS = [
+    pathlib.Path(__file__).resolve().parent.parent / "config" / "models.yaml",
+    pathlib.Path("/app/config/models.yaml"),   # Docker mount
+]
+
+
+def load_model_config() -> dict:
+    """Load config/models.yaml. Returns empty dict on missing file / parse error."""
+    global _model_config
+    if _model_config is not None:
+        return _model_config
+
+    for path in _CONFIG_PATHS:
+        if path.is_file():
+            try:
+                import yaml
+                with open(path) as f:
+                    data = yaml.safe_load(f) or {}
+                _model_config = data
+                log.info("[model_routing] loaded config from %s", path)
+                return _model_config
+            except Exception as exc:
+                log.warning("[model_routing] failed to load %s: %s", path, exc)
+
+    _model_config = {}
+    return _model_config
+
+
+def _resolve_model_for_task(task: str | None) -> str:
+    """Resolve model name for a given task using YAML config, env, or default."""
+    cfg = load_model_config()
+    env_default = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+
+    if task and cfg:
+        tasks = cfg.get("tasks", {})
+        if task in tasks:
+            model = tasks[task]
+            log.info("[model_routing] task=%s model=%s (yaml)", task, model)
+            return model
+
+    yaml_default = cfg.get("default")
+    if yaml_default:
+        model = yaml_default
+        log.info("[model_routing] task=%s model=%s (yaml default)", task, model)
+        return model
+
+    log.info("[model_routing] task=%s model=%s (env)", task, env_default)
+    return env_default
 
 
 # ── Data classes ──────────────────────────────────────────────
@@ -94,11 +155,11 @@ class LLMProvider(ABC):
 
 class ClaudeProvider(LLMProvider):
 
-    def __init__(self):
+    def __init__(self, model: str | None = None):
         import anthropic
         self._client = anthropic.Anthropic(
             api_key=os.getenv("ANTHROPIC_API_KEY"))
-        self._model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+        self._model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
 
     @property
     def name(self):
@@ -282,29 +343,36 @@ class OllamaProvider(LLMProvider):
 
 # ── Factory ───────────────────────────────────────────────────
 
-_provider_cache: LLMProvider | None = None
+_provider_cache: dict[str, LLMProvider] = {}
 
 
-def get_provider(force: str | None = None) -> LLMProvider:
-    """Return the configured LLM provider (cached singleton).
+def get_provider(force: str | None = None, task: str | None = None) -> LLMProvider:
+    """Return the configured LLM provider.
 
-    force: override LLM_PROVIDER for this call (no caching).
+    force: override provider type ("claude" or "ollama") — bypasses cache.
+    task:  task identifier for model routing via config/models.yaml.
+           Different tasks can use different Claude models.
     """
-    global _provider_cache
-
     choice = (force or os.getenv("LLM_PROVIDER", "claude")).lower().strip()
 
-    if force is None and _provider_cache is not None:
-        return _provider_cache
-
+    # Ollama: force always bypasses cache (keeps existing behavior)
     if choice == "ollama":
         prov = OllamaProvider()
-    else:
-        prov = ClaudeProvider()
+        log.info("LLM provider: %s (force=%s)", prov.name, force)
+        return prov
 
-    log.info("LLM provider: %s", prov.name)
+    # Claude: per-task model routing with cache
+    cache_key = f"claude:{task}" if task else "claude:_default_"
+
+    if force is None and cache_key in _provider_cache:
+        return _provider_cache[cache_key]
+
+    model = _resolve_model_for_task(task)
+    prov = ClaudeProvider(model=model)
+
+    log.info("LLM provider: %s model=%s task=%s", prov.name, model, task)
 
     if force is None:
-        _provider_cache = prov
+        _provider_cache[cache_key] = prov
 
     return prov

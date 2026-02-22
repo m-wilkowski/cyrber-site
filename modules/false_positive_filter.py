@@ -75,7 +75,7 @@ Odpowiedz TYLKO w JSON:
   ]
 }}"""
 
-    provider = get_provider()
+    provider = get_provider(task="false_positive_filter")
 
     try:
         response_text = provider.chat(prompt, max_tokens=1024)

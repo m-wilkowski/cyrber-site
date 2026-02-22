@@ -134,7 +134,7 @@ def run_agent(target: str, progress_callback=None) -> dict:
     Uruchamia autonomicznego agenta który sam decyduje jakie skanery użyć.
     progress_callback(step, tool_name) - opcjonalny callback dla statusu
     """
-    provider = get_provider()
+    provider = get_provider(task="agent")
     messages = [
         provider.make_user_msg(
             f"Przeprowadź kompletny security assessment dla: {target}")

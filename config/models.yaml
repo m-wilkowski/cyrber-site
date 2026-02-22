@@ -1,0 +1,12 @@
+# Model routing per task
+# Dostępne modele: claude-opus-4-20250514, claude-sonnet-4-20250514, claude-haiku-4-5-20251001
+
+tasks:
+  exploit_chains: "claude-opus-4-20250514"           # Krytyczne - najlepsza jakość
+  hacker_narrative: "claude-opus-4-20250514"          # Krytyczne - jakość narracji
+  ai_analysis: "claude-sonnet-4-20250514"             # Główna analiza - balans
+  false_positive_filter: "claude-haiku-4-5-20251001"  # Proste - najtańszy
+  llm_analyze: "claude-haiku-4-5-20251001"            # Proste - najtańszy
+  agent: "claude-sonnet-4-20250514"                   # Agent - balans
+
+default: "claude-sonnet-4-20250514"

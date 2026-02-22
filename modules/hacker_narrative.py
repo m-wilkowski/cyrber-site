@@ -49,7 +49,7 @@ Odpowiedz w JSON:
   "time_to_compromise": "szacowany czas przejęcia"
 }}"""
 
-    provider = get_provider()
+    provider = get_provider(task="hacker_narrative")
 
     try:
         response_text = provider.chat(prompt, max_tokens=1500)

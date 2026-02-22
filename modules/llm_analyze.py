@@ -41,7 +41,7 @@ Odpowiedz w formacie JSON:
   "recommendations": "..."
 }}"""
 
-    provider = get_provider()
+    provider = get_provider(task="llm_analyze")
 
     try:
         response_text = provider.chat(prompt)
