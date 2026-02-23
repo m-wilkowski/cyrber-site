@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYRBER — COMMAND CENTER</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:    #080c18;
+  --navy2:   #0c1220;
+  --navy3:   #101828;
+  --panel:   #0a1020;
+  --accent:  #4a8fd4;
+  --accent2: #7ab3e8;
+  --purple:  #9b59b6;
+  --silver:  #8a9bb5;
+  --white:   #e8eef8;
+  --border:  rgba(74,143,212,.18);
+  --border2: rgba(74,143,212,.10);
+  --red:     #ff4444;
+  --yellow:  #f5c518;
+  --green:   #3ddc84;
+  --orange:  #ff8c00;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--navy);
+  color: var(--white);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 15% 60%, rgba(20,40,80,0.55) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 85% 15%, rgba(10,20,50,0.7) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 30% at 50% 100%, rgba(74,143,212,0.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(74,143,212,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74,143,212,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px; height: 56px;
+  background: rgba(8,12,24,.92);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+}
+
+.nav-brand {
+  display: flex; align-items: center; gap: 12px;
+  font-family: 'Orbitron', sans-serif; font-size: 18px;
+  font-weight: 700; color: var(--accent); text-decoration: none;
+  letter-spacing: .08em;
+}
+.nav-brand span {
+  font-family: 'Share Tech Mono', monospace; font-size: 9px;
+  color: var(--silver); letter-spacing: .2em;
+}
+
+.nav-links { display: flex; gap: 4px; }
+.nav-link {
+  font-family: 'Share Tech Mono', monospace; font-size: 11px;
+  letter-spacing: .15em; color: var(--silver); text-decoration: none;
+  padding: 6px 14px; border: 1px solid transparent; transition: all .2s;
+}
+.nav-link:hover { color: var(--accent); border-color: var(--border); }
+.nav-link.active { color: var(--accent); border-color: var(--accent); }
+
+/* ── WRAPPER ── */
+.wrapper {
+  max-width: 1920px; margin: 0 auto;
+  padding: 0 clamp(16px, 3vw, 48px) 80px;
+  position: relative; z-index: 1;
+}
+
+/* ── HEADER ── */
+.cc-header {
+  text-align: center;
+  padding: 48px 0 36px;
+}
+.cc-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 900;
+  letter-spacing: .12em;
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.cc-pulse {
+  width: 14px; height: 14px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: ccpulse 2s ease-in-out infinite;
+  box-shadow: 0 0 12px var(--green), 0 0 24px rgba(61,220,132,.3);
+}
+@keyframes ccpulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .5; transform: scale(.7); }
+}
+.cc-subtitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: var(--silver);
+  letter-spacing: .3em;
+  margin-top: 8px;
+}
+.cc-refresh-info {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: rgba(138,155,181,.5);
+  margin-top: 6px;
+}
+
+/* ── GRID ── */
+.cc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
+  margin-top: 8px;
+}
+@media (max-width: 1100px) {
+  .cc-grid { grid-template-columns: 1fr; }
+}
+
+/* ── COLUMN / PANEL ── */
+.cc-col {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.col-head {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .15em;
+  color: var(--accent);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.col-head-icon {
+  font-size: 18px;
+}
+
+/* ── BADGES ── */
+.badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .12em;
+  padding: 3px 10px;
+  border: 1px solid;
+  border-radius: 4px;
+  display: inline-block;
+}
+.badge-idle   { color: var(--silver); border-color: var(--silver); }
+.badge-running { color: var(--yellow); border-color: var(--yellow); animation: ccpulse 1.5s infinite; }
+.badge-done   { color: var(--green); border-color: var(--green); }
+.badge-online { color: var(--green); border-color: var(--green); }
+.badge-offline { color: var(--red); border-color: var(--red); }
+.badge-ready  { color: var(--green); border-color: var(--green); }
+
+.risk-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  padding: 2px 8px;
+  border: 1px solid;
+  border-radius: 3px;
+  display: inline-block;
+}
+.risk-badge.LOW, .risk-badge.NISKIE { color: var(--green); border-color: var(--green); }
+.risk-badge.MEDIUM, .risk-badge.SREDNIE { color: var(--yellow); border-color: var(--yellow); }
+.risk-badge.HIGH, .risk-badge.WYSOKIE { color: var(--orange); border-color: var(--orange); }
+.risk-badge.CRITICAL, .risk-badge.KRYTYCZNE { color: var(--red); border-color: var(--red); animation: ccpulse 1.5s infinite; }
+
+/* ── SECTION ITEM ── */
+.cc-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border2);
+}
+.cc-item:last-child { border-bottom: none; }
+
+.cc-item-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .15em;
+  color: var(--silver);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.cc-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cc-stat {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--white);
+}
+.cc-stat-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--silver);
+  letter-spacing: .1em;
+}
+
+.cc-stat-block {
+  text-align: center;
+  flex: 1;
+}
+
+/* ── QUICK SCAN FORM ── */
+.cc-form { display: flex; flex-direction: column; gap: 8px; }
+.cc-form input, .cc-form select {
+  background: var(--navy);
+  border: 1px solid var(--border);
+  color: var(--white);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color .2s;
+}
+.cc-form input:focus, .cc-form select:focus {
+  border-color: var(--accent);
+}
+.cc-form select option {
+  background: var(--navy);
+  color: var(--white);
+}
+.cc-btn {
+  background: linear-gradient(135deg, var(--accent), #3a7fc4);
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .15em;
+  border: none;
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.cc-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.cc-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+/* ── PROGRESS BAR ── */
+.cc-progress-wrap {
+  height: 6px;
+  background: var(--navy3);
+  border-radius: 3px;
+  overflow: hidden;
+  display: none;
+}
+.cc-progress-wrap.on { display: block; }
+.cc-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 3px;
+  transition: width .3s ease;
+}
+.cc-progress-text {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--silver);
+  margin-top: 4px;
+  display: none;
+}
+.cc-progress-text.on { display: block; }
+
+/* ── SCAN LIST ── */
+.cc-scan-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border2);
+  gap: 8px;
+}
+.cc-scan-item:last-child { border-bottom: none; }
+.cc-scan-target {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--white);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-scan-time {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--silver);
+  white-space: nowrap;
+}
+
+/* ── SERVICE STATUS ── */
+.cc-service {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border2);
+}
+.cc-service:last-child { border-bottom: none; }
+.cc-service-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .1em;
+}
+.cc-service-stats {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.cc-service-stat {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--silver);
+}
+.cc-service-stat b {
+  color: var(--white);
+  font-weight: 600;
+}
+
+/* ── FINDING ITEM ── */
+.cc-finding {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border2);
+}
+.cc-finding:last-child { border-bottom: none; }
+.cc-finding-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+.cc-finding-meta {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--silver);
+}
+
+/* ── COMPLIANCE BADGES ── */
+.cc-compliance {
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.cc-compliance-badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  padding: 6px 16px;
+  border: 1px solid;
+  border-radius: 6px;
+}
+
+/* ── LINK ROW ── */
+.cc-link {
+  display: block;
+  text-align: right;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .12em;
+  color: var(--accent);
+  text-decoration: none;
+  padding-top: 8px;
+  transition: color .2s;
+}
+.cc-link:hover { color: var(--accent2); }
+
+@media (max-width: 600px) {
+  nav { padding: 0 16px; }
+  .nav-links { gap: 2px; flex-wrap: wrap; }
+  .nav-link { font-size: 9px; padding: 4px 8px; }
+  .cc-header { padding: 32px 0 24px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="/ui">CYRBER<span>AUTONOMOUS RECON</span></a>
+  <div class="nav-links">
+    <a class="nav-link active" href="/command-center">CMD CENTER</a>
+    <a class="nav-link" href="/ui">SCAN</a>
+    <a class="nav-link" href="/dashboard">DASHBOARD</a>
+    <a class="nav-link" href="/scheduler">SCHEDULER</a>
+    <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="/osint">OSINT</a>
+    <a class="nav-link" href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
+  </div>
+</nav>
+
+<div class="wrapper">
+
+  <div class="cc-header">
+    <div class="cc-title">
+      <span class="cc-pulse"></span>
+      COMMAND CENTER
+    </div>
+    <div class="cc-subtitle">THREE HEADS. ONE PLATFORM.</div>
+    <div class="cc-refresh-info">AUTO-REFRESH: <span id="refreshCountdown">30</span>s</div>
+  </div>
+
+  <div class="cc-grid">
+
+    <!-- ═══ COLUMN 1: AI SCAN HEAD ═══ -->
+    <div class="cc-col">
+      <div class="col-head"><span class="col-head-icon">&#x1F50D;</span> AI SCAN HEAD</div>
+
+      <div class="cc-item">
+        <div class="cc-item-label">SCAN STATUS</div>
+        <div class="cc-item-row">
+          <span id="scanStatus" class="badge badge-idle">IDLE</span>
+          <span id="scanStatusText" style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--silver)"></span>
+        </div>
+      </div>
+
+      <div class="cc-item">
+        <div class="cc-item-label">QUICK SCAN</div>
+        <div class="cc-form">
+          <input type="text" id="qsTarget" placeholder="target (IP / domain / CIDR)">
+          <select id="qsProfile">
+            <option value="SZCZENIAK">SZCZENIAK (fast)</option>
+            <option value="STRAZNIK" selected>STRAZNIK (standard)</option>
+            <option value="CERBER">CERBER (full)</option>
+          </select>
+          <button class="cc-btn" id="qsBtn" onclick="quickScan()">START SCAN</button>
+        </div>
+      </div>
+
+      <div class="cc-item">
+        <div class="cc-progress-wrap" id="qsProgressWrap">
+          <div class="cc-progress-bar" id="qsProgressBar"></div>
+        </div>
+        <div class="cc-progress-text" id="qsProgressText"></div>
+      </div>
+
+      <div class="cc-item">
+        <div class="cc-item-label">RECENT SCANS</div>
+        <div id="recentScans"><span style="color:var(--silver);font-size:12px;">Loading...</span></div>
+      </div>
+
+      <a class="cc-link" href="/ui">&rarr; Full Scan View</a>
+    </div>
+
+    <!-- ═══ COLUMN 2: SOCIAL ENGINEERING HEAD ═══ -->
+    <div class="cc-col">
+      <div class="col-head"><span class="col-head-icon">&#x1F3A3;</span> SOCIAL ENGINEERING HEAD</div>
+
+      <div class="cc-service">
+        <div>
+          <div class="cc-service-name">GoPhish</div>
+          <div class="cc-service-stats">
+            <span class="cc-service-stat">Campaigns: <b id="gpCampaigns">-</b></span>
+            <span class="cc-service-stat">Clicks: <b id="gpClicks">-</b></span>
+          </div>
+        </div>
+        <span id="gpBadge" class="badge badge-offline">OFFLINE</span>
+      </div>
+
+      <div class="cc-service">
+        <div>
+          <div class="cc-service-name">Evilginx2</div>
+          <div class="cc-service-stats">
+            <span class="cc-service-stat">Sessions: <b id="egSessions">-</b></span>
+            <span class="cc-service-stat">Creds: <b id="egCreds">-</b></span>
+          </div>
+        </div>
+        <span id="egBadge" class="badge badge-offline">OFFLINE</span>
+      </div>
+
+      <div class="cc-service">
+        <div>
+          <div class="cc-service-name">BeEF-XSS</div>
+          <div class="cc-service-stats">
+            <span class="cc-service-stat">Hooked: <b id="bfHooked">-</b></span>
+          </div>
+        </div>
+        <span id="bfBadge" class="badge badge-offline">OFFLINE</span>
+      </div>
+
+      <a class="cc-link" href="/phishing">&rarr; Phishing Panel</a>
+    </div>
+
+    <!-- ═══ COLUMN 3: INTEL HEAD ═══ -->
+    <div class="cc-col">
+      <div class="col-head"><span class="col-head-icon">&#x1F9E0;</span> INTEL HEAD</div>
+
+      <div class="cc-item">
+        <div class="cc-item-label">CRITICAL FINDINGS</div>
+        <div id="critFindings"><span style="color:var(--silver);font-size:12px;">Loading...</span></div>
+      </div>
+
+      <div class="cc-item">
+        <div class="cc-item-label">SUBSYSTEMS</div>
+        <div class="cc-service">
+          <div class="cc-service-name">RAG Knowledge</div>
+          <span id="ragBadge" class="badge badge-offline">CHECKING</span>
+        </div>
+        <div class="cc-service">
+          <div class="cc-service-name">Garak AI Sec</div>
+          <span id="garakBadge" class="badge badge-offline">OFFLINE</span>
+        </div>
+      </div>
+
+      <div class="cc-item">
+        <div class="cc-item-label">COMPLIANCE STATUS</div>
+        <div class="cc-compliance" id="complianceBadges">
+          <span class="cc-compliance-badge" id="gdprBadge" style="color:var(--silver);border-color:var(--silver)">GDPR: N/A</span>
+          <span class="cc-compliance-badge" id="nis2Badge" style="color:var(--silver);border-color:var(--silver)">NIS2: N/A</span>
+        </div>
+      </div>
+
+      <a class="cc-link" href="/dashboard">&rarr; Dashboard</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+var API = '';
+function getToken() { return localStorage.getItem('cyrber_token'); }
+if (!getToken()) window.location.href = '/login';
+
+function authFetch(url, opts) {
+  opts = opts || {};
+  var token = getToken();
+  if (!token) { window.location.href = '/login'; return Promise.reject('no token'); }
+  opts.headers = Object.assign({'Authorization': 'Bearer ' + token}, opts.headers || {});
+  return fetch(url, opts).then(function(r) {
+    if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
+    return r;
+  });
+}
+
+// ── Admin nav visibility ──
+(function checkAdmin() {
+  authFetch(API + '/auth/me').then(function(r) { return r.json(); }).then(function(u) {
+    if (u.role === 'admin') document.getElementById('adminNavLink').style.display = '';
+  }).catch(function(){});
+})();
+
+// ── State ──
+var currentTaskId = null;
+var sseSource = null;
+var refreshTimer = null;
+var countdown = 30;
+
+// ═══════════════════════════════════════
+// COLUMN 1: AI SCAN HEAD
+// ═══════════════════════════════════════
+
+function loadRecentScans() {
+  authFetch(API + '/scans?limit=3').then(function(r) { return r.json(); }).then(function(scans) {
+    var el = document.getElementById('recentScans');
+    if (!scans || !scans.length) {
+      el.innerHTML = '<span style="color:var(--silver);font-size:12px;">No scans yet</span>';
+      return;
+    }
+    var html = '';
+    scans.forEach(function(s) {
+      var risk = (s.risk_level || 'N/A').toUpperCase();
+      var target = s.target || 'unknown';
+      var time = s.created_at ? new Date(s.created_at).toLocaleString('pl-PL', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      html += '<div class="cc-scan-item">' +
+        '<span class="cc-scan-target" title="' + target + '">' + target + '</span>' +
+        '<span class="risk-badge ' + risk + '">' + risk + '</span>' +
+        '<span class="cc-scan-time">' + time + '</span>' +
+        '</div>';
+    });
+    el.innerHTML = html;
+  }).catch(function() {
+    document.getElementById('recentScans').innerHTML = '<span style="color:var(--red);font-size:12px;">Failed to load</span>';
+  });
+}
+
+function quickScan() {
+  var target = document.getElementById('qsTarget').value.trim();
+  if (!target) return;
+  var profile = document.getElementById('qsProfile').value;
+  var btn = document.getElementById('qsBtn');
+  btn.disabled = true;
+
+  document.getElementById('scanStatus').className = 'badge badge-running';
+  document.getElementById('scanStatus').textContent = 'RUNNING';
+  document.getElementById('scanStatusText').textContent = target;
+  document.getElementById('qsProgressWrap').classList.add('on');
+  document.getElementById('qsProgressText').classList.add('on');
+  document.getElementById('qsProgressBar').style.width = '0%';
+  document.getElementById('qsProgressText').textContent = 'Dispatching...';
+
+  authFetch(API + '/scan/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({target: target, profile: profile})
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.detail) {
+      scanError(d.detail);
+      return;
+    }
+    currentTaskId = d.task_id;
+    document.getElementById('qsProgressText').textContent = 'Task: ' + d.task_id.substring(0, 8) + '...';
+    if (typeof EventSource !== 'undefined') {
+      connectSSE(d.task_id);
+    } else {
+      pollScan(d.task_id);
+    }
+  }).catch(function(e) {
+    scanError(e.message || 'Connection error');
+  });
+}
+
+function scanError(msg) {
+  document.getElementById('scanStatus').className = 'badge badge-offline';
+  document.getElementById('scanStatus').textContent = 'ERROR';
+  document.getElementById('scanStatusText').textContent = msg;
+  document.getElementById('qsBtn').disabled = false;
+  document.getElementById('qsProgressWrap').classList.remove('on');
+  document.getElementById('qsProgressText').classList.remove('on');
+}
+
+function scanDone() {
+  document.getElementById('scanStatus').className = 'badge badge-done';
+  document.getElementById('scanStatus').textContent = 'DONE';
+  document.getElementById('qsProgressBar').style.width = '100%';
+  document.getElementById('qsProgressText').textContent = 'Scan complete';
+  document.getElementById('qsBtn').disabled = false;
+  currentTaskId = null;
+  loadRecentScans();
+}
+
+function connectSSE(taskId) {
+  var token = getToken();
+  var es = new EventSource(API + '/scan/stream/' + taskId + '?token=' + encodeURIComponent(token));
+  sseSource = es;
+  var sseTimeout = setTimeout(function() { es.close(); pollScan(taskId); }, 10000);
+
+  es.onmessage = function(e) {
+    clearTimeout(sseTimeout);
+    try {
+      var data = JSON.parse(e.data);
+      var pct = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+      document.getElementById('qsProgressBar').style.width = pct + '%';
+      document.getElementById('qsProgressText').textContent = (data.module || '...') + ' (' + pct + '%)';
+      if (data.module === 'complete' && data.status === 'done') {
+        es.close();
+        sseSource = null;
+        scanDone();
+      }
+    } catch(err) {}
+  };
+
+  es.onerror = function() {
+    clearTimeout(sseTimeout);
+    es.close();
+    sseSource = null;
+    pollScan(taskId);
+  };
+}
+
+function pollScan(taskId) {
+  var count = 0;
+  var iv = setInterval(function() {
+    count++;
+    if (count > 120) { clearInterval(iv); scanError('Timeout'); return; }
+    authFetch(API + '/scan/status/' + taskId).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.status === 'completed' || d.status === 'SUCCESS') {
+        clearInterval(iv);
+        scanDone();
+      } else if (d.status === 'failed' || d.status === 'FAILURE') {
+        clearInterval(iv);
+        scanError('Scan failed');
+      } else {
+        document.getElementById('qsProgressText').textContent = 'Running... (' + count + 's)';
+      }
+    }).catch(function(){});
+  }, 3000);
+}
+
+// ═══════════════════════════════════════
+// COLUMN 2: SOCIAL ENGINEERING HEAD
+// ═══════════════════════════════════════
+
+function loadGoPhish() {
+  authFetch(API + '/phishing/campaigns').then(function(r) {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function(campaigns) {
+    document.getElementById('gpBadge').className = 'badge badge-online';
+    document.getElementById('gpBadge').textContent = 'ONLINE';
+    document.getElementById('gpCampaigns').textContent = campaigns.length;
+    var totalClicks = 0;
+    campaigns.forEach(function(c) {
+      totalClicks += (c.stats && c.stats.clicked) || 0;
+    });
+    document.getElementById('gpClicks').textContent = totalClicks;
+  }).catch(function() {
+    document.getElementById('gpBadge').className = 'badge badge-offline';
+    document.getElementById('gpBadge').textContent = 'OFFLINE';
+    document.getElementById('gpCampaigns').textContent = '-';
+    document.getElementById('gpClicks').textContent = '-';
+  });
+}
+
+function loadEvilginx() {
+  authFetch(API + '/evilginx/stats').then(function(r) {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function(data) {
+    var online = data.available || data.online || false;
+    document.getElementById('egBadge').className = 'badge ' + (online ? 'badge-online' : 'badge-offline');
+    document.getElementById('egBadge').textContent = online ? 'ONLINE' : 'OFFLINE';
+    document.getElementById('egSessions').textContent = data.total_sessions || data.sessions || 0;
+    document.getElementById('egCreds').textContent = data.captured_credentials || data.credentials || 0;
+  }).catch(function() {
+    document.getElementById('egBadge').className = 'badge badge-offline';
+    document.getElementById('egBadge').textContent = 'OFFLINE';
+    document.getElementById('egSessions').textContent = '-';
+    document.getElementById('egCreds').textContent = '-';
+  });
+}
+
+function loadBeEF() {
+  authFetch(API + '/beef/status').then(function(r) {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function(data) {
+    var online = data.available || data.online || false;
+    document.getElementById('bfBadge').className = 'badge ' + (online ? 'badge-online' : 'badge-offline');
+    document.getElementById('bfBadge').textContent = online ? 'ONLINE' : 'OFFLINE';
+    document.getElementById('bfHooked').textContent = data.hooked_browsers || data.hooks || 0;
+  }).catch(function() {
+    document.getElementById('bfBadge').className = 'badge badge-offline';
+    document.getElementById('bfBadge').textContent = 'OFFLINE';
+    document.getElementById('bfHooked').textContent = '-';
+  });
+}
+
+// ═══════════════════════════════════════
+// COLUMN 3: INTEL HEAD
+// ═══════════════════════════════════════
+
+function loadCriticalFindings() {
+  authFetch(API + '/scans?limit=5').then(function(r) { return r.json(); }).then(function(scans) {
+    var el = document.getElementById('critFindings');
+    var findings = [];
+
+    scans.forEach(function(s) {
+      if (!s.results) return;
+      var modules = s.results;
+      // Check nuclei findings
+      if (modules.nuclei && modules.nuclei.findings) {
+        modules.nuclei.findings.forEach(function(f) {
+          if (f.severity === 'critical' || f.severity === 'high') {
+            findings.push({title: f.name || f.template_id || 'Finding', severity: f.severity, target: s.target});
+          }
+        });
+      }
+      // Check top_issues from analysis
+      if (s.top_issues) {
+        s.top_issues.forEach(function(issue) {
+          if (issue.toLowerCase().indexOf('critical') >= 0 || issue.toLowerCase().indexOf('high') >= 0) {
+            findings.push({title: issue.substring(0, 80), severity: 'critical', target: s.target});
+          }
+        });
+      }
+      // If scan itself is critical/high risk
+      var risk = (s.risk_level || '').toUpperCase();
+      if ((risk === 'CRITICAL' || risk === 'KRYTYCZNE' || risk === 'HIGH' || risk === 'WYSOKIE') && s.summary) {
+        findings.push({title: s.summary.substring(0, 80), severity: risk.toLowerCase(), target: s.target});
+      }
+    });
+
+    findings = findings.slice(0, 3);
+    if (!findings.length) {
+      el.innerHTML = '<span style="color:var(--green);font-size:12px;">No critical findings</span>';
+      return;
+    }
+
+    var html = '';
+    findings.forEach(function(f) {
+      var sev = f.severity.toUpperCase();
+      html += '<div class="cc-finding">' +
+        '<div class="cc-finding-title"><span class="risk-badge ' + sev + '">' + sev + '</span> ' + f.title + '</div>' +
+        '<div class="cc-finding-meta">' + f.target + '</div>' +
+        '</div>';
+    });
+    el.innerHTML = html;
+  }).catch(function() {
+    document.getElementById('critFindings').innerHTML = '<span style="color:var(--silver);font-size:12px;">No data</span>';
+  });
+}
+
+function loadRAG() {
+  authFetch(API + '/rag/search?q=test&top_k=1').then(function(r) {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function(data) {
+    var ready = data.results && data.results.length > 0;
+    document.getElementById('ragBadge').className = 'badge ' + (ready ? 'badge-ready' : 'badge-offline');
+    document.getElementById('ragBadge').textContent = ready ? 'READY' : 'NOT INDEXED';
+  }).catch(function() {
+    document.getElementById('ragBadge').className = 'badge badge-offline';
+    document.getElementById('ragBadge').textContent = 'NOT INDEXED';
+  });
+}
+
+function loadGarak() {
+  authFetch(API + '/garak/status').then(function(r) {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function(data) {
+    var online = data.available || data.online || false;
+    document.getElementById('garakBadge').className = 'badge ' + (online ? 'badge-online' : 'badge-offline');
+    document.getElementById('garakBadge').textContent = online ? 'ONLINE' : 'OFFLINE';
+  }).catch(function() {
+    document.getElementById('garakBadge').className = 'badge badge-offline';
+    document.getElementById('garakBadge').textContent = 'OFFLINE';
+  });
+}
+
+function loadCompliance() {
+  authFetch(API + '/scans?limit=1').then(function(r) { return r.json(); }).then(function(scans) {
+    if (!scans || !scans.length) return;
+    var s = scans[0];
+    var risk = (s.risk_level || '').toUpperCase();
+    var gdpr = document.getElementById('gdprBadge');
+    var nis2 = document.getElementById('nis2Badge');
+
+    if (risk === 'CRITICAL' || risk === 'KRYTYCZNE') {
+      gdpr.textContent = 'GDPR: FAIL';
+      gdpr.style.color = 'var(--red)';
+      gdpr.style.borderColor = 'var(--red)';
+      nis2.textContent = 'NIS2: FAIL';
+      nis2.style.color = 'var(--red)';
+      nis2.style.borderColor = 'var(--red)';
+    } else if (risk === 'HIGH' || risk === 'WYSOKIE') {
+      gdpr.textContent = 'GDPR: WARN';
+      gdpr.style.color = 'var(--orange)';
+      gdpr.style.borderColor = 'var(--orange)';
+      nis2.textContent = 'NIS2: WARN';
+      nis2.style.color = 'var(--orange)';
+      nis2.style.borderColor = 'var(--orange)';
+    } else if (risk === 'MEDIUM' || risk === 'SREDNIE') {
+      gdpr.textContent = 'GDPR: REVIEW';
+      gdpr.style.color = 'var(--yellow)';
+      gdpr.style.borderColor = 'var(--yellow)';
+      nis2.textContent = 'NIS2: REVIEW';
+      nis2.style.color = 'var(--yellow)';
+      nis2.style.borderColor = 'var(--yellow)';
+    } else if (risk === 'LOW' || risk === 'NISKIE') {
+      gdpr.textContent = 'GDPR: PASS';
+      gdpr.style.color = 'var(--green)';
+      gdpr.style.borderColor = 'var(--green)';
+      nis2.textContent = 'NIS2: PASS';
+      nis2.style.color = 'var(--green)';
+      nis2.style.borderColor = 'var(--green)';
+    }
+  }).catch(function(){});
+}
+
+// ═══════════════════════════════════════
+// REFRESH LOOP
+// ═══════════════════════════════════════
+
+function refreshAll() {
+  loadRecentScans();
+  loadGoPhish();
+  loadEvilginx();
+  loadBeEF();
+  loadCriticalFindings();
+  loadRAG();
+  loadGarak();
+  loadCompliance();
+}
+
+function startCountdown() {
+  countdown = 30;
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(function() {
+    countdown--;
+    var el = document.getElementById('refreshCountdown');
+    if (el) el.textContent = countdown;
+    if (countdown <= 0) {
+      refreshAll();
+      countdown = 30;
+    }
+  }, 1000);
+}
+
+// ── Init ──
+refreshAll();
+startCountdown();
+
+// Enter key on target input
+document.getElementById('qsTarget').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') quickScan();
+});
+</script>
+</body>
+</html>
