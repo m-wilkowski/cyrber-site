@@ -58,7 +58,7 @@ from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
 from modules.scan_profiles import should_run_module, get_all_modules
-from modules.ai_analysis import analyze_scan_results as ai_analyze
+from modules.ai_analysis import analyze_scan_results as ai_analyze, reflect_on_scan
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
@@ -103,8 +103,8 @@ def _skip():
 def full_scan_task(target: str, profile: str = "STRAZNIK"):
     task_id = full_scan_task.request.id
     run = lambda mod: should_run_module(mod, profile)
-    # Total = 42 scan modules + 7 post-processing = 49 steps
-    total = 49
+    # Total = 42 scan modules + 8 post-processing = 50 steps
+    total = 50
     completed = 0
     pp = lambda mod, st, msg="": publish_progress(task_id, mod, st, completed, total, msg)
 
@@ -421,6 +421,13 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
     pp("ai_analysis", "started", "AI analysis — final report")
     result["ai_analysis"] = ai_analyze(result)
     completed += 1; pp("ai_analysis", "done")
+
+    pp("reflection", "started", "Scan reflection")
+    try:
+        result["reflection"] = reflect_on_scan(result, profile)
+    except Exception:
+        result["reflection"] = {}
+    completed += 1; pp("reflection", "done")
 
     pp("save", "started", "Saving results")
     save_scan(task_id, target, result, profile=profile)

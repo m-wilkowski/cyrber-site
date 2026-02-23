@@ -1176,3 +1176,151 @@ def analyze_scan_results(scan_results: dict) -> dict:
 
     log.error("[ai_analysis] All providers failed. Last error: %s", last_error)
     return _empty_result(risk_score, len(findings))
+
+
+# ── Reflector Pattern ──
+
+_PROFILE_MODULES = {
+    "SZCZENIAK": [
+        "nmap", "nuclei", "gobuster", "whatweb", "testssl", "harvester",
+        "ipinfo", "abuseipdb", "otx", "dnsrecon", "whois", "subfinder",
+    ],
+}
+_PROFILE_MODULES["STRAZNIK"] = _PROFILE_MODULES["SZCZENIAK"] + [
+    "zap", "wapiti", "sqlmap", "nikto", "httpx", "masscan", "amass",
+    "katana", "dnsx", "naabu", "netexec", "enum4linux", "bloodhound",
+    "smbmap", "searchsploit",
+]
+_PROFILE_MODULES["CERBER"] = _PROFILE_MODULES["STRAZNIK"] + [
+    "wpscan", "joomscan", "cmsmap", "droopescan", "retirejs",
+    "netdiscover", "arpscan", "fping", "traceroute", "nbtscan",
+    "snmpwalk", "responder", "fierce", "onesixtyone", "ikescan",
+    "sslyze", "impacket",
+]
+
+# Keys that indicate a module produced actual data
+_DATA_KEYS = {
+    "nmap": "ports", "nuclei": "findings", "zap": "alerts",
+    "gobuster": "paths", "whatweb": "technologies", "testssl": "issues",
+    "harvester": "emails", "sqlmap": "injectable_params",
+    "nikto": "findings", "wapiti": "vulnerabilities",
+    "subfinder": "subdomains", "amass": "subdomains",
+    "httpx": "total_results", "masscan": "ports",
+    "katana": "total_urls", "dnsx": "total_resolved",
+    "naabu": "total_open_ports", "bloodhound": "attack_paths",
+    "searchsploit": "exploits", "sslyze": "vulnerabilities",
+    "smbmap": "total_shares", "impacket": "summary",
+}
+
+
+def _classify_module(name: str, scan_results: dict) -> str:
+    """Classify a module's result as ok, empty, error, or missing."""
+    data = scan_results.get(name)
+    if data is None:
+        return "missing"
+
+    # Check for error indicators
+    errors = data.get("errors") or data.get("error") or ""
+    if errors and isinstance(errors, str) and errors.strip():
+        # Has errors, but might also have data — check both
+        pass
+
+    # Check for actual data
+    key = _DATA_KEYS.get(name)
+    if key:
+        val = data.get(key)
+        if isinstance(val, list) and len(val) > 0:
+            return "ok"
+        if isinstance(val, dict) and val:
+            return "ok"
+        if isinstance(val, (int, float)) and val > 0:
+            return "ok"
+
+    # No specific data key — check if dict has anything beyond metadata
+    skip_keys = {"target", "raw", "errors", "error", "skipped", "reason",
+                 "command", "timeout", "scan_time", "duration"}
+    has_data = any(
+        k not in skip_keys and data.get(k)
+        for k in data
+        if not k.startswith("_")
+    )
+    if has_data:
+        return "ok"
+
+    if errors:
+        return "error"
+    return "empty"
+
+
+def reflect_on_scan(scan_results: dict, profile: str = "STRAZNIK") -> dict:
+    """Analyze what went wrong/right in a scan and recommend improvements.
+
+    Never raises — returns partial result on any error.
+    """
+    from datetime import datetime, timezone
+
+    try:
+        modules = _PROFILE_MODULES.get(profile.upper(),
+                                        _PROFILE_MODULES["STRAZNIK"])
+        classified = {
+            "ok": [], "empty": [], "error": [], "missing": [],
+        }
+        for mod in modules:
+            status = _classify_module(mod, scan_results)
+            classified[status].append(mod)
+
+        result = {
+            "modules_ok": classified["ok"],
+            "modules_empty": classified["empty"],
+            "modules_error": classified["error"],
+            "modules_missing": classified["missing"],
+            "analysis": {},
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Only call LLM if there are problems worth analyzing
+        problem_count = len(classified["empty"]) + len(classified["error"]) + len(classified["missing"])
+        if problem_count == 0:
+            result["analysis"] = {
+                "issues": [],
+                "likely_causes": ["All modules returned data successfully"],
+                "next_scan_recommendations": [],
+            }
+            return result
+
+        target = scan_results.get("target", "unknown")
+        prompt = f"""You are a penetration testing expert reviewing scan results for target: {target} (profile: {profile}).
+
+MODULE STATUS:
+- OK ({len(classified['ok'])}): {', '.join(classified['ok']) or 'none'}
+- EMPTY results ({len(classified['empty'])}): {', '.join(classified['empty']) or 'none'}
+- ERRORS ({len(classified['error'])}): {', '.join(classified['error']) or 'none'}
+- MISSING from results ({len(classified['missing'])}): {', '.join(classified['missing']) or 'none'}
+
+Analyze why modules failed or returned empty. Return ONLY JSON:
+{{"issues": ["max 3 specific issues found"], "likely_causes": ["max 3 probable causes"], "next_scan_recommendations": ["max 3 actionable recommendations for rescanning this target"]}}"""
+
+        try:
+            provider = get_provider(task="ai_analysis")
+            if provider.is_available():
+                response_text = provider.chat(prompt, max_tokens=800)
+                parsed = _parse_response(response_text)
+                if parsed:
+                    result["analysis"] = {
+                        "issues": parsed.get("issues", [])[:3],
+                        "likely_causes": parsed.get("likely_causes", [])[:3],
+                        "next_scan_recommendations": parsed.get("next_scan_recommendations", [])[:3],
+                    }
+        except Exception as e:
+            log.warning("[reflect_on_scan] LLM call failed: %s", e)
+
+        return result
+
+    except Exception as e:
+        log.error("[reflect_on_scan] Unexpected error: %s", e)
+        return {
+            "modules_ok": [], "modules_empty": [], "modules_error": [],
+            "modules_missing": [], "analysis": {},
+            "generated_at": datetime.now(timezone.utc).isoformat()
+            if 'datetime' in dir() else "",
+        }
