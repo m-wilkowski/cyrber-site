@@ -248,8 +248,8 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 - Evilginx2 ✅ — backend + docker + 40 testów
 - Phishing Campaign Wizard ✅ — 4-step UI
 - Wizard bugfixy ✅ — JWT auth i AI GENERATE działały od początku; naprawiony fetch phishletów z /evilginx/phishlets
-- **BeEF-XSS** — Browser Exploitation Framework
-- **SET** — Social Engineering Toolkit
+- BeEF-XSS ✅ — REST API client (modules/beef_xss.py), 9 endpointów /beef/*, docker-compose profile phishing
+- ~~SET~~ — odrzucony: 100% interaktywny TUI (raw_input menus), brak REST API, brak trybu headless; funkcjonalność pokryta przez GoPhish (spearphishing) + BeEF (browser exploitation) + Evilginx2 (credential harvesting)
 
 ### Priorytet 4 – DevSecOps / CI/CD Security
 - Nord Stream – wyciąganie secrets z CI/CD
