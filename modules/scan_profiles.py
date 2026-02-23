@@ -30,8 +30,8 @@ PROFILES = {
         "description": "Pelny red team - AD, exploitation, hardware",
         "time_estimate": "~4h+",
         "modules": [
-            "bloodhound", "impacket", "responder",
-            "ikescan", "nikto"
+            "bloodhound", "impacket", "certipy",
+            "responder", "ikescan", "nikto"
         ]
     },
 }
