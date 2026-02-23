@@ -68,7 +68,7 @@ dvwa:
 
 ---
 
-## 4. Zaimplementowane moduły (45+)
+## 4. Zaimplementowane moduły (50+)
 
 ### Web Application
 - Nuclei (14 000+ templates)
@@ -121,6 +121,7 @@ dvwa:
 - SMBmap
 - Responder (analyze mode)
 - Impacket (Kerberoasting, AS-REP Roasting, DCSync, SID enum)
+- Certipy (modules/certipy_scan.py) — AD CS enumeration, ESC1–ESC13 detection, MITRE T1649; certipy-ad 5.0.4 (zależność netexec); profil CERBER; credentials via CERTIPY_USER/PASS/DOMAIN/DC_IP
 
 ### Exploitation Intelligence
 - SearchSploit
@@ -135,10 +136,17 @@ dvwa:
 - `modules/rag_knowledge.py` — RAGKnowledge class, FAISS IndexFlatIP, fastembed BAAI/bge-small-en-v1.5; 141 plików MD PayloadsAllTheThings, 3386 chunków; POST /rag/build-index, GET /rag/search; `_fetch_rag_context()` w ai_analysis.py (top5 critical/high, 15% budżet kontekstu)
 - Dockerfile fix: exploitdb przez git clone (apt nie istnieje w Debian bookworm)
 
+### OSINT / Metadata
+- Exiftool (modules/exiftool_scan.py) — ekstrakcja EXIF z obrazków na target URL (max 5); GPS/device/software/datetime/artist; risk high (GPS), medium (device), low (brak danych); always-run w pipeline; libimage-exiftool-perl 13.25
+
 ### Social Engineering
 - GoPhish (własny kontener)
 - Evilginx2 (modules/evilginx.py) — SQLite reader: sessions, phishlets, config, stats; 7 endpointów /evilginx/* z JWT auth; 40 testów; docker-compose profile phishing
+- BeEF-XSS (modules/beef_xss.py) — REST API client: login z token cache, hooks/modules/run_module/logs; 9 endpointów /beef/*; docker-compose profile phishing; janes/beef image, port 3001; config/beef.yaml z custom credentials
 - Phishing Campaign Wizard (static/phishing.html) — 4-step wizard: Recon Data → Attack Vector → Kampania → Review & Launch; GoPhish + Evilginx2 wybór trybu; checkbox zgody prawnej; AI email generator POST /phishing/generate-email
+
+### AI/LLM Security
+- Garak (docker/garak/, modules/garak_scan.py) — NVIDIA garak 0.14.0 w osobnym kontenerze (torch+transformers ~4GB); mini FastAPI wrapper (server.py); async scan z poll; 40+ probe'ów (prompt injection, jailbreak, encoding, data leakage); OWASP LLM Top 10; 5 endpointów /garak/*; profil ai-security; probe categories: prompt_injection, data_leakage, toxicity, jailbreak, full
 
 ### Frontend / UI
 - UI Polish (static/index.html) — exploit chain karty z border-left, numerowane kółka, badges TOOL/MITRE/severity; business impact grid z kartami; remediation table z kolorowanymi badges; nagłówki z prefixem ▸//; risk score ring glow
@@ -233,7 +241,7 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 - Chain summarization — zapobieganie overflow (w toku)
 
 ### Priorytet 2 – AI/LLM Security Scanner
-- **Garak (NVIDIA)** – LLM vulnerability scanner, "Nmap dla LLM", pip install, Apache 2.0
+- Garak ✅ — osobny kontener Docker, 40+ probe'ów, profil ai-security, async scan z poll
 - Token Turbulenz – fuzzer prompt injection
 - Damn Vulnerable LLM Agent – guinea pig do testowania
 - Arcanum PI Taxonomy (Jason Haddix) – taksonomia technik prompt injection
@@ -264,14 +272,14 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 - pgvector – semantyczne wyszukiwanie podobnych skanów
 - Multi-agent roles (Researcher/Developer/Executor)
 
-### Priorytet 6 – AD / Windows (rozszerzenie)
-- **Certipy** – AD Certificate Services (AD CS) enumeration i ataki, dopełnienie BloodHound+Impacket, priorytet średni
+### Priorytet 6 – AD / Windows (rozszerzenie) ✅
+- Certipy ✅ — AD CS enumeration, ESC1–ESC13, profil CERBER, credentials via env vars
 
 ### Priorytet 7 – OSINT rozszerzenia
+- Exiftool ✅ — EXIF metadata extraction, GPS/device/datetime, always-run w pipeline
 - Blackbird – 600+ platform, AI profiling
 - URLScan.io, GreyNoise, Fullhunt.io (darmowe tier)
 - HaveIBeenPwned ($3.50/msc)
-- **Exiftool** — ekstrakcja metadanych EXIF ze zdjęć (GPS, model urządzenia, data, autor); demonstracja ryzyka dla szkoleń security awareness ("wrzuciłeś selfie → wiemy gdzie jesteś"); open-source, legalny, dostępny w Kali; priorytet niski
 
 ### Priorytet 8 – Hardware (po stabilizacji software)
 - WiFi Pineapple Mark VII – REST API wrapper
@@ -319,6 +327,12 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 ## 13. Aktualny stan commitów
 
 Ostatnie commity na master:
+- `feat: Garak LLM security scanner - osobny kontener`
+- `feat: Certipy - AD Certificate Services enumeration`
+- `docs: SET usunieto z backlogu - nieintegrowalny TUI, zastapiony GoPhish+BeEF+Evilginx`
+- `feat: BeEF-XSS integration - Browser Exploitation Framework`
+- `feat: exiftool moduł - ekstrakcja metadanych EXIF z obrazków`
+- `docs: transfer prompt - RAG PayloadsAllTheThings zamkniety`
 - `feat: RAG z PayloadsAllTheThings - FAISS + fastembed`
 - `feat: Claude Code skill - CYRBER kontekst projektu`
 - `feat: confidence score per krok exploit chain`
@@ -333,7 +347,6 @@ Ostatnie commity na master:
 - `docs: Claude Code memory - kontekst projektu i historia sesji`
 - `docs: aktualizacja sekcji 13 - lista commitów`
 - `docs: aktualizacja transfer prompt - sesja 23.02.2026`
-- `feat: Phishing Campaign Wizard + AI email generator`
 
 ---
 
