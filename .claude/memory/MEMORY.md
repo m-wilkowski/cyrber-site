@@ -9,9 +9,11 @@
 
 ## Kluczowe pliki
 - `modules/ai_analysis.py` — AI agent, cross-module correlation, ContextManager
+- `modules/tasks.py` — Celery full_scan_task + publish_progress() Redis pub/sub (49 kroków)
 - `config/models.yaml` — YAML model routing per task
 - `modules/evilginx_phishing.py` — Evilginx2 SQLite reader + 7 endpointów (uwaga: nazwa pliku z _phishing)
-- `static/index.html` — główny UI (cyberpunk dark theme)
+- `backend/main.py` — FastAPI, SSE endpoint /scan/stream/{task_id}, JWT auth
+- `static/index.html` — główny UI (cyberpunk dark theme), SSE client + polling fallback
 - `static/phishing.html` — Phishing Campaign Wizard (4-step)
 - `CYRBER_Transfer_Prompt.md` — dokument kontekstowy dla nowych sesji Claude
 
@@ -31,6 +33,7 @@
 - Phishing Campaign Wizard: 4-step UI z AI email generator; wizard bugfixy ✅ zamknięte
 - UI polish: exploit chain karty, business impact grid, risk score ring glow
 - Polling timeout: 3/10/6 min per endpoint type
+- SSE streaming ✅: Redis pub/sub → EventSourceResponse, 49 kroków per skan, connectSSE() + polling fallback; token via query param (SSE nie obsługuje headers); sse-starlette>=1.6.1
 - Backlog nowy priorytet: LuaN1ao inspiracje (Reflector, confidence score, RAG PayloadsAllTheThings)
 - Transfer prompt zaktualizowany i w repo (sekcje 4, 10, 13)
 

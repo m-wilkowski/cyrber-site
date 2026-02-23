@@ -140,6 +140,7 @@ dvwa:
 - UI Polish (static/index.html) — exploit chain karty z border-left, numerowane kółka, badges TOOL/MITRE/severity; business impact grid z kartami; remediation table z kolorowanymi badges; nagłówki z prefixem ▸//; risk score ring glow
 - Cache-busting headers — no-cache na /ui, /dashboard, /scheduler, /phishing, /osint
 - Polling timeout — pollStatus max 3min, pollAgentStatus max 10min, pollMultiTask max 6min
+- SSE Streaming (static/index.html + backend/main.py) — real-time postęp skanowania: connectSSE() primary z fallback na polling; GET /scan/stream/{task_id}?token=JWT; Redis pub/sub 49 kroków per skan; progress bar %, fazy RECON/WEB/NETWORK/AI, live log per moduł
 
 ---
 
@@ -224,7 +225,7 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 - Cross-module reasoning ✅
 - ContextManager ✅ (29 testów)
 - YAML model routing ✅
-- WebSocket streaming — real-time output do UI (w toku)
+- SSE streaming ✅ — Redis pub/sub + EventSourceResponse, 49 kroków, polling fallback
 - Chain summarization — zapobieganie overflow (w toku)
 
 ### Priorytet 2 – AI/LLM Security Scanner
@@ -329,6 +330,10 @@ Ostatnie commity na master:
 - `feat: Impacket - Kerberoasting, AS-REP Roasting, SID enum, secretsdump`
 - `feat: SearchSploit - automatyczne wyszukiwanie exploitów dla znalezionych serwisów`
 - `feat: SSLyze + onesixtyone + smbmap + ike-scan + fierce + responder + bloodhound + netexec + enum4linux-ng`
+- `fix: Phishing Wizard - phishlety z /evilginx/phishlets zamiast /evilginx/stats`
+- `docs: backlog - wizard bugfixy zamknięte`
+- `docs: backlog - exiftool OSINT/awareness moduł`
+- `feat: SSE real-time streaming postępu skanowania`
 
 ---
 

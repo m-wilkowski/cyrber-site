@@ -15,6 +15,15 @@ Commity:
 - `746c745` docs: backlog - exiftool OSINT/awareness moduł
 - `7165afd` fix: Phishing Wizard - phishlety z /evilginx/phishlets zamiast /evilginx/stats
 - `759e820` docs: backlog - wizard bugfixy zamknięte
+- `0a54ce9` docs: memory - wizard bugfixy zamknięte, poprawki
+- `685d3f2` feat: SSE real-time streaming postępu skanowania
+
+SSE streaming — implementacja:
+- `modules/tasks.py`: publish_progress() → Redis pub/sub kanał `scan_progress:{task_id}`, 49 kroków (42 moduły + 7 post-processing)
+- `backend/main.py`: GET /scan/stream/{task_id}?token=JWT, EventSourceResponse, REDIS_URL zdefiniowany na poziomie modułu, _redis_url closure w generatorze
+- `static/index.html`: connectSSE() primary (10s timeout fallback), startPolling() wyekstrahowany, updateScanProgress() z progress bar % i fazami RECON/WEB/NETWORK/AI
+- Bug fix: NameError `REDIS_URL` w SSE generatorze — brakowało definicji w main.py
+- Przetestowane end-to-end: skan SZCZENIAK na DVWA, pełny stream 49 eventów
 
 Wizard bugfixy — wynik analizy:
 - JWT auth fetch skanów — nie istniał, `authFetch` działał od początku
