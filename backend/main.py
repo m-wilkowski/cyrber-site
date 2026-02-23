@@ -498,6 +498,94 @@ async def scan_narrative(task_id: str, user: dict = Depends(get_current_user)):
     narrative = generate_hacker_narrative(scan)
     return narrative
 
+@app.get("/scan/{task_id}/autoflow")
+async def scan_autoflow(task_id: str, user: dict = Depends(get_current_user)):
+    scan = get_scan_by_task_id(task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    actions = []
+    target = scan.get("target", "")
+    risk = (scan.get("risk_level") or "").upper()
+    risk_norm = risk.replace("Ą","A").replace("Ć","C").replace("Ę","E").replace("Ł","L") \
+        .replace("Ń","N").replace("Ó","O").replace("Ś","S").replace("Ź","Z").replace("Ż","Z")
+
+    # Collect all text for keyword matching
+    nuclei_findings = []
+    if scan.get("nuclei") and isinstance(scan["nuclei"], dict):
+        nuclei_findings = scan["nuclei"].get("findings") or []
+    finding_texts = " ".join(
+        (f.get("name") or "") + " " + (f.get("template_id") or "") + " " +
+        ((f.get("info") or {}).get("name") or "") + " " +
+        ((f.get("info") or {}).get("description") or "")
+        for f in nuclei_findings
+    ).lower()
+    summary = (scan.get("summary") or "").lower()
+    top_issues = " ".join(scan.get("top_issues") or []).lower()
+    all_text = finding_texts + " " + summary + " " + top_issues
+
+    has_ad = bool(scan.get("bloodhound") or scan.get("certipy") or scan.get("netexec")
+                  or scan.get("impacket") or scan.get("responder"))
+    has_xss = "xss" in all_text or "cross-site scripting" in all_text
+    has_phishing_signal = any(kw in all_text for kw in ["phishing", "email", "login", "credential", "smtp", "spf", "dmarc", "dkim"])
+    has_sqli = "sql" in all_text and ("inject" in all_text or "sqli" in all_text or "sqlmap" in all_text)
+
+    # 1. XSS → BeEF
+    if has_xss:
+        actions.append({
+            "action": "beef", "label": "Launch BeEF Session",
+            "reason": "XSS vulnerabilities detected — hook target browsers",
+            "url": "/phishing?tab=beef&target=" + target,
+            "icon": "hook", "priority": "high",
+        })
+
+    # 2. Phishing signals
+    if has_phishing_signal:
+        actions.append({
+            "action": "phishing", "label": "Create Phishing Campaign",
+            "reason": "Email/login infrastructure exposed — test user awareness",
+            "url": "/phishing?target=" + target,
+            "icon": "email", "priority": "high" if risk_norm in ("CRITICAL", "KRYTYCZNE", "HIGH", "WYSOKIE") else "medium",
+        })
+
+    # 3. Critical/High → report
+    if risk_norm in ("CRITICAL", "KRYTYCZNE", "HIGH", "WYSOKIE"):
+        actions.append({
+            "action": "report", "label": "Generate Client Report",
+            "reason": risk + " risk level — document findings for stakeholders",
+            "url": "/scans/" + task_id + "/pdf",
+            "icon": "report", "priority": "high",
+        })
+
+    # 4. SQLi → deeper exploitation
+    if has_sqli:
+        actions.append({
+            "action": "sqli", "label": "Deep SQL Injection Test",
+            "reason": "SQL injection indicators found — run targeted sqlmap",
+            "url": "/ui?target=" + target + "&profile=CERBER",
+            "icon": "database", "priority": "high",
+        })
+
+    # 5. AD attack paths
+    if has_ad:
+        ad_modules = [m for m in ["bloodhound", "certipy", "netexec", "impacket", "responder"] if scan.get(m)]
+        actions.append({
+            "action": "ad_paths", "label": "View AD Attack Paths",
+            "reason": "Active Directory findings from: " + ", ".join(ad_modules),
+            "url": "/ui?task_id=" + task_id + "&section=bloodhound",
+            "icon": "ad", "priority": "high",
+        })
+
+    # 6. Always → schedule follow-up
+    actions.append({
+        "action": "schedule", "label": "Schedule Follow-up Scan",
+        "reason": "Monitor target for changes and new vulnerabilities",
+        "url": "/scheduler?target=" + target,
+        "icon": "schedule", "priority": "low",
+    })
+
+    return {"task_id": task_id, "target": target, "risk_level": risk, "actions": actions}
+
 from modules.gobuster_scan import scan as gobuster_scan
 from modules.whatweb_scan import scan as whatweb_scan
 from modules.testssl_scan import scan as testssl_scan

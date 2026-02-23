@@ -1346,6 +1346,99 @@ nav {
   .dt { display:block; overflow-x:auto; white-space:nowrap; }
 }
 
+/* ── AUTO-FLOW ── */
+.autoflow {
+  margin-top: 20px;
+  padding: 24px;
+  background: rgba(12,18,32,.82);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(6px);
+  animation: afFadeIn .5s ease;
+}
+@keyframes afFadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+.af-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.af-pulse {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: afPulse 2s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--accent);
+}
+@keyframes afPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.6)} }
+.af-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .15em;
+  color: var(--accent);
+}
+
+.af-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.af-card {
+  background: var(--navy2);
+  border: 1px solid var(--border2);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color .2s, transform .2s;
+  cursor: pointer;
+  text-decoration: none;
+}
+.af-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.af-card.priority-high { border-left: 3px solid var(--red); }
+.af-card.priority-medium { border-left: 3px solid var(--yellow); }
+.af-card.priority-low { border-left: 3px solid var(--silver); }
+
+.af-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.af-icon {
+  font-size: 18px;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.af-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: var(--white);
+}
+.af-reason {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--silver);
+  line-height: 1.4;
+}
+.af-go {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .15em;
+  color: var(--accent);
+  margin-top: auto;
+  padding-top: 4px;
+}
+
 </style>
 </head>
 <body>
@@ -1506,6 +1599,7 @@ nav {
         </div>
 
         <div id="extSections"></div>
+        <div id="autoFlowContainer"></div>
       </div>
     </div>
   </div>
@@ -1844,6 +1938,7 @@ function renderResults(res, elapsed) {
   if(window._lastTaskId){var pb=document.getElementById('pdfBtn');pb.href=API+'/scans/'+window._lastTaskId+'/pdf';pb.style.display='inline-block';}
   renderAiAnalysis(res);
   renderExtended(res);
+  showAutoFlow(window._lastTaskId);
   hideSkeleton();
   hideScanSteps();
   document.getElementById('res').classList.add('on');
@@ -5071,6 +5166,60 @@ function hideSkeleton(){
   var lay=document.getElementById('resLayout');
   if(sk) sk.classList.remove('on');
   if(lay) lay.style.display='flex';
+}
+
+// ── AUTO-FLOW: Recommended Next Actions ──
+
+var AF_ICONS = {
+  hook: '\uD83C\uDFA3',
+  email: '\uD83D\uDCE7',
+  report: '\uD83D\uDCCB',
+  database: '\uD83D\uDC89',
+  ad: '\uD83D\uDC15',
+  schedule: '\uD83D\uDD52',
+};
+
+function showAutoFlow(taskId) {
+  var container = document.getElementById('autoFlowContainer');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (!taskId) return;
+
+  authFetch(API + '/scan/' + taskId + '/autoflow')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.actions || !data.actions.length) return;
+
+      var html = '<div class="autoflow">';
+      html += '<div class="af-header"><span class="af-pulse"></span>';
+      html += '<span class="af-title">RECOMMENDED NEXT ACTIONS</span></div>';
+      html += '<div class="af-grid">';
+
+      data.actions.forEach(function(a) {
+        var icon = AF_ICONS[a.icon] || '\u26A1';
+        var isDownload = a.action === 'report';
+        var href = isDownload ? (API + a.url) : a.url;
+        var onclick = isDownload
+          ? 'onclick="event.preventDefault();authFetch(\'' + API + a.url + '\').then(function(r){return r.blob()}).then(function(b){var u=URL.createObjectURL(b);var l=document.createElement(\'a\');l.href=u;l.download=\'cyrber_report.pdf\';l.click();URL.revokeObjectURL(u)})"'
+          : '';
+
+        html += '<a class="af-card priority-' + (a.priority || 'low') + '" href="' + href + '" ' + onclick + '>';
+        html += '<div class="af-card-top">';
+        html += '<span class="af-icon">' + icon + '</span>';
+        html += '<span class="af-label">' + a.label.toUpperCase() + '</span>';
+        html += '</div>';
+        html += '<div class="af-reason">' + a.reason + '</div>';
+        html += '<div class="af-go">' + (isDownload ? 'DOWNLOAD \u2192' : 'LAUNCH \u2192') + '</div>';
+        html += '</a>';
+      });
+
+      html += '</div></div>';
+      container.innerHTML = html;
+    })
+    .catch(function(e) {
+      console.error('AutoFlow error:', e);
+    });
 }
 
 </script>
