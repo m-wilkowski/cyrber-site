@@ -57,6 +57,16 @@ services:
       - phishing
     restart: on-failure
 
+  garak:
+    build: ./docker/garak
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+    profiles:
+      - ai-security
+    restart: on-failure
+
   beef:
     image: janes/beef
     ports:
@@ -114,6 +124,7 @@ services:
       BEEF_URL: ${BEEF_URL:-http://beef:3000}
       BEEF_USER: ${BEEF_USER:-cyrber}
       BEEF_PASS: ${BEEF_PASS:-cyrber_beef_2024}
+      GARAK_URL: ${GARAK_URL:-http://garak:5000}
       CYRBER_USER: ${CYRBER_USER:-admin}
       CYRBER_PASS: ${CYRBER_PASS:-cyrber2024}
       JWT_SECRET: ${JWT_SECRET:-change_me_in_production}

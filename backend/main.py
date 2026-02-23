@@ -931,6 +931,69 @@ async def phishing_campaign_results(campaign_id: int, user: str = Depends(get_cu
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
 
+# ── Garak LLM Security Scanner ──
+
+from modules.garak_scan import (
+    is_available as garak_available,
+    get_status as garak_status,
+    list_probes as garak_probes,
+    start_scan as garak_start,
+    get_scan as garak_get,
+    list_scans as garak_list,
+)
+
+def _require_garak():
+    if not garak_available():
+        raise HTTPException(
+            status_code=503,
+            detail="Garak not available — start with: docker compose --profile ai-security up -d",
+        )
+
+@app.get("/garak/status")
+async def garak_get_status(user: str = Depends(get_current_user)):
+    return garak_status()
+
+@app.get("/garak/probes")
+async def garak_get_probes(user: str = Depends(get_current_user)):
+    _require_garak()
+    return garak_probes()
+
+class GarakScanRequest(BaseModel):
+    target_type: str = "openai"
+    target_name: str = "gpt-4"
+    probes: str = "encoding,dan,promptinject"
+    probe_tags: str = ""
+    generations: int = 3
+    api_key: str = ""
+    api_base: str = ""
+
+@app.post("/garak/scan")
+async def garak_post_scan(request: Request, body: GarakScanRequest, user: str = Depends(get_current_user)):
+    _require_garak()
+    result = garak_start(
+        target_type=body.target_type, target_name=body.target_name,
+        probes=body.probes, probe_tags=body.probe_tags,
+        generations=body.generations, api_key=body.api_key,
+        api_base=body.api_base,
+    )
+    if "error" in result:
+        raise HTTPException(status_code=502, detail=result["error"])
+    audit(request, user, "garak_scan_start", f"{body.target_type}/{body.target_name}")
+    return result
+
+@app.get("/garak/scan/{scan_id}")
+async def garak_get_scan(scan_id: str, user: str = Depends(get_current_user)):
+    _require_garak()
+    result = garak_get(scan_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return result
+
+@app.get("/garak/scans")
+async def garak_list_all(user: str = Depends(get_current_user)):
+    _require_garak()
+    return garak_list()
+
 # ── BeEF-XSS proxy ──
 
 from modules.beef_xss import (
