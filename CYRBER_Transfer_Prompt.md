@@ -131,6 +131,10 @@ dvwa:
 ### Configuration
 - YAML Model Routing (config/models.yaml) — Opus dla exploit_chains/hacker_narrative, Sonnet dla ai_analysis/agent, Haiku dla false_positive_filter/llm_analyze/phishing_email; cache per-task w llm_provider.py
 
+### RAG Knowledge Base
+- `modules/rag_knowledge.py` — RAGKnowledge class, FAISS IndexFlatIP, fastembed BAAI/bge-small-en-v1.5; 141 plików MD PayloadsAllTheThings, 3386 chunków; POST /rag/build-index, GET /rag/search; `_fetch_rag_context()` w ai_analysis.py (top5 critical/high, 15% budżet kontekstu)
+- Dockerfile fix: exploitdb przez git clone (apt nie istnieje w Debian bookworm)
+
 ### Social Engineering
 - GoPhish (własny kontener)
 - Evilginx2 (modules/evilginx.py) — SQLite reader: sessions, phishlets, config, stats; 7 endpointów /evilginx/* z JWT auth; 40 testów; docker-compose profile phishing
@@ -235,10 +239,10 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 - Arcanum PI Taxonomy (Jason Haddix) – taksonomia technik prompt injection
 - Nuclei custom templates dla LLM endpoints
 
-### Priorytet – LuaN1ao inspiracje (średni)
-- Reflector pattern — funkcja analizująca po skanie co się nie udało i dlaczego; uzupełnienie ai_analysis.py
-- Causal chain confidence score — "confidence": 0-1.0 per krok exploit_chain
-- RAG z PayloadsAllTheThings — FAISS/pgvector, wstrzykiwanie payloadów do promptów AI; uzupełnienie SearchSploit
+### Priorytet – LuaN1ao inspiracje ✅
+- Reflector pattern ✅ — reflect_on_scan() w ai_analysis.py, klasyfikacja modułów ok/empty/error/missing
+- Causal chain confidence score ✅ — "confidence": 0.0-1.0 per krok exploit_chain, UI badge CONFIRMED/LIKELY/THEORETICAL
+- RAG z PayloadsAllTheThings ✅ — FAISS + fastembed, 3386 chunków, _fetch_rag_context() w ai_analysis.py, 15% budżet kontekstu
 
 ### Priorytet 3 – Social Engineering
 - Evilginx2 ✅ — backend + docker + 40 testów
@@ -315,25 +319,21 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 ## 13. Aktualny stan commitów
 
 Ostatnie commity na master:
+- `feat: RAG z PayloadsAllTheThings - FAISS + fastembed`
+- `feat: Claude Code skill - CYRBER kontekst projektu`
+- `feat: confidence score per krok exploit chain`
+- `feat: Reflector pattern - analiza post-scan`
+- `docs: memory - zamknięcie sesji 23.02.2026`
+- `docs: transfer prompt + memory - SSE streaming`
+- `feat: SSE real-time streaming postępu skanowania`
+- `docs: memory - wizard bugfixy zamknięte, poprawki`
+- `docs: backlog - wizard bugfixy zamknięte`
+- `fix: Phishing Wizard - phishlety z /evilginx/phishlets zamiast /evilginx/stats`
+- `docs: backlog - exiftool OSINT/awareness moduł`
+- `docs: Claude Code memory - kontekst projektu i historia sesji`
+- `docs: aktualizacja sekcji 13 - lista commitów`
 - `docs: aktualizacja transfer prompt - sesja 23.02.2026`
 - `feat: Phishing Campaign Wizard + AI email generator`
-- `feat: Evilginx2 integration - MFA bypass phishing layer`
-- `fix: polling timeout i max retries`
-- `feat: ContextManager + YAML model routing + tests`
-- `feat: UI polish - dark cyberpunk czytelniejszy`
-- `fix: cache-busting headers dla HTML endpoints`
-- `feat: YAML model routing per task`
-- `fix: SyntaxError w pdf_report.py - zagnieżdżony f-string cms_rgb`
-- `feat: GUI upgrade - sticky sidebar, skeleton loader, progress steps, interaktywny dashboard`
-- `feat: AI Agent - unified analysis, risk score, exploit chain, business impact, remediation priority`
-- `feat: Scan Profiles - Szczeniak/Straznik/Cerber z automatycznym filtrowaniem modułów`
-- `feat: Impacket - Kerberoasting, AS-REP Roasting, SID enum, secretsdump`
-- `feat: SearchSploit - automatyczne wyszukiwanie exploitów dla znalezionych serwisów`
-- `feat: SSLyze + onesixtyone + smbmap + ike-scan + fierce + responder + bloodhound + netexec + enum4linux-ng`
-- `fix: Phishing Wizard - phishlety z /evilginx/phishlets zamiast /evilginx/stats`
-- `docs: backlog - wizard bugfixy zamknięte`
-- `docs: backlog - exiftool OSINT/awareness moduł`
-- `feat: SSE real-time streaming postępu skanowania`
 
 ---
 
