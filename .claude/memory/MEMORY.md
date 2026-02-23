@@ -10,7 +10,7 @@
 ## Kluczowe pliki
 - `modules/ai_analysis.py` — AI agent, cross-module correlation, ContextManager
 - `config/models.yaml` — YAML model routing per task
-- `modules/evilginx.py` — Evilginx2 SQLite reader + 7 endpointów
+- `modules/evilginx_phishing.py` — Evilginx2 SQLite reader + 7 endpointów (uwaga: nazwa pliku z _phishing)
 - `static/index.html` — główny UI (cyberpunk dark theme)
 - `static/phishing.html` — Phishing Campaign Wizard (4-step)
 - `CYRBER_Transfer_Prompt.md` — dokument kontekstowy dla nowych sesji Claude
@@ -28,7 +28,7 @@
 - ContextManager: dynamiczny budżet tokenów, 29 testów
 - YAML model routing: Opus/Sonnet/Haiku per task type
 - Evilginx2: backend + docker + 40 testów
-- Phishing Campaign Wizard: 4-step UI z AI email generator
+- Phishing Campaign Wizard: 4-step UI z AI email generator; wizard bugfixy ✅ zamknięte
 - UI polish: exploit chain karty, business impact grid, risk score ring glow
 - Polling timeout: 3/10/6 min per endpoint type
 - Backlog nowy priorytet: LuaN1ao inspiracje (Reflector, confidence score, RAG PayloadsAllTheThings)
