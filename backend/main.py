@@ -203,6 +203,10 @@ async def admin_page():
 async def report_page(task_id: str):
     return FileResponse("static/report.html", headers=_NO_CACHE)
 
+@app.get("/scan/{task_id}/detail")
+async def scan_detail_page(task_id: str):
+    return FileResponse("static/scan_detail.html", headers=_NO_CACHE)
+
 @app.get("/")
 async def root():
     return {"status": "CYRBER online"}
@@ -1730,3 +1734,90 @@ async def explain_finding(request: Request, body: ExplainFindingRequest, user: d
         return result
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI explain failed: {str(e)}")
+
+
+# ── Scan AI Agent (conversational) ──
+
+class ScanAgentRequest(BaseModel):
+    task_id: str
+    message: str
+    history: list = []
+
+@app.post("/api/scan-agent")
+@limiter.limit("30/minute")
+async def scan_agent(request: Request, body: ScanAgentRequest, user: dict = Depends(get_current_user)):
+    from modules.llm_provider import ClaudeProvider
+
+    scan = get_scan_by_task_id(body.task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    # Build scan context summary (compact)
+    target = scan.get("target", "")
+    risk = scan.get("risk_level", "N/A")
+    findings_count = scan.get("findings_count", 0)
+    ai = scan.get("ai_analysis") or {}
+    summary = ai.get("executive_summary") or scan.get("summary") or ""
+    narrative = (scan.get("hacker_narrative") or {}).get("executive_summary", "")
+
+    # Top findings for context
+    top_findings = []
+    nuclei = scan.get("nuclei") or {}
+    for f in (nuclei.get("findings") or [])[:10]:
+        info = f.get("info") or {}
+        top_findings.append(f"{info.get('severity', 'info').upper()}: {info.get('name', f.get('template_id', ''))}")
+
+    if scan.get("sqlmap", {}).get("vulnerable"):
+        top_findings.insert(0, "CRITICAL: SQL Injection (SQLMap)")
+
+    for a in (scan.get("zap", {}).get("alerts") or [])[:5]:
+        top_findings.append(f"{a.get('risk', 'info').upper()}: {a.get('name', '')}")
+
+    # Exploit chains summary
+    chains_summary = ""
+    chains = scan.get("exploit_chains") or []
+    if chains:
+        chain_descs = []
+        for c in chains[:3]:
+            steps = c.get("steps") or c.get("chain") or []
+            step_names = [s.get("action") or s.get("technique") or "" for s in steps[:4]]
+            chain_descs.append(" -> ".join(step_names))
+        chains_summary = "\n".join(chain_descs)
+
+    system_prompt = (
+        "Jesteś ekspertem cyberbezpieczeństwa CYRBER AI. Odpowiadasz po polsku, "
+        "konkretnie i pomocnie. Masz pełny kontekst skanu bezpieczeństwa.\n\n"
+        f"TARGET: {target}\n"
+        f"RISK LEVEL: {risk}\n"
+        f"FINDINGS COUNT: {findings_count}\n"
+        f"SUMMARY: {summary[:500]}\n"
+        f"NARRATIVE: {narrative[:500]}\n"
+        f"TOP FINDINGS:\n" + "\n".join(top_findings[:15]) + "\n"
+    )
+    if chains_summary:
+        system_prompt += f"\nEXPLOIT CHAINS:\n{chains_summary}\n"
+
+    system_prompt += (
+        "\nOdpowiadaj zwięźle (max 3-4 zdania). "
+        "Jeśli pytanie dotyczy CVE, wyjaśnij co to jest i jak naprawić. "
+        "Jeśli pytanie dotyczy parametru skanu, wyjaśnij w kontekście tego targetu."
+    )
+
+    try:
+        provider = ClaudeProvider(model="claude-haiku-4-5-20251001")
+        # Build conversation from history
+        prompt_parts = []
+        for msg in (body.history or [])[-8:]:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "user":
+                prompt_parts.append(f"Użytkownik: {content}")
+            elif role == "assistant":
+                prompt_parts.append(f"AI: {content}")
+        prompt_parts.append(f"Użytkownik: {body.message}")
+        prompt = "\n".join(prompt_parts)
+
+        response_text = provider.chat(prompt, system=system_prompt, max_tokens=800)
+        return {"response": response_text.strip()}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI agent failed: {str(e)}")

@@ -1467,7 +1467,7 @@ function renderTable() {
     var miniColor = scoreColor(miniScore);
     var isRunning = s.status === 'running' || s.status === 'PROGRESS';
 
-    html += '<tr onclick="openDrilldown(\'' + escH(s.task_id) + '\')">';
+    html += '<tr onclick="goToScanDetail(\'' + escH(s.task_id) + '\')">';
     html += '<td class="target">' + escH(s.target) + (isRunning ? ' <span class="pulse" style="color:var(--green);font-size:10px">&#x25CF;</span>' : '') + '</td>';
     html += '<td><span class="prof-badge" style="color:' + profColor + ';border-color:' + profColor + '">' + prof + '</span></td>';
     html += '<td>' + formatDate(s.created_at) + '</td>';
@@ -1522,7 +1522,20 @@ function goToPage(n) {
 }
 
 /* ══════════════════════════════════════
-   DRILLDOWN PANEL
+   SCAN DETAIL REDIRECT
+   ══════════════════════════════════════ */
+function goToScanDetail(taskId) {
+  // Desktop: navigate to full scan detail page
+  // Mobile fallback: open drilldown panel
+  if (window.innerWidth <= 768) {
+    openDrilldown(taskId);
+  } else {
+    window.location.href = '/scan/' + taskId + '/detail';
+  }
+}
+
+/* ══════════════════════════════════════
+   DRILLDOWN PANEL (mobile fallback)
    ══════════════════════════════════════ */
 function openDrilldown(taskId) {
   _drilldownTaskId = taskId;
