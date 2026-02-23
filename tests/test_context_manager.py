@@ -197,7 +197,7 @@ class TestBuildContextAwarePrompt:
         ports = self._make_ports(20)
         corr = "Correlation line\n" * 30
 
-        f_out, p_out, c_out = ContextManager.build_context_aware_prompt(
+        f_out, p_out, c_out, _ = ContextManager.build_context_aware_prompt(
             findings, ports, corr, self._metadata(), "claude-sonnet-4-20250514",
         )
         # Everything should fit
@@ -212,7 +212,7 @@ class TestBuildContextAwarePrompt:
         ports = self._make_ports(50)
         corr = "Correlation\n" * 50
 
-        f_out, p_out, c_out = ContextManager.build_context_aware_prompt(
+        f_out, p_out, c_out, _ = ContextManager.build_context_aware_prompt(
             findings, ports, corr, self._metadata(), "llama3.2",
         )
         real_findings = [f for f in f_out if not f.get("_note")]
@@ -226,7 +226,7 @@ class TestBuildContextAwarePrompt:
         corr = "Chain data\n" * 200
 
         for model, limit in [("claude-sonnet-4-20250514", 180_000), ("llama3.2", 6_000)]:
-            f_out, p_out, c_out = ContextManager.build_context_aware_prompt(
+            f_out, p_out, c_out, _ = ContextManager.build_context_aware_prompt(
                 findings, ports, corr, self._metadata(), model,
             )
             total_text = (
@@ -246,7 +246,7 @@ class TestBuildContextAwarePrompt:
         ports = self._make_ports(20)
         corr = "Important correlation data"
 
-        _, _, c_out = ContextManager.build_context_aware_prompt(
+        _, _, c_out, _ = ContextManager.build_context_aware_prompt(
             findings, ports, corr, self._metadata(), "llama3.2",
         )
         assert c_out == corr  # short correlation should survive
@@ -262,7 +262,7 @@ class TestBuildContextAwarePrompt:
                 "source": "nikto", "description": "L" * 200}
                for i in range(10)]
 
-        f_out, _, _ = ContextManager.build_context_aware_prompt(
+        f_out, _, _, _ = ContextManager.build_context_aware_prompt(
             crit + low, [], "", self._metadata(), "llama3.2",
         )
         real = [f for f in f_out if not f.get("_note")]
@@ -273,16 +273,17 @@ class TestBuildContextAwarePrompt:
             assert crit_count >= low_count
 
     def test_empty_inputs(self):
-        f_out, p_out, c_out = ContextManager.build_context_aware_prompt(
+        f_out, p_out, c_out, rag_out = ContextManager.build_context_aware_prompt(
             [], [], "", self._metadata(), "claude-sonnet-4-20250514",
         )
         assert f_out == []
         assert p_out == []
         assert c_out == ""
+        assert rag_out == ""
 
     def test_note_added_when_findings_dropped(self):
         findings = self._make_findings(200, desc_len=500)
-        f_out, _, _ = ContextManager.build_context_aware_prompt(
+        f_out, _, _, _ = ContextManager.build_context_aware_prompt(
             findings, [], "", self._metadata(), "llama3.2",
         )
         notes = [f for f in f_out if f.get("_note")]

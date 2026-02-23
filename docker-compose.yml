@@ -124,6 +124,7 @@ services:
       - ./modules:/app/modules
       - ./backend:/app/backend
       - ./config:/app/config
+      - ./knowledge_base:/app/knowledge_base
       - evilginx_data:/app/evilginx:ro
 
   worker:
@@ -170,6 +171,7 @@ services:
       - ./modules:/app/modules
       - ./backend:/app/backend
       - ./config:/app/config
+      - ./knowledge_base:/app/knowledge_base
 
   beat:
     build: .

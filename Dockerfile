@@ -153,7 +153,8 @@ RUN apt-get update && apt-get install -y ike-scan && rm -rf /var/lib/apt/lists/*
 # sslyze (SSL/TLS configuration analysis and vulnerability scanning)
 RUN pip install sslyze --break-system-packages
 # searchsploit (exploit-db CLI search tool)
-RUN apt-get update && apt-get install -y exploitdb && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 https://gitlab.com/exploit-database/exploitdb.git /opt/exploitdb && \
+    ln -sf /opt/exploitdb/searchsploit /usr/local/bin/searchsploit
 # impacket (Active Directory attack toolkit — Kerberoasting, AS-REP, secretsdump, lookupsid)
 RUN pip install impacket --break-system-packages
 # retire.js (vulnerable JavaScript library detection)

@@ -116,12 +116,13 @@ class ContextManager:
         correlation_graph: str,
         scan_metadata: dict,
         model_name: str,
-    ) -> tuple[list[dict], list[dict], str]:
-        """Allocate token budget and return trimmed (findings, ports, correlations).
+        rag_context: str = "",
+    ) -> tuple[list[dict], list[dict], str, str]:
+        """Allocate token budget and return trimmed (findings, ports, correlations, rag_context).
 
-        Priority: correlations > critical/high findings > ports > medium/low findings.
+        Priority: correlations > rag_context (15%) > critical/high (50%) > ports (10%) > medium/low (25%).
 
-        Returns (trimmed_findings, trimmed_ports, trimmed_correlations).
+        Returns (trimmed_findings, trimmed_ports, trimmed_correlations, trimmed_rag_context).
         """
         limit = cls.get_model_context_limit(model_name)
         budget = limit - cls._TEMPLATE_RESERVE
@@ -138,15 +139,23 @@ class ContextManager:
             corr_cost = cls.estimate_tokens(correlation_graph)
         remaining -= corr_cost
 
-        # 3. Split findings into critical/high vs medium/low/info
+        # 3. RAG context — 15% budget
+        rag_budget = int(remaining * 0.15)
+        rag_cost = cls.estimate_tokens(rag_context)
+        if rag_cost > rag_budget:
+            rag_context = rag_context[:int(rag_budget * 3.5)]
+            rag_cost = cls.estimate_tokens(rag_context)
+        remaining -= rag_cost
+
+        # 4. Split findings into critical/high vs medium/low/info
         crit_high = [f for f in findings
                      if f.get("severity", "info") in ("critical", "high")]
         rest = [f for f in findings
                 if f.get("severity", "info") not in ("critical", "high")]
 
-        # Give critical/high 60% of remaining, ports 10%, rest 30%
-        crit_budget = int(remaining * 0.60)
-        ports_budget = int(remaining * 0.10)
+        # Give critical/high ~59% of remaining, ports ~12%, rest ~29%
+        crit_budget = int(remaining * 0.59)
+        ports_budget = int(remaining * 0.12)
         rest_budget = remaining - crit_budget - ports_budget
 
         # 4. Critical/high findings
@@ -189,21 +198,22 @@ class ContextManager:
             })
 
         total_used = (
-            meta_cost + corr_cost
+            meta_cost + corr_cost + rag_cost
             + cls.estimate_tokens(json.dumps(all_findings, ensure_ascii=False))
             + ports_used
         )
 
         log.info(
-            "[context] model=%s limit=%d budget=%d used=%d findings=%d/%d ports=%d/%d",
+            "[context] model=%s limit=%d budget=%d used=%d findings=%d/%d ports=%d/%d rag=%d",
             model_name, limit, budget, total_used,
             len([f for f in all_findings if not f.get("_note")]),
             len(findings),
             len(trimmed_ports),
             len(ports),
+            rag_cost,
         )
 
-        return all_findings, trimmed_ports, correlation_graph
+        return all_findings, trimmed_ports, correlation_graph, rag_context
 
 
 def _collect_findings(scan_results: dict) -> list[dict]:
@@ -920,6 +930,46 @@ def _build_correlation_graph(scan_results: dict) -> str:
     return result
 
 
+def _fetch_rag_context(findings: list[dict], max_findings: int = 5, top_k: int = 3) -> str:
+    """Fetch relevant attack techniques from RAG knowledge base for top findings."""
+    try:
+        from modules.rag_knowledge import get_rag
+        rag = get_rag()
+        if not rag._ready and not rag.load_index():
+            return ""
+
+        # Tylko critical/high findings, max 5
+        priority = [f for f in findings if f.get("severity") in ("critical", "high")]
+        if not priority:
+            priority = findings[:max_findings]
+        else:
+            priority = priority[:max_findings]
+
+        sections = []
+        seen_texts = set()
+        for finding in priority:
+            name = finding.get("name", "") or finding.get("title", "")
+            if not name:
+                continue
+            results = rag.search(name, top_k=top_k)
+            if results:
+                techniques = []
+                for r in results:
+                    if r["text"] not in seen_texts and r["score"] > 0.5:
+                        seen_texts.add(r["text"])
+                        techniques.append(
+                            f"  - [{r['category']}] {r['text'][:200]}"
+                            f" (score: {r['score']:.2f})"
+                        )
+                if techniques:
+                    sections.append(f"[{name}]\n" + "\n".join(techniques))
+
+        return "\n\n".join(sections) if sections else ""
+    except Exception as e:
+        log.warning("[rag] Failed to fetch RAG context: %s", e)
+        return ""
+
+
 def _build_prompt(scan_results: dict, findings: list[dict], risk_score: int,
                    model_name: str = "claude-sonnet-4-20250514") -> str:
     """Build the single comprehensive prompt for unified AI analysis.
@@ -967,6 +1017,9 @@ def _build_prompt(scan_results: dict, findings: list[dict], risk_score: int,
     # Build cross-module correlation graph
     correlation_graph = _build_correlation_graph(scan_results)
 
+    # ── RAG enrichment ───────────────────────────────────────
+    rag_context = _fetch_rag_context(findings)
+
     # ── Context-aware trimming ──────────────────────────────────
     scan_metadata = {
         "target": target, "profile": profile, "modules_ran": modules_ran,
@@ -974,13 +1027,14 @@ def _build_prompt(scan_results: dict, findings: list[dict], risk_score: int,
         "mitre": mitre_techniques, "cwe": cwe_ids, "owasp": owasp_cats,
     }
 
-    findings_for_prompt, ports_summary, correlation_graph = (
+    findings_for_prompt, ports_summary, correlation_graph, rag_context = (
         ContextManager.build_context_aware_prompt(
             findings=findings,
             ports=ports,
             correlation_graph=correlation_graph,
             scan_metadata=scan_metadata,
             model_name=model_name,
+            rag_context=rag_context,
         )
     )
 
@@ -991,6 +1045,15 @@ def _build_prompt(scan_results: dict, findings: list[dict], risk_score: int,
 Ponizsze lancuchy pokazuja POLACZONE sciezki ataku wykryte przez wiele modulow.
 Uzyj ich jako podstawy dla attack_narrative i exploit_chain:
 {correlation_graph}
+"""
+
+    rag_section = ""
+    if rag_context:
+        rag_section = f"""
+=== TECHNIKI ATAKU (Knowledge Base) ===
+Powiazane techniki exploitacji i payloady z bazy PayloadsAllTheThings.
+Uzyj ich do wzbogacenia exploit_chain i attack_narrative:
+{rag_context}
 """
 
     return f"""Jestes ekspertem ds. cyberbezpieczenstwa i pentesterem z certyfikatami OSCP, OSCE, CRTO.
@@ -1006,7 +1069,7 @@ Risk score (calculated): {risk_score}/100
 MITRE ATT&CK: {json.dumps(mitre_techniques, ensure_ascii=False)}
 CWE: {json.dumps(cwe_ids, ensure_ascii=False)}
 OWASP: {json.dumps(owasp_cats, ensure_ascii=False)}
-{correlation_section}
+{correlation_section}{rag_section}
 === FINDINGS ({len(findings)} total, showing top {len(findings_for_prompt)}) ===
 {json.dumps(findings_for_prompt, indent=2, ensure_ascii=False)}
 
@@ -1063,6 +1126,7 @@ WAZNE:
 - remediation_priority: max 10 pozycji, posortowane od najwazniejszej
 - business_impact.financial_risk_eur: realistyczna kwota strat w EUR
 - compliance_violations: tylko te ktore faktycznie moga byc naruszone
+- TECHNIKI ATAKU: jesli podano sekcje Knowledge Base, uzyj ich jako referencji do budowania exploit_chain. Konkretne payloady i techniki zwiekszaja confidence score.
 - Odpowiedz TYLKO JSON, bez zadnych dodatkowych komentarzy"""
 
 
