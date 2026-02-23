@@ -285,6 +285,7 @@
     <a class="nav-link active" href="/scheduler">SCHEDULER</a>
     <a class="nav-link" href="/phishing">PHISHING</a>
     <a class="nav-link" href="/osint">OSINT</a>
+    <a class="nav-link" href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
     <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
   </div>
 </nav>
@@ -432,6 +433,9 @@ function showMsg(text, isError = false) {
 
 fetchSchedules();
 setInterval(fetchSchedules, 30000);
+</script>
+<script>
+(function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(r=>r.json()).then(u=>{if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}}).catch(function(){});})();
 </script>
 </body>
 </html>

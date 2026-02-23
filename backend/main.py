@@ -164,6 +164,10 @@ async def phishing_page():
 async def osint_page():
     return FileResponse("static/osint.html", media_type="text/html", headers=_NO_CACHE)
 
+@app.get("/admin")
+async def admin_page():
+    return FileResponse("static/admin.html", headers=_NO_CACHE)
+
 @app.get("/")
 async def root():
     return {"status": "CYRBER online"}
