@@ -64,7 +64,17 @@ dvwa:
   restart: unless-stopped
 ```
 
-**Auth:** Basic Auth (admin:cyrber2024), JWT w planach
+**Nginx Reverse Proxy:**
+```
+cyrber-nginx-1    Nginx reverse proxy    :443 (HTTPS), :80 (redirect)
+```
+Self-signed TLS cert (ważny do 2029), security headers (HSTS, X-Frame-Options, CSP, X-Content-Type-Options), rate limiting (10r/s burst 20).
+
+**Auth:** JWT (HS256) + RBAC (admin/operator/viewer). Login: POST /auth/login → token. Domyślnie: admin:cyrber2024.
+
+**System licencji:** On-prem HMAC-SHA256 (`modules/license.py`). Tier: demo (1 skan/dzień, SZCZENIAK only) / basic (10/dzień) / pro (50/dzień) / enterprise (unlimited). Plik licencji: `/etc/cyrber/license.key`. GET /license/status, POST /license/activate.
+
+**Hardening:** Docker no-new-privileges, read-only root fs (nginx), rate limiting na API (slowapi), security headers via nginx
 
 ---
 
@@ -197,10 +207,15 @@ Prompt do LLM zawiera sekcję `=== KORELACJE MIEDZYMODULOWE ===` między KONTEKS
 ## 7. GUI / Frontend
 
 - `/ui` – index.html: sticky sidebar, skeleton loader, progress steps, AI Analysis na górze (risk score gauge, executive summary, exploit chain, business impact, remediation)
-- `/dashboard` – interaktywny dashboard: modal, filtry, KPI cards, mini risk score badges
+- `/dashboard` – **przepisany od zera**: KPI bar (4 karty), filtry (data/profil/ryzyko/target + debounce), sortowalna tabela z paginacją (20/stronę), prawy slide-in drilldown panel (50% width, cubic-bezier) z 4 zakładkami: Summary (CSS conic-gradient risk ring, narrative, business impact, compliance), Findings (filtr severity + WYJAŚNIJ AI per finding), Moduły (grid ~44 modułów, expand JSON), Exploit Chains (vertical timeline, confidence badges). BEZ Chart.js — pure CSS/SVG.
+- `/command-center` – Command Center: unified dashboard trzech głównych widoków, szybki dostęp do skanów/alertów/akcji
 - `/scheduler` – planowanie skanów
-- `/phishing` – GoPhish UI
+- `/phishing` – GoPhish UI + Phishing Campaign Wizard
+- `/osint` – OSINT dashboard
+- `/admin` – Admin Panel: zarządzanie użytkownikami (CRUD), role RBAC, status licencji, system info, audit log
+- `/report/{task_id}` – Client Report View: raport dla CEO/managera, czytelny bez technicznego żargonu, risk gauge, compliance badges, recommendations
 - PDF Report – automatyczny, WeasyPrint + Jinja2
+- AI Explain per Finding – POST /api/explain-finding: Claude Haiku tłumaczy znalezisko po polsku (CO TO JEST / CZYM GROZI / JAK NAPRAWIĆ), Redis cache 24h (klucz: explain:{name}:{severity})
 
 **Notify:** Email + Slack + Discord + Telegram
 
@@ -233,11 +248,18 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 
 ## 10. Backlog (priorytety)
 
+### Priorytet 0 – Następna sesja
+1. Przepisanie scan view (index.html) — prosty flow, live feed w języku funkcji
+2. Dark/Light theme toggle
+3. Compliance analysis (NIS2/RODO/ISO27001)
+4. Pentest-as-Code CI/CD
+
 ### Priorytet 1 – AI Integration (w toku)
 - Cross-module reasoning ✅
 - ContextManager ✅ (29 testów)
 - YAML model routing ✅
 - SSE streaming ✅ — Redis pub/sub + EventSourceResponse, 49 kroków, polling fallback
+- AI Explain per Finding ✅ — Claude Haiku, Redis cache 24h
 - Chain summarization — zapobieganie overflow (w toku)
 
 ### Priorytet 2 – AI/LLM Security Scanner
@@ -287,6 +309,18 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 - Raspberry Pi Remote Sensor – Netbird mesh VPN
 - Proxmark3 – Faza 2
 
+### Zrealizowane – Sesja 24.02.2026
+- Admin Panel UI ✅ — static/admin.html, CRUD użytkowników, role RBAC, status licencji
+- RBAC ✅ — admin/operator/viewer, dekoratory require_role(), JWT claims
+- System licencji ✅ — on-prem HMAC-SHA256, 4 tiery (demo/basic/pro/enterprise), modules/license.py
+- Hardening ✅ — security headers (nginx), rate limiting (slowapi), Docker no-new-privileges
+- Nginx reverse proxy ✅ — HTTPS/TLS self-signed 2029, redirect HTTP→HTTPS
+- Command Center ✅ — static/command_center.html, unified dashboard
+- Auto-Flow po skanie ✅ — rekomendowane akcje po zakończeniu skanu
+- Client Report View ✅ — static/report.html, GET /report/{task_id}, raport dla CEO
+- Dashboard rewrite ✅ — KPI, filtry, sortowanie, paginacja, drilldown 4-tab, bez Chart.js
+- AI Explain per Finding ✅ — Claude Haiku + Redis cache 24h
+
 ### Must-have przed pierwszym pilotem
 - Claude Code Security scan własnego kodu ⚠️
 - Demo video (5 minut)
@@ -326,27 +360,21 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 
 ## 13. Aktualny stan commitów
 
-Ostatnie commity na master:
+Ostatnie commity na master (sesja 24.02.2026 część 3 → najnowsze na górze):
+- `feat: Client Report View - raport dla CEO/managera`
+- `feat: Auto-Flow po skanie - rekomendowane akcje`
+- `feat: Command Center - unified dashboard trzech glownych widoków`
+- `feat: Nginx reverse proxy + HTTPS/TLS`
+- `feat: hardening - security headers, rate limiting, docker no-new-privileges`
+- `feat: system licencji on-prem HMAC-SHA256`
+- `feat: RBAC admin/operator/viewer + JWT claims`
+- `feat: Admin Panel UI - zarządzanie użytkownikami i licencjami`
 - `feat: Garak LLM security scanner - osobny kontener`
 - `feat: Certipy - AD Certificate Services enumeration`
-- `docs: SET usunieto z backlogu - nieintegrowalny TUI, zastapiony GoPhish+BeEF+Evilginx`
 - `feat: BeEF-XSS integration - Browser Exploitation Framework`
 - `feat: exiftool moduł - ekstrakcja metadanych EXIF z obrazków`
-- `docs: transfer prompt - RAG PayloadsAllTheThings zamkniety`
 - `feat: RAG z PayloadsAllTheThings - FAISS + fastembed`
-- `feat: Claude Code skill - CYRBER kontekst projektu`
-- `feat: confidence score per krok exploit chain`
-- `feat: Reflector pattern - analiza post-scan`
-- `docs: memory - zamknięcie sesji 23.02.2026`
-- `docs: transfer prompt + memory - SSE streaming`
 - `feat: SSE real-time streaming postępu skanowania`
-- `docs: memory - wizard bugfixy zamknięte, poprawki`
-- `docs: backlog - wizard bugfixy zamknięte`
-- `fix: Phishing Wizard - phishlety z /evilginx/phishlets zamiast /evilginx/stats`
-- `docs: backlog - exiftool OSINT/awareness moduł`
-- `docs: Claude Code memory - kontekst projektu i historia sesji`
-- `docs: aktualizacja sekcji 13 - lista commitów`
-- `docs: aktualizacja transfer prompt - sesja 23.02.2026`
 
 ---
 
