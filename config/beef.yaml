@@ -1,0 +1,36 @@
+beef:
+  version: '0.5.4.0'
+  debug: false
+  client_debug: false
+
+  credentials:
+    user: "cyrber"
+    passwd: "cyrber_beef_2024"
+
+  http:
+    debug: false
+    host: "0.0.0.0"
+    port: "3000"
+    public:
+      host: "beef"
+      port: "3000"
+    websocket:
+      port: "6789"
+
+  restrictions:
+    permitted_hooking_subnet: "0.0.0.0/0"
+    permitted_ui_subnet: "0.0.0.0/0"
+
+  extension:
+    requester:
+      enable: true
+    proxy:
+      enable: true
+    network:
+      enable: true
+    events:
+      enable: true
+    social_engineering:
+      enable: true
+    xssrays:
+      enable: true

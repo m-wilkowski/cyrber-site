@@ -57,6 +57,17 @@ services:
       - phishing
     restart: on-failure
 
+  beef:
+    image: janes/beef
+    ports:
+      - "3001:3000"
+      - "6789:6789"
+    volumes:
+      - ./config/beef.yaml:/beef/config.yaml:ro
+    profiles:
+      - phishing
+    restart: on-failure
+
   evilginx:
     image: kgretzky/evilginx2:latest
     ports:
@@ -100,6 +111,9 @@ services:
       GOPHISH_URL: ${GOPHISH_URL:-http://gophish:3333}
       GOPHISH_API_KEY: ${GOPHISH_API_KEY:-}
       EVILGINX_URL: ${EVILGINX_URL:-http://evilginx:443}
+      BEEF_URL: ${BEEF_URL:-http://beef:3000}
+      BEEF_USER: ${BEEF_USER:-cyrber}
+      BEEF_PASS: ${BEEF_PASS:-cyrber_beef_2024}
       CYRBER_USER: ${CYRBER_USER:-admin}
       CYRBER_PASS: ${CYRBER_PASS:-cyrber2024}
       JWT_SECRET: ${JWT_SECRET:-change_me_in_production}

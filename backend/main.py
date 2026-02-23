@@ -917,6 +917,84 @@ async def phishing_campaign_results(campaign_id: int, user: str = Depends(get_cu
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
 
+# ── BeEF-XSS proxy ──
+
+from modules.beef_xss import (
+    is_available as beef_available,
+    get_status as beef_status,
+    get_hooks as beef_hooks,
+    get_hook_detail as beef_hook_detail,
+    get_modules as beef_modules,
+    get_module_detail as beef_module_detail,
+    run_module as beef_run_module,
+    get_module_result as beef_module_result,
+    get_logs as beef_logs,
+)
+
+def _require_beef():
+    if not beef_available():
+        raise HTTPException(
+            status_code=503,
+            detail="BeEF not available — start with: docker compose --profile phishing up -d",
+        )
+
+@app.get("/beef/status")
+async def beef_get_status(user: str = Depends(get_current_user)):
+    return beef_status()
+
+@app.get("/beef/hooks")
+async def beef_get_hooks(user: str = Depends(get_current_user)):
+    _require_beef()
+    return beef_hooks()
+
+@app.get("/beef/hooks/{session}")
+async def beef_get_hook(session: str, user: str = Depends(get_current_user)):
+    _require_beef()
+    detail = beef_hook_detail(session)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Hooked browser not found")
+    return detail
+
+@app.get("/beef/modules")
+async def beef_get_modules(user: str = Depends(get_current_user)):
+    _require_beef()
+    return beef_modules()
+
+@app.get("/beef/modules/{module_id}")
+async def beef_get_module(module_id: str, user: str = Depends(get_current_user)):
+    _require_beef()
+    detail = beef_module_detail(module_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Module not found")
+    return detail
+
+class BeefRunModule(BaseModel):
+    session: str
+    module_id: str
+    options: dict = {}
+
+@app.post("/beef/modules/run")
+async def beef_post_run_module(request: Request, body: BeefRunModule, user: str = Depends(get_current_user)):
+    _require_beef()
+    result = beef_run_module(body.session, body.module_id, body.options)
+    if not result:
+        raise HTTPException(status_code=502, detail="Failed to execute module on BeEF")
+    audit(request, user, "beef_run_module", f"{body.session}/{body.module_id}")
+    return result
+
+@app.get("/beef/modules/{session}/{module_id}/{cmd_id}")
+async def beef_get_result(session: str, module_id: str, cmd_id: str, user: str = Depends(get_current_user)):
+    _require_beef()
+    result = beef_module_result(session, module_id, cmd_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Command result not found")
+    return result
+
+@app.get("/beef/logs")
+async def beef_get_logs(session: str | None = None, user: str = Depends(get_current_user)):
+    _require_beef()
+    return beef_logs(session)
+
 # ── Evilginx2 proxy ──
 
 from modules.evilginx_phishing import (
@@ -1049,3 +1127,19 @@ async def notifications_test(request: Request, user: str = Depends(get_current_u
 @app.get("/audit")
 async def audit_logs(limit: int = 100, user: str = Depends(get_current_user)):
     return get_audit_logs(limit)
+
+
+@app.post("/rag/build-index")
+async def build_rag_index(current_user=Depends(get_current_user)):
+    """Buduje indeks RAG z knowledge_base"""
+    from modules.rag_knowledge import get_rag
+    result = get_rag().build_index()
+    return result
+
+
+@app.get("/rag/search")
+async def rag_search(q: str, top_k: int = 5, current_user=Depends(get_current_user)):
+    """Semantic search w knowledge base"""
+    from modules.rag_knowledge import get_rag
+    results = get_rag().search(q, top_k=top_k)
+    return {"query": q, "results": results}
