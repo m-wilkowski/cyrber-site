@@ -45,7 +45,8 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 .nav-link.active{color:var(--accent);border-color:var(--accent)}
 
 /* ── LAYOUT ── */
-.wrapper{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:32px clamp(16px,3vw,48px) 80px}
+.wrapper{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:32px clamp(16px,3vw,48px) 80px;transition:max-width .4s cubic-bezier(.4,0,.2,1)}
+.wrapper.scanning{max-width:1400px}
 
 /* ── HERO ── */
 .hero{text-align:center;padding:40px 0 32px}
@@ -166,7 +167,38 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 .live-feed.active{display:block}
 @keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
 
+.feed-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .feed-panel{background:var(--panel);border:1px solid var(--border);padding:24px 28px}
+
+/* ── TERMINAL ── */
+.terminal-panel{
+  background:#060a12;border:1px solid var(--border);display:flex;flex-direction:column;
+  min-height:380px;max-height:520px;
+}
+.terminal-header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.terminal-title{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--accent)}
+.terminal-dots{display:flex;gap:5px}
+.tdot{width:8px;height:8px;border-radius:50%;opacity:.7}
+.tdot.r{background:#ff4444}.tdot.y{background:#f5c518}.tdot.g{background:#3ddc84}
+.terminal-body{
+  flex:1;overflow-y:auto;padding:10px 14px;
+  font-family:'Share Tech Mono',monospace;font-size:11px;line-height:1.7;
+}
+.terminal-body::-webkit-scrollbar{width:4px}
+.terminal-body::-webkit-scrollbar-track{background:transparent}
+.terminal-body::-webkit-scrollbar-thumb{background:rgba(74,143,212,.25);border-radius:2px}
+.term-line{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--silver)}
+.term-time{color:rgba(74,143,212,.35)}
+.term-mod{color:var(--accent)}
+.term-started .term-status{color:var(--yellow)}
+.term-done .term-status{color:var(--green)}
+.term-error .term-status{color:var(--red)}
+.term-skipped .term-status{color:var(--silver);opacity:.5}
+.term-msg{color:rgba(138,155,181,.6)}
+.terminal-prompt{color:var(--accent);opacity:.5;animation:blink .8s step-end infinite}
 
 .feed-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px}
 .feed-title{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;letter-spacing:.1em}
@@ -283,11 +315,16 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 footer{text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid var(--border2);font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(74,143,212,.18);letter-spacing:.22em}
 
 /* ── RESPONSIVE ── */
+@media(max-width:1024px){
+  .feed-layout{grid-template-columns:1fr}
+  .terminal-panel{max-height:300px;min-height:200px}
+}
 @media(max-width:768px){
   .profile-grid{grid-template-columns:1fr}
   nav{padding:0 16px}.nav-link{font-size:10px;padding:5px 10px}
   .hero-title{font-size:24px}
   .complete-stats{gap:16px}
+  .wrapper.scanning{max-width:100%}
 }
 @media(max-width:480px){
   .nav-brand span{display:none}
@@ -367,27 +404,39 @@ footer{text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid v
 
   <!-- LIVE FEED -->
   <div class="live-feed" id="liveFeed">
-    <div class="feed-panel">
-      <div class="feed-header">
-        <div>
-          <div class="feed-title">&#x26A1; SKANOWANIE</div>
-          <div class="feed-target" id="feedTarget"></div>
+    <div class="feed-layout">
+      <div class="feed-panel">
+        <div class="feed-header">
+          <div>
+            <div class="feed-title">&#x26A1; SKANOWANIE</div>
+            <div class="feed-target" id="feedTarget"></div>
+          </div>
+          <div class="feed-profile" id="feedProfile"></div>
         </div>
-        <div class="feed-profile" id="feedProfile"></div>
+
+        <div class="progress-wrap">
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <div class="progress-info">
+            <span class="progress-pct" id="progressPct">0%</span>
+            <span id="progressEta"></span>
+          </div>
+        </div>
+
+        <div class="step-list" id="stepList"></div>
+
+        <div class="feed-stop">
+          <button class="stop-btn" onclick="stopScan()">ZATRZYMAJ SKAN</button>
+        </div>
       </div>
 
-      <div class="progress-wrap">
-        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-        <div class="progress-info">
-          <span class="progress-pct" id="progressPct">0%</span>
-          <span id="progressEta"></span>
+      <div class="terminal-panel">
+        <div class="terminal-header">
+          <span class="terminal-title">// TERMINAL</span>
+          <span class="terminal-dots"><span class="tdot r"></span><span class="tdot y"></span><span class="tdot g"></span></span>
         </div>
-      </div>
-
-      <div class="step-list" id="stepList"></div>
-
-      <div class="feed-stop">
-        <button class="stop-btn" onclick="stopScan()">ZATRZYMAJ SKAN</button>
+        <div class="terminal-body" id="terminalBody">
+          <div class="term-line"><span class="term-time">[--:--:--]</span> <span class="term-mod">cyrber</span> <span style="color:var(--accent)">ready</span></div>
+        </div>
       </div>
     </div>
   </div>
@@ -517,6 +566,7 @@ var _scanStartTime = null;
 var _phaseStates = {};    // label → 'pending'|'active'|'done'|'skipped'
 var _allowedProfiles = ['SZCZENIAK','STRAZNIK','CERBER'];
 var _licenseTier = 'enterprise';
+var _userRole = '';
 
 /* ═══════════════════════════════════
    TARGET VALIDATION
@@ -569,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.key === 'Enter' && !document.getElementById('startBtn').disabled) startScan();
   });
 
-  loadLicenseInfo();
+  loadUserRole().then(function() { loadLicenseInfo(); });
   loadRecentScans();
 });
 
@@ -590,6 +640,22 @@ function updateStartBtn() {
 }
 
 /* ═══════════════════════════════════
+   USER ROLE
+   ═══════════════════════════════════ */
+function loadUserRole() {
+  return authFetch(API + '/auth/me')
+    .then(function(r) { return r.json(); })
+    .then(function(u) {
+      _userRole = u.role || '';
+      if (_userRole === 'admin') {
+        _allowedProfiles = ['SZCZENIAK', 'STRAZNIK', 'CERBER'];
+        applyLicenseLocks();
+      }
+    })
+    .catch(function() {});
+}
+
+/* ═══════════════════════════════════
    LICENSE CHECK
    ═══════════════════════════════════ */
 function loadLicenseInfo() {
@@ -597,7 +663,12 @@ function loadLicenseInfo() {
     .then(function(r) { return r.json(); })
     .then(function(info) {
       _licenseTier = info.tier || 'demo';
-      _allowedProfiles = info.allowed_profiles || ['SZCZENIAK'];
+      // Admin bypasses license restrictions
+      if (_userRole === 'admin') {
+        _allowedProfiles = ['SZCZENIAK', 'STRAZNIK', 'CERBER'];
+      } else {
+        _allowedProfiles = info.allowed_profiles || ['SZCZENIAK'];
+      }
       applyLicenseLocks();
     })
     .catch(function() {
@@ -608,6 +679,13 @@ function loadLicenseInfo() {
 }
 
 function applyLicenseLocks() {
+  // Admin always has full access
+  if (_userRole === 'admin') {
+    document.querySelectorAll('.profile-card').forEach(function(card) {
+      card.classList.remove('locked');
+    });
+    return;
+  }
   document.querySelectorAll('.profile-card').forEach(function(card) {
     var prof = card.dataset.profile;
     if (_allowedProfiles.indexOf(prof) === -1) {
@@ -654,10 +732,11 @@ function startScan() {
    LIVE FEED UI
    ═══════════════════════════════════ */
 function showLiveFeed(target, profile) {
-  // Hide form, show feed
+  // Hide form, show feed, expand wrapper
   document.getElementById('scanForm').classList.add('hidden');
   document.getElementById('heroSection').style.display = 'none';
   document.getElementById('recentPanel').style.display = 'none';
+  document.querySelector('.wrapper').classList.add('scanning');
 
   var profColor = profile === 'SZCZENIAK' ? '#4a8fd4' : profile === 'CERBER' ? '#ff4444' : '#f5c518';
   document.getElementById('feedTarget').textContent = target;
@@ -669,6 +748,11 @@ function showLiveFeed(target, profile) {
   // Init phases
   _phaseStates = {};
   PHASE_ORDER.forEach(function(p) { _phaseStates[p] = 'pending'; });
+
+  // Clear terminal
+  var termBody = document.getElementById('terminalBody');
+  termBody.innerHTML = '';
+  appendTerminal({module:'cyrber', status:'init', message:'Skan uruchomiony: ' + target + ' [' + profile + ']'});
 
   renderStepList();
   document.getElementById('liveFeed').classList.add('active');
@@ -759,12 +843,34 @@ function connectSSE(taskId) {
   };
 }
 
+function appendTerminal(data) {
+  var body = document.getElementById('terminalBody');
+  if (!body) return;
+  var now = new Date();
+  var ts = now.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var mod = data.module || '???';
+  var status = data.status || '';
+  var msg = data.message || '';
+  var line = document.createElement('div');
+  line.className = 'term-line' + (status ? ' term-' + status : '');
+  var html = '<span class="term-time">[' + ts + ']</span> ';
+  html += '<span class="term-mod">' + escH(mod) + '</span> ';
+  if (status) html += '<span class="term-status">' + escH(status) + '</span>';
+  if (msg) html += ' <span class="term-msg">' + escH(msg) + '</span>';
+  line.innerHTML = html;
+  body.appendChild(line);
+  body.scrollTop = body.scrollHeight;
+}
+
 function handleSSEEvent(data) {
   var mod = data.module || '';
   var status = data.status || '';
   var completed = data.completed || 0;
   var total = data.total || 52;
   var message = data.message || '';
+
+  // Append to terminal
+  appendTerminal(data);
 
   // Update progress
   updateProgress(completed, total);
@@ -833,6 +939,7 @@ function stopScan() {
   document.getElementById('scanForm').classList.remove('hidden');
   document.getElementById('heroSection').style.display = '';
   document.getElementById('recentPanel').style.display = '';
+  document.querySelector('.wrapper').classList.remove('scanning');
   document.getElementById('startBtn').disabled = false;
   document.getElementById('startBtn').textContent = 'URUCHOM SKAN';
 }
@@ -842,6 +949,7 @@ function stopScan() {
    ═══════════════════════════════════ */
 function showCompletion() {
   document.getElementById('liveFeed').classList.remove('active');
+  document.querySelector('.wrapper').classList.remove('scanning');
 
   // Fetch final scan data
   authFetch(API + '/scans/' + _taskId)

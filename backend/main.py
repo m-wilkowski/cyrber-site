@@ -1775,10 +1775,11 @@ async def scan_agent(request: Request, body: ScanAgentRequest, user: dict = Depe
 
     # Exploit chains summary
     chains_summary = ""
-    chains = scan.get("exploit_chains") or []
-    if chains:
+    chains_raw = scan.get("exploit_chains") or {}
+    chains_list = chains_raw.get("chains") if isinstance(chains_raw, dict) else chains_raw
+    if isinstance(chains_list, list) and chains_list:
         chain_descs = []
-        for c in chains[:3]:
+        for c in chains_list[:3]:
             steps = c.get("steps") or c.get("chain") or []
             step_names = [s.get("action") or s.get("technique") or "" for s in steps[:4]]
             chain_descs.append(" -> ".join(step_names))
