@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
+/* ── VARIABLES ── */
 :root {
   --navy:    #080c18;
   --navy2:   #0c1220;
@@ -29,6 +29,7 @@
   --orange:  #ff8c00;
 }
 
+/* ── BASE / BODY ── */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -124,9 +125,6 @@ nav {
   margin: 0 auto;
   padding: 32px clamp(16px, 3vw, 48px) 80px;
 }
-@media (min-width: 2560px) {
-  .wrapper { max-width: 2400px; }
-}
 
 .page-header {
   margin-bottom: 32px;
@@ -158,10 +156,18 @@ nav {
   letter-spacing: .15em;
 }
 
+.countdown {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--silver);
+  letter-spacing: .1em;
+}
+.countdown b { color: var(--accent); }
+
 /* ── KPI CARDS ── */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -205,142 +211,50 @@ nav {
   color: var(--silver);
 }
 
-/* ── CHART GRID ── */
-.chart-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.chart-grid-3 {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-@media (min-width: 1920px) {
-  .chart-grid { grid-template-columns: repeat(3, 1fr); }
-  .chart-grid-3 { grid-template-columns: repeat(4, 1fr); }
-}
-
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  padding: 20px 24px;
-}
-
-.panel-label {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 9px;
-  letter-spacing: .3em;
-  color: var(--accent);
+/* ── FILTERS ── */
+.filters-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
   margin-bottom: 16px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
 }
 
-.chart-wrap {
-  position: relative;
-  height: 220px;
-}
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
 
-.chart-wrap-sm {
-  position: relative;
-  height: 180px;
-}
-
-/* ── RISK DISTRIBUTION ── */
-.risk-bars { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
-
-.risk-bar-row { display: flex; align-items: center; gap: 12px; }
-
-.risk-bar-label {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 10px;
-  letter-spacing: .1em;
-  width: 80px;
-  flex-shrink: 0;
-}
-
-.risk-bar-track {
-  flex: 1;
-  height: 6px;
-  background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.06);
-}
-
-.risk-bar-fill {
-  height: 100%;
-  transition: width 1s cubic-bezier(.4,0,.2,1);
-  width: 0;
-}
-
-.risk-bar-count {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 10px;
-  color: var(--silver);
-  width: 24px;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-/* ── RECENT SCANS TABLE ── */
-.scan-table { width: 100%; border-collapse: collapse; }
-
-.scan-table th {
+.filter-group label {
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
   letter-spacing: .2em;
   color: var(--silver);
-  text-align: left;
-  padding: 0 0 10px;
-  border-bottom: 1px solid var(--border);
 }
 
-.scan-table td {
+.filter-select, .filter-input {
   font-family: 'Share Tech Mono', monospace;
   font-size: 11px;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(74,143,212,.06);
-  color: var(--silver);
+  background: var(--navy);
+  color: var(--white);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  outline: none;
+  min-width: 120px;
 }
 
-.scan-table td.target { color: var(--white); font-size: 12px; }
+.filter-select:focus, .filter-input:focus { border-color: var(--accent); }
 
-.risk-badge {
-  display: inline-block;
-  font-size: 8px;
-  letter-spacing: .15em;
-  padding: 2px 7px;
-  border: 1px solid;
-}
-
-.risk-NISKIE   { color: var(--green);  border-color: var(--green);  }
-.risk-ŚREDNIE  { color: var(--yellow); border-color: var(--yellow); }
-.risk-WYSOKIE  { color: var(--orange); border-color: var(--orange); }
-.risk-KRYTYCZNE{ color: var(--red);    border-color: var(--red);    }
-
-/* ── SPARKLINE / TIMELINE ── */
-.timeline-wrap { height: 140px; position: relative; }
-
-/* ── LOADING ── */
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
+.btn-reset {
   font-family: 'Share Tech Mono', monospace;
   font-size: 10px;
-  letter-spacing: .2em;
+  letter-spacing: .15em;
+  background: transparent;
+  border: 1px solid var(--border);
   color: var(--silver);
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: all .2s;
 }
+.btn-reset:hover { border-color: var(--red); color: var(--red); }
 
-.pulse { animation: pulse 1.4s ease-in-out infinite; }
-@keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
-
-/* ── REFRESH BTN ── */
 .btn-refresh {
   font-family: 'Share Tech Mono', monospace;
   font-size: 10px;
@@ -354,7 +268,169 @@ nav {
 }
 .btn-refresh:hover { border-color: var(--accent); box-shadow: 0 0 10px rgba(74,143,212,.2); }
 
-/* ── EMPTY STATE ── */
+/* ── TABLE ── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.panel-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .3em;
+  color: var(--accent);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.scan-table { width: 100%; border-collapse: collapse; }
+
+.scan-table th {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .2em;
+  color: var(--silver);
+  text-align: left;
+  padding: 0 8px 10px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: color .15s;
+}
+
+.scan-table th:hover { color: var(--accent); }
+
+.scan-table th .sort-arrow {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 8px;
+  opacity: .3;
+  transition: opacity .15s;
+}
+
+.scan-table th.sorted { color: var(--accent); }
+.scan-table th.sorted .sort-arrow { opacity: 1; }
+
+.scan-table td {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  padding: 10px 8px 10px 0;
+  border-bottom: 1px solid rgba(74,143,212,.06);
+  color: var(--silver);
+}
+
+.scan-table td.target { color: var(--white); font-size: 12px; }
+
+.scan-table tbody tr { cursor: pointer; transition: background .15s; }
+.scan-table tbody tr:hover { background: rgba(74,143,212,.06); }
+
+/* ── RISK BADGES ── */
+.risk-badge {
+  display: inline-block;
+  font-size: 8px;
+  letter-spacing: .15em;
+  padding: 2px 7px;
+  border: 1px solid;
+}
+
+.risk-NISKIE    { color: var(--green);  border-color: var(--green);  }
+.risk-SREDNIE,
+.risk-ŚREDNIE   { color: var(--yellow); border-color: var(--yellow); }
+.risk-WYSOKIE   { color: var(--orange); border-color: var(--orange); }
+.risk-KRYTYCZNE { color: var(--red);    border-color: var(--red);    }
+
+/* ── PROFILE BADGE ── */
+.prof-badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 2px 8px;
+  border: 1px solid;
+  background: rgba(0,0,0,.2);
+}
+
+/* ── MINI RISK SCORE ── */
+.mini-risk {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  border: 2px solid;
+}
+
+/* ── ACTION BTNS ── */
+.action-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--silver);
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all .15s;
+  margin-left: 4px;
+}
+.action-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── PAGINATION ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.page-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--silver);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.page-btn:hover { border-color: var(--accent); color: var(--accent); }
+.page-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(74,143,212,.08); }
+.page-btn:disabled { opacity: .3; cursor: default; }
+
+.page-info {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .15em;
+  color: var(--silver);
+  padding: 0 8px;
+}
+
+/* ── LOADING ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .2em;
+  color: var(--silver);
+}
+
+.pulse { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+
 .empty {
   text-align: center;
   padding: 40px;
@@ -367,7 +443,7 @@ nav {
 /* ── FOOTER ── */
 footer {
   text-align: center;
-  margin-top: 52px;
+  margin-top: 32px;
   padding-top: 20px;
   border-top: 1px solid var(--border2);
   font-family: 'Share Tech Mono', monospace;
@@ -376,94 +452,542 @@ footer {
   letter-spacing: .22em;
 }
 
+/* ══════════════════════════════════════════
+   DRILLDOWN PANEL
+   ══════════════════════════════════════════ */
+
+.drilldown-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s;
+}
+.drilldown-overlay.open { opacity: 1; pointer-events: auto; }
+
+.drilldown-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 50%;
+  height: 100vh;
+  background: var(--navy2);
+  border-left: 1px solid var(--border);
+  z-index: 201;
+  transform: translateX(100%);
+  transition: transform .35s cubic-bezier(.4,0,.2,1);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.drilldown-panel.open { transform: translateX(0); }
+
+.dd-header {
+  padding: 24px 28px 0;
+  flex-shrink: 0;
+}
+
+.dd-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: var(--silver);
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10;
+}
+.dd-close:hover { color: var(--white); }
+
+.dd-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: var(--white);
+  margin-bottom: 4px;
+  padding-right: 40px;
+}
+
+.dd-subtitle {
+  font-size: 11px;
+  color: var(--silver);
+  margin-bottom: 16px;
+}
+
+/* ── Drilldown Tabs ── */
+.dd-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  flex-shrink: 0;
+}
+
+.dd-tab {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .15em;
+  color: var(--silver);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.dd-tab:hover { color: var(--white); }
+.dd-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.dd-content {
+  flex: 1;
+  padding: 24px 28px;
+  overflow-y: auto;
+}
+
+.dd-tab-panel { display: none; }
+.dd-tab-panel.active { display: block; }
+
+/* ── Risk Ring (pure CSS conic-gradient) ── */
+.risk-ring {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--ring-color, var(--accent)) 0% calc(var(--ring-pct, 0) * 1%),
+    rgba(255,255,255,.05) calc(var(--ring-pct, 0) * 1%) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.risk-ring-inner {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: var(--navy2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.risk-ring-num {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.risk-ring-lbl {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 7px;
+  letter-spacing: .15em;
+  color: var(--silver);
+}
+
+/* ── Summary tab ── */
+.dd-summary-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.dd-summary-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--white);
+  flex: 1;
+}
+
+.dd-section-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .2em;
+  color: var(--accent);
+  margin: 16px 0 8px;
+}
+
+.dd-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.dd-btn {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  padding: 8px 20px;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: transparent;
+  transition: all .2s;
+  text-decoration: none;
+}
+.dd-btn:hover { background: var(--accent); color: var(--navy); }
+.dd-btn-primary { background: var(--accent); color: var(--navy); }
+.dd-btn-primary:hover { background: var(--accent2); }
+
+/* ── Compliance badges ── */
+.compliance-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+
+.compliance-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  padding: 6px 14px;
+  border: 1px solid var(--purple);
+  color: var(--purple);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.compliance-badge.warn { border-color: var(--orange); color: var(--orange); }
+.compliance-badge.fail { border-color: var(--red); color: var(--red); }
+
+/* ── Narrative preview ── */
+.narrative-preview {
+  font-size: 12px;
+  color: var(--silver);
+  line-height: 1.6;
+  margin-top: 8px;
+}
+
+.narrative-more {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  cursor: pointer;
+  border: none;
+  background: none;
+  letter-spacing: .1em;
+  margin-top: 4px;
+}
+.narrative-more:hover { text-decoration: underline; }
+
+/* ── Business impact ── */
+.impact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.impact-card {
+  background: rgba(74,143,212,.04);
+  border: 1px solid var(--border2);
+  padding: 12px;
+  text-align: center;
+}
+
+.impact-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+
+.impact-lbl {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  letter-spacing: .15em;
+  color: var(--silver);
+}
+
+/* ── Finding cards ── */
+.fd-filter-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.fd-list { display: flex; flex-direction: column; gap: 8px; }
+
+.fd-card {
+  background: rgba(74,143,212,.03);
+  border: 1px solid var(--border2);
+  padding: 12px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transition: border-color .15s;
+}
+.fd-card:hover { border-color: var(--accent); }
+
+.fd-sev {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  padding: 3px 8px;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.fd-sev.critical { color: var(--red); border-color: var(--red); }
+.fd-sev.high     { color: var(--orange); border-color: var(--orange); }
+.fd-sev.medium   { color: var(--yellow); border-color: var(--yellow); }
+.fd-sev.low      { color: var(--silver); border-color: var(--silver); }
+.fd-sev.info     { color: var(--accent); border-color: var(--accent); }
+
+.fd-body { flex: 1; min-width: 0; }
+.fd-name { font-size: 13px; font-weight: 600; color: var(--white); margin-bottom: 3px; word-break: break-word; }
+.fd-desc { font-size: 11px; color: var(--silver); line-height: 1.4; word-break: break-word; }
+.fd-meta { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--silver); margin-top: 4px; letter-spacing: .05em; }
+
+.fd-explain-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .1em;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--accent);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all .2s;
+  margin-top: 6px;
+  display: inline-block;
+}
+.fd-explain-btn:hover { background: var(--accent); color: var(--navy); }
+.fd-explain-btn:disabled { opacity: .4; cursor: wait; }
+
+/* ── Explain panel ── */
+.explain-panel {
+  margin-top: 10px;
+  padding: 14px;
+  background: rgba(61,220,132,.04);
+  border: 1px solid rgba(61,220,132,.2);
+  animation: explFade .3s ease;
+}
+@keyframes explFade { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+
+.explain-section { margin-bottom: 10px; }
+.explain-section:last-child { margin-bottom: 0; }
+
+.explain-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .2em;
+  color: var(--green);
+  margin-bottom: 4px;
+}
+
+.explain-text { font-size: 12px; color: var(--white); line-height: 1.6; }
+
+.explain-copy {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .1em;
+  color: var(--silver);
+  background: none;
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all .2s;
+}
+.explain-copy:hover { color: var(--green); border-color: var(--green); }
+
+.explain-spinner { color: var(--accent); font-size: 11px; padding: 8px 0; }
+
+/* ── Module grid ── */
+.mod-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.mod-card {
+  background: rgba(74,143,212,.04);
+  border: 1px solid var(--border2);
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all .15s;
+}
+.mod-card:hover { border-color: var(--accent); }
+
+.mod-name {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: var(--white);
+  text-transform: uppercase;
+}
+
+.mod-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border: 1px solid;
+}
+
+.mod-raw {
+  display: none;
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--navy);
+  border: 1px solid var(--border);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--silver);
+  max-height: 300px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.4;
+}
+.mod-card.expanded .mod-raw { display: block; }
+.mod-card.expanded { grid-column: 1 / -1; flex-wrap: wrap; }
+
+/* ── Chain timeline ── */
+.chain-card {
+  background: rgba(74,143,212,.03);
+  border: 1px solid var(--border2);
+  padding: 16px 20px;
+  margin-bottom: 12px;
+}
+
+.chain-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chain-prob {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.chain-impact {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .1em;
+  padding: 2px 8px;
+  border: 1px solid;
+}
+
+.chain-timeline {
+  position: relative;
+  padding-left: 24px;
+}
+
+.chain-timeline::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--border);
+}
+
+.chain-step {
+  position: relative;
+  padding: 8px 0 8px 16px;
+}
+
+.chain-step::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 14px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--navy2);
+}
+
+.chain-step-num {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+
+.chain-step-action {
+  font-size: 12px;
+  color: var(--white);
+  margin-bottom: 2px;
+}
+
+.chain-step-vuln {
+  font-size: 10px;
+  color: var(--silver);
+}
+
+.confidence-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  letter-spacing: .1em;
+  padding: 2px 6px;
+  border: 1px solid;
+  margin-left: 8px;
+}
+.confidence-badge.confirmed { color: var(--green); border-color: var(--green); }
+.confidence-badge.likely    { color: var(--yellow); border-color: var(--yellow); }
+.confidence-badge.theoretical { color: var(--silver); border-color: var(--silver); }
+
+/* ── Scrollbar ── */
+.drilldown-panel::-webkit-scrollbar,
+.dd-content::-webkit-scrollbar,
+.fd-list::-webkit-scrollbar,
+.mod-raw::-webkit-scrollbar { width: 4px; }
+.drilldown-panel::-webkit-scrollbar-track,
+.dd-content::-webkit-scrollbar-track,
+.fd-list::-webkit-scrollbar-track,
+.mod-raw::-webkit-scrollbar-track { background: var(--navy); }
+.drilldown-panel::-webkit-scrollbar-thumb,
+.dd-content::-webkit-scrollbar-thumb,
+.fd-list::-webkit-scrollbar-thumb,
+.mod-raw::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
 /* ── RESPONSIVE ── */
+@media (max-width: 1024px) {
+  .drilldown-panel { width: 80%; }
+}
+
 @media (max-width: 768px) {
-  .chart-grid, .chart-grid-3 {
-    grid-template-columns: 1fr;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  nav {
-    padding: 0 16px;
-  }
-
-  .nav-link {
-    font-size: 10px;
-    padding: 5px 10px;
-    letter-spacing: .1em;
-  }
-
-  .nav-brand {
-    font-size: 15px;
-  }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  nav { padding: 0 16px; }
+  .nav-link { font-size: 10px; padding: 5px 10px; letter-spacing: .1em; }
+  .nav-brand { font-size: 15px; }
+  .impact-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
-  .nav-brand span {
-    display: none;
-  }
-
-  .kpi {
-    padding: 14px 16px;
-  }
-
-  .kpi-value {
-    font-size: 28px;
-  }
-
-  .wrapper {
-    padding: 20px 12px 40px;
-  }
-
-  .page-title-main {
-    font-size: 22px;
-  }
-
-  footer {
-    font-size: 8px;
-  }
+  .drilldown-panel { width: 100%; }
+  .kpi-grid { grid-template-columns: 1fr; }
+  .nav-brand span { display: none; }
+  .kpi { padding: 14px 16px; }
+  .kpi-value { font-size: 28px; }
+  .wrapper { padding: 20px 12px 40px; }
+  .page-title-main { font-size: 22px; }
+  footer { font-size: 8px; }
 }
-
-/* ── MODAL ── */
-.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:200; backdrop-filter:blur(8px); overflow-y:auto; padding:40px 20px; }
-.modal-overlay.open { display:flex; align-items:flex-start; justify-content:center; }
-.modal-box { background:var(--navy2); border:1px solid var(--border); max-width:900px; width:100%; padding:32px; position:relative; }
-.modal-close { position:absolute; top:12px; right:16px; background:none; border:none; color:var(--silver); font-size:24px; cursor:pointer; }
-.modal-close:hover { color:var(--white); }
-.modal-title { font-family:'Orbitron',sans-serif; font-size:16px; font-weight:700; letter-spacing:.1em; margin-bottom:4px; color:var(--white); }
-.modal-subtitle { font-size:11px; color:var(--silver); margin-bottom:20px; }
-.modal-risk-row { display:flex; gap:20px; align-items:center; margin-bottom:20px; }
-.modal-score-circle { width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-direction:column; flex-shrink:0; }
-.modal-score-num { font-family:'Orbitron',sans-serif; font-size:22px; font-weight:900; }
-.modal-score-lbl { font-size:7px; letter-spacing:.15em; color:var(--silver); }
-.modal-summary { font-size:13px; line-height:1.7; color:var(--white); }
-.modal-modules { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px; margin-top:16px; }
-.modal-mod { font-size:11px; padding:8px 12px; background:rgba(74,143,212,.04); border:1px solid var(--border2); display:flex; justify-content:space-between; }
-.modal-mod-name { color:var(--white); text-transform:uppercase; font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:.1em; }
-.modal-mod-badge { font-size:9px; font-weight:600; padding:1px 6px; border-radius:2px; }
-.modal-actions { margin-top:24px; display:flex; gap:12px; }
-.modal-btn { font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:600; letter-spacing:.1em; padding:8px 20px; cursor:pointer; border:1px solid var(--accent); color:var(--accent); background:transparent; transition:all .2s; text-decoration:none; }
-.modal-btn:hover { background:var(--accent); color:var(--navy); }
-.modal-btn-primary { background:var(--accent); color:var(--navy); }
-.modal-btn-primary:hover { background:var(--accent2); }
-
-/* ── FILTERS ── */
-.filters-row { display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
-.filter-select { font-family:'Share Tech Mono',monospace; font-size:11px; background:var(--navy); color:var(--white); border:1px solid var(--border); padding:6px 12px; outline:none; cursor:pointer; }
-.filter-select:focus { border-color:var(--accent); }
-.filter-label { font-size:9px; letter-spacing:.2em; color:var(--silver); }
-
-/* ── MINI RISK SCORE ── */
-.mini-risk { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; font-family:'Orbitron',sans-serif; font-size:9px; font-weight:700; border:2px solid; }
-
-/* ── TABLE ROW CLICKABLE ── */
-.scan-table tbody tr { cursor:pointer; transition:background .15s; }
-.scan-table tbody tr:hover { background:rgba(74,143,212,.06); }
 </style>
 </head>
 <body>
@@ -484,14 +1008,16 @@ footer {
 
 <div class="wrapper">
 
+  <!-- PAGE HEADER -->
   <div class="page-header">
     <div>
       <div class="page-title">ANALYTICS &amp; METRICS</div>
       <div class="page-title-main">DASHBOARD</div>
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
+      <div class="countdown" id="countdown"></div>
       <div class="last-update" id="lastUpdate">LOADING...</div>
-      <button class="btn-refresh" onclick="loadDashboard()">↻ REFRESH</button>
+      <button class="btn-refresh" onclick="loadDashboard()">&#8635; REFRESH</button>
     </div>
   </div>
 
@@ -499,112 +1025,109 @@ footer {
   <div class="kpi-grid">
     <div class="kpi" style="--accent-color: var(--accent)">
       <div class="kpi-label">TOTAL SCANS</div>
-      <div class="kpi-value" id="kpiTotal">—</div>
+      <div class="kpi-value" id="kpiTotal">&mdash;</div>
       <div class="kpi-sub" id="kpiTotalSub">loading...</div>
     </div>
     <div class="kpi" style="--accent-color: var(--red)">
-      <div class="kpi-label">CRITICAL / HIGH</div>
-      <div class="kpi-value" id="kpiHigh">—</div>
-      <div class="kpi-sub" id="kpiHighSub">loading...</div>
+      <div class="kpi-label">CRITICAL FINDINGS</div>
+      <div class="kpi-value" id="kpiCritical">&mdash;</div>
+      <div class="kpi-sub" id="kpiCriticalSub">loading...</div>
     </div>
     <div class="kpi" style="--accent-color: var(--yellow)">
-      <div class="kpi-label">TOTAL FINDINGS</div>
-      <div class="kpi-value" id="kpiFindings">—</div>
-      <div class="kpi-sub" id="kpiFindingsSub">loading...</div>
+      <div class="kpi-label">ACTIVE SCANS</div>
+      <div class="kpi-value" id="kpiActive">&mdash;</div>
+      <div class="kpi-sub" id="kpiActiveSub">loading...</div>
     </div>
     <div class="kpi" style="--accent-color: var(--purple)">
       <div class="kpi-label">AVG RISK SCORE</div>
-      <div class="kpi-value" id="kpiAvg">—</div>
+      <div class="kpi-value" id="kpiAvg">&mdash;</div>
       <div class="kpi-sub" id="kpiAvgSub">loading...</div>
     </div>
   </div>
 
-  <!-- CHARTS ROW 1 -->
-  <div class="chart-grid">
-    <div class="panel">
-      <div class="panel-label">FINDINGS OVER TIME</div>
-      <div class="chart-wrap">
-        <canvas id="chartTimeline"></canvas>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-label">RISK DISTRIBUTION</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center;height:220px;">
-        <div class="chart-wrap-sm">
-          <canvas id="chartRisk"></canvas>
-        </div>
-        <div class="risk-bars" id="riskBars">
-          <div class="loading pulse">LOADING</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CHARTS ROW 2 -->
-  <div class="chart-grid-3">
-    <div class="panel">
-      <div class="panel-label">SCANS PER DAY (LAST 14 DAYS)</div>
-      <div class="chart-wrap-sm">
-        <canvas id="chartDaily"></canvas>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-label">TOP TARGETS BY FINDINGS</div>
-      <div class="chart-wrap-sm">
-        <canvas id="chartTargets"></canvas>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-label">RISK TREND</div>
-      <div class="chart-wrap-sm">
-        <canvas id="chartTrend"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- PHISHING CAMPAIGNS -->
-  <div class="panel" id="phishingPanel" style="display:none">
-    <div class="panel-label" style="display:flex;justify-content:space-between;">
-      <span>PHISHING CAMPAIGNS</span>
-      <a href="/phishing" style="font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--accent);text-decoration:none">MANAGE →</a>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px" id="phishingKpis"></div>
-    <div id="phishingTable">
-      <div class="loading pulse">LOADING</div>
-    </div>
-  </div>
-
-  <!-- RECENT SCANS TABLE -->
+  <!-- FILTERS -->
   <div class="panel">
-    <div class="panel-label" style="display:flex;justify-content:space-between;">
-      <span>RECENT SCANS</span>
+    <div class="panel-label">
+      <span>SCAN HISTORY</span>
       <span id="tableCount" style="color:var(--silver)"></span>
     </div>
-    <div class="filters-row" id="filtersRow">
-      <div><div class="filter-label">PROFILE</div><select class="filter-select" id="filterProfile" onchange="applyFilters()"><option value="">ALL</option><option value="SZCZENIAK">SZCZENIAK</option><option value="STRAZNIK">STRAZNIK</option><option value="CERBER">CERBER</option></select></div>
-      <div><div class="filter-label">RISK</div><select class="filter-select" id="filterRisk" onchange="applyFilters()"><option value="">ALL</option><option value="KRYTYCZNE">KRYTYCZNE</option><option value="WYSOKIE">WYSOKIE</option><option value="ŚREDNIE">ŚREDNIE</option><option value="NISKIE">NISKIE</option></select></div>
+
+    <div class="filters-row">
+      <div class="filter-group">
+        <label>OD</label>
+        <input type="date" class="filter-input" id="filterDateFrom">
+      </div>
+      <div class="filter-group">
+        <label>DO</label>
+        <input type="date" class="filter-input" id="filterDateTo">
+      </div>
+      <div class="filter-group">
+        <label>PROFIL</label>
+        <select class="filter-select" id="filterProfile">
+          <option value="">ALL</option>
+          <option value="SZCZENIAK">SZCZENIAK</option>
+          <option value="STRAZNIK">STRAZNIK</option>
+          <option value="CERBER">CERBER</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>RYZYKO</label>
+        <select class="filter-select" id="filterRisk">
+          <option value="">ALL</option>
+          <option value="KRYTYCZNE">KRYTYCZNE</option>
+          <option value="WYSOKIE">WYSOKIE</option>
+          <option value="ŚREDNIE">SREDNIE</option>
+          <option value="NISKIE">NISKIE</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>TARGET</label>
+        <input type="text" class="filter-input" id="filterTarget" placeholder="szukaj...">
+      </div>
+      <button class="btn-reset" onclick="resetFilters()">&#x21BA; RESET</button>
     </div>
+
+    <!-- TABLE -->
     <div id="tableBody">
       <div class="loading pulse">LOADING DATA...</div>
     </div>
+
+    <!-- PAGINATION -->
+    <div class="pagination" id="pagination"></div>
   </div>
 
   <footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.1.0</footer>
 
 </div>
 
-<div class="modal-overlay" id="scanModal">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeModal()">&times;</button>
-    <div id="modalContent"></div>
+<!-- DRILLDOWN -->
+<div class="drilldown-overlay" id="ddOverlay" onclick="closeDrilldown()"></div>
+<div class="drilldown-panel" id="ddPanel">
+  <div class="dd-header">
+    <button class="dd-close" onclick="closeDrilldown()">&times;</button>
+    <div class="dd-title" id="ddTitle"></div>
+    <div class="dd-subtitle" id="ddSubtitle"></div>
+  </div>
+  <div class="dd-tabs">
+    <button class="dd-tab active" data-tab="summary" onclick="switchDrilldownTab('summary')">SUMMARY</button>
+    <button class="dd-tab" data-tab="findings" onclick="switchDrilldownTab('findings')">FINDINGS</button>
+    <button class="dd-tab" data-tab="modules" onclick="switchDrilldownTab('modules')">MODULY</button>
+    <button class="dd-tab" data-tab="chains" onclick="switchDrilldownTab('chains')">EXPLOIT CHAINS</button>
+  </div>
+  <div class="dd-content">
+    <div class="dd-tab-panel active" id="tab-summary"></div>
+    <div class="dd-tab-panel" id="tab-findings"></div>
+    <div class="dd-tab-panel" id="tab-modules"></div>
+    <div class="dd-tab-panel" id="tab-chains"></div>
   </div>
 </div>
 
 <script>
+/* ══════════════════════════════════════
+   AUTH & UTILS
+   ══════════════════════════════════════ */
 var API = '';
-var charts = {};
 
-// ── JWT Auth ──
 function getToken() { return localStorage.getItem('cyrber_token'); }
 if (!getToken()) window.location.href = '/login';
 
@@ -619,507 +1142,915 @@ function authFetch(url, opts) {
   });
 }
 
-var RISK_COLORS = {
-  'NISKIE':    '#3ddc84',
-  'ŚREDNIE':   '#f5c518',
-  'WYSOKIE':   '#ff8c00',
-  'KRYTYCZNE': '#ff4444',
-  'NIEZNANE':  '#4a8fd4'
-};
-
-Chart.defaults.color = '#4a8fd4';
-Chart.defaults.borderColor = 'rgba(74,143,212,.1)';
-Chart.defaults.font.family = "'Share Tech Mono', monospace";
-Chart.defaults.font.size = 10;
-
-function destroyChart(id) {
-  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+function escH(s) {
+  if (!s) return '';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
 }
 
+function formatDate(iso) {
+  if (!iso) return '\u2014';
+  return new Date(iso).toLocaleString('pl-PL', {
+    day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'
+  });
+}
+
+function formatDuration(start, end) {
+  if (!start || !end) return '\u2014';
+  var ms = new Date(end) - new Date(start);
+  if (ms < 0) return '\u2014';
+  var s = Math.round(ms / 1000);
+  if (s < 60) return s + 's';
+  var m = Math.floor(s / 60);
+  return m + 'm ' + (s % 60) + 's';
+}
+
+function scoreColor(score) {
+  if (score >= 80) return 'var(--red)';
+  if (score >= 50) return 'var(--orange)';
+  if (score >= 20) return 'var(--yellow)';
+  return 'var(--green)';
+}
+
+function riskColor(level) {
+  var m = { KRYTYCZNE: 'var(--red)', WYSOKIE: 'var(--orange)', SREDNIE: 'var(--yellow)', 'ŚREDNIE': 'var(--yellow)', NISKIE: 'var(--green)' };
+  return m[level] || 'var(--accent)';
+}
+
+var RISK_SCORE_MAP = { KRYTYCZNE: 90, WYSOKIE: 70, SREDNIE: 40, 'ŚREDNIE': 40, NISKIE: 15 };
+var RISK_ORDER = { KRYTYCZNE: 1, WYSOKIE: 2, SREDNIE: 3, 'ŚREDNIE': 3, NISKIE: 4 };
+
+/* ══════════════════════════════════════
+   STATE
+   ══════════════════════════════════════ */
+var _allScans = [];
+var _filteredScans = [];
+var _sortedScans = [];
+var _currentPage = 1;
+var _pageSize = 20;
+var _sortCol = 'created_at';
+var _sortDir = 'desc';
+var _filters = { dateFrom: '', dateTo: '', profile: '', risk: '', target: '' };
+
+var _refreshInterval = 30;
+var _countdown = 30;
+var _countdownTimer = null;
+var _hasRunning = false;
+
+var _drilldownTaskId = null;
+var _drilldownScan = null;
+var _drilldownDetail = null;
+var _drilldownChains = null;
+var _drilldownNarrative = null;
+var _drilldownFindings = null;
+
+var _targetDebounce = null;
+
+/* ══════════════════════════════════════
+   DATA LOADING
+   ══════════════════════════════════════ */
 function loadDashboard() {
-  authFetch(API +'/scans?limit=100')
+  authFetch(API + '/scans?limit=200')
     .then(function(r) { return r.json(); })
     .then(function(scans) {
-      window._allScans = scans;
-      renderKPIs(scans);
-      renderTimeline(scans);
-      renderRiskDonut(scans);
-      renderRiskBars(scans);
-      renderDaily(scans);
-      renderTopTargets(scans);
-      renderTrend(scans);
-      renderTable(scans);
+      _allScans = scans;
+      _hasRunning = scans.some(function(s) { return s.status === 'running' || s.status === 'PROGRESS'; });
+      _refreshInterval = _hasRunning ? 5 : 30;
+
+      applyFilters();
+      computeKPIs();
+      renderKPIs();
+
       document.getElementById('lastUpdate').textContent =
         'UPDATED: ' + new Date().toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      resetCountdown();
     })
     .catch(function(e) {
-      console.error(e);
+      console.error('loadDashboard error:', e);
+      resetCountdown();
     });
 }
 
-function renderKPIs(scans) {
-  var total = scans.length;
-  var highCrit = scans.filter(function(s) {
-    return s.risk_level === 'WYSOKIE' || s.risk_level === 'KRYTYCZNE';
-  }).length;
-  var totalFindings = scans.reduce(function(acc, s) { return acc + (s.findings_count || 0); }, 0);
+function loadScanDetail(taskId) {
+  authFetch(API + '/scans/' + taskId)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      _drilldownDetail = data;
+      _drilldownFindings = collectFindings(data);
+      renderTabSummary();
+      // Also load narrative
+      loadNarrative(taskId);
+    })
+    .catch(function(e) { console.error('loadScanDetail error:', e); });
+}
 
-  var riskScoreMap = { KRYTYCZNE: 90, WYSOKIE: 70, ŚREDNIE: 40, NISKIE: 15 };
-  var totalRiskScore = scans.reduce(function(acc, s) {
-    return acc + (riskScoreMap[s.risk_level] || 0);
-  }, 0);
-  var avgRisk = total > 0 ? Math.round(totalRiskScore / total) : 0;
-  var avgRiskColor = avgRisk >= 80 ? 'var(--red)' : avgRisk >= 50 ? 'var(--orange)' : avgRisk >= 20 ? 'var(--yellow)' : 'var(--green)';
+function loadChains(taskId) {
+  if (_drilldownChains !== null) { renderTabChains(); return; }
+  document.getElementById('tab-chains').innerHTML = '<div class="loading pulse">LOADING CHAINS...</div>';
+  authFetch(API + '/scans/' + taskId + '/chains')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      _drilldownChains = data.exploit_chains || [];
+      renderTabChains();
+    })
+    .catch(function() {
+      _drilldownChains = [];
+      renderTabChains();
+    });
+}
 
-  document.getElementById('kpiTotal').textContent = total;
+function loadNarrative(taskId) {
+  authFetch(API + '/scans/' + taskId + '/narrative')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      _drilldownNarrative = data;
+      // Re-render summary with narrative data
+      renderTabSummary();
+    })
+    .catch(function() { _drilldownNarrative = {}; });
+}
+
+/* ══════════════════════════════════════
+   KPIs
+   ══════════════════════════════════════ */
+var _kpis = { total: 0, critical: 0, active: 0, avgScore: 0 };
+
+function computeKPIs() {
+  var total = _filteredScans.length;
+  var critical = 0;
+  var active = 0;
+  var totalScore = 0;
+
+  _filteredScans.forEach(function(s) {
+    // Critical findings count
+    critical += (s.findings_count || 0);
+    // Active scans
+    if (s.status === 'running' || s.status === 'PROGRESS') active++;
+    // Risk score
+    totalScore += (RISK_SCORE_MAP[s.risk_level] || 0);
+  });
+
+  _kpis.total = total;
+  _kpis.critical = critical;
+  _kpis.active = active;
+  _kpis.avgScore = total > 0 ? Math.round(totalScore / total) : 0;
+}
+
+function renderKPIs() {
+  document.getElementById('kpiTotal').textContent = _kpis.total;
   document.getElementById('kpiTotalSub').textContent = 'completed scans';
-  document.getElementById('kpiHigh').textContent = highCrit;
-  document.getElementById('kpiHighSub').textContent = Math.round(highCrit/Math.max(total,1)*100) + '% of all scans';
-  document.getElementById('kpiFindings').textContent = totalFindings;
-  document.getElementById('kpiFindingsSub').textContent = 'vulnerabilities detected';
-  document.getElementById('kpiAvg').textContent = avgRisk;
-  document.getElementById('kpiAvg').style.color = avgRiskColor;
+
+  document.getElementById('kpiCritical').textContent = _kpis.critical;
+  document.getElementById('kpiCriticalSub').textContent = 'total findings';
+
+  document.getElementById('kpiActive').textContent = _kpis.active;
+  document.getElementById('kpiActiveSub').textContent = _kpis.active > 0 ? 'scans running now' : 'no active scans';
+
+  var avgEl = document.getElementById('kpiAvg');
+  avgEl.textContent = _kpis.avgScore;
+  avgEl.style.color = scoreColor(_kpis.avgScore);
   document.getElementById('kpiAvgSub').textContent = 'avg risk (0-90 scale)';
 }
 
-function renderTimeline(scans) {
-  destroyChart('timeline');
-  var sorted = scans.slice().sort(function(a,b) {
-    return new Date(a.created_at) - new Date(b.created_at);
-  });
-  var labels = sorted.map(function(s) {
-    return new Date(s.created_at).toLocaleDateString('pl-PL', {month:'numeric',day:'numeric'}) +
-           ' ' + new Date(s.created_at).toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit'});
-  });
-  var data = sorted.map(function(s) { return s.findings_count || 0; });
+/* ══════════════════════════════════════
+   FILTERS
+   ══════════════════════════════════════ */
+function applyFilters() {
+  _filters.dateFrom = document.getElementById('filterDateFrom').value;
+  _filters.dateTo = document.getElementById('filterDateTo').value;
+  _filters.profile = document.getElementById('filterProfile').value;
+  _filters.risk = document.getElementById('filterRisk').value;
+  _filters.target = document.getElementById('filterTarget').value.toLowerCase().trim();
 
-  var ctx = document.getElementById('chartTimeline').getContext('2d');
-  var gradient = ctx.createLinearGradient(0, 0, 0, 220);
-  gradient.addColorStop(0, 'rgba(74,143,212,.3)');
-  gradient.addColorStop(1, 'rgba(74,143,212,0)');
-
-  charts['timeline'] = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Findings',
-        data: data,
-        borderColor: '#4a8fd4',
-        backgroundColor: gradient,
-        borderWidth: 2,
-        pointBackgroundColor: '#4a8fd4',
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        fill: true,
-        tension: .3
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { color: 'rgba(74,143,212,.06)' }, ticks: { maxRotation: 45, maxTicksLimit: 8 } },
-        y: { grid: { color: 'rgba(74,143,212,.06)' }, beginAtZero: true }
-      }
+  _filteredScans = _allScans.filter(function(s) {
+    if (_filters.profile && (s.profile || 'STRAZNIK') !== _filters.profile) return false;
+    if (_filters.risk && (s.risk_level || '') !== _filters.risk) return false;
+    if (_filters.target && (s.target || '').toLowerCase().indexOf(_filters.target) === -1) return false;
+    if (_filters.dateFrom) {
+      var d = (s.created_at || '').slice(0, 10);
+      if (d < _filters.dateFrom) return false;
     }
+    if (_filters.dateTo) {
+      var d2 = (s.created_at || '').slice(0, 10);
+      if (d2 > _filters.dateTo) return false;
+    }
+    return true;
   });
+
+  _currentPage = 1;
+  applySorting();
 }
 
-function renderRiskDonut(scans) {
-  destroyChart('risk');
-  var counts = {};
-  scans.forEach(function(s) {
-    var r = s.risk_level || 'NIEZNANE';
-    counts[r] = (counts[r] || 0) + 1;
-  });
-
-  var order = ['KRYTYCZNE','WYSOKIE','ŚREDNIE','NISKIE','NIEZNANE'];
-  var labels = [], data = [], colors = [];
-  order.forEach(function(r) {
-    if (counts[r]) {
-      labels.push(r);
-      data.push(counts[r]);
-      colors.push(RISK_COLORS[r]);
-    }
-  });
-
-  if (!data.length) return;
-
-  var ctx = document.getElementById('chartRisk').getContext('2d');
-  charts['risk'] = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: data,
-        backgroundColor: colors.map(function(c) { return c + 'cc'; }),
-        borderColor: colors,
-        borderWidth: 1,
-        hoverOffset: 4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '65%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              return ' ' + ctx.label + ': ' + ctx.raw;
-            }
-          }
-        }
-      }
-    }
-  });
+function resetFilters() {
+  document.getElementById('filterDateFrom').value = '';
+  document.getElementById('filterDateTo').value = '';
+  document.getElementById('filterProfile').value = '';
+  document.getElementById('filterRisk').value = '';
+  document.getElementById('filterTarget').value = '';
+  applyFilters();
 }
 
-function renderRiskBars(scans) {
-  var counts = { NISKIE: 0, ŚREDNIE: 0, WYSOKIE: 0, KRYTYCZNE: 0 };
-  scans.forEach(function(s) {
-    if (counts[s.risk_level] !== undefined) counts[s.risk_level]++;
+// Event listeners for filters
+document.addEventListener('DOMContentLoaded', function() {
+  ['filterDateFrom', 'filterDateTo', 'filterProfile', 'filterRisk'].forEach(function(id) {
+    document.getElementById(id).addEventListener('change', applyFilters);
   });
-  var total = scans.length || 1;
-  var order = ['KRYTYCZNE','WYSOKIE','ŚREDNIE','NISKIE'];
-  var html = '';
-  order.forEach(function(r) {
-    var pct = Math.round(counts[r] / total * 100);
-    var col = RISK_COLORS[r];
-    html += '<div class="risk-bar-row">' +
-      '<div class="risk-bar-label" style="color:' + col + '">' + r + '</div>' +
-      '<div class="risk-bar-track"><div class="risk-bar-fill" style="background:' + col + ';width:' + pct + '%"></div></div>' +
-      '<div class="risk-bar-count" style="color:' + col + '">' + counts[r] + '</div>' +
-    '</div>';
+  document.getElementById('filterTarget').addEventListener('input', function() {
+    clearTimeout(_targetDebounce);
+    _targetDebounce = setTimeout(applyFilters, 300);
   });
-  document.getElementById('riskBars').innerHTML = html || '<div class="empty">NO DATA</div>';
-}
+});
 
-function renderDaily(scans) {
-  destroyChart('daily');
-  var days = {};
-  for (var i = 13; i >= 0; i--) {
-    var d = new Date();
-    d.setDate(d.getDate() - i);
-    var key = d.toISOString().slice(0,10);
-    days[key] = 0;
+/* ══════════════════════════════════════
+   SORTING
+   ══════════════════════════════════════ */
+function toggleSort(colName) {
+  if (_sortCol === colName) {
+    _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    _sortCol = colName;
+    _sortDir = 'asc';
   }
-  scans.forEach(function(s) {
-    if (!s.created_at) return;
-    var key = s.created_at.slice(0,10);
-    if (days[key] !== undefined) days[key]++;
-  });
-  var labels = Object.keys(days).map(function(k) {
-    var d = new Date(k);
-    return d.toLocaleDateString('pl-PL', {month:'numeric',day:'numeric'});
-  });
-  var data = Object.values(days);
-
-  var ctx = document.getElementById('chartDaily').getContext('2d');
-  charts['daily'] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: data,
-        backgroundColor: 'rgba(74,143,212,.35)',
-        borderColor: '#4a8fd4',
-        borderWidth: 1,
-        borderRadius: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { maxRotation: 45, maxTicksLimit: 7 } },
-        y: { grid: { color: 'rgba(74,143,212,.06)' }, beginAtZero: true, ticks: { stepSize: 1 } }
-      }
-    }
-  });
+  applySorting();
 }
 
-function renderTopTargets(scans) {
-  destroyChart('targets');
-  var byTarget = {};
-  scans.forEach(function(s) {
-    if (!byTarget[s.target]) byTarget[s.target] = 0;
-    byTarget[s.target] += (s.findings_count || 0);
-  });
-  var sorted = Object.entries(byTarget).sort(function(a,b) { return b[1]-a[1]; }).slice(0,6);
-  if (!sorted.length) return;
+function applySorting() {
+  _sortedScans = _filteredScans.slice();
+  var dir = _sortDir === 'asc' ? 1 : -1;
 
-  var ctx = document.getElementById('chartTargets').getContext('2d');
-  charts['targets'] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: sorted.map(function(x) {
-        return x[0].length > 14 ? x[0].slice(0,12) + '..' : x[0];
-      }),
-      datasets: [{
-        data: sorted.map(function(x) { return x[1]; }),
-        backgroundColor: 'rgba(155,89,182,.35)',
-        borderColor: '#9b59b6',
-        borderWidth: 1,
-        borderRadius: 2
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { color: 'rgba(74,143,212,.06)' }, beginAtZero: true },
-        y: { grid: { display: false } }
-      }
+  _sortedScans.sort(function(a, b) {
+    var va, vb;
+    switch (_sortCol) {
+      case 'target':
+        va = (a.target || '').toLowerCase();
+        vb = (b.target || '').toLowerCase();
+        return va < vb ? -dir : va > vb ? dir : 0;
+      case 'profile':
+        va = (a.profile || '').toLowerCase();
+        vb = (b.profile || '').toLowerCase();
+        return va < vb ? -dir : va > vb ? dir : 0;
+      case 'created_at':
+        va = a.created_at || '';
+        vb = b.created_at || '';
+        return va < vb ? -dir : va > vb ? dir : 0;
+      case 'findings_count':
+        return ((a.findings_count || 0) - (b.findings_count || 0)) * dir;
+      case 'risk_level':
+        va = RISK_ORDER[a.risk_level] || 5;
+        vb = RISK_ORDER[b.risk_level] || 5;
+        return (va - vb) * dir;
+      case 'score':
+        va = RISK_SCORE_MAP[a.risk_level] || 0;
+        vb = RISK_SCORE_MAP[b.risk_level] || 0;
+        return (va - vb) * dir;
+      case 'duration':
+        va = (a.created_at && a.completed_at) ? new Date(a.completed_at) - new Date(a.created_at) : 0;
+        vb = (b.created_at && b.completed_at) ? new Date(b.completed_at) - new Date(b.created_at) : 0;
+        return (va - vb) * dir;
+      default:
+        return 0;
     }
   });
+
+  renderTable();
 }
 
-function renderTrend(scans) {
-  destroyChart('trend');
-  var sorted = scans.slice().sort(function(a,b) {
-    return new Date(a.created_at) - new Date(b.created_at);
-  }).slice(-20);
+/* ══════════════════════════════════════
+   TABLE + PAGINATION
+   ══════════════════════════════════════ */
+function renderTable() {
+  var total = _sortedScans.length;
+  var totalPages = Math.max(1, Math.ceil(total / _pageSize));
+  if (_currentPage > totalPages) _currentPage = totalPages;
 
-  var riskVal = { NISKIE: 1, ŚREDNIE: 2, WYSOKIE: 3, KRYTYCZNE: 4, NIEZNANE: 0 };
-  var data = sorted.map(function(s) { return riskVal[s.risk_level] || 0; });
-  var labels = sorted.map(function(s) {
-    return new Date(s.created_at).toLocaleDateString('pl-PL', {month:'numeric',day:'numeric'});
-  });
-  var colors = sorted.map(function(s) { return RISK_COLORS[s.risk_level] || '#4a8fd4'; });
+  var start = (_currentPage - 1) * _pageSize;
+  var page = _sortedScans.slice(start, start + _pageSize);
 
-  var ctx = document.getElementById('chartTrend').getContext('2d');
-  charts['trend'] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: data,
-        backgroundColor: colors.map(function(c) { return c + '99'; }),
-        borderColor: colors,
-        borderWidth: 1,
-        borderRadius: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { maxRotation: 45, maxTicksLimit: 7 } },
-        y: {
-          grid: { color: 'rgba(74,143,212,.06)' },
-          beginAtZero: true, max: 4,
-          ticks: {
-            stepSize: 1,
-            callback: function(v) {
-              return ['','NISKIE','ŚREDNIE','WYSOKIE','KRYT.'][v] || '';
-            }
-          }
-        }
-      }
-    }
-  });
-}
+  document.getElementById('tableCount').textContent = 'SHOWING ' + page.length + ' OF ' + total;
 
-function renderTable(scans) {
-  window._dashScans = scans;
-  var recent = scans.slice().sort(function(a,b) {
-    return new Date(b.created_at) - new Date(a.created_at);
-  }).slice(0,15);
-
-  document.getElementById('tableCount').textContent = 'SHOWING ' + recent.length + ' OF ' + scans.length;
-
-  if (!recent.length) {
-    document.getElementById('tableBody').innerHTML = '<div class="empty">NO SCANS YET — RUN FIRST SCAN FROM THE SCAN PAGE</div>';
+  if (!total) {
+    document.getElementById('tableBody').innerHTML = '<div class="empty">NO SCANS YET \u2014 RUN FIRST SCAN FROM THE SCAN PAGE</div>';
+    document.getElementById('pagination').innerHTML = '';
     return;
   }
 
-  var riskScoreMap = { KRYTYCZNE: 90, WYSOKIE: 70, ŚREDNIE: 40, NISKIE: 15 };
+  var cols = [
+    { key: 'target', label: 'TARGET' },
+    { key: 'profile', label: 'PROFIL' },
+    { key: 'created_at', label: 'DATA' },
+    { key: 'findings_count', label: 'FINDINGS' },
+    { key: 'risk_level', label: 'RYZYKO' },
+    { key: 'score', label: 'SCORE' },
+    { key: 'duration', label: 'CZAS' },
+    { key: '_actions', label: 'AKCJE' }
+  ];
 
-  var html = '<table class="scan-table"><thead><tr>' +
-    '<th>TARGET</th><th>PROFILE</th><th>DATE</th><th>FINDINGS</th><th>RISK</th><th>SCORE</th><th>DURATION</th>' +
-    '</tr></thead><tbody>';
-
-  recent.forEach(function(s) {
-    var date = s.created_at ? new Date(s.created_at).toLocaleString('pl-PL', {
-      day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'
-    }) : '—';
-    var dur = '—';
-    if (s.created_at && s.completed_at) {
-      var ms = new Date(s.completed_at) - new Date(s.created_at);
-      dur = Math.round(ms/1000) + 's';
+  var html = '<table class="scan-table"><thead><tr>';
+  cols.forEach(function(c) {
+    if (c.key === '_actions') {
+      html += '<th>' + c.label + '</th>';
+      return;
     }
-    var risk = s.risk_level || 'N/A';
+    var sorted = _sortCol === c.key;
+    var arrow = sorted ? (_sortDir === 'asc' ? '\u25B2' : '\u25BC') : '\u25BC';
+    html += '<th class="' + (sorted ? 'sorted' : '') + '" onclick="toggleSort(\'' + c.key + '\')">' +
+      c.label + '<span class="sort-arrow">' + arrow + '</span></th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  page.forEach(function(s) {
     var prof = (s.profile || 'STRAZNIK').toUpperCase();
     var profColor = prof === 'SZCZENIAK' ? '#4a8fd4' : prof === 'CERBER' ? '#ff4444' : '#f5c518';
-    var miniScore = riskScoreMap[s.risk_level] || 0;
-    var miniColor = miniScore >= 80 ? 'var(--red)' : miniScore >= 50 ? 'var(--orange)' : miniScore >= 20 ? 'var(--yellow)' : 'var(--green)';
-    html += '<tr onclick="openModal(\'' + s.task_id + '\')">' +
-      '<td class="target">' + s.target + '</td>' +
-      '<td><span style="font-family:Orbitron,sans-serif;font-size:10px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:3px;color:' + profColor + ';border:1px solid ' + profColor + ';background:rgba(0,0,0,.2)">' + prof + '</span></td>' +
-      '<td>' + date + '</td>' +
-      '<td>' + (s.findings_count || 0) + '</td>' +
-      '<td><span class="risk-badge risk-' + risk + '">' + risk + '</span></td>' +
-      '<td><span class="mini-risk" style="color:' + miniColor + ';border-color:' + miniColor + '">' + miniScore + '</span></td>' +
-      '<td>' + dur + '</td>' +
-    '</tr>';
+    var risk = s.risk_level || 'N/A';
+    var miniScore = RISK_SCORE_MAP[s.risk_level] || 0;
+    var miniColor = scoreColor(miniScore);
+    var isRunning = s.status === 'running' || s.status === 'PROGRESS';
+
+    html += '<tr onclick="openDrilldown(\'' + escH(s.task_id) + '\')">';
+    html += '<td class="target">' + escH(s.target) + (isRunning ? ' <span class="pulse" style="color:var(--green);font-size:10px">&#x25CF;</span>' : '') + '</td>';
+    html += '<td><span class="prof-badge" style="color:' + profColor + ';border-color:' + profColor + '">' + prof + '</span></td>';
+    html += '<td>' + formatDate(s.created_at) + '</td>';
+    html += '<td>' + (s.findings_count || 0) + '</td>';
+    html += '<td><span class="risk-badge risk-' + risk + '">' + risk + '</span></td>';
+    html += '<td><span class="mini-risk" style="color:' + miniColor + ';border-color:' + miniColor + '">' + miniScore + '</span></td>';
+    html += '<td>' + formatDuration(s.created_at, s.completed_at) + '</td>';
+    html += '<td>';
+    html += '<a class="action-btn" href="' + API + '/scans/' + s.task_id + '/pdf" target="_blank" onclick="event.stopPropagation()" title="PDF">&#x1F4C4;</a>';
+    html += '<a class="action-btn" href="/report/' + s.task_id + '" target="_blank" onclick="event.stopPropagation()" title="Client Report">&#x1F4CA;</a>';
+    html += '</td>';
+    html += '</tr>';
   });
 
   html += '</tbody></table>';
   document.getElementById('tableBody').innerHTML = html;
+
+  renderPagination(totalPages);
 }
 
-// ── Phishing campaigns section ──
-function loadPhishing() {
-  authFetch(API +'/phishing/campaigns')
-    .then(function(r) { return r.json(); })
-    .then(function(campaigns) {
-      if (!campaigns || !campaigns.length) return;
-      document.getElementById('phishingPanel').style.display = '';
+function renderPagination(totalPages) {
+  if (totalPages <= 1) {
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
 
-      var totSent = 0, totOpened = 0, totClicked = 0, totCreds = 0;
-      campaigns.forEach(function(c) {
-        var s = c.stats || {};
-        totSent += (s.sent || 0);
-        totOpened += (s.opened || 0);
-        totClicked += (s.clicked || 0);
-        totCreds += (s.submitted_data || 0);
-      });
+  var html = '';
+  html += '<button class="page-btn" onclick="goToPage(1)" ' + (_currentPage === 1 ? 'disabled' : '') + '>&laquo;</button>';
+  html += '<button class="page-btn" onclick="goToPage(' + (_currentPage - 1) + ')" ' + (_currentPage === 1 ? 'disabled' : '') + '>&lsaquo;</button>';
 
-      var kpiHtml = '';
-      var kpis = [
-        {v: campaigns.length, l: 'CAMPAIGNS', c: 'var(--accent)'},
-        {v: totSent, l: 'EMAILS SENT', c: 'var(--accent)'},
-        {v: totOpened, l: 'OPENED', c: 'var(--yellow)'},
-        {v: totClicked, l: 'CLICKED', c: 'var(--orange)'},
-        {v: totCreds, l: 'CREDENTIALS', c: 'var(--red)'}
-      ];
-      kpis.forEach(function(k) {
-        kpiHtml += '<div style="background:var(--panel);border:1px solid var(--border);padding:12px;text-align:center">'
-          + '<div style="font-family:Orbitron,sans-serif;font-size:24px;font-weight:900;color:' + k.c + '">' + k.v + '</div>'
-          + '<div style="font-family:Share Tech Mono,monospace;font-size:8px;letter-spacing:.2em;color:var(--silver)">' + k.l + '</div>'
-          + '</div>';
-      });
-      document.getElementById('phishingKpis').innerHTML = kpiHtml;
+  // Show max 5 pages centered on current
+  var startP = Math.max(1, _currentPage - 2);
+  var endP = Math.min(totalPages, startP + 4);
+  if (endP - startP < 4) startP = Math.max(1, endP - 4);
 
-      var tbl = '<table class="scan-table"><thead><tr><th>CAMPAIGN</th><th>STATUS</th><th>SENT</th><th>OPENED</th><th>CLICKED</th><th>CREDS</th></tr></thead><tbody>';
-      campaigns.slice(0, 5).forEach(function(c) {
-        var s = c.stats || {};
-        tbl += '<tr><td class="target">' + (c.name || '—') + '</td><td>' + (c.status || '—') + '</td>';
-        tbl += '<td>' + (s.sent || 0) + '</td><td>' + (s.opened || 0) + '</td><td>' + (s.clicked || 0) + '</td>';
-        tbl += '<td style="color:' + ((s.submitted_data||0)>0?'var(--red)':'var(--silver)') + '">' + (s.submitted_data || 0) + '</td></tr>';
-      });
-      tbl += '</tbody></table>';
-      document.getElementById('phishingTable').innerHTML = tbl;
-    })
-    .catch(function() {
-      // GoPhish not available — hide section silently
-    });
+  for (var i = startP; i <= endP; i++) {
+    html += '<button class="page-btn' + (i === _currentPage ? ' active' : '') + '" onclick="goToPage(' + i + ')">' + i + '</button>';
+  }
+
+  html += '<button class="page-btn" onclick="goToPage(' + (_currentPage + 1) + ')" ' + (_currentPage === totalPages ? 'disabled' : '') + '>&rsaquo;</button>';
+  html += '<button class="page-btn" onclick="goToPage(' + totalPages + ')" ' + (_currentPage === totalPages ? 'disabled' : '') + '>&raquo;</button>';
+  html += '<span class="page-info">STRONA ' + _currentPage + ' Z ' + totalPages + '</span>';
+
+  document.getElementById('pagination').innerHTML = html;
 }
 
-window._dashScans = [];
-window._allScans = [];
-
-function openModal(taskId) {
-  var scan = window._allScans.find(function(s) { return s.task_id === taskId; });
-  if (!scan) return;
-
-  authFetch(API + '/scans/' + taskId)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      renderModal(scan, data);
-      document.getElementById('scanModal').classList.add('open');
-    });
+function goToPage(n) {
+  var totalPages = Math.max(1, Math.ceil(_sortedScans.length / _pageSize));
+  if (n < 1 || n > totalPages) return;
+  _currentPage = n;
+  renderTable();
 }
 
-function closeModal() {
-  document.getElementById('scanModal').classList.remove('open');
+/* ══════════════════════════════════════
+   DRILLDOWN PANEL
+   ══════════════════════════════════════ */
+function openDrilldown(taskId) {
+  _drilldownTaskId = taskId;
+  _drilldownScan = _allScans.find(function(s) { return s.task_id === taskId; });
+  _drilldownDetail = null;
+  _drilldownChains = null;
+  _drilldownNarrative = null;
+  _drilldownFindings = null;
+
+  if (!_drilldownScan) return;
+
+  // Set header
+  var prof = (_drilldownScan.profile || 'STRAZNIK').toUpperCase();
+  var profColor = prof === 'SZCZENIAK' ? '#4a8fd4' : prof === 'CERBER' ? '#ff4444' : '#f5c518';
+  document.getElementById('ddTitle').textContent = _drilldownScan.target;
+  document.getElementById('ddSubtitle').innerHTML =
+    '<span style="color:' + profColor + ';font-weight:600">' + prof + '</span>' +
+    ' &middot; ' + formatDate(_drilldownScan.completed_at || _drilldownScan.created_at) +
+    ' &middot; ' + (_drilldownScan.findings_count || 0) + ' findings';
+
+  // Reset tabs
+  switchDrilldownTab('summary');
+
+  // Show panel
+  document.getElementById('ddOverlay').classList.add('open');
+  document.getElementById('ddPanel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Loading placeholders
+  document.getElementById('tab-summary').innerHTML = '<div class="loading pulse">LOADING...</div>';
+  document.getElementById('tab-findings').innerHTML = '';
+  document.getElementById('tab-modules').innerHTML = '';
+  document.getElementById('tab-chains').innerHTML = '';
+
+  // Load detail
+  loadScanDetail(taskId);
+}
+
+function closeDrilldown() {
+  document.getElementById('ddOverlay').classList.remove('open');
+  document.getElementById('ddPanel').classList.remove('open');
+  document.body.style.overflow = '';
+  _drilldownTaskId = null;
+  _drilldownScan = null;
+  _drilldownDetail = null;
+  _drilldownChains = null;
+  _drilldownNarrative = null;
+  _drilldownFindings = null;
 }
 
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape') closeDrilldown();
 });
 
-function renderModal(scan, detail) {
-  var el = document.getElementById('modalContent');
-  var ai = detail.ai_analysis || {};
+function switchDrilldownTab(name) {
+  document.querySelectorAll('.dd-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.tab === name);
+  });
+  document.querySelectorAll('.dd-tab-panel').forEach(function(p) {
+    p.classList.toggle('active', p.id === 'tab-' + name);
+  });
+
+  // Lazy load
+  if (name === 'findings' && _drilldownDetail && !document.getElementById('tab-findings').innerHTML) {
+    renderTabFindings();
+  }
+  if (name === 'modules' && _drilldownDetail && !document.getElementById('tab-modules').innerHTML) {
+    renderTabModules();
+  }
+  if (name === 'chains' && _drilldownTaskId) {
+    loadChains(_drilldownTaskId);
+  }
+}
+
+/* ══════════════════════════════════════
+   TAB 1: SUMMARY
+   ══════════════════════════════════════ */
+function renderTabSummary() {
+  if (!_drilldownDetail || !_drilldownScan) return;
+  var ai = _drilldownDetail.ai_analysis || {};
   var score = ai.risk_score || 0;
-  var scoreColor = score >= 80 ? 'var(--red)' : score >= 50 ? 'var(--orange)' : score >= 20 ? 'var(--yellow)' : 'var(--green)';
-  var risk = scan.risk_level || 'N/A';
-  var profile = scan.profile || 'STRAZNIK';
-  var profColor = profile === 'SZCZENIAK' ? '#4a8fd4' : profile === 'CERBER' ? '#ff4444' : '#f5c518';
+  var sc = scoreColor(score);
+  var ringPct = Math.min(100, Math.round(score / 90 * 100));
+
+  var narr = _drilldownNarrative || {};
+  var execSummary = narr.executive_summary || ai.executive_summary || _drilldownDetail.summary || _drilldownScan.summary || 'No analysis available.';
 
   var h = '';
-  h += '<div class="modal-title">' + scan.target + '</div>';
-  h += '<div class="modal-subtitle">';
-  h += '<span style="color:' + profColor + ';font-weight:600">' + profile + '</span>';
-  h += ' &middot; ' + (scan.completed_at ? new Date(scan.completed_at).toLocaleString('pl-PL') : 'pending');
-  h += ' &middot; ' + (scan.findings_count || 0) + ' findings</div>';
 
-  h += '<div class="modal-risk-row">';
-  h += '<div class="modal-score-circle" style="border:3px solid ' + scoreColor + '">';
-  h += '<div class="modal-score-num" style="color:' + scoreColor + '">' + score + '</div>';
-  h += '<div class="modal-score-lbl">RISK</div></div>';
-  h += '<div class="modal-summary">' + (ai.executive_summary || detail.summary || scan.summary || 'No analysis available.') + '</div>';
+  // Risk ring + executive summary
+  h += '<div class="dd-summary-row">';
+  h += '<div class="risk-ring" style="--ring-pct:' + ringPct + ';--ring-color:' + sc + '">';
+  h += '<div class="risk-ring-inner"><div class="risk-ring-num" style="color:' + sc + '">' + score + '</div>';
+  h += '<div class="risk-ring-lbl">RISK</div></div></div>';
+  h += '<div class="dd-summary-text">' + escH(execSummary) + '</div>';
   h += '</div>';
 
-  var moduleKeys = ['nuclei','whatweb','gobuster','testssl','sqlmap','nikto','masscan','zap','wapiti','wpscan','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu','katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','netexec','enum4linux','bloodhound','responder','fierce','smbmap','onesixtyone','ikescan','sslyze','searchsploit','impacket','amass','harvester','ipinfo','whois','dnsrecon'];
-  var hasModules = false;
-  var mh = '';
-  moduleKeys.forEach(function(k) {
-    var mod = detail[k];
-    if (!mod || mod.skipped) return;
-    hasModules = true;
-    var badge = '<span class="modal-mod-badge" style="color:var(--green);border:1px solid var(--green)">OK</span>';
-    var fc = 0;
-    if (mod.findings && mod.findings.length) fc = mod.findings.length;
-    else if (mod.vulnerabilities && mod.vulnerabilities.length) fc = mod.vulnerabilities.length;
-    else if (mod.total_count) fc = mod.total_count;
-    else if (mod.total_hosts) fc = mod.total_hosts;
-    else if (mod.total_exploits) fc = mod.total_exploits;
-    if (fc > 0) badge = '<span class="modal-mod-badge" style="color:var(--yellow);border:1px solid var(--yellow)">' + fc + '</span>';
-    if (mod.vulnerable) badge = '<span class="modal-mod-badge" style="color:var(--red);border:1px solid var(--red)">VULN</span>';
-    mh += '<div class="modal-mod"><span class="modal-mod-name">' + k + '</span>' + badge + '</div>';
-  });
-  if (hasModules) {
-    h += '<div style="font-size:9px;letter-spacing:.2em;color:var(--accent);margin-bottom:8px;margin-top:16px">MODULES</div>';
-    h += '<div class="modal-modules">' + mh + '</div>';
+  // Narrative preview
+  if (narr.full_narrative) {
+    var preview = narr.full_narrative.split('.').slice(0, 3).join('.') + '.';
+    h += '<div class="dd-section-label">NARRATIVE</div>';
+    h += '<div class="narrative-preview" id="narrativePreview">' + escH(preview) + '</div>';
+    h += '<button class="narrative-more" onclick="toggleNarrative()">czytaj wi\u0119cej \u2192</button>';
+    h += '<div id="narrativeFull" style="display:none"><div class="narrative-preview">' + escH(narr.full_narrative) + '</div>';
+    h += '<button class="narrative-more" onclick="toggleNarrative()">zwi\u0144 \u2190</button></div>';
   }
 
-  h += '<div class="modal-actions">';
-  h += '<a class="modal-btn modal-btn-primary" href="/ui#scan=' + scan.task_id + '" target="_blank">VIEW FULL REPORT</a>';
-  h += '<a class="modal-btn" href="' + API + '/scans/' + scan.task_id + '/pdf" target="_blank">DOWNLOAD PDF</a>';
-  h += '<button class="modal-btn" onclick="closeModal()">CLOSE</button>';
+  // Business impact
+  if (narr.potential_loss || narr.fix_cost || narr.time_to_compromise) {
+    h += '<div class="dd-section-label">BUSINESS IMPACT</div>';
+    h += '<div class="impact-grid">';
+    h += '<div class="impact-card"><div class="impact-val" style="color:var(--red)">' + escH(narr.potential_loss || '\u2014') + '</div><div class="impact-lbl">POTENTIAL LOSS</div></div>';
+    h += '<div class="impact-card"><div class="impact-val" style="color:var(--green)">' + escH(narr.fix_cost || '\u2014') + '</div><div class="impact-lbl">FIX COST</div></div>';
+    h += '<div class="impact-card"><div class="impact-val">' + escH(narr.time_to_compromise || '\u2014') + '</div><div class="impact-lbl">TIME TO COMPROMISE</div></div>';
+    h += '</div>';
+  }
+
+  // Compliance
+  var risk = (_drilldownScan.risk_level || '').replace('\u015a', 'S').replace('\u015b', 's');
+  var isCrit = risk === 'KRYTYCZNE';
+  var isHigh = risk === 'WYSOKIE';
+  h += '<div class="dd-section-label">COMPLIANCE</div>';
+  h += '<div class="compliance-row">';
+  h += '<div class="compliance-badge' + (isCrit ? ' fail' : isHigh ? ' warn' : '') + '">\uD83D\uDEE1 RODO/GDPR: ' + (isCrit ? 'Naruszenie' : isHigh ? 'Ryzyko' : 'Zgodnosc') + '</div>';
+  h += '<div class="compliance-badge' + (isCrit ? ' fail' : isHigh ? ' warn' : '') + '">\uD83C\uDFDB NIS2: ' + (isCrit ? 'Naruszenie' : isHigh ? 'Ryzyko' : 'Zgodnosc') + '</div>';
+  h += '</div>';
+
+  // Actions
+  h += '<div class="dd-actions">';
+  h += '<a class="dd-btn dd-btn-primary" href="' + API + '/scans/' + _drilldownTaskId + '/pdf" target="_blank">DOWNLOAD PDF</a>';
+  h += '<a class="dd-btn" href="/report/' + _drilldownTaskId + '" target="_blank">CLIENT REPORT</a>';
+  h += '<button class="dd-btn" onclick="closeDrilldown()">ZAMKNIJ</button>';
+  h += '</div>';
+
+  document.getElementById('tab-summary').innerHTML = h;
+}
+
+function toggleNarrative() {
+  var preview = document.getElementById('narrativePreview');
+  var full = document.getElementById('narrativeFull');
+  if (!preview || !full) return;
+  if (full.style.display === 'none') {
+    full.style.display = 'block';
+    preview.style.display = 'none';
+  } else {
+    full.style.display = 'none';
+    preview.style.display = 'block';
+  }
+}
+
+/* ══════════════════════════════════════
+   TAB 2: FINDINGS
+   ══════════════════════════════════════ */
+function collectFindings(detail) {
+  var findings = [];
+  var sevOrd = {critical:0, high:1, medium:2, low:3, info:4};
+
+  // Nuclei
+  var nf = (detail.nuclei && detail.nuclei.findings) || [];
+  nf.forEach(function(f) {
+    findings.push({
+      name: (f.info && f.info.name) || f.name || f.template_id || '',
+      description: (f.info && f.info.description) || f.matched_at || '',
+      severity: (f.info && f.info.severity) || f.severity || 'info',
+      _module: 'nuclei'
+    });
+  });
+
+  // ZAP alerts
+  var za = (detail.zap && detail.zap.alerts) || [];
+  za.forEach(function(a) {
+    var r = (a.risk || '').toLowerCase();
+    var sev = r === 'high' ? 'high' : r === 'medium' ? 'medium' : r === 'low' ? 'low' : 'info';
+    findings.push({ name: a.name || a.alert || '', description: a.description || '', severity: sev, _module: 'zap' });
+  });
+
+  // SQLMap
+  if (detail.sqlmap && detail.sqlmap.vulnerable) {
+    findings.push({ name: 'SQL Injection', description: 'SQLMap detected injection vulnerability', severity: 'critical', _module: 'sqlmap' });
+  }
+
+  // WPScan
+  var wv = (detail.wpscan && detail.wpscan.vulnerabilities) || [];
+  wv.forEach(function(v) {
+    findings.push({ name: v.title || v.name || '', description: v.description || '', severity: 'high', _module: 'wpscan' });
+  });
+
+  // Nikto
+  var ni = (detail.nikto && detail.nikto.findings) || [];
+  ni.forEach(function(f) {
+    findings.push({ name: f.name || f.msg || '', description: f.description || f.msg || '', severity: 'medium', _module: 'nikto' });
+  });
+
+  // TestSSL
+  if (detail.testssl && detail.testssl.findings) {
+    detail.testssl.findings.forEach(function(f) {
+      findings.push({ name: f.name || f.id || '', description: f.finding || '', severity: (f.severity || 'info').toLowerCase(), _module: 'testssl' });
+    });
+  }
+
+  // Certipy
+  if (detail.certipy && detail.certipy.findings) {
+    detail.certipy.findings.forEach(function(f) {
+      findings.push({ name: f.name || '', description: f.description || '', severity: (f.severity || 'high').toLowerCase(), _module: 'certipy' });
+    });
+  }
+
+  // Gobuster
+  if (detail.gobuster && detail.gobuster.findings) {
+    detail.gobuster.findings.forEach(function(f) {
+      findings.push({ name: f.path || f.name || '', description: f.description || 'Discovered path', severity: 'info', _module: 'gobuster' });
+    });
+  }
+
+  // Sort by severity
+  findings.sort(function(a, b) {
+    return (sevOrd[(a.severity || 'info').toLowerCase()] || 5) - (sevOrd[(b.severity || 'info').toLowerCase()] || 5);
+  });
+
+  return findings;
+}
+
+function renderTabFindings() {
+  if (!_drilldownFindings) return;
+  var el = document.getElementById('tab-findings');
+  var findings = _drilldownFindings;
+
+  if (!findings.length) {
+    el.innerHTML = '<div class="empty">No findings recorded for this scan.</div>';
+    return;
+  }
+
+  var h = '';
+
+  // Severity filter
+  h += '<div class="fd-filter-row">';
+  h += '<select class="filter-select" id="findingSevFilter" onchange="filterFindings()">';
+  h += '<option value="">ALL SEVERITY</option>';
+  h += '<option value="critical">CRITICAL</option>';
+  h += '<option value="high">HIGH</option>';
+  h += '<option value="medium">MEDIUM</option>';
+  h += '<option value="low">LOW</option>';
+  h += '<option value="info">INFO</option>';
+  h += '</select>';
+  h += '<span style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--silver)">' + findings.length + ' findings</span>';
+  h += '</div>';
+
+  h += '<div class="fd-list" id="fdList">';
+  findings.forEach(function(f, idx) {
+    var sev = (f.severity || 'info').toLowerCase();
+    h += buildFindingCard(f, idx, sev);
+  });
   h += '</div>';
 
   el.innerHTML = h;
 }
 
-function applyFilters() {
-  var profVal = document.getElementById('filterProfile').value;
-  var riskVal = document.getElementById('filterRisk').value;
-  var filtered = window._allScans.filter(function(s) {
-    if (profVal && (s.profile || 'STRAZNIK') !== profVal) return false;
-    if (riskVal && (s.risk_level || '') !== riskVal) return false;
-    return true;
-  });
-  renderTable(filtered);
+function buildFindingCard(f, idx, sev) {
+  var h = '<div class="fd-card" data-sev="' + sev + '" id="fd-' + idx + '">';
+  h += '<span class="fd-sev ' + sev + '">' + sev.toUpperCase() + '</span>';
+  h += '<div class="fd-body">';
+  h += '<div class="fd-name">' + escH(f.name) + '</div>';
+  if (f.description) h += '<div class="fd-desc">' + escH(String(f.description).substring(0, 200)) + '</div>';
+  if (f._module) h += '<div class="fd-meta">MODULE: ' + f._module.toUpperCase() + '</div>';
+  h += '<button class="fd-explain-btn" onclick="explainFinding(' + idx + ',this)">&#x1F916; WYJA\u015aNIJ</button>';
+  h += '<div id="explain-' + idx + '"></div>';
+  h += '</div></div>';
+  return h;
 }
 
+function filterFindings() {
+  var sevVal = document.getElementById('findingSevFilter').value;
+  document.querySelectorAll('.fd-card').forEach(function(card) {
+    if (!sevVal || card.dataset.sev === sevVal) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+function explainFinding(idx, btn) {
+  if (!_drilldownFindings || !_drilldownFindings[idx]) return;
+  var f = _drilldownFindings[idx];
+  var target = _drilldownScan ? _drilldownScan.target : '';
+
+  btn.disabled = true;
+  btn.textContent = '\u23F3 ANALIZUJE...';
+  var panel = document.getElementById('explain-' + idx);
+  panel.innerHTML = '<div class="explain-spinner">&#x1F916; Pytam AI...</div>';
+
+  authFetch(API + '/api/explain-finding', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      finding_name: f.name,
+      finding_description: f.description || '',
+      target: target,
+      severity: f.severity || 'info'
+    })
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
+  .then(function(data) {
+    btn.textContent = '\u2705 WYJA\u015aNIONO';
+    btn.style.borderColor = 'var(--green)';
+    btn.style.color = 'var(--green)';
+
+    var eh = '<div class="explain-panel">';
+    eh += '<div class="explain-section"><div class="explain-label">CO TO JEST?</div>';
+    eh += '<div class="explain-text">' + escH(data.explanation || '-') + '</div></div>';
+    eh += '<div class="explain-section"><div class="explain-label">CZYM GROZI FIRMIE?</div>';
+    eh += '<div class="explain-text">' + escH(data.risk_pl || '-') + '</div></div>';
+    eh += '<div class="explain-section"><div class="explain-label">JAK NAPRAWI\u0106?</div>';
+    eh += '<div class="explain-text">' + escH(data.fix_pl || '-') + '</div></div>';
+    eh += '<button class="explain-copy" onclick="copyExplain(this)">KOPIUJ</button>';
+    eh += '</div>';
+    panel.innerHTML = eh;
+
+    // Store text for copy
+    panel.querySelector('.explain-copy').dataset.text =
+      (data.explanation || '') + '\n\n' + (data.risk_pl || '') + '\n\n' + (data.fix_pl || '');
+  })
+  .catch(function(e) {
+    btn.disabled = false;
+    btn.textContent = '\uD83E\uDD16 WYJA\u015aNIJ';
+    panel.innerHTML = '<div style="color:var(--red);font-size:11px;padding:6px 0">B\u0142\u0105d: ' + escH(e.message) + '</div>';
+  });
+}
+
+function copyExplain(btn) {
+  var text = btn.dataset.text || '';
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = '\u2705 SKOPIOWANO';
+    setTimeout(function() { btn.textContent = 'KOPIUJ'; }, 2000);
+  });
+}
+
+/* ══════════════════════════════════════
+   TAB 3: MODULES
+   ══════════════════════════════════════ */
+var MODULE_KEYS = [
+  'nuclei','whatweb','gobuster','testssl','sqlmap','nikto','masscan','zap','wapiti',
+  'wpscan','joomscan','cmsmap','droopescan','retirejs','subfinder','httpx','naabu',
+  'katana','dnsx','netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk',
+  'netexec','enum4linux','bloodhound','responder','fierce','smbmap','onesixtyone',
+  'ikescan','sslyze','searchsploit','impacket','amass','harvester','ipinfo','whois',
+  'dnsrecon','exiftool','certipy','garak'
+];
+
+function getModuleStatus(detail, key) {
+  var mod = detail[key];
+  if (!mod || mod.skipped) return { status: 'SKIP', count: 0, raw: null };
+
+  var count = 0;
+  if (mod.findings && mod.findings.length) count = mod.findings.length;
+  else if (mod.vulnerabilities && mod.vulnerabilities.length) count = mod.vulnerabilities.length;
+  else if (mod.alerts && mod.alerts.length) count = mod.alerts.length;
+  else if (mod.total_count) count = mod.total_count;
+  else if (mod.total_hosts) count = mod.total_hosts;
+  else if (mod.total_exploits) count = mod.total_exploits;
+
+  var status = 'OK';
+  if (mod.error) status = 'ERROR';
+  else if (mod.vulnerable) status = 'VULN';
+  else if (count > 0) status = 'VULN';
+
+  return { status: status, count: count, raw: mod };
+}
+
+function renderTabModules() {
+  if (!_drilldownDetail) return;
+  var el = document.getElementById('tab-modules');
+  var detail = _drilldownDetail;
+
+  // Also check reflection for skipped/empty/error
+  var reflection = detail.ai_analysis || {};
+  var modsOk = (reflection.modules_ok || []);
+  var modsEmpty = (reflection.modules_empty || []);
+  var modsError = (reflection.modules_error || []);
+
+  var h = '<div class="mod-grid">';
+  var found = 0;
+
+  MODULE_KEYS.forEach(function(key) {
+    var ms = getModuleStatus(detail, key);
+
+    // Skip if truly absent and not in reflection
+    if (ms.status === 'SKIP' && modsOk.indexOf(key) === -1 && modsEmpty.indexOf(key) === -1 && modsError.indexOf(key) === -1) return;
+
+    found++;
+    var badgeColor, badgeText;
+    if (ms.status === 'ERROR' || modsError.indexOf(key) !== -1) {
+      badgeColor = 'var(--red)';
+      badgeText = 'ERROR';
+    } else if (ms.status === 'VULN') {
+      badgeColor = 'var(--yellow)';
+      badgeText = ms.count > 0 ? ms.count : 'VULN';
+    } else if (ms.status === 'SKIP' || modsEmpty.indexOf(key) !== -1) {
+      badgeColor = 'var(--silver)';
+      badgeText = 'EMPTY';
+    } else {
+      badgeColor = 'var(--green)';
+      badgeText = 'OK';
+    }
+
+    h += '<div class="mod-card" onclick="toggleModuleRaw(this)">';
+    h += '<span class="mod-name">' + key + '</span>';
+    h += '<span class="mod-badge" style="color:' + badgeColor + ';border-color:' + badgeColor + '">' + badgeText + '</span>';
+    if (ms.raw) {
+      var rawText;
+      try { rawText = JSON.stringify(ms.raw, null, 2); } catch(e) { rawText = String(ms.raw); }
+      h += '<div class="mod-raw">' + escH(rawText) + '</div>';
+    }
+    h += '</div>';
+  });
+
+  if (!found) {
+    h += '<div class="empty">No module data available.</div>';
+  }
+
+  h += '</div>';
+  el.innerHTML = h;
+}
+
+function toggleModuleRaw(card) {
+  card.classList.toggle('expanded');
+}
+
+/* ══════════════════════════════════════
+   TAB 4: EXPLOIT CHAINS
+   ══════════════════════════════════════ */
+function renderTabChains() {
+  var el = document.getElementById('tab-chains');
+  var chains = _drilldownChains || [];
+
+  if (!chains.length) {
+    el.innerHTML = '<div class="empty">Brak danych o exploit chains dla tego skanu.</div>';
+    return;
+  }
+
+  var h = '';
+  chains.forEach(function(chain, ci) {
+    var prob = chain.probability || chain.success_probability || 0;
+    var probPct = typeof prob === 'number' && prob <= 1 ? Math.round(prob * 100) : prob;
+    var impact = chain.impact || chain.business_impact || '\u2014';
+    var impColor = (impact + '').toLowerCase().indexOf('critical') !== -1 || (impact + '').toLowerCase().indexOf('high') !== -1 ? 'var(--red)' : 'var(--orange)';
+    var priority = chain.remediation_priority || chain.priority || '\u2014';
+
+    h += '<div class="chain-card">';
+    h += '<div class="chain-header">';
+    h += '<div>';
+    h += '<span class="chain-prob" style="color:var(--accent)">CHAIN #' + (ci + 1) + '</span>';
+    h += '<span style="font-size:12px;color:var(--silver);margin-left:12px">Probability: <b style="color:var(--accent)">' + probPct + '%</b></span>';
+    h += '</div>';
+    h += '<div>';
+    h += '<span class="chain-impact" style="color:' + impColor + ';border-color:' + impColor + '">IMPACT: ' + escH(String(impact)) + '</span>';
+    if (priority && priority !== '\u2014') {
+      h += '<span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver);margin-left:8px">FIX: ' + escH(String(priority)) + '</span>';
+    }
+    h += '</div></div>';
+
+    // Steps timeline
+    var steps = chain.steps || chain.chain || [];
+    if (steps.length) {
+      h += '<div class="chain-timeline">';
+      steps.forEach(function(step, si) {
+        var conf = step.confidence || 0;
+        var confLabel, confClass;
+        if (conf >= 0.8) { confLabel = 'CONFIRMED'; confClass = 'confirmed'; }
+        else if (conf >= 0.5) { confLabel = 'LIKELY'; confClass = 'likely'; }
+        else { confLabel = 'THEORETICAL'; confClass = 'theoretical'; }
+
+        h += '<div class="chain-step">';
+        h += '<div class="chain-step-num">STEP ' + (si + 1);
+        h += '<span class="confidence-badge ' + confClass + '">' + confLabel + '</span></div>';
+        h += '<div class="chain-step-action">' + escH(step.action || step.technique || step.description || '') + '</div>';
+        if (step.vulnerability || step.cve) {
+          h += '<div class="chain-step-vuln">' + escH(step.vulnerability || step.cve || '') + '</div>';
+        }
+        h += '</div>';
+      });
+      h += '</div>';
+    }
+
+    h += '</div>';
+  });
+
+  el.innerHTML = h;
+}
+
+/* ══════════════════════════════════════
+   AUTO-REFRESH
+   ══════════════════════════════════════ */
+function startCountdownLoop() {
+  if (_countdownTimer) clearInterval(_countdownTimer);
+  _countdown = _refreshInterval;
+  _countdownTimer = setInterval(function() {
+    _countdown--;
+    if (_countdown <= 0) {
+      loadDashboard();
+    }
+    updateCountdownDisplay();
+  }, 1000);
+}
+
+function resetCountdown() {
+  _countdown = _refreshInterval;
+  updateCountdownDisplay();
+}
+
+function updateCountdownDisplay() {
+  var el = document.getElementById('countdown');
+  if (el) el.innerHTML = 'REFRESH <b>' + _countdown + 's</b>' + (_hasRunning ? ' [SCAN ACTIVE]' : '');
+}
+
+/* ══════════════════════════════════════
+   INIT
+   ══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function() {
   loadDashboard();
-  loadPhishing();
+  startCountdownLoop();
 });
 </script>
 <script>
-(function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(r=>r.json()).then(u=>{if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}}).catch(function(){});})();
+(function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}}).catch(function(){});})();
 </script>
 </body>
 </html>

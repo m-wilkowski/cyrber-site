@@ -1663,3 +1663,70 @@ async def rag_search(q: str, top_k: int = 5, current_user: dict = Depends(get_cu
     from modules.rag_knowledge import get_rag
     results = get_rag().search(q, top_k=top_k)
     return {"query": q, "results": results}
+
+
+# ── AI Explain Finding ──
+
+class ExplainFindingRequest(BaseModel):
+    finding_name: str
+    finding_description: str = ""
+    target: str = ""
+    severity: str = ""
+
+@app.post("/api/explain-finding")
+@limiter.limit("20/minute")
+async def explain_finding(request: Request, body: ExplainFindingRequest, user: dict = Depends(get_current_user)):
+    import redis.asyncio as aioredis
+
+    cache_key = f"explain:{body.finding_name}:{body.severity}".replace(" ", "_")
+
+    # Check Redis cache first
+    try:
+        r = aioredis.from_url(REDIS_URL)
+        cached = await r.get(cache_key)
+        if cached:
+            await r.aclose()
+            return json.loads(cached)
+        await r.aclose()
+    except Exception:
+        pass
+
+    from modules.llm_provider import ClaudeProvider
+    prompt = (
+        "Jesteś ekspertem cyberbezpieczeństwa. Wyjaśnij to znalezisko właścicielowi firmy "
+        "w prostym języku polskim, bez technicznego żargonu.\n\n"
+        f"Finding: {body.finding_name}\n"
+        f"Opis: {body.finding_description}\n"
+        f"Cel: {body.target}\n"
+        f"Krytyczność: {body.severity}\n\n"
+        "Odpowiedz DOKŁADNIE w formacie JSON (bez markdown):\n"
+        '{"explanation": "Co to jest - 2-3 zdania", '
+        '"risk_pl": "Czym grozi firmie - 2-3 zdania", '
+        '"fix_pl": "Jak to naprawić - 2-3 zdania"}'
+    )
+    try:
+        provider = ClaudeProvider(model="claude-haiku-4-5-20251001")
+        response_text = provider.chat(prompt, max_tokens=600)
+        clean = response_text.strip()
+        if clean.startswith("```"):
+            clean = clean.split("```")[1]
+            if clean.startswith("json"):
+                clean = clean[4:]
+        try:
+            result = json.loads(clean.strip())
+        except json.JSONDecodeError:
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
+            result = json.loads(response_text[start:end])
+
+        # Store in Redis cache (TTL 24h)
+        try:
+            r = aioredis.from_url(REDIS_URL)
+            await r.setex(cache_key, 86400, json.dumps(result, ensure_ascii=False))
+            await r.aclose()
+        except Exception:
+            pass
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI explain failed: {str(e)}")
