@@ -159,10 +159,13 @@ Self-signed TLS cert (ważny do 2029), security headers (HSTS, X-Frame-Options, 
 - Garak (docker/garak/, modules/garak_scan.py) — NVIDIA garak 0.14.0 w osobnym kontenerze (torch+transformers ~4GB); mini FastAPI wrapper (server.py); async scan z poll; 40+ probe'ów (prompt injection, jailbreak, encoding, data leakage); OWASP LLM Top 10; 5 endpointów /garak/*; profil ai-security; probe categories: prompt_injection, data_leakage, toxicity, jailbreak, full
 
 ### Frontend / UI
-- UI Polish (static/index.html) — exploit chain karty z border-left, numerowane kółka, badges TOOL/MITRE/severity; business impact grid z kartami; remediation table z kolorowanymi badges; nagłówki z prefixem ▸//; risk score ring glow
-- Cache-busting headers — no-cache na /ui, /dashboard, /scheduler, /phishing, /osint
-- Polling timeout — pollStatus max 3min, pollAgentStatus max 10min, pollMultiTask max 6min
-- SSE Streaming (static/index.html + backend/main.py) — real-time postęp skanowania: connectSSE() primary z fallback na polling; GET /scan/stream/{task_id}?token=JWT; Redis pub/sub 49 kroków per skan; progress bar %, fazy RECON/WEB/NETWORK/AI, live log per moduł
+- Scan View (static/index.html) — **przepisany od zera**: 3-step flow (target→profil→start), animated pulsing ring hero, target validation (domain/IP/CIDR), profile cards z license lock overlay, SSE live feed z typewriter effect (30ms/char), 17 faz funkcjonalnych (MODULE_LABELS z 52 modułów), progress bar z ETA, completion screen, recent scans (5 ostatnich)
+- Scan Detail (static/scan_detail.html) — pełna strona szczegółów skanu: hero (risk ring + target + badges), 5 zakładek (Overview/Findings/Moduły/AI Analysis/Report), floating AI agent chat (POST /api/scan-agent, Claude Haiku + scan context, sessionStorage history)
+- Dashboard (static/dashboard.html) — **przepisany od zera**: KPI bar (4 karty), filtry (data/profil/ryzyko/target + debounce), sortowalna tabela z paginacją, slide-in drilldown (4 zakładki), pure CSS/SVG. Klik wiersza → scan detail (desktop) / drilldown (mobile)
+- Cache-busting headers — no-cache na /ui, /dashboard, /scheduler, /phishing, /osint, /scan/{id}/detail
+- SSE Streaming (static/index.html + backend/main.py) — real-time postęp skanowania: connectSSE() primary z fallback na polling; GET /scan/stream/{task_id}?token=JWT; Redis pub/sub 49 kroków per skan
+- AI Explain per Finding — POST /api/explain-finding: Claude Haiku, Redis cache 24h (klucz: explain:{name}:{severity})
+- AI Scan Agent — POST /api/scan-agent: Claude Haiku + kontekst skanu (target, risk, findings top 15, chains top 3), conversation history
 
 ---
 
@@ -206,8 +209,9 @@ Prompt do LLM zawiera sekcję `=== KORELACJE MIEDZYMODULOWE ===` między KONTEKS
 
 ## 7. GUI / Frontend
 
-- `/ui` – index.html: sticky sidebar, skeleton loader, progress steps, AI Analysis na górze (risk score gauge, executive summary, exploit chain, business impact, remediation)
-- `/dashboard` – **przepisany od zera**: KPI bar (4 karty), filtry (data/profil/ryzyko/target + debounce), sortowalna tabela z paginacją (20/stronę), prawy slide-in drilldown panel (50% width, cubic-bezier) z 4 zakładkami: Summary (CSS conic-gradient risk ring, narrative, business impact, compliance), Findings (filtr severity + WYJAŚNIJ AI per finding), Moduły (grid ~44 modułów, expand JSON), Exploit Chains (vertical timeline, confidence badges). BEZ Chart.js — pure CSS/SVG.
+- `/ui` – index.html: **przepisany od zera** — 3-step scan launcher (target→profil→start), hero z animowanym pulsing ring, walidacja target (domain/IP/CIDR), profile cards z license lock overlay, SSE live feed z typewriter effect (30ms/char), 17 faz funkcjonalnych (MODULE_LABELS), progress bar z ETA, completion screen ze statystykami + link do scan detail, recent scans (5 ostatnich)
+- `/scan/{task_id}/detail` – scan_detail.html: pełna strona szczegółów skanu — hero (risk ring + target + badges), 5 zakładek (Overview z KPI+bar chart+top findings, Findings z severity toggles + WYJAŚNIJ AI, Moduły grid z expand JSON, AI Analysis z narrative+chains timeline, Report z iframe preview), floating AI agent chat (POST /api/scan-agent, Claude Haiku + kontekst skanu, sessionStorage history)
+- `/dashboard` – **przepisany od zera**: KPI bar (4 karty), filtry (data/profil/ryzyko/target + debounce), sortowalna tabela z paginacją (20/stronę), prawy slide-in drilldown panel (50% width, cubic-bezier) z 4 zakładkami: Summary (CSS conic-gradient risk ring, narrative, business impact, compliance), Findings (filtr severity + WYJAŚNIJ AI per finding), Moduły (grid ~44 modułów, expand JSON), Exploit Chains (vertical timeline, confidence badges). BEZ Chart.js — pure CSS/SVG. Klik wiersza → /scan/{task_id}/detail (desktop), drilldown fallback (mobile ≤768px).
 - `/command-center` – Command Center: unified dashboard trzech głównych widoków, szybki dostęp do skanów/alertów/akcji
 - `/scheduler` – planowanie skanów
 - `/phishing` – GoPhish UI + Phishing Campaign Wizard
@@ -249,7 +253,7 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 ## 10. Backlog (priorytety)
 
 ### Priorytet 0 – Następna sesja
-1. Przepisanie scan view (index.html) — prosty flow, live feed w języku funkcji
+1. ~~Przepisanie scan view (index.html)~~ ✅ — 3-step flow, SSE live feed, typewriter, MODULE_LABELS
 2. Dark/Light theme toggle
 3. Compliance analysis (NIS2/RODO/ISO27001)
 4. Pentest-as-Code CI/CD
@@ -320,6 +324,9 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 - Client Report View ✅ — static/report.html, GET /report/{task_id}, raport dla CEO
 - Dashboard rewrite ✅ — KPI, filtry, sortowanie, paginacja, drilldown 4-tab, bez Chart.js
 - AI Explain per Finding ✅ — Claude Haiku + Redis cache 24h
+- Scan Detail Page ✅ — static/scan_detail.html, 5 zakładek, floating AI agent chat (POST /api/scan-agent)
+- Scan View rewrite ✅ — index.html od zera: 3-step flow, SSE live feed, typewriter, MODULE_LABELS, license lock
+- Dashboard redirect ✅ — klik wiersza → /scan/{task_id}/detail (desktop), drilldown (mobile)
 
 ### Must-have przed pierwszym pilotem
 - Claude Code Security scan własnego kodu ⚠️
@@ -360,7 +367,10 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 
 ## 13. Aktualny stan commitów
 
-Ostatnie commity na master (sesja 24.02.2026 część 3 → najnowsze na górze):
+Ostatnie commity na master (sesja 24.02.2026 → najnowsze na górze):
+- `feat: Scan View rewrite - 3-step flow + SSE live feed`
+- `feat: Scan Detail Page + Floating AI Agent`
+- `feat: dashboard pełny rewrite + AI explain`
 - `feat: Client Report View - raport dla CEO/managera`
 - `feat: Auto-Flow po skanie - rekomendowane akcje`
 - `feat: Command Center - unified dashboard trzech glownych widoków`
