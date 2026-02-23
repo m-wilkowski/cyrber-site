@@ -2,6 +2,7 @@ from fastapi import FastAPI, Query, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response, JSONResponse
+from sse_starlette.sse import EventSourceResponse
 
 _NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -26,6 +27,9 @@ from modules.nuclei_scan import scan as nuclei_scan
 from modules.llm_analyze import analyze_scan_results
 from modules.tasks import full_scan_task
 from modules.scan_profiles import get_profiles_list, get_profile
+
+# ── Redis config ──
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
 # ── JWT config ──
 JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
@@ -187,6 +191,53 @@ async def scan_status(task_id: str, user: str = Depends(get_current_user)):
         return {"task_id": task_id, "status": "failed", "error": str(task.info)}
     else:
         return {"task_id": task_id, "status": task.state}
+
+
+def _get_user_from_token(token: str) -> str:
+    """Walidacja JWT z query param (SSE nie obsługuje custom headers)."""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return username
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+@app.get("/scan/stream/{task_id}")
+async def scan_stream(task_id: str, token: str = Query(...)):
+    import redis.asyncio as aioredis
+    import asyncio as _asyncio
+
+    _get_user_from_token(token)
+    _redis_url = REDIS_URL
+
+    async def event_generator():
+        r = aioredis.from_url(_redis_url)
+        pubsub = r.pubsub()
+        await pubsub.subscribe(f"scan_progress:{task_id}")
+        try:
+            idle = 0
+            while True:
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message and message["type"] == "message":
+                    data_str = message["data"].decode()
+                    yield {"data": data_str}
+                    idle = 0
+                    if '"module": "complete"' in data_str:
+                        break
+                else:
+                    idle += 1
+                    if idle > 300:  # 5 minut timeout
+                        break
+                    await _asyncio.sleep(0.5)
+        finally:
+            await pubsub.unsubscribe(f"scan_progress:{task_id}")
+            await r.aclose()
+
+    return EventSourceResponse(event_generator())
+
 
 @app.get("/scans")
 async def scans_history(limit: int = 20, user: str = Depends(get_current_user)):

@@ -57,10 +57,29 @@ from modules.impacket_scan import impacket_scan
 from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
-from modules.scan_profiles import should_run_module
+from modules.scan_profiles import should_run_module, get_all_modules
 from modules.ai_analysis import analyze_scan_results as ai_analyze
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+
+def publish_progress(task_id: str, module: str, status: str, completed: int, total: int, message: str = ""):
+    """Publikuje postęp skanu do Redis pub/sub."""
+    try:
+        import redis, json
+        r = redis.from_url(REDIS_URL)
+        data = {
+            "task_id": task_id,
+            "module": module,
+            "status": status,
+            "completed": completed,
+            "total": total,
+            "message": message,
+            "timestamp": __import__('time').time()
+        }
+        r.publish(f"scan_progress:{task_id}", json.dumps(data))
+    except Exception:
+        pass
 
 celery_app = Celery(
     "cyrber",
@@ -84,55 +103,186 @@ def _skip():
 def full_scan_task(target: str, profile: str = "STRAZNIK"):
     task_id = full_scan_task.request.id
     run = lambda mod: should_run_module(mod, profile)
+    # Total = 42 scan modules + 7 post-processing = 49 steps
+    total = 49
+    completed = 0
+    pp = lambda mod, st, msg="": publish_progress(task_id, mod, st, completed, total, msg)
+
     # ── Fundamentals (always run) ──
+    pp("nmap", "started")
     nmap = nmap_scan(target)
+    completed += 1; pp("nmap", "done", f"{len(nmap.get('ports', []))} ports")
+
+    pp("ipinfo", "started")
     ipinfo = ipinfo_scan(target)
+    completed += 1; pp("ipinfo", "done")
+
     # ── Profile-gated modules ──
+    pp("nuclei", "started")
     nuclei = nuclei_scan(target) if run("nuclei") else _skip()
     nuclei_filtered = filter_false_positives(nuclei, target) if run("nuclei") else _skip()
+    completed += 1; pp("nuclei", "done" if not nuclei.get("skipped") else "skipped")
+
+    pp("zap", "started")
     zap = zap_scan(target) if run("zap") else _skip()
+    completed += 1; pp("zap", "done" if not zap.get("skipped") else "skipped")
+
+    pp("wapiti", "started")
     wapiti = wapiti_scan(target) if run("wapiti") else _skip()
+    completed += 1; pp("wapiti", "done" if not wapiti.get("skipped") else "skipped")
+
+    pp("joomscan", "started")
     joomscan = joomscan_scan(target) if run("joomscan") else _skip()
+    completed += 1; pp("joomscan", "done" if not joomscan.get("skipped") else "skipped")
+
+    pp("cmsmap", "started")
     cmsmap = cmsmap_scan(target) if run("cmsmap") else _skip()
+    completed += 1; pp("cmsmap", "done" if not cmsmap.get("skipped") else "skipped")
+
+    pp("droopescan", "started")
     droopescan = droopescan_scan(target) if run("droopescan") else _skip()
+    completed += 1; pp("droopescan", "done" if not droopescan.get("skipped") else "skipped")
+
+    pp("retirejs", "started")
     retirejs = retirejs_scan(target) if run("retirejs") else _skip()
+    completed += 1; pp("retirejs", "done" if not retirejs.get("skipped") else "skipped")
+
+    pp("whatweb", "started")
     whatweb = whatweb_scan(target) if run("whatweb") else _skip()
+    completed += 1; pp("whatweb", "done" if not whatweb.get("skipped") else "skipped")
+
+    pp("wpscan", "started")
     wpscan = wpscan_scan(target) if run("wpscan") else _skip()
+    completed += 1; pp("wpscan", "done" if not wpscan.get("skipped") else "skipped")
+
+    pp("gobuster", "started")
     gobuster = gobuster_scan(target) if run("gobuster") else _skip()
+    completed += 1; pp("gobuster", "done" if not gobuster.get("skipped") else "skipped")
+
+    pp("testssl", "started")
     testssl = testssl_scan(target) if run("testssl") else _skip()
+    completed += 1; pp("testssl", "done" if not testssl.get("skipped") else "skipped")
+
+    pp("sqlmap", "started")
     sqlmap = sqlmap_scan(target) if run("sqlmap") else _skip()
+    completed += 1; pp("sqlmap", "done" if not sqlmap.get("skipped") else "skipped")
+
+    pp("nikto", "started")
     nikto = nikto_scan(target) if run("nikto") else _skip()
+    completed += 1; pp("nikto", "done" if not nikto.get("skipped") else "skipped")
+
+    pp("harvester", "started")
     harvester = harvester_scan(target)
+    completed += 1; pp("harvester", "done")
+
+    pp("masscan", "started")
     masscan = masscan_scan(target) if run("masscan") else _skip()
+    completed += 1; pp("masscan", "done" if not masscan.get("skipped") else "skipped")
+
+    pp("abuseipdb", "started")
     abuseipdb = abuseipdb_scan(target)
+    completed += 1; pp("abuseipdb", "done")
+
+    pp("otx", "started")
     otx = otx_scan(target)
+    completed += 1; pp("otx", "done")
+
+    pp("whois", "started")
     whois = whois_scan(target) if run("whois") else _skip()
+    completed += 1; pp("whois", "done" if not whois.get("skipped") else "skipped")
+
+    pp("dnsrecon", "started")
     dnsrecon = dnsrecon_scan(target)
+    completed += 1; pp("dnsrecon", "done")
+
+    pp("amass", "started")
     amass = amass_scan(target) if run("amass") else _skip()
+    completed += 1; pp("amass", "done" if not amass.get("skipped") else "skipped")
+
+    pp("subfinder", "started")
     subfinder = subfinder_scan(target) if run("subfinder") else _skip()
+    completed += 1; pp("subfinder", "done" if not subfinder.get("skipped") else "skipped")
+
     # Combine subdomains from amass + subfinder for httpx probing
     _httpx_subs = list(set(
         (amass.get("subdomains") or []) + (subfinder.get("subdomains") or [])
     ))
+
+    pp("httpx", "started")
     httpx = httpx_scan(target, subdomains=_httpx_subs) if run("httpx") else _skip()
+    completed += 1; pp("httpx", "done" if not httpx.get("skipped") else "skipped")
+
+    pp("naabu", "started")
     naabu = naabu_scan(target, subdomains=_httpx_subs) if run("naabu") else _skip()
+    completed += 1; pp("naabu", "done" if not naabu.get("skipped") else "skipped")
+
+    pp("katana", "started")
     katana = katana_scan(target) if run("katana") else _skip()
+    completed += 1; pp("katana", "done" if not katana.get("skipped") else "skipped")
+
+    pp("dnsx", "started")
     dnsx = dnsx_scan(target, subdomains=_httpx_subs) if run("dnsx") else _skip()
+    completed += 1; pp("dnsx", "done" if not dnsx.get("skipped") else "skipped")
+
+    pp("netdiscover", "started")
     netdiscover = netdiscover_scan(target) if run("netdiscover") else _skip()
+    completed += 1; pp("netdiscover", "done" if not netdiscover.get("skipped") else "skipped")
+
+    pp("arpscan", "started")
     arpscan = arpscan_scan(target) if run("arpscan") else _skip()
+    completed += 1; pp("arpscan", "done" if not arpscan.get("skipped") else "skipped")
+
+    pp("fping", "started")
     fping = fping_scan(target) if run("fping") else _skip()
+    completed += 1; pp("fping", "done" if not fping.get("skipped") else "skipped")
+
+    pp("traceroute", "started")
     traceroute = traceroute_scan(target) if run("traceroute") else _skip()
+    completed += 1; pp("traceroute", "done" if not traceroute.get("skipped") else "skipped")
+
+    pp("nbtscan", "started")
     nbtscan = nbtscan_scan(target) if run("nbtscan") else _skip()
+    completed += 1; pp("nbtscan", "done" if not nbtscan.get("skipped") else "skipped")
+
+    pp("snmpwalk", "started")
     snmpwalk = snmpwalk_scan(target) if run("snmpwalk") else _skip()
+    completed += 1; pp("snmpwalk", "done" if not snmpwalk.get("skipped") else "skipped")
+
+    pp("netexec", "started")
     netexec = netexec_scan(target) if run("netexec") else _skip()
+    completed += 1; pp("netexec", "done" if not netexec.get("skipped") else "skipped")
+
+    pp("enum4linux", "started")
     enum4linux = enum4linux_scan(target) if run("enum4linux") else _skip()
+    completed += 1; pp("enum4linux", "done" if not enum4linux.get("skipped") else "skipped")
+
+    pp("bloodhound", "started")
     bloodhound = bloodhound_scan(target) if run("bloodhound") else _skip()
+    completed += 1; pp("bloodhound", "done" if not bloodhound.get("skipped") else "skipped")
+
+    pp("responder", "started")
     responder = responder_scan(target) if run("responder") else _skip()
+    completed += 1; pp("responder", "done" if not responder.get("skipped") else "skipped")
+
+    pp("fierce", "started")
     fierce = fierce_scan(target) if run("fierce") else _skip()
+    completed += 1; pp("fierce", "done" if not fierce.get("skipped") else "skipped")
+
+    pp("smbmap", "started")
     smbmap = smbmap_scan(target) if run("smbmap") else _skip()
+    completed += 1; pp("smbmap", "done" if not smbmap.get("skipped") else "skipped")
+
+    pp("onesixtyone", "started")
     onesixtyone = onesixtyone_scan(target) if run("onesixtyone") else _skip()
+    completed += 1; pp("onesixtyone", "done" if not onesixtyone.get("skipped") else "skipped")
+
+    pp("ikescan", "started")
     ikescan = ikescan_scan(target) if run("ikescan") else _skip()
+    completed += 1; pp("ikescan", "done" if not ikescan.get("skipped") else "skipped")
+
+    pp("sslyze", "started")
     sslyze = sslyze_scan(target) if run("sslyze") else _skip()
+    completed += 1; pp("sslyze", "done" if not sslyze.get("skipped") else "skipped")
     scan_data = {
         "target": target,
         "ports": nmap.get("ports", []),
@@ -230,12 +380,20 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
         result["ikescan"] = ikescan
     if not sslyze.get("skipped") and sslyze.get("total_accepted_ciphers", 0) > 0:
         result["sslyze"] = sslyze
+    pp("searchsploit", "started")
     searchsploit = searchsploit_scan(target, result) if run("searchsploit") else _skip()
     if not searchsploit.get("skipped") and searchsploit.get("total_exploits", 0) > 0:
         result["searchsploit"] = searchsploit
+    completed += 1; pp("searchsploit", "done" if not searchsploit.get("skipped") else "skipped")
+
+    pp("impacket", "started")
     impacket = impacket_scan(target, result) if run("impacket") else _skip()
     if not impacket.get("skipped"):
         result["impacket"] = impacket
+    completed += 1; pp("impacket", "done" if not impacket.get("skipped") else "skipped")
+
+    # ── Post-processing ──
+    pp("cwe_owasp", "started", "CWE + OWASP mapping")
     cwe = cwe_mapping(result)
     if cwe.get("total", 0) > 0:
         result["cwe"] = cwe
@@ -243,15 +401,31 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
     if owasp.get("detected_count", 0) > 0:
         result["owasp"] = owasp
     result["fp_filter"] = nuclei_filtered.get("fp_filter", {}) if not nuclei_filtered.get("skipped") else {}
+    completed += 1; pp("cwe_owasp", "done")
+
+    pp("exploit_chains", "started", "Generating exploit chains")
     chains = generate_exploit_chains(result)
     result["exploit_chains"] = chains.get("exploit_chains", {})
+    completed += 1; pp("exploit_chains", "done")
+
+    pp("hacker_narrative", "started", "Generating hacker narrative")
     narrative = generate_hacker_narrative(result)
     result["hacker_narrative"] = narrative
+    completed += 1; pp("hacker_narrative", "done")
+
+    pp("mitre", "started", "MITRE ATT&CK mapping")
     mitre = mitre_map(result)
     result["mitre"] = mitre
+    completed += 1; pp("mitre", "done")
+
+    pp("ai_analysis", "started", "AI analysis — final report")
     result["ai_analysis"] = ai_analyze(result)
+    completed += 1; pp("ai_analysis", "done")
+
+    pp("save", "started", "Saving results")
     save_scan(task_id, target, result, profile=profile)
     send_scan_notification(target, task_id, result)
+    publish_progress(task_id, "complete", "done", completed, total, "Scan complete")
     return result
 
 @celery_app.task(soft_time_limit=3600, time_limit=3660)

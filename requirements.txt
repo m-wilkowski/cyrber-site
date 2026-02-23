@@ -57,6 +57,7 @@ weasyprint==68.1
 webencodings==0.5.1
 zopfli==0.4.1
 slowapi==0.1.9
+sse-starlette>=1.6.1
 requests
 python-jose[cryptography]
 passlib

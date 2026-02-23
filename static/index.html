@@ -1670,23 +1670,13 @@ function startScan() {
       log('Task ID: ' + d.task_id);
       window._lastTaskId = d.task_id;
       window._lastProfile = d.profile || selectedProfile;
-      log('Background scan running. Polling for results...');
-      var pollCount = 0;
-      pollTimer = setInterval(function() {
-        pollCount++;
-        if (pollCount > 60) {
-          clearInterval(pollTimer);
-          setSt('Timeout', 'error');
-          log('TIMEOUT: scan exceeded 3 minutes');
-          document.getElementById('scanBtn').disabled = false;
-          document.getElementById('pw').classList.remove('on');
-          hideScanSteps();
-          var sk=document.getElementById('skelLoader');if(sk) sk.classList.remove('on');
-          document.getElementById('sum').innerHTML = '<div class="scan-timeout">\u26a0 Timeout: skan trwa ponad 3 minuty. Sprawdź status w <a href="/dashboard">Dashboard</a></div>';
-          return;
-        }
-        pollStatus(d.task_id);
-      }, 3000);
+      log('Background scan running...');
+      // SSE primary, polling fallback
+      if (typeof EventSource !== 'undefined') {
+        connectSSE(d.task_id);
+      } else {
+        startPolling(d.task_id);
+      }
     })
     .catch(function(e) {
       setSt('Connection error: ' + e.message, 'error');
@@ -1696,6 +1686,96 @@ function startScan() {
       hideScanSteps();
       var sk=document.getElementById('skelLoader');if(sk) sk.classList.remove('on');
     });
+}
+
+function startPolling(taskId) {
+  log('Polling for results...');
+  var pollCount = 0;
+  pollTimer = setInterval(function() {
+    pollCount++;
+    if (pollCount > 60) {
+      clearInterval(pollTimer);
+      setSt('Timeout', 'error');
+      log('TIMEOUT: scan exceeded 3 minutes');
+      document.getElementById('scanBtn').disabled = false;
+      document.getElementById('pw').classList.remove('on');
+      hideScanSteps();
+      var sk=document.getElementById('skelLoader');if(sk) sk.classList.remove('on');
+      document.getElementById('sum').innerHTML = '<div class="scan-timeout">\u26a0 Timeout: skan trwa ponad 3 minuty. Sprawdź status w <a href="/dashboard">Dashboard</a></div>';
+      return;
+    }
+    pollStatus(taskId);
+  }, 3000);
+}
+
+function connectSSE(taskId) {
+  var token = getToken();
+  var es = new EventSource(API + '/scan/stream/' + taskId + '?token=' + encodeURIComponent(token));
+  window._sseSource = es;
+  log('SSE connected — real-time progress');
+  var sseTimeout = setTimeout(function() {
+    es.close();
+    log('SSE timeout — falling back to polling');
+    startPolling(taskId);
+  }, 10000);
+
+  es.onmessage = function(e) {
+    clearTimeout(sseTimeout);
+    try {
+      var data = JSON.parse(e.data);
+      updateScanProgress(data);
+      if (data.module === 'complete' && data.status === 'done') {
+        es.close();
+        // Final poll to get full results
+        pollStatus(taskId);
+      }
+    } catch(err) {
+      log('SSE parse error: ' + err.message);
+    }
+  };
+
+  es.onerror = function() {
+    clearTimeout(sseTimeout);
+    es.close();
+    log('SSE error — falling back to polling');
+    startPolling(taskId);
+  };
+}
+
+function updateScanProgress(data) {
+  var pct = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+  var pf = document.getElementById('pf');
+  if (pf) {
+    pf.classList.remove('sweep');
+    pf.style.width = pct + '%';
+  }
+  var elapsed = Math.round((Date.now() - t0) / 1000);
+  var statusText = data.module.toUpperCase() + ' — ' + data.status;
+  if (data.message) statusText += ' (' + data.message + ')';
+  statusText += ' [' + data.completed + '/' + data.total + '] ' + elapsed + 's';
+  setSt(statusText, 'active');
+  if (data.status === 'started') {
+    log(data.module + ' started...');
+  } else if (data.status === 'done' && data.module !== 'complete') {
+    log(data.module + ' done' + (data.message ? ' — ' + data.message : ''));
+  }
+  // Update scan steps based on module
+  var recon = ['nmap','ipinfo','whois','dnsrecon','amass','subfinder','httpx','naabu','katana','dnsx','harvester','masscan','abuseipdb','otx','fierce'];
+  var web = ['nuclei','zap','wapiti','gobuster','whatweb','sqlmap','nikto','wpscan','joomscan','cmsmap','droopescan','retirejs','testssl','sslyze'];
+  var net = ['netdiscover','arpscan','fping','traceroute','nbtscan','snmpwalk','netexec','enum4linux','bloodhound','responder','smbmap','onesixtyone','ikescan','searchsploit','impacket'];
+  var ai = ['cwe_owasp','exploit_chains','hacker_narrative','mitre','ai_analysis'];
+  var mod = data.module;
+  var phase = 0;
+  if (web.indexOf(mod) >= 0) phase = 1;
+  else if (net.indexOf(mod) >= 0) phase = 2;
+  else if (ai.indexOf(mod) >= 0) phase = 3;
+  _stepPhases.forEach(function(id, idx) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'scan-step' + (idx < phase ? ' done' : (idx === phase ? ' active' : ''));
+  });
+  var steps = document.getElementById('scanSteps');
+  if (steps) steps.style.display = 'flex';
 }
 
 function pollStatus(tid) {
