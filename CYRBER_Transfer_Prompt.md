@@ -159,7 +159,7 @@ Self-signed TLS cert (ważny do 2029), security headers (HSTS, X-Frame-Options, 
 - Garak (docker/garak/, modules/garak_scan.py) — NVIDIA garak 0.14.0 w osobnym kontenerze (torch+transformers ~4GB); mini FastAPI wrapper (server.py); async scan z poll; 40+ probe'ów (prompt injection, jailbreak, encoding, data leakage); OWASP LLM Top 10; 5 endpointów /garak/*; profil ai-security; probe categories: prompt_injection, data_leakage, toxicity, jailbreak, full
 
 ### Frontend / UI
-- Scan View (static/index.html) — **przepisany od zera**: 3-step flow (target→profil→start), animated pulsing ring hero, target validation (domain/IP/CIDR), profile cards z license lock overlay, SSE live feed z typewriter effect (30ms/char), 17 faz funkcjonalnych (MODULE_LABELS z 52 modułów), progress bar z ETA, completion screen, recent scans (5 ostatnich)
+- Scan View (static/index.html) — **przepisany od zera**: 3-step flow (target→profil→start), animated pulsing ring hero, target validation (domain/IP/CIDR), profile cards z license lock overlay (admin bypass licencji), SSE live feed z typewriter effect (30ms/char) + terminal panel (surowy output SSE obok), 17 faz funkcjonalnych (MODULE_LABELS z 52 modułów), progress bar z ETA, completion screen, recent scans (5 ostatnich); nav uproszczony: SCAN | DASHBOARD | SCHEDULER | PHISHING | ADMIN
 - Scan Detail (static/scan_detail.html) — pełna strona szczegółów skanu: hero (risk ring + target + badges), 5 zakładek (Overview/Findings/Moduły/AI Analysis/Report), floating AI agent chat (POST /api/scan-agent, Claude Haiku + scan context, sessionStorage history)
 - Dashboard (static/dashboard.html) — **przepisany od zera**: KPI bar (4 karty), filtry (data/profil/ryzyko/target + debounce), sortowalna tabela z paginacją, slide-in drilldown (4 zakładki), pure CSS/SVG. Klik wiersza → scan detail (desktop) / drilldown (mobile)
 - Cache-busting headers — no-cache na /ui, /dashboard, /scheduler, /phishing, /osint, /scan/{id}/detail
@@ -253,10 +253,11 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 ## 10. Backlog (priorytety)
 
 ### Priorytet 0 – Następna sesja
-1. ~~Przepisanie scan view (index.html)~~ ✅ — 3-step flow, SSE live feed, typewriter, MODULE_LABELS
-2. Dark/Light theme toggle
-3. Compliance analysis (NIS2/RODO/ISO27001)
-4. Pentest-as-Code CI/CD
+1. Dark/Light theme toggle
+2. Compliance analysis (NIS2/RODO/ISO27001)
+3. Pentest-as-Code CI/CD (GitHub Actions)
+4. Continuous threat simulation
+5. Test end-to-end całego nowego GUI na DVWA
 
 ### Priorytet 1 – AI Integration (w toku)
 - Cross-module reasoning ✅
@@ -327,6 +328,10 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 - Scan Detail Page ✅ — static/scan_detail.html, 5 zakładek, floating AI agent chat (POST /api/scan-agent)
 - Scan View rewrite ✅ — index.html od zera: 3-step flow, SSE live feed, typewriter, MODULE_LABELS, license lock
 - Dashboard redirect ✅ — klik wiersza → /scan/{task_id}/detail (desktop), drilldown (mobile)
+- Terminal panel ✅ — surowy techniczny podgląd SSE obok live feed podczas skanowania
+- Admin bypass licencji ✅ — rola admin omija lock profili, licencja ogranicza tylko klientów
+- Nav uproszczony ✅ — SCAN | DASHBOARD | SCHEDULER | PHISHING | ADMIN (usunięte OSINT, CMD CENTER)
+- Bugfix scan-agent ✅ — exploit_chains dict→list extraction (TypeError: unhashable type 'slice')
 
 ### Must-have przed pierwszym pilotem
 - Claude Code Security scan własnego kodu ⚠️
@@ -367,7 +372,8 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 
 ## 13. Aktualny stan commitów
 
-Ostatnie commity na master (sesja 24.02.2026 → najnowsze na górze):
+Ostatnie commity na master (sesja 24.02.2026 finał → najnowsze na górze):
+- `fix: bugfixy scan detail i agent`
 - `feat: Scan View rewrite - 3-step flow + SSE live feed`
 - `feat: Scan Detail Page + Floating AI Agent`
 - `feat: dashboard pełny rewrite + AI explain`
