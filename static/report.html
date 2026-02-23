@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYRBER — Raport Bezpieczeństwa</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1a3a5c;
+  --navy-light: #2a5a8c;
+  --bg: #ffffff;
+  --bg2: #f4f6f9;
+  --bg3: #eaeff5;
+  --text: #1e293b;
+  --text2: #475569;
+  --text3: #94a3b8;
+  --border: #e2e8f0;
+  --red: #dc2626;
+  --red-bg: #fef2f2;
+  --orange: #ea580c;
+  --orange-bg: #fff7ed;
+  --yellow: #ca8a04;
+  --yellow-bg: #fefce8;
+  --green: #16a34a;
+  --green-bg: #f0fdf4;
+  --accent: #1a3a5c;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* ── HEADER ── */
+.report-header {
+  padding: 48px 0 40px;
+  border-bottom: 2px solid var(--navy);
+}
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+.logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--navy);
+  letter-spacing: .15em;
+}
+.logo-sub {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: .1em;
+}
+.report-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text3);
+  text-align: right;
+}
+.report-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 8px;
+}
+.report-target {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  color: var(--text2);
+  margin-bottom: 20px;
+}
+
+.risk-badge-large {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  padding: 10px 28px;
+  border: 2px solid;
+  border-radius: 6px;
+}
+.risk-KRYTYCZNE, .risk-CRITICAL { color: var(--red); border-color: var(--red); background: var(--red-bg); }
+.risk-WYSOKIE, .risk-HIGH       { color: var(--orange); border-color: var(--orange); background: var(--orange-bg); }
+.risk-SREDNIE, .risk-MEDIUM     { color: var(--yellow); border-color: var(--yellow); background: var(--yellow-bg); }
+.risk-NISKIE, .risk-LOW         { color: var(--green); border-color: var(--green); background: var(--green-bg); }
+
+/* ── SECTIONS ── */
+.section {
+  padding: 40px 0;
+  border-bottom: 1px solid var(--border);
+}
+.section:last-of-type { border-bottom: none; }
+.section-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text3);
+  letter-spacing: .2em;
+  margin-bottom: 6px;
+}
+.section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 20px;
+}
+.section-text {
+  color: var(--text2);
+  font-size: 15px;
+  line-height: 1.7;
+  max-width: 720px;
+}
+
+/* ── KPI ROW ── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 28px;
+}
+.kpi {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+}
+.kpi-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.kpi-value.danger { color: var(--red); }
+.kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text3);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* ── RISK GAUGE ── */
+.gauge-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 28px;
+}
+.gauge {
+  position: relative;
+  width: 160px;
+  height: 160px;
+}
+.gauge svg {
+  transform: rotate(-90deg);
+  width: 160px;
+  height: 160px;
+}
+.gauge-bg {
+  fill: none;
+  stroke: var(--bg3);
+  stroke-width: 12;
+}
+.gauge-fill {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: stroke-dashoffset .8s ease;
+}
+.gauge-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+.gauge-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+.gauge-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* ── IMPACT ROW ── */
+.impact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 20px;
+}
+.impact-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+}
+.impact-icon {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+.impact-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 8px;
+}
+.impact-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.impact-desc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+/* ── COMPLIANCE ── */
+.compliance-row {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+.compliance-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 20px;
+  flex: 1;
+  min-width: 200px;
+}
+.compliance-icon { font-size: 24px; }
+.compliance-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.compliance-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── FINDINGS ── */
+.finding-item {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.finding-severity {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  padding: 4px 10px;
+  border: 1px solid;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.sev-critical { color: var(--red); border-color: var(--red); background: var(--red-bg); }
+.sev-high { color: var(--orange); border-color: var(--orange); background: var(--orange-bg); }
+.finding-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.finding-desc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+/* ── RECOMMENDATIONS ── */
+.rec-item {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.rec-item:last-child { border-bottom: none; }
+.rec-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+  width: 36px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.rec-priority {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  padding: 3px 10px;
+  border: 1px solid;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+.pri-urgent { color: var(--red); border-color: var(--red); background: var(--red-bg); }
+.pri-important { color: var(--orange); border-color: var(--orange); background: var(--orange-bg); }
+.pri-recommended { color: var(--green); border-color: var(--green); background: var(--green-bg); }
+.rec-text {
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.rec-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text3);
+}
+
+/* ── FOOTER ── */
+.report-footer {
+  padding: 40px 0;
+  border-top: 2px solid var(--navy);
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.footer-text {
+  font-size: 13px;
+  color: var(--text3);
+}
+.footer-text a {
+  color: var(--navy);
+  text-decoration: none;
+}
+.btn-print {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.btn-print:hover { background: var(--navy-light); }
+
+/* ── LOADING ── */
+.loading {
+  text-align: center;
+  padding: 120px 0;
+  color: var(--text3);
+}
+.loading-spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--navy);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.error-msg {
+  text-align: center;
+  padding: 120px 0;
+  color: var(--red);
+  font-size: 16px;
+}
+
+/* ── PRINT ── */
+@media print {
+  body { font-size: 12px; }
+  .container { max-width: 100%; padding: 0 20px; }
+  .btn-print { display: none; }
+  .report-header { padding: 24px 0 20px; }
+  .section { padding: 24px 0; }
+  .kpi-row { gap: 12px; }
+  .kpi { padding: 16px; }
+  .kpi-value { font-size: 28px; }
+  .finding-item { break-inside: avoid; }
+  .rec-item { break-inside: avoid; }
+  .report-footer { padding: 20px 0; }
+}
+
+@media (max-width: 600px) {
+  .container { padding: 0 16px; }
+  .kpi-row { grid-template-columns: 1fr; }
+  .impact-row { grid-template-columns: 1fr; }
+  .header-top { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .report-title { font-size: 22px; }
+  .report-footer { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div id="loadingState" class="loading">
+    <div class="loading-spinner"></div>
+    <div>Generowanie raportu...</div>
+  </div>
+
+  <div id="errorState" class="error-msg" style="display:none"></div>
+
+  <div id="reportContent" style="display:none">
+
+    <div class="report-header">
+      <div class="header-top">
+        <div>
+          <div class="logo">CYRBER</div>
+          <div class="logo-sub">AUTONOMOUS SECURITY PLATFORM</div>
+        </div>
+        <div class="report-date" id="reportDate"></div>
+      </div>
+      <div class="report-title">RAPORT BEZPIECZENSTWA</div>
+      <div class="report-target" id="reportTarget"></div>
+      <div id="riskBadge"></div>
+    </div>
+
+    <!-- SEKCJA 1 -->
+    <div class="section">
+      <div class="section-num">SEKCJA 01</div>
+      <div class="section-title">Podsumowanie dla Zarzadu</div>
+      <div class="section-text" id="execSummary"></div>
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="kpi-value" id="kpiFindings">0</div>
+          <div class="kpi-label">Znalezione problemy</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-value danger" id="kpiCritical">0</div>
+          <div class="kpi-label">Krytyczne</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-value" id="kpiTime">-</div>
+          <div class="kpi-label">Czas do przejecia</div>
+        </div>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge">
+          <svg viewBox="0 0 160 160">
+            <circle class="gauge-bg" cx="80" cy="80" r="68"></circle>
+            <circle class="gauge-fill" id="gaugeFill" cx="80" cy="80" r="68"
+              stroke-dasharray="427" stroke-dashoffset="427"></circle>
+          </svg>
+          <div class="gauge-text">
+            <div class="gauge-num" id="gaugeNum">0</div>
+            <div class="gauge-label">Skala ryzyka</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEKCJA 2 -->
+    <div class="section">
+      <div class="section-num">SEKCJA 02</div>
+      <div class="section-title">Co to oznacza dla firmy</div>
+      <div class="impact-row">
+        <div class="impact-card">
+          <div class="impact-icon">&#x1F4B0;</div>
+          <div class="impact-title">Potencjalne straty</div>
+          <div class="impact-value" id="impactLoss" style="color:var(--red)">-</div>
+          <div class="impact-desc" id="impactLossDesc">Szacowana wartosc strat w przypadku udanego ataku</div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-icon">&#x1F6E0;</div>
+          <div class="impact-title">Koszt naprawy</div>
+          <div class="impact-value" id="impactFix" style="color:var(--green)">-</div>
+          <div class="impact-desc">Szacowany koszt wdrozenia poprawek bezpieczenstwa</div>
+        </div>
+      </div>
+      <div class="compliance-row" id="complianceRow"></div>
+    </div>
+
+    <!-- SEKCJA 3 -->
+    <div class="section">
+      <div class="section-num">SEKCJA 03</div>
+      <div class="section-title">Znalezione problemy</div>
+      <div class="section-text" style="margin-bottom:20px">
+        Ponizej przedstawiono najwazniejsze problemy bezpieczenstwa wykryte podczas testu.
+      </div>
+      <div id="findingsList"></div>
+    </div>
+
+    <!-- SEKCJA 4 -->
+    <div class="section">
+      <div class="section-num">SEKCJA 04</div>
+      <div class="section-title">Co nalezy naprawic</div>
+      <div class="section-text" style="margin-bottom:20px">
+        Rekomendowane dzialania w kolejnosci priorytetu.
+      </div>
+      <div id="recList"></div>
+    </div>
+
+    <div class="report-footer">
+      <div class="footer-text">
+        Raport wygenerowany przez <strong>CYRBER</strong> &mdash; <span id="footerDate"></span><br>
+        Kontakt: <a href="mailto:security@example.com">security@example.com</a>
+      </div>
+      <button class="btn-print" onclick="window.print()">DRUKUJ RAPORT</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+var taskId = window.location.pathname.split('/report/')[1];
+if (!taskId) {
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('errorState').style.display = '';
+  document.getElementById('errorState').textContent = 'Brak identyfikatora skanu w adresie URL.';
+}
+
+if (taskId) {
+  fetch('/api/report/' + taskId)
+    .then(function(r) {
+      if (!r.ok) throw new Error(r.status === 404 ? 'Skan nie zostal znaleziony.' : 'Blad serwera (' + r.status + ')');
+      return r.json();
+    })
+    .then(function(d) { renderReport(d); })
+    .catch(function(e) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorState').style.display = '';
+      document.getElementById('errorState').textContent = e.message;
+    });
+}
+
+var RISK_MAP = {
+  'KRYTYCZNE': {label:'KRYTYCZNY', score:9, cls:'risk-KRYTYCZNE'},
+  'CRITICAL':  {label:'KRYTYCZNY', score:9, cls:'risk-CRITICAL'},
+  'WYSOKIE':   {label:'WYSOKI',    score:7, cls:'risk-WYSOKIE'},
+  'HIGH':      {label:'WYSOKI',    score:7, cls:'risk-HIGH'},
+  'SREDNIE':   {label:'SREDNI',    score:4, cls:'risk-SREDNIE'},
+  'MEDIUM':    {label:'SREDNI',    score:4, cls:'risk-MEDIUM'},
+  'NISKIE':    {label:'NISKI',     score:2, cls:'risk-NISKIE'},
+  'LOW':       {label:'NISKI',     score:2, cls:'risk-LOW'},
+};
+
+function renderReport(d) {
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('reportContent').style.display = '';
+
+  var risk = (d.risk_level || 'NISKIE').toUpperCase();
+  var riskNorm = risk.replace(/Ś/g,'S').replace(/ś/g,'S');
+  var rm = RISK_MAP[riskNorm] || RISK_MAP[risk] || RISK_MAP['NISKIE'];
+
+  // Header
+  var dateStr = d.date ? new Date(d.date).toLocaleDateString('pl-PL', {day:'2-digit', month:'long', year:'numeric'}) : new Date().toLocaleDateString('pl-PL', {day:'2-digit', month:'long', year:'numeric'});
+  document.getElementById('reportDate').innerHTML = 'Data raportu:<br><strong>' + dateStr + '</strong>';
+  document.getElementById('reportTarget').textContent = 'Cel: ' + (d.target || '-');
+  document.getElementById('riskBadge').innerHTML = '<span class="risk-badge-large ' + rm.cls + '">POZIOM RYZYKA: ' + rm.label + '</span>';
+  document.title = 'CYRBER — Raport: ' + (d.target || '');
+
+  // Sekcja 1
+  document.getElementById('execSummary').textContent = d.executive_summary || d.summary || 'Brak podsumowania.';
+  document.getElementById('kpiFindings').textContent = d.findings_count || 0;
+  document.getElementById('kpiCritical').textContent = d.critical_count || 0;
+  document.getElementById('kpiTime').textContent = d.time_to_compromise || '-';
+
+  // Gauge
+  var score = rm.score;
+  var circumference = 427;
+  var offset = circumference - (score / 10) * circumference;
+  var gaugeColor = score >= 8 ? 'var(--red)' : score >= 5 ? 'var(--orange)' : score >= 3 ? 'var(--yellow)' : 'var(--green)';
+  var gf = document.getElementById('gaugeFill');
+  gf.style.stroke = gaugeColor;
+  setTimeout(function() { gf.setAttribute('stroke-dashoffset', offset); }, 100);
+  var gn = document.getElementById('gaugeNum');
+  gn.textContent = score + '/10';
+  gn.style.color = gaugeColor;
+
+  // Sekcja 2
+  document.getElementById('impactLoss').textContent = d.potential_loss || 'Nie oszacowano';
+  document.getElementById('impactFix').textContent = d.fix_cost || 'Nie oszacowano';
+
+  var compHtml = '';
+  var complianceItems = d.compliance || [];
+  if (!complianceItems.length) {
+    complianceItems = [
+      {name: 'RODO / GDPR', icon: '\uD83D\uDEE1', status: riskNorm === 'KRYTYCZNE' || riskNorm === 'CRITICAL' ? 'Naruszenie' : riskNorm === 'WYSOKIE' || riskNorm === 'HIGH' ? 'Ryzyko' : 'Zgodnosc'},
+      {name: 'NIS2', icon: '\uD83C\uDFDB', status: riskNorm === 'KRYTYCZNE' || riskNorm === 'CRITICAL' ? 'Naruszenie' : riskNorm === 'WYSOKIE' || riskNorm === 'HIGH' ? 'Ryzyko' : 'Zgodnosc'}
+    ];
+  }
+  complianceItems.forEach(function(c) {
+    var statusColor = c.status === 'Naruszenie' ? 'var(--red)' : c.status === 'Ryzyko' ? 'var(--orange)' : 'var(--green)';
+    compHtml += '<div class="compliance-badge">' +
+      '<span class="compliance-icon">' + (c.icon || '\uD83D\uDEE1') + '</span>' +
+      '<div><div class="compliance-name">' + c.name + '</div>' +
+      '<div class="compliance-status" style="color:' + statusColor + '">' + c.status.toUpperCase() + '</div></div></div>';
+  });
+  document.getElementById('complianceRow').innerHTML = compHtml;
+
+  // Sekcja 3
+  var findings = d.findings || [];
+  var flHtml = '';
+  if (!findings.length) {
+    flHtml = '<div style="color:var(--text3);padding:20px 0;">Nie wykryto problemow krytycznych ani wysokich.</div>';
+  }
+  findings.forEach(function(f) {
+    var sevCls = (f.severity || '').toLowerCase() === 'critical' ? 'sev-critical' : 'sev-high';
+    var sevLabel = (f.severity || '').toLowerCase() === 'critical' ? 'KRYTYCZNY' : 'WYSOKI';
+    flHtml += '<div class="finding-item">' +
+      '<span class="finding-severity ' + sevCls + '">' + sevLabel + '</span>' +
+      '<div><div class="finding-name">' + (f.name || 'Problem bezpieczenstwa') + '</div>' +
+      '<div class="finding-desc">' + (f.description || '') + '</div></div></div>';
+  });
+  document.getElementById('findingsList').innerHTML = flHtml;
+
+  // Sekcja 4
+  var recs = d.recommendations_list || [];
+  var rlHtml = '';
+  if (!recs.length && d.recommendations_text) {
+    recs = [{priority: 'WAZNE', text: d.recommendations_text, time: '-'}];
+  }
+  if (!recs.length) {
+    rlHtml = '<div style="color:var(--text3);padding:20px 0;">Brak szczegolowych rekomendacji.</div>';
+  }
+  recs.forEach(function(r, i) {
+    var priCls = (r.priority || '').toUpperCase() === 'PILNE' ? 'pri-urgent' : (r.priority || '').toUpperCase() === 'WAZNE' ? 'pri-important' : 'pri-recommended';
+    rlHtml += '<div class="rec-item">' +
+      '<div class="rec-num">' + String(i + 1).padStart(2, '0') + '</div>' +
+      '<div><span class="rec-priority ' + priCls + '">' + (r.priority || 'ZALECANE').toUpperCase() + '</span>' +
+      '<div class="rec-text">' + r.text + '</div>' +
+      '<div class="rec-time">Szacowany czas: ' + (r.time || '-') + '</div></div></div>';
+  });
+  document.getElementById('recList').innerHTML = rlHtml;
+
+  // Footer
+  document.getElementById('footerDate').textContent = dateStr;
+}
+</script>
+</body>
+</html>

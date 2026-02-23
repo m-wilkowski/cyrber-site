@@ -199,6 +199,10 @@ async def osint_page():
 async def admin_page():
     return FileResponse("static/admin.html", headers=_NO_CACHE)
 
+@app.get("/report/{task_id}")
+async def report_page(task_id: str):
+    return FileResponse("static/report.html", headers=_NO_CACHE)
+
 @app.get("/")
 async def root():
     return {"status": "CYRBER online"}
@@ -585,6 +589,136 @@ async def scan_autoflow(task_id: str, user: dict = Depends(get_current_user)):
     })
 
     return {"task_id": task_id, "target": target, "risk_level": risk, "actions": actions}
+
+# ── Client report API (no auth — shareable link) ──
+
+_FINDING_PL = {
+    "sql": "Podatnosc na wstrzykniecie SQL",
+    "xss": "Atak Cross-Site Scripting (XSS)",
+    "rce": "Zdalne wykonanie kodu",
+    "lfi": "Odczyt plikow serwera",
+    "rfi": "Wczytanie zdalnego pliku",
+    "ssrf": "Falszywe zapytanie po stronie serwera",
+    "xxe": "Atak na parser XML",
+    "idor": "Nieautoryzowany dostep do danych",
+    "csrf": "Falszywe zadanie miedzyserwerowe",
+    "open-redirect": "Przekierowanie na zlosliwa strone",
+    "directory-listing": "Widoczna struktura katalogow",
+    "default-login": "Domyslne dane logowania",
+    "info-disclosure": "Wyciek informacji technicznych",
+    "misconfig": "Bledna konfiguracja serwera",
+    "ssl": "Problem z certyfikatem lub szyfrowaniem",
+    "cve": "Znana podatnosc oprogramowania",
+}
+
+_FINDING_DESC_PL = {
+    "sql": "Atakujacy moze odczytac lub zmodyfikowac baze danych firmy, w tym dane klientow i hasla.",
+    "xss": "Atakujacy moze przejac sesje uzytkownikow i wykrasc ich dane logowania.",
+    "rce": "Atakujacy moze przejac pelna kontrole nad serwerem i danymi firmy.",
+    "lfi": "Atakujacy moze odczytac poufne pliki serwera, w tym konfiguracje i hasla.",
+    "rfi": "Atakujacy moze uruchomic zlosliwy kod na serwerze firmy.",
+    "ssrf": "Atakujacy moze uzyskac dostep do wewnetrznych systemow firmy.",
+    "xxe": "Atakujacy moze odczytac pliki serwera przez spreparowane dane XML.",
+    "idor": "Atakujacy moze uzyskac dostep do danych innych uzytkownikow.",
+    "csrf": "Atakujacy moze wykonywac operacje w imieniu zalogowanego uzytkownika.",
+    "open-redirect": "Uzytkownicy moga zostac przekierowani na falszywe strony logowania.",
+    "directory-listing": "Struktura serwera jest widoczna publicznie, co ulatwia atak.",
+    "default-login": "System uzywa fabrycznych hasel, co umozliwia natychmiastowy dostep.",
+    "info-disclosure": "Serwer ujawnia informacje techniczne przydatne dla atakujacego.",
+    "misconfig": "Nieprawidlowa konfiguracja umozliwia obejscie zabezpieczen.",
+    "ssl": "Komunikacja moze byc przechwycona przez osoby trzecie.",
+    "cve": "Oprogramowanie zawiera znana luke, dla ktorej istnieja gotowe narzedzia ataku.",
+}
+
+def _classify_finding(name_lower):
+    for key in _FINDING_PL:
+        if key in name_lower:
+            return key
+    return "cve"
+
+@app.get("/api/report/{task_id}")
+async def api_report(task_id: str):
+    scan = get_scan_by_task_id(task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    if scan.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Scan not completed yet")
+
+    risk = (scan.get("risk_level") or "NISKIE").upper()
+    narrative = scan.get("hacker_narrative") or {}
+
+    # Build client-safe findings (only critical + high)
+    nuclei_findings = []
+    if scan.get("nuclei") and isinstance(scan["nuclei"], dict):
+        nuclei_findings = scan["nuclei"].get("findings") or []
+
+    client_findings = []
+    critical_count = 0
+    for f in nuclei_findings:
+        sev = ((f.get("info") or {}).get("severity") or f.get("severity") or "info").lower()
+        if sev not in ("critical", "high"):
+            continue
+        if sev == "critical":
+            critical_count += 1
+        raw_name = (f.get("info") or {}).get("name") or f.get("name") or f.get("template_id") or ""
+        cat = _classify_finding(raw_name.lower())
+        client_findings.append({
+            "name": _FINDING_PL.get(cat, raw_name),
+            "description": _FINDING_DESC_PL.get(cat, "Wykryto problem bezpieczenstwa wymagajacy analizy."),
+            "severity": "critical" if sev == "critical" else "high",
+        })
+
+    # Deduplicate by name
+    seen = set()
+    deduped = []
+    for cf in client_findings:
+        if cf["name"] not in seen:
+            seen.add(cf["name"])
+            deduped.append(cf)
+    client_findings = deduped[:10]
+
+    # Build recommendations from scan analysis
+    recs_text = scan.get("recommendations") or ""
+    top_issues = scan.get("top_issues") or []
+    recs_list = []
+    for i, issue in enumerate(top_issues[:5]):
+        pri = "PILNE" if i == 0 else "WAZNE" if i < 3 else "ZALECANE"
+        time_est = "1-3 dni" if i == 0 else "1-2 tygodnie" if i < 3 else "1 miesiac"
+        # Strip technical details — keep only first sentence
+        clean = issue.split(".")[0].split(" - ")[0].split(":")[0].strip()
+        if len(clean) < 10:
+            clean = issue[:120]
+        recs_list.append({"priority": pri, "text": clean, "time": time_est})
+
+    if not recs_list and recs_text:
+        recs_list.append({"priority": "WAZNE", "text": recs_text[:200], "time": "-"})
+
+    # Compliance
+    risk_norm = risk.replace("\u015a", "S").replace("\u015b", "S")
+    is_crit = risk_norm in ("KRYTYCZNE", "CRITICAL")
+    is_high = risk_norm in ("WYSOKIE", "HIGH")
+    compliance = [
+        {"name": "RODO / GDPR", "icon": "\U0001F6E1", "status": "Naruszenie" if is_crit else "Ryzyko" if is_high else "Zgodnosc"},
+        {"name": "NIS2", "icon": "\U0001F3DB", "status": "Naruszenie" if is_crit else "Ryzyko" if is_high else "Zgodnosc"},
+    ]
+
+    return {
+        "task_id": task_id,
+        "target": scan.get("target", ""),
+        "date": scan.get("completed_at") or scan.get("created_at"),
+        "risk_level": risk,
+        "findings_count": scan.get("findings_count") or 0,
+        "critical_count": critical_count,
+        "summary": scan.get("summary") or "",
+        "executive_summary": narrative.get("executive_summary") or scan.get("summary") or "",
+        "time_to_compromise": narrative.get("time_to_compromise"),
+        "potential_loss": narrative.get("potential_loss"),
+        "fix_cost": narrative.get("fix_cost"),
+        "findings": client_findings,
+        "recommendations_text": recs_text,
+        "recommendations_list": recs_list,
+        "compliance": compliance,
+    }
 
 from modules.gobuster_scan import scan as gobuster_scan
 from modules.whatweb_scan import scan as whatweb_scan
