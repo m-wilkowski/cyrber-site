@@ -1,7 +1,7 @@
 # CYRBER — Historia sesji
 
 ## 23.02.2026
-**Temat:** Aktualizacja dokumentacji transferowej
+**Temat:** Dokumentacja + wizard bugfixy + SSE streaming
 
 Zadania:
 1. Zaktualizowano `CYRBER_Transfer_Prompt.md` — sekcja 4 (nowe moduły: ContextManager, YAML routing, Evilginx2, Phishing Wizard, Frontend/UI), sekcja 10 (backlog: P1 AI ✅, nowy priorytet LuaN1ao, P3 Social Engineering ✅)
@@ -17,6 +17,7 @@ Commity:
 - `759e820` docs: backlog - wizard bugfixy zamknięte
 - `0a54ce9` docs: memory - wizard bugfixy zamknięte, poprawki
 - `685d3f2` feat: SSE real-time streaming postępu skanowania
+- `4c4f33d` docs: transfer prompt + memory - SSE streaming
 
 SSE streaming — implementacja:
 - `modules/tasks.py`: publish_progress() → Redis pub/sub kanał `scan_progress:{task_id}`, 49 kroków (42 moduły + 7 post-processing)
@@ -34,3 +35,8 @@ Uwagi:
 - Plik `CYRBER_Transfer_Prompt.md` nie istniał wcześniej w repo (był tylko w ~/Downloads/)
 - ~/Downloads/ synchronizowany z repo po każdej zmianie
 - Nazwa pliku evilginx to `evilginx_phishing.py` (nie `evilginx.py` jak w transfer prompt)
+- Deploy: po docker cp ZAWSZE restartować worker (prefork cache'uje moduły)
+- SSE auth: token musi być przez query param (EventSource nie obsługuje custom headers)
+
+**Status sesji: ZAMKNIĘTA** — 9 commitów, wszystko na remote master.
+Następna sesja: chain summarization (exploit_chains.py + hacker_narrative.py → ContextManager budżetowanie)
