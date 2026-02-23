@@ -1079,8 +1079,9 @@ async function wizCheckAvailability() {
       document.getElementById('evilginxStatus').textContent = 'ONLINE';
 
       // Load phishlets
-      var stats = await r2.json();
-      wizState.phishlets = stats.phishlets || [];
+      var r3 = await authFetch('/evilginx/phishlets');
+      var phishletsData = await r3.json();
+      wizState.phishlets = Array.isArray(phishletsData) ? phishletsData : (phishletsData.phishlets || []);
       var pSel = document.getElementById('wizPhishletSelect');
       pSel.innerHTML = '<option value="">-- Wybierz phishlet --</option>';
       wizState.phishlets.forEach(function(p) {
@@ -1088,7 +1089,7 @@ async function wizCheckAvailability() {
         if (!name) return;
         var opt = document.createElement('option');
         opt.value = name;
-        opt.textContent = name + (p.status ? ' [' + p.status + ']' : '');
+        opt.textContent = name + (p.author ? ' [' + p.author + ']' : '');
         pSel.appendChild(opt);
       });
     } else {
