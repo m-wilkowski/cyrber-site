@@ -1912,10 +1912,15 @@ function renderExtended(res) {
     var ch='';
     chains.forEach(function(c){
       var col=IC[c.impact]||'#4a8fd4';
-      ch+='<div class="chain-blk"><div class="chain-hdr"><span class="chain-nm">'+c.name+'</span><span class="chain-badge" style="color:'+col+'">'+c.impact+' · '+c.probability+'%</span></div>';
+      var cavg=typeof c.confidence_avg==='number'?c.confidence_avg:null;
+      var cavgHtml=cavg!==null?(' · <span style="color:'+(cavg>=0.8?'var(--green)':cavg>=0.5?'var(--yellow)':'var(--silver)')+'">CONF '+Math.round(cavg*100)+'%</span>'):'';
+      ch+='<div class="chain-blk"><div class="chain-hdr"><span class="chain-nm">'+c.name+'</span><span class="chain-badge" style="color:'+col+'">'+c.impact+' · '+c.probability+'%'+cavgHtml+'</span></div>';
       ch+='<div class="chain-meta">Czas: '+c.total_time+' · Priorytet: '+c.remediation_priority+'</div>';
       (c.steps||[]).forEach(function(s){
-        ch+='<div class="ch-step"><div class="ch-sn">KROK '+s.step+'</div><div class="ch-act">'+s.action+'</div><div class="ch-vuln">'+s.vulnerability+' · '+s.time+'</div><div class="ch-res">→ '+s.result+'</div></div>';
+        var sc=typeof s.confidence==='number'?s.confidence:0.5;
+        var scLabel=sc>=0.8?'CONFIRMED':sc>=0.5?'LIKELY':'THEORETICAL';
+        var scCol=sc>=0.8?'var(--green)':sc>=0.5?'var(--yellow)':'var(--silver)';
+        ch+='<div class="ch-step"><div class="ch-sn">KROK '+s.step+'</div><div class="ch-act">'+s.action+'</div><div class="ch-vuln">'+s.vulnerability+' · '+s.time+' <span style="border:1px solid '+scCol+';color:'+scCol+';padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600">'+scLabel+' '+Math.round(sc*100)+'%</span></div><div class="ch-res">→ '+s.result+'</div></div>';
       });
       ch+='<div class="chain-final">Dostęp końcowy: '+c.final_access+'</div><div class="chain-biz">'+c.business_impact+'</div></div>';
     });
@@ -4505,6 +4510,10 @@ function renderAiAnalysis(res) {
       if (step.cve) h += '<span>CVE: ' + step.cve + '</span>';
       if (step.mitre) h += '<span>MITRE: ' + step.mitre + '</span>';
       if (step.likelihood) h += '<span class="' + lhClass + '">' + step.likelihood + '</span>';
+      var conf = typeof step.confidence === 'number' ? step.confidence : 0.5;
+      var confLabel = conf >= 0.8 ? 'CONFIRMED' : conf >= 0.5 ? 'LIKELY' : 'THEORETICAL';
+      var confColor = conf >= 0.8 ? 'var(--green)' : conf >= 0.5 ? 'var(--yellow)' : 'var(--silver)';
+      h += '<span style="border:1px solid ' + confColor + ';color:' + confColor + ';padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-left:4px" title="Confidence: ' + conf.toFixed(2) + '">' + confLabel + ' ' + Math.round(conf * 100) + '%</span>';
       h += '</div>';
       if (step.impact) h += '<div class="ai-step-impact">' + step.impact + '</div>';
       h += '</div></li>';

@@ -1025,7 +1025,8 @@ Odpowiedz WYLACZNIE poprawnym JSON (bez markdown, bez komentarzy):
       "cve": "CVE-XXXX-XXXX lub null",
       "mitre": "TXXXX",
       "impact": "opis skutku tego kroku",
-      "likelihood": "Critical|High|Medium|Low"
+      "likelihood": "Critical|High|Medium|Low",
+      "confidence": 0.85
     }}
   ],
 
@@ -1054,6 +1055,11 @@ WAZNE:
 - executive_summary i attack_narrative pisz po polsku
 - attack_narrative: OPIERAJ SIE na korelacjach miedzymodulowych. Laczone sciezki > pojedyncze podatnosci.
 - exploit_chain: uzyj lancuchow z sekcji KORELACJE jako szkieletu. Max 8 krokow, od rekonesansu do pelnego przejecia.
+- exploit_chain.confidence: float 0.0-1.0 — pewnosc wykonania tego kroku:
+  1.0 = potwierdzone (2+ skanery, znane CVE)
+  0.7-0.9 = prawdopodobne (1 skaner, logiczny wniosek)
+  0.4-0.6 = spekulatywne (brak dowodow, mozliwe)
+  0.1-0.3 = teoretyczne (wymaga dodatkowego recon)
 - remediation_priority: max 10 pozycji, posortowane od najwazniejszej
 - business_impact.financial_risk_eur: realistyczna kwota strat w EUR
 - compliance_violations: tylko te ktore faktycznie moga byc naruszone
@@ -1146,10 +1152,23 @@ def analyze_scan_results(scan_results: dict) -> dict:
                 continue
 
             # Ensure all required keys exist with defaults
+            exploit_chain = parsed.get("exploit_chain", [])
+            # Validate confidence per step
+            for step in exploit_chain:
+                if isinstance(step, dict):
+                    conf = step.get("confidence")
+                    if conf is None:
+                        step["confidence"] = 0.5
+                    else:
+                        try:
+                            step["confidence"] = max(0.0, min(1.0, float(conf)))
+                        except (TypeError, ValueError):
+                            step["confidence"] = 0.5
+
             result = {
                 "executive_summary": parsed.get("executive_summary", ""),
                 "attack_narrative": parsed.get("attack_narrative", ""),
-                "exploit_chain": parsed.get("exploit_chain", []),
+                "exploit_chain": exploit_chain,
                 "business_impact": parsed.get("business_impact", {}),
                 "remediation_priority": parsed.get("remediation_priority", []),
                 "risk_score": risk_score,
