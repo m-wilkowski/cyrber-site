@@ -95,8 +95,8 @@ services:
 
   api:
     build: .
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     security_opt:
       - no-new-privileges:true
     read_only: false
@@ -220,6 +220,20 @@ services:
       redis:
         condition: service_healthy
     restart: on-failure
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
 
   dvwa:
     image: vulnerables/web-dvwa
