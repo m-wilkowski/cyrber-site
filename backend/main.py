@@ -88,6 +88,11 @@ from modules.database import save_audit_log, get_audit_logs
 from modules.database import (
     User, get_user_by_username, get_user_by_username_raw, get_user_by_id,
     create_user, update_user, delete_user, list_users, count_admins,
+    count_active_users, get_scans_this_month, increment_scan_count,
+)
+from modules.license import (
+    get_license_info, check_profile, check_scan_limit, check_user_limit,
+    check_feature, activate_license,
 )
 from modules.pdf_report import generate_report
 from modules.exploit_chains import generate_exploit_chains
@@ -196,6 +201,8 @@ async def admin_list_users(current_user: dict = Depends(require_role("admin"))):
 
 @app.post("/admin/users")
 async def admin_create_user(request: Request, body: UserCreate, current_user: dict = Depends(require_role("admin"))):
+    if not check_user_limit(count_active_users()):
+        raise HTTPException(status_code=402, detail="User limit reached — upgrade your license")
     if body.role not in ("admin", "operator", "viewer"):
         raise HTTPException(status_code=400, detail="Role must be admin, operator, or viewer")
     if get_user_by_username(body.username):
@@ -268,6 +275,38 @@ async def admin_reset_password(request: Request, user_id: int, body: PasswordRes
     audit(request, current_user, "password_reset", user["username"])
     return {"status": "password_reset", "username": user["username"]}
 
+# ── License endpoints ──
+
+@app.get("/license")
+async def license_info(user: dict = Depends(get_current_user)):
+    info = get_license_info()
+    info["scans_this_month"] = get_scans_this_month()
+    info["active_users"] = count_active_users()
+    return info
+
+@app.get("/license/usage")
+async def license_usage(user: dict = Depends(require_role("admin"))):
+    info = get_license_info()
+    scans = get_scans_this_month()
+    users = count_active_users()
+    return {
+        "tier": info["tier"],
+        "scans_this_month": scans,
+        "max_scans_per_month": info["max_scans_per_month"],
+        "active_users": users,
+        "max_users": info["max_users"],
+    }
+
+class LicenseActivateRequest(BaseModel):
+    key: str
+
+@app.post("/license/activate")
+async def license_activate_endpoint(request: Request, body: LicenseActivateRequest, current_user: dict = Depends(require_role("admin"))):
+    result = activate_license(body.key)
+    if result["ok"]:
+        audit(request, current_user, "license_activate", result["license"]["tier"])
+    return result
+
 # ── Protected routes (JWT required) ──
 
 @app.get("/scan/nmap")
@@ -304,6 +343,11 @@ class ScanStartRequest(BaseModel):
 async def scan_start_post(request: Request, body: ScanStartRequest, user: dict = Depends(require_role("admin", "operator"))):
     if not get_profile(body.profile):
         raise HTTPException(status_code=400, detail=f"Invalid profile: {body.profile}")
+    if not check_profile(body.profile.upper()):
+        raise HTTPException(status_code=402, detail=f"Profile {body.profile.upper()} not available in your license tier")
+    if not check_scan_limit(get_scans_this_month()):
+        raise HTTPException(status_code=402, detail="Monthly scan limit reached — upgrade your license")
+    increment_scan_count()
     task = full_scan_task.delay(body.target, profile=body.profile.upper())
     audit(request, user, "scan_start", body.target)
     return {"task_id": task.id, "status": "started", "target": body.target, "profile": body.profile.upper()}
@@ -313,6 +357,11 @@ async def scan_start_post(request: Request, body: ScanStartRequest, user: dict =
 async def scan_start(request: Request, target: str = Query(...), profile: str = Query("STRAZNIK"), user: dict = Depends(require_role("admin", "operator"))):
     if not get_profile(profile):
         profile = "STRAZNIK"
+    if not check_profile(profile.upper()):
+        raise HTTPException(status_code=402, detail=f"Profile {profile.upper()} not available in your license tier")
+    if not check_scan_limit(get_scans_this_month()):
+        raise HTTPException(status_code=402, detail="Monthly scan limit reached — upgrade your license")
+    increment_scan_count()
     task = full_scan_task.delay(target, profile=profile.upper())
     audit(request, user, "scan_start", target)
     return {"task_id": task.id, "status": "started", "target": target, "profile": profile.upper()}
@@ -1301,8 +1350,14 @@ async def multi_scan(request: Request, body: MultiTargetScan, user: dict = Depen
         raise HTTPException(status_code=400, detail="max 254 targets per request")
 
     scan_profile = body.profile.upper() if get_profile(body.profile) else "STRAZNIK"
+    if not check_profile(scan_profile):
+        raise HTTPException(status_code=402, detail=f"Profile {scan_profile} not available in your license tier")
+    current_scans = get_scans_this_month()
+    if not check_scan_limit(current_scans + len(expanded) - 1):
+        raise HTTPException(status_code=402, detail="Monthly scan limit would be exceeded — upgrade your license")
     tasks = []
     for target in expanded:
+        increment_scan_count()
         task = full_scan_task.delay(target, profile=scan_profile)
         tasks.append({"task_id": task.id, "target": target, "status": "started", "profile": scan_profile})
     audit(request, user, "multi_scan", f"{len(expanded)} targets")

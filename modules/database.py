@@ -53,6 +53,13 @@ class AuditLog(Base):
     target = Column(String)
     ip_address = Column(String)
 
+class LicenseUsage(Base):
+    __tablename__ = "license_usage"
+    id         = Column(Integer, primary_key=True)
+    month      = Column(String, unique=True, nullable=False, index=True)  # "2026-02"
+    scans_count = Column(Integer, default=0)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
 class Schedule(Base):
     __tablename__ = "schedules"
     id = Column(Integer, primary_key=True, index=True)
@@ -408,5 +415,39 @@ def count_admins() -> int:
     db = SessionLocal()
     try:
         return db.query(User).filter(User.role == "admin", User.is_active == True).count()
+    finally:
+        db.close()
+
+def count_active_users() -> int:
+    db = SessionLocal()
+    try:
+        return db.query(User).filter(User.is_active == True).count()
+    finally:
+        db.close()
+
+# ── License usage ────────────────────────────────────────
+
+def get_scans_this_month() -> int:
+    db = SessionLocal()
+    try:
+        month_key = datetime.utcnow().strftime("%Y-%m")
+        row = db.query(LicenseUsage).filter(LicenseUsage.month == month_key).first()
+        return row.scans_count if row else 0
+    finally:
+        db.close()
+
+def increment_scan_count() -> int:
+    db = SessionLocal()
+    try:
+        month_key = datetime.utcnow().strftime("%Y-%m")
+        row = db.query(LicenseUsage).filter(LicenseUsage.month == month_key).first()
+        if row:
+            row.scans_count += 1
+            row.updated_at = datetime.utcnow()
+        else:
+            row = LicenseUsage(month=month_key, scans_count=1)
+            db.add(row)
+        db.commit()
+        return row.scans_count
     finally:
         db.close()
