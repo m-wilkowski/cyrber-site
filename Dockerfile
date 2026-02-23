@@ -155,6 +155,8 @@ RUN pip install sslyze --break-system-packages
 # searchsploit (exploit-db CLI search tool)
 RUN git clone --depth 1 https://gitlab.com/exploit-database/exploitdb.git /opt/exploitdb && \
     ln -sf /opt/exploitdb/searchsploit /usr/local/bin/searchsploit
+# exiftool (EXIF metadata extraction from images — GPS, device, author)
+RUN apt-get update && apt-get install -y libimage-exiftool-perl && rm -rf /var/lib/apt/lists/*
 # impacket (Active Directory attack toolkit — Kerberoasting, AS-REP, secretsdump, lookupsid)
 RUN pip install impacket --break-system-packages
 # retire.js (vulnerable JavaScript library detection)

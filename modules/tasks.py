@@ -8,6 +8,7 @@ from modules.testssl_scan import scan as testssl_scan
 from modules.sqlmap_scan import scan as sqlmap_scan
 from modules.nikto_scan import scan as nikto_scan
 from modules.harvester_scan import scan as harvester_scan
+from modules.exiftool_scan import scan as exiftool_scan
 from modules.masscan_scan import scan as masscan_scan
 # from modules.censys_scan import scan as censys_scan  # requires paid API plan - module ready
 from modules.ipinfo_scan import scan as ipinfo_scan
@@ -104,7 +105,7 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
     task_id = full_scan_task.request.id
     run = lambda mod: should_run_module(mod, profile)
     # Total = 42 scan modules + 8 post-processing = 50 steps
-    total = 50
+    total = 51
     completed = 0
     pp = lambda mod, st, msg="": publish_progress(task_id, mod, st, completed, total, msg)
 
@@ -174,6 +175,10 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
     pp("harvester", "started")
     harvester = harvester_scan(target)
     completed += 1; pp("harvester", "done")
+
+    pp("exiftool", "started")
+    exiftool = exiftool_scan(target)
+    completed += 1; pp("exiftool", "done", f"{exiftool.get('images_analyzed', 0)} images")
 
     pp("masscan", "started")
     masscan = masscan_scan(target) if run("masscan") else _skip()
@@ -293,6 +298,7 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
         "sqlmap": sqlmap,
         "nikto": nikto,
         "harvester": harvester,
+        "exiftool": exiftool,
         "masscan": masscan,
         "ipinfo": ipinfo,
         "abuseipdb": abuseipdb,
@@ -310,6 +316,7 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
     result["nuclei"] = nuclei_filtered
     result["nikto"] = nikto
     result["harvester"] = harvester
+    result["exiftool"] = exiftool
     result["masscan"] = masscan
     result["ipinfo"] = ipinfo
     if not enum4linux.get("skipped"):
