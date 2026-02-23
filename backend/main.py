@@ -2,6 +2,7 @@ from fastapi import FastAPI, Query, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response, JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from sse_starlette.sse import EventSourceResponse
 
 _NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
@@ -76,6 +77,27 @@ def require_role(*allowed_roles: str):
 
 # ── App ──
 app = FastAPI(title="CYRBER API", version="0.1.0")
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data:; "
+            "connect-src 'self'"
+        )
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -339,7 +361,7 @@ class ScanStartRequest(BaseModel):
     profile: str = "STRAZNIK"
 
 @app.post("/scan/start")
-@limiter.limit("5/minute")
+@limiter.limit("30/minute")
 async def scan_start_post(request: Request, body: ScanStartRequest, user: dict = Depends(require_role("admin", "operator"))):
     if not get_profile(body.profile):
         raise HTTPException(status_code=400, detail=f"Invalid profile: {body.profile}")
@@ -353,7 +375,7 @@ async def scan_start_post(request: Request, body: ScanStartRequest, user: dict =
     return {"task_id": task.id, "status": "started", "target": body.target, "profile": body.profile.upper()}
 
 @app.get("/scan/start")
-@limiter.limit("5/minute")
+@limiter.limit("30/minute")
 async def scan_start(request: Request, target: str = Query(...), profile: str = Query("STRAZNIK"), user: dict = Depends(require_role("admin", "operator"))):
     if not get_profile(profile):
         profile = "STRAZNIK"
@@ -1331,7 +1353,7 @@ class MultiTargetScan(BaseModel):
     profile: str = "STRAZNIK"
 
 @app.post("/scan/multi")
-@limiter.limit("3/minute")
+@limiter.limit("5/minute")
 async def multi_scan(request: Request, body: MultiTargetScan, user: dict = Depends(require_role("admin", "operator"))):
     if not body.targets:
         raise HTTPException(status_code=400, detail="targets list is empty")

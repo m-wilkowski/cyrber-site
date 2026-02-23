@@ -97,6 +97,11 @@ services:
     build: .
     ports:
       - "8000:8000"
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp
     environment:
       DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
       REDIS_URL: redis://redis:6379/0
