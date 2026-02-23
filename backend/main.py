@@ -541,6 +541,20 @@ async def run_searchsploit(target: str = Query(...), user: str = Depends(get_cur
 async def run_impacket(target: str = Query(...), user: str = Depends(get_current_user)):
     return impacket_scan(target)
 
+from modules.certipy_scan import run_certipy
+
+@app.get("/scan/certipy")
+async def scan_certipy(
+    target: str = Query(...),
+    dc_ip: str = Query(""),
+    username: str = Query(""),
+    password: str = Query(""),
+    domain: str = Query(""),
+    user: str = Depends(get_current_user),
+):
+    return run_certipy(target, username=username or None, password=password or None,
+                       domain=domain or None, dc_ip=dc_ip or None)
+
 from modules.tasks import osint_scan_task
 from modules.database import get_osint_history, get_osint_by_task_id
 from modules.pdf_report import generate_osint_report

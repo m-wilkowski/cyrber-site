@@ -55,6 +55,7 @@ from modules.ikescan_scan import ikescan_scan
 from modules.sslyze_scan import sslyze_scan
 from modules.searchsploit_scan import searchsploit_scan
 from modules.impacket_scan import impacket_scan
+from modules.certipy_scan import run_certipy
 from modules.osint_scan import osint_scan
 from modules.database import save_scan, get_due_schedules, update_schedule_run
 from modules.notify import send_scan_notification
@@ -105,7 +106,7 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
     task_id = full_scan_task.request.id
     run = lambda mod: should_run_module(mod, profile)
     # Total = 42 scan modules + 8 post-processing = 50 steps
-    total = 51
+    total = 52
     completed = 0
     pp = lambda mod, st, msg="": publish_progress(task_id, mod, st, completed, total, msg)
 
@@ -398,6 +399,12 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
     if not impacket.get("skipped"):
         result["impacket"] = impacket
     completed += 1; pp("impacket", "done" if not impacket.get("skipped") else "skipped")
+
+    pp("certipy", "started")
+    certipy = run_certipy(target) if run("certipy") else _skip()
+    if not certipy.get("skipped"):
+        result["certipy"] = certipy
+    completed += 1; pp("certipy", "done" if not certipy.get("skipped") else "skipped")
 
     # ── Post-processing ──
     pp("cwe_owasp", "started", "CWE + OWASP mapping")
