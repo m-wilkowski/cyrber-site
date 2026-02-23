@@ -242,7 +242,7 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 ### Priorytet 3 – Social Engineering
 - Evilginx2 ✅ — backend + docker + 40 testów
 - Phishing Campaign Wizard ✅ — 4-step UI
-- Wizard bugfixy (następna sesja): JWT auth fetch skanów, AI GENERATE podpięcie, lista phishletów Evilginx2
+- Wizard bugfixy ✅ — JWT auth i AI GENERATE działały od początku; naprawiony fetch phishletów z /evilginx/phishlets
 - **BeEF-XSS** — Browser Exploitation Framework
 - **SET** — Social Engineering Toolkit
 
