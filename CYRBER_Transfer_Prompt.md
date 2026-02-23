@@ -313,16 +313,21 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 ## 13. Aktualny stan commitów
 
 Ostatnie commity na master:
-- `feat: AI cross-module correlation - _build_correlation_graph + 4 correlators`
-- `fix: ZAP port mapping, alert parser bug, pdf_report f-string TypeError`
-- `feat: DVWA guinea pig added to docker-compose`
-- `fix: wapiti/sqlmap timeout increase`
-- `feat: AI Agent - unified analysis, risk score, exploit chain, business impact`
-- `feat: Scan Profiles - Szczeniak/Straznik/Cerber`
-- `feat: GUI upgrade - sticky sidebar, skeleton loader, interaktywny dashboard`
-- `feat: Impacket, SearchSploit, SSLyze, BloodHound, NetExec, Enum4linux-ng, SMBmap`
-- `feat: ProjectDiscovery stack - Subfinder, httpx, Naabu, Katana, DNSx`
-- `feat: Wapiti, Joomscan, CMSmap, Droopescan, Retire.js`
+- `docs: aktualizacja transfer prompt - sesja 23.02.2026`
+- `feat: Phishing Campaign Wizard + AI email generator`
+- `feat: Evilginx2 integration - MFA bypass phishing layer`
+- `fix: polling timeout i max retries`
+- `feat: ContextManager + YAML model routing + tests`
+- `feat: UI polish - dark cyberpunk czytelniejszy`
+- `fix: cache-busting headers dla HTML endpoints`
+- `feat: YAML model routing per task`
+- `fix: SyntaxError w pdf_report.py - zagnieżdżony f-string cms_rgb`
+- `feat: GUI upgrade - sticky sidebar, skeleton loader, progress steps, interaktywny dashboard`
+- `feat: AI Agent - unified analysis, risk score, exploit chain, business impact, remediation priority`
+- `feat: Scan Profiles - Szczeniak/Straznik/Cerber z automatycznym filtrowaniem modułów`
+- `feat: Impacket - Kerberoasting, AS-REP Roasting, SID enum, secretsdump`
+- `feat: SearchSploit - automatyczne wyszukiwanie exploitów dla znalezionych serwisów`
+- `feat: SSLyze + onesixtyone + smbmap + ike-scan + fierce + responder + bloodhound + netexec + enum4linux-ng`
 
 ---
 
