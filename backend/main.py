@@ -36,23 +36,20 @@ JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 8
 
-CYRBER_USER = os.getenv("CYRBER_USER", "admin")
-CYRBER_PASS = os.getenv("CYRBER_PASS", "cyrber2024")
-# Hash the password at startup for constant-time comparison
-CYRBER_PASS_HASH = sha256_crypt.hash(CYRBER_PASS)
-
 bearer_scheme = HTTPBearer(auto_error=False)
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
-def create_token(username: str) -> str:
+def create_token(username: str, role: str) -> str:
     payload = {
         "sub": username,
+        "role": role,
         "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS),
         "iat": datetime.utcnow(),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> str:
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> dict:
+    """Returns dict with username, role, id, is_active from DB."""
     if not credentials:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
@@ -60,9 +57,22 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_
         username = payload.get("sub")
         if not username:
             raise HTTPException(status_code=401, detail="Invalid token")
-        return username
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = get_user_by_username(username)
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    if not user["is_active"]:
+        raise HTTPException(status_code=403, detail="Account disabled")
+    return user
+
+def require_role(*allowed_roles: str):
+    """Dependency factory: raises 403 if current user's role not in allowed_roles."""
+    def _checker(current_user: dict = Depends(get_current_user)) -> dict:
+        if current_user["role"] not in allowed_roles:
+            raise HTTPException(status_code=403, detail=f"Requires role: {', '.join(allowed_roles)}")
+        return current_user
+    return _checker
 
 # ── App ──
 app = FastAPI(title="CYRBER API", version="0.1.0")
@@ -75,16 +85,33 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 from modules.database import init_db, get_scan_history, get_scan_by_task_id
 from modules.database import add_schedule, get_schedules, delete_schedule
 from modules.database import save_audit_log, get_audit_logs
+from modules.database import (
+    User, get_user_by_username, get_user_by_username_raw, get_user_by_id,
+    create_user, update_user, delete_user, list_users, count_admins,
+)
 from modules.pdf_report import generate_report
 from modules.exploit_chains import generate_exploit_chains
 from modules.hacker_narrative import generate_hacker_narrative
 
 init_db()
 
+# ── Bootstrap default admin (if no users in DB) ──
+if not get_user_by_username("admin"):
+    _default_hash = sha256_crypt.hash(os.getenv("CYRBER_PASS", "cyrber2024"))
+    create_user(
+        username=os.getenv("CYRBER_USER", "admin"),
+        password_hash=_default_hash,
+        role="admin",
+        created_by="system",
+        notes="Default admin created at startup",
+    )
+    print("Bootstrap: created default admin user")
+
 # ── Audit helper ──
-def audit(request: Request, user: str, action: str, target: str = None):
+def audit(request: Request, user, action: str, target: str = None):
+    username = user["username"] if isinstance(user, dict) else user
     ip = request.client.host if request.client else "unknown"
-    save_audit_log(user=user, action=action, target=target, ip_address=ip)
+    save_audit_log(user=username, action=action, target=target, ip_address=ip)
 
 # ── Public routes (no auth) ──
 
@@ -96,12 +123,22 @@ class LoginRequest(BaseModel):
 @limiter.limit("10/minute")
 async def auth_login(request: Request, body: LoginRequest):
     ip = request.client.host if request.client else "unknown"
-    if body.username == CYRBER_USER and sha256_crypt.verify(body.password, CYRBER_PASS_HASH):
-        token = create_token(body.username)
-        save_audit_log(user=body.username, action="login", ip_address=ip)
-        return {"token": token, "token_type": "bearer", "expires_in": JWT_EXPIRE_HOURS * 3600}
+    user = get_user_by_username_raw(body.username)
+    if user and user["is_active"] and sha256_crypt.verify(body.password, user["password_hash"]):
+        token = create_token(user["username"], user["role"])
+        update_user(user["id"], last_login=datetime.utcnow())
+        save_audit_log(user=user["username"], action="login", ip_address=ip)
+        return {
+            "token": token, "token_type": "bearer",
+            "expires_in": JWT_EXPIRE_HOURS * 3600,
+            "role": user["role"], "username": user["username"],
+        }
     save_audit_log(user=body.username, action="login_failed", ip_address=ip)
     raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.get("/auth/me")
+async def auth_me(current_user: dict = Depends(get_current_user)):
+    return current_user
 
 @app.get("/login")
 async def login_page():
@@ -131,31 +168,127 @@ async def osint_page():
 async def root():
     return {"status": "CYRBER online"}
 
+# ── Admin routes (admin only) ──
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: str = "viewer"
+    email: str = None
+    notes: str = None
+
+class UserUpdate(BaseModel):
+    role: str = None
+    email: str = None
+    is_active: bool = None
+    notes: str = None
+
+class PasswordReset(BaseModel):
+    new_password: str
+
+@app.get("/admin/users")
+async def admin_list_users(current_user: dict = Depends(require_role("admin"))):
+    return list_users()
+
+@app.post("/admin/users")
+async def admin_create_user(request: Request, body: UserCreate, current_user: dict = Depends(require_role("admin"))):
+    if body.role not in ("admin", "operator", "viewer"):
+        raise HTTPException(status_code=400, detail="Role must be admin, operator, or viewer")
+    if get_user_by_username(body.username):
+        raise HTTPException(status_code=409, detail="Username already exists")
+    if len(body.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    hashed = sha256_crypt.hash(body.password)
+    user = create_user(
+        username=body.username, password_hash=hashed, role=body.role,
+        email=body.email, created_by=current_user["username"], notes=body.notes,
+    )
+    audit(request, current_user, "user_create", body.username)
+    return user
+
+@app.get("/admin/users/{user_id}")
+async def admin_get_user(user_id: int, current_user: dict = Depends(require_role("admin"))):
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@app.put("/admin/users/{user_id}")
+async def admin_update_user(request: Request, user_id: int, body: UserUpdate, current_user: dict = Depends(require_role("admin"))):
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    updates = {}
+    if body.role is not None:
+        if body.role not in ("admin", "operator", "viewer"):
+            raise HTTPException(status_code=400, detail="Role must be admin, operator, or viewer")
+        # Prevent removing last admin
+        if user["role"] == "admin" and body.role != "admin" and count_admins() <= 1:
+            raise HTTPException(status_code=400, detail="Cannot remove role from the last admin")
+        updates["role"] = body.role
+    if body.email is not None:
+        updates["email"] = body.email
+    if body.is_active is not None:
+        # Prevent disabling last admin
+        if user["role"] == "admin" and not body.is_active and count_admins() <= 1:
+            raise HTTPException(status_code=400, detail="Cannot disable the last admin")
+        updates["is_active"] = body.is_active
+    if body.notes is not None:
+        updates["notes"] = body.notes
+    result = update_user(user_id, **updates)
+    audit(request, current_user, "user_update", user["username"])
+    return result
+
+@app.delete("/admin/users/{user_id}")
+async def admin_delete_user(request: Request, user_id: int, current_user: dict = Depends(require_role("admin"))):
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user["role"] == "admin" and count_admins() <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the last admin")
+    if user["id"] == current_user["id"]:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    delete_user(user_id)
+    audit(request, current_user, "user_delete", user["username"])
+    return {"status": "deleted", "id": user_id}
+
+@app.post("/admin/users/{user_id}/reset-password")
+async def admin_reset_password(request: Request, user_id: int, body: PasswordReset, current_user: dict = Depends(require_role("admin"))):
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    hashed = sha256_crypt.hash(body.new_password)
+    update_user(user_id, password_hash=hashed)
+    audit(request, current_user, "password_reset", user["username"])
+    return {"status": "password_reset", "username": user["username"]}
+
 # ── Protected routes (JWT required) ──
 
 @app.get("/scan/nmap")
-async def run_nmap(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_nmap(target: str = Query(...), user: dict = Depends(get_current_user)):
     return nmap_scan(target)
 
 @app.get("/scan/nuclei")
-async def run_nuclei(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_nuclei(target: str = Query(...), user: dict = Depends(get_current_user)):
     return nuclei_scan(target)
 
 @app.get("/scan/full")
-async def run_full(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_full(target: str = Query(...), user: dict = Depends(get_current_user)):
     nmap = nmap_scan(target)
     nuclei = nuclei_scan(target)
     return {"target": target, "ports": nmap.get("ports", []), "nmap_raw": nmap, "nuclei": nuclei}
 
 @app.get("/scan/analyze")
-async def run_analyze(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_analyze(target: str = Query(...), user: dict = Depends(get_current_user)):
     nmap = nmap_scan(target)
     nuclei = nuclei_scan(target)
     scan_data = {"target": target, "ports": nmap.get("ports", []), "nuclei": nuclei}
     return analyze_scan_results(scan_data)
 
 @app.get("/scan/profiles")
-async def scan_profiles(user: str = Depends(get_current_user)):
+async def scan_profiles(user: dict = Depends(get_current_user)):
     return get_profiles_list()
 
 class ScanStartRequest(BaseModel):
@@ -164,7 +297,7 @@ class ScanStartRequest(BaseModel):
 
 @app.post("/scan/start")
 @limiter.limit("5/minute")
-async def scan_start_post(request: Request, body: ScanStartRequest, user: str = Depends(get_current_user)):
+async def scan_start_post(request: Request, body: ScanStartRequest, user: dict = Depends(require_role("admin", "operator"))):
     if not get_profile(body.profile):
         raise HTTPException(status_code=400, detail=f"Invalid profile: {body.profile}")
     task = full_scan_task.delay(body.target, profile=body.profile.upper())
@@ -173,7 +306,7 @@ async def scan_start_post(request: Request, body: ScanStartRequest, user: str = 
 
 @app.get("/scan/start")
 @limiter.limit("5/minute")
-async def scan_start(request: Request, target: str = Query(...), profile: str = Query("STRAZNIK"), user: str = Depends(get_current_user)):
+async def scan_start(request: Request, target: str = Query(...), profile: str = Query("STRAZNIK"), user: dict = Depends(require_role("admin", "operator"))):
     if not get_profile(profile):
         profile = "STRAZNIK"
     task = full_scan_task.delay(target, profile=profile.upper())
@@ -181,7 +314,7 @@ async def scan_start(request: Request, target: str = Query(...), profile: str = 
     return {"task_id": task.id, "status": "started", "target": target, "profile": profile.upper()}
 
 @app.get("/scan/status/{task_id}")
-async def scan_status(task_id: str, user: str = Depends(get_current_user)):
+async def scan_status(task_id: str, user: dict = Depends(get_current_user)):
     task = full_scan_task.AsyncResult(task_id)
     if task.state == "PENDING":
         return {"task_id": task_id, "status": "pending"}
@@ -193,16 +326,19 @@ async def scan_status(task_id: str, user: str = Depends(get_current_user)):
         return {"task_id": task_id, "status": task.state}
 
 
-def _get_user_from_token(token: str) -> str:
+def _get_user_from_token(token: str) -> dict:
     """Walidacja JWT z query param (SSE nie obsługuje custom headers)."""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         username = payload.get("sub")
         if not username:
             raise HTTPException(status_code=401, detail="Invalid token")
-        return username
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    user = get_user_by_username(username)
+    if not user or not user["is_active"]:
+        raise HTTPException(status_code=401, detail="User inactive or not found")
+    return user
 
 
 @app.get("/scan/stream/{task_id}")
@@ -240,15 +376,15 @@ async def scan_stream(task_id: str, token: str = Query(...)):
 
 
 @app.get("/scans")
-async def scans_history(limit: int = 20, user: str = Depends(get_current_user)):
+async def scans_history(limit: int = 20, user: dict = Depends(get_current_user)):
     return get_scan_history(limit)
 
 @app.get("/scans/{task_id}")
-async def scan_detail(task_id: str, user: str = Depends(get_current_user)):
+async def scan_detail(task_id: str, user: dict = Depends(get_current_user)):
     return get_scan_by_task_id(task_id)
 
 @app.get("/scans/{task_id}/pdf")
-async def scan_pdf(request: Request, task_id: str, user: str = Depends(get_current_user)):
+async def scan_pdf(request: Request, task_id: str, user: dict = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         return {"error": "Scan not found"}
@@ -264,7 +400,7 @@ async def scan_pdf(request: Request, task_id: str, user: str = Depends(get_curre
     )
 
 @app.get("/scans/{task_id}/chains")
-async def scan_chains(task_id: str, user: str = Depends(get_current_user)):
+async def scan_chains(task_id: str, user: dict = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
@@ -274,7 +410,7 @@ async def scan_chains(task_id: str, user: str = Depends(get_current_user)):
     return chains
 
 @app.get("/scans/{task_id}/narrative")
-async def scan_narrative(task_id: str, user: str = Depends(get_current_user)):
+async def scan_narrative(task_id: str, user: dict = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
@@ -305,96 +441,96 @@ from modules.cwe_mapping import cwe_mapping
 from modules.owasp_mapping import owasp_mapping
 
 @app.get("/scan/gobuster")
-async def run_gobuster(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_gobuster(target: str = Query(...), user: dict = Depends(get_current_user)):
     return gobuster_scan(target)
 
 @app.get("/scan/whatweb")
-async def run_whatweb(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_whatweb(target: str = Query(...), user: dict = Depends(get_current_user)):
     return whatweb_scan(target)
 
 @app.get("/scan/testssl")
-async def run_testssl(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_testssl(target: str = Query(...), user: dict = Depends(get_current_user)):
     return testssl_scan(target)
 
 @app.get("/scan/sqlmap")
-async def run_sqlmap(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_sqlmap(target: str = Query(...), user: dict = Depends(get_current_user)):
     return sqlmap_scan(target)
 
 @app.get("/scan/nikto")
-async def run_nikto(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_nikto(target: str = Query(...), user: dict = Depends(get_current_user)):
     return nikto_scan(target)
 
 @app.get("/scan/harvester")
-async def run_harvester(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_harvester(target: str = Query(...), user: dict = Depends(get_current_user)):
     return harvester_scan(target)
 
 @app.get("/scan/masscan")
-async def run_masscan(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_masscan(target: str = Query(...), user: dict = Depends(get_current_user)):
     return masscan_scan(target)
 
 # requires paid API plan - module ready
 # @app.get("/scan/censys")
-# async def run_censys(target: str = Query(...), user: str = Depends(get_current_user)):
+# async def run_censys(target: str = Query(...), user: dict = Depends(get_current_user)):
 #     return censys_scan(target)
 
 @app.get("/scan/ipinfo")
-async def run_ipinfo(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_ipinfo(target: str = Query(...), user: dict = Depends(get_current_user)):
     return ipinfo_scan(target)
 
 @app.get("/scan/enum4linux")
-async def run_enum4linux(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_enum4linux(target: str = Query(...), user: dict = Depends(get_current_user)):
     return enum4linux_scan(target)
 
 @app.get("/scan/mitre")
-async def run_mitre(task_id: str = Query(...), user: str = Depends(get_current_user)):
+async def run_mitre(task_id: str = Query(...), user: dict = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return mitre_map(scan)
 
 @app.get("/scan/abuseipdb")
-async def run_abuseipdb(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_abuseipdb(target: str = Query(...), user: dict = Depends(get_current_user)):
     return abuseipdb_scan(target)
 
 @app.get("/scan/otx")
-async def run_otx(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_otx(target: str = Query(...), user: dict = Depends(get_current_user)):
     return otx_scan(target)
 
 @app.get("/scan/exploitdb")
-async def run_exploitdb(task_id: str = Query(...), user: str = Depends(get_current_user)):
+async def run_exploitdb(task_id: str = Query(...), user: dict = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return exploitdb_scan(scan)
 
 @app.get("/scan/nvd")
-async def run_nvd(task_id: str = Query(...), user: str = Depends(get_current_user)):
+async def run_nvd(task_id: str = Query(...), user: dict = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return nvd_scan(scan)
 
 @app.get("/scan/whois")
-async def run_whois(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_whois(target: str = Query(...), user: dict = Depends(get_current_user)):
     return whois_scan(target)
 
 @app.get("/scan/dnsrecon")
-async def run_dnsrecon(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_dnsrecon(target: str = Query(...), user: dict = Depends(get_current_user)):
     return dnsrecon_scan(target)
 
 @app.get("/scan/amass")
-async def run_amass(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_amass(target: str = Query(...), user: dict = Depends(get_current_user)):
     return amass_scan(target)
 
 @app.get("/scan/cwe")
-async def run_cwe(task_id: str = Query(...), user: str = Depends(get_current_user)):
+async def run_cwe(task_id: str = Query(...), user: dict = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return cwe_mapping(scan)
 
 @app.get("/scan/owasp")
-async def run_owasp(task_id: str = Query(...), user: str = Depends(get_current_user)):
+async def run_owasp(task_id: str = Query(...), user: dict = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
@@ -430,115 +566,115 @@ from modules.searchsploit_scan import searchsploit_scan
 from modules.impacket_scan import impacket_scan
 
 @app.get("/scan/wpscan")
-async def run_wpscan(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_wpscan(target: str = Query(...), user: dict = Depends(get_current_user)):
     return wpscan_scan(target)
 
 @app.get("/scan/zap")
-async def run_zap(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_zap(target: str = Query(...), user: dict = Depends(get_current_user)):
     return zap_scan(target)
 
 @app.get("/scan/wapiti")
-async def run_wapiti(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_wapiti(target: str = Query(...), user: dict = Depends(get_current_user)):
     return wapiti_scan(target)
 
 @app.get("/scan/joomscan")
-async def run_joomscan(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_joomscan(target: str = Query(...), user: dict = Depends(get_current_user)):
     return joomscan_scan(target)
 
 @app.get("/scan/cmsmap")
-async def run_cmsmap(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_cmsmap(target: str = Query(...), user: dict = Depends(get_current_user)):
     return cmsmap_scan(target)
 
 @app.get("/scan/droopescan")
-async def run_droopescan(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_droopescan(target: str = Query(...), user: dict = Depends(get_current_user)):
     return droopescan_scan(target)
 
 @app.get("/scan/retirejs")
-async def run_retirejs(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_retirejs(target: str = Query(...), user: dict = Depends(get_current_user)):
     return retirejs_scan(target)
 
 @app.get("/scan/subfinder")
-async def run_subfinder(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_subfinder(target: str = Query(...), user: dict = Depends(get_current_user)):
     return subfinder_scan(target)
 
 @app.get("/scan/httpx")
-async def run_httpx(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_httpx(target: str = Query(...), user: dict = Depends(get_current_user)):
     return httpx_scan(target)
 
 @app.get("/scan/naabu")
-async def run_naabu(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_naabu(target: str = Query(...), user: dict = Depends(get_current_user)):
     return naabu_scan(target)
 
 @app.get("/scan/katana")
-async def run_katana(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_katana(target: str = Query(...), user: dict = Depends(get_current_user)):
     return katana_scan(target)
 
 @app.get("/scan/dnsx")
-async def run_dnsx(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_dnsx(target: str = Query(...), user: dict = Depends(get_current_user)):
     return dnsx_scan(target)
 
 @app.get("/scan/netdiscover")
-async def run_netdiscover(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_netdiscover(target: str = Query(...), user: dict = Depends(get_current_user)):
     return netdiscover_scan(target)
 
 @app.get("/scan/arpscan")
-async def run_arpscan(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_arpscan(target: str = Query(...), user: dict = Depends(get_current_user)):
     return arpscan_scan(target)
 
 @app.get("/scan/fping")
-async def run_fping(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_fping(target: str = Query(...), user: dict = Depends(get_current_user)):
     return fping_scan(target)
 
 @app.get("/scan/traceroute")
-async def run_traceroute(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_traceroute(target: str = Query(...), user: dict = Depends(get_current_user)):
     return traceroute_scan(target)
 
 @app.get("/scan/nbtscan")
-async def run_nbtscan(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_nbtscan(target: str = Query(...), user: dict = Depends(get_current_user)):
     return nbtscan_scan(target)
 
 @app.get("/scan/snmpwalk")
-async def run_snmpwalk(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_snmpwalk(target: str = Query(...), user: dict = Depends(get_current_user)):
     return snmpwalk_scan(target)
 
 @app.get("/scan/netexec")
-async def run_netexec(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_netexec(target: str = Query(...), user: dict = Depends(get_current_user)):
     return netexec_scan(target)
 
 @app.get("/scan/bloodhound")
-async def run_bloodhound(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_bloodhound(target: str = Query(...), user: dict = Depends(get_current_user)):
     return bloodhound_scan(target)
 
 @app.get("/scan/responder")
-async def run_responder(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_responder(target: str = Query(...), user: dict = Depends(get_current_user)):
     return responder_scan(target)
 
 @app.get("/scan/fierce")
-async def run_fierce(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_fierce(target: str = Query(...), user: dict = Depends(get_current_user)):
     return fierce_scan(target)
 
 @app.get("/scan/smbmap")
-async def run_smbmap(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_smbmap(target: str = Query(...), user: dict = Depends(get_current_user)):
     return smbmap_scan(target)
 
 @app.get("/scan/onesixtyone")
-async def run_onesixtyone(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_onesixtyone(target: str = Query(...), user: dict = Depends(get_current_user)):
     return onesixtyone_scan(target)
 
 @app.get("/scan/ikescan")
-async def run_ikescan(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_ikescan(target: str = Query(...), user: dict = Depends(get_current_user)):
     return ikescan_scan(target)
 
 @app.get("/scan/sslyze")
-async def run_sslyze(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_sslyze(target: str = Query(...), user: dict = Depends(get_current_user)):
     return sslyze_scan(target)
 
 @app.get("/scan/searchsploit")
-async def run_searchsploit(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_searchsploit(target: str = Query(...), user: dict = Depends(get_current_user)):
     return searchsploit_scan(target)
 
 @app.get("/scan/impacket")
-async def run_impacket(target: str = Query(...), user: str = Depends(get_current_user)):
+async def run_impacket(target: str = Query(...), user: dict = Depends(get_current_user)):
     return impacket_scan(target)
 
 from modules.certipy_scan import run_certipy
@@ -550,7 +686,7 @@ async def scan_certipy(
     username: str = Query(""),
     password: str = Query(""),
     domain: str = Query(""),
-    user: str = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
 ):
     return run_certipy(target, username=username or None, password=password or None,
                        domain=domain or None, dc_ip=dc_ip or None)
@@ -565,20 +701,20 @@ class OsintStartRequest(BaseModel):
 
 @app.get("/osint/start")
 @limiter.limit("5/minute")
-async def osint_start_get(request: Request, target: str = Query(...), search_type: str = Query("domain"), user: str = Depends(get_current_user)):
+async def osint_start_get(request: Request, target: str = Query(...), search_type: str = Query("domain"), user: dict = Depends(require_role("admin", "operator"))):
     task = osint_scan_task.delay(target, search_type=search_type)
     audit(request, user, "osint_start", target)
     return {"task_id": task.id, "status": "started", "target": target, "search_type": search_type}
 
 @app.post("/osint/start")
 @limiter.limit("5/minute")
-async def osint_start_post(request: Request, body: OsintStartRequest, user: str = Depends(get_current_user)):
+async def osint_start_post(request: Request, body: OsintStartRequest, user: dict = Depends(require_role("admin", "operator"))):
     task = osint_scan_task.delay(body.target, search_type=body.search_type)
     audit(request, user, "osint_start", body.target)
     return {"task_id": task.id, "status": "started", "target": body.target, "search_type": body.search_type}
 
 @app.get("/osint/status/{task_id}")
-async def osint_status(task_id: str, user: str = Depends(get_current_user)):
+async def osint_status(task_id: str, user: dict = Depends(get_current_user)):
     task = osint_scan_task.AsyncResult(task_id)
     if task.state == "SUCCESS":
         return {"task_id": task_id, "status": "completed", "result": task.result}
@@ -594,11 +730,11 @@ async def osint_status(task_id: str, user: str = Depends(get_current_user)):
         return {"task_id": task_id, "status": task.state}
 
 @app.get("/osint/history")
-async def osint_history(limit: int = 20, user: str = Depends(get_current_user)):
+async def osint_history(limit: int = 20, user: dict = Depends(get_current_user)):
     return get_osint_history(limit)
 
 @app.get("/osint/{task_id}/pdf")
-async def osint_pdf(request: Request, task_id: str, user: str = Depends(get_current_user)):
+async def osint_pdf(request: Request, task_id: str, user: dict = Depends(get_current_user)):
     scan = get_osint_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="OSINT scan not found")
@@ -619,7 +755,7 @@ from modules.webhook import WazuhAlert, extract_target
 
 @app.post("/webhook/wazuh")
 @limiter.limit("30/minute")
-async def wazuh_webhook(request: Request, alert: WazuhAlert, user: str = Depends(get_current_user)):
+async def wazuh_webhook(request: Request, alert: WazuhAlert, user: dict = Depends(require_role("admin", "operator"))):
     target = extract_target(alert)
     if not target:
         return {"status": "ignored", "reason": "no valid target extracted"}
@@ -635,7 +771,7 @@ async def wazuh_webhook(request: Request, alert: WazuhAlert, user: str = Depends
 
 @app.post("/webhook/generic")
 @limiter.limit("30/minute")
-async def generic_webhook(request: Request, payload: dict, user: str = Depends(get_current_user)):
+async def generic_webhook(request: Request, payload: dict, user: dict = Depends(require_role("admin", "operator"))):
     target = payload.get("target") or payload.get("ip") or payload.get("host")
     if not target:
         return {"status": "ignored", "reason": "no target field in payload"}
@@ -652,7 +788,7 @@ from modules.tasks import agent_scan_task
 
 @app.get("/agent/start")
 @limiter.limit("3/minute")
-async def agent_start(request: Request, target: str = Query(...), user: str = Depends(get_current_user)):
+async def agent_start(request: Request, target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     task = agent_scan_task.delay(target)
     audit(request, user, "agent_start", target)
     return {"task_id": task.id, "status": "started", "target": target, "mode": "agent"}
@@ -662,7 +798,7 @@ class ScheduleCreate(BaseModel):
     interval_hours: int
 
 @app.post("/schedules")
-async def create_schedule(request: Request, schedule: ScheduleCreate, user: str = Depends(get_current_user)):
+async def create_schedule(request: Request, schedule: ScheduleCreate, user: dict = Depends(require_role("admin", "operator"))):
     if schedule.interval_hours < 1:
         raise HTTPException(status_code=400, detail="interval_hours must be >= 1")
     result = add_schedule(schedule.target, schedule.interval_hours)
@@ -670,11 +806,11 @@ async def create_schedule(request: Request, schedule: ScheduleCreate, user: str 
     return result
 
 @app.get("/schedules")
-async def list_schedules(user: str = Depends(get_current_user)):
+async def list_schedules(user: dict = Depends(get_current_user)):
     return get_schedules()
 
 @app.delete("/schedules/{schedule_id}")
-async def remove_schedule(request: Request, schedule_id: int, user: str = Depends(get_current_user)):
+async def remove_schedule(request: Request, schedule_id: int, user: dict = Depends(require_role("admin", "operator"))):
     ok = delete_schedule(schedule_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Schedule not found")
@@ -704,7 +840,7 @@ def _gophish_delete(path: str):
     return r.json() if r.text else {"status": "deleted"}
 
 @app.get("/phishing/campaigns")
-async def phishing_campaigns(user: str = Depends(get_current_user)):
+async def phishing_campaigns(user: dict = Depends(get_current_user)):
     try:
         campaigns = _gophish_get("campaigns/")
         result = []
@@ -750,7 +886,7 @@ class PhishingEmailGenerate(BaseModel):
 
 @app.post("/phishing/generate-email")
 @limiter.limit("10/minute")
-async def phishing_generate_email(request: Request, data: PhishingEmailGenerate, user: str = Depends(get_current_user)):
+async def phishing_generate_email(request: Request, data: PhishingEmailGenerate, user: dict = Depends(require_role("admin", "operator"))):
     try:
         from modules.llm_provider import get_provider
         provider = get_provider(task="phishing_email")
@@ -801,7 +937,7 @@ WYMAGANIA:
         raise HTTPException(status_code=500, detail=f"Email generation failed: {str(e)}")
 
 @app.post("/phishing/campaigns")
-async def phishing_create_campaign(request: Request, campaign: PhishingCampaignCreate, user: str = Depends(get_current_user)):
+async def phishing_create_campaign(request: Request, campaign: PhishingCampaignCreate, user: dict = Depends(require_role("admin", "operator"))):
     try:
         # 1. Create or reuse sending profile
         smtp_name = f"CYRBER-{campaign.domain}"
@@ -886,7 +1022,7 @@ async def phishing_create_campaign(request: Request, campaign: PhishingCampaignC
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/phishing/campaigns/{campaign_id}")
-async def phishing_delete_campaign(request: Request, campaign_id: int, user: str = Depends(get_current_user)):
+async def phishing_delete_campaign(request: Request, campaign_id: int, user: dict = Depends(require_role("admin", "operator"))):
     try:
         result = _gophish_delete(f"campaigns/{campaign_id}")
         audit(request, user, "phishing_delete", str(campaign_id))
@@ -897,7 +1033,7 @@ async def phishing_delete_campaign(request: Request, campaign_id: int, user: str
         raise HTTPException(status_code=502, detail=str(e))
 
 @app.get("/phishing/campaigns/{campaign_id}/results")
-async def phishing_campaign_results(campaign_id: int, user: str = Depends(get_current_user)):
+async def phishing_campaign_results(campaign_id: int, user: dict = Depends(get_current_user)):
     try:
         campaign = _gophish_get(f"campaigns/{campaign_id}")
         results = campaign.get("results", [])
@@ -950,11 +1086,11 @@ def _require_garak():
         )
 
 @app.get("/garak/status")
-async def garak_get_status(user: str = Depends(get_current_user)):
+async def garak_get_status(user: dict = Depends(get_current_user)):
     return garak_status()
 
 @app.get("/garak/probes")
-async def garak_get_probes(user: str = Depends(get_current_user)):
+async def garak_get_probes(user: dict = Depends(get_current_user)):
     _require_garak()
     return garak_probes()
 
@@ -968,7 +1104,7 @@ class GarakScanRequest(BaseModel):
     api_base: str = ""
 
 @app.post("/garak/scan")
-async def garak_post_scan(request: Request, body: GarakScanRequest, user: str = Depends(get_current_user)):
+async def garak_post_scan(request: Request, body: GarakScanRequest, user: dict = Depends(require_role("admin", "operator"))):
     _require_garak()
     result = garak_start(
         target_type=body.target_type, target_name=body.target_name,
@@ -982,7 +1118,7 @@ async def garak_post_scan(request: Request, body: GarakScanRequest, user: str = 
     return result
 
 @app.get("/garak/scan/{scan_id}")
-async def garak_get_scan(scan_id: str, user: str = Depends(get_current_user)):
+async def garak_get_scan(scan_id: str, user: dict = Depends(get_current_user)):
     _require_garak()
     result = garak_get(scan_id)
     if not result:
@@ -990,7 +1126,7 @@ async def garak_get_scan(scan_id: str, user: str = Depends(get_current_user)):
     return result
 
 @app.get("/garak/scans")
-async def garak_list_all(user: str = Depends(get_current_user)):
+async def garak_list_all(user: dict = Depends(get_current_user)):
     _require_garak()
     return garak_list()
 
@@ -1016,16 +1152,16 @@ def _require_beef():
         )
 
 @app.get("/beef/status")
-async def beef_get_status(user: str = Depends(get_current_user)):
+async def beef_get_status(user: dict = Depends(get_current_user)):
     return beef_status()
 
 @app.get("/beef/hooks")
-async def beef_get_hooks(user: str = Depends(get_current_user)):
+async def beef_get_hooks(user: dict = Depends(get_current_user)):
     _require_beef()
     return beef_hooks()
 
 @app.get("/beef/hooks/{session}")
-async def beef_get_hook(session: str, user: str = Depends(get_current_user)):
+async def beef_get_hook(session: str, user: dict = Depends(get_current_user)):
     _require_beef()
     detail = beef_hook_detail(session)
     if not detail:
@@ -1033,12 +1169,12 @@ async def beef_get_hook(session: str, user: str = Depends(get_current_user)):
     return detail
 
 @app.get("/beef/modules")
-async def beef_get_modules(user: str = Depends(get_current_user)):
+async def beef_get_modules(user: dict = Depends(get_current_user)):
     _require_beef()
     return beef_modules()
 
 @app.get("/beef/modules/{module_id}")
-async def beef_get_module(module_id: str, user: str = Depends(get_current_user)):
+async def beef_get_module(module_id: str, user: dict = Depends(get_current_user)):
     _require_beef()
     detail = beef_module_detail(module_id)
     if not detail:
@@ -1051,7 +1187,7 @@ class BeefRunModule(BaseModel):
     options: dict = {}
 
 @app.post("/beef/modules/run")
-async def beef_post_run_module(request: Request, body: BeefRunModule, user: str = Depends(get_current_user)):
+async def beef_post_run_module(request: Request, body: BeefRunModule, user: dict = Depends(require_role("admin", "operator"))):
     _require_beef()
     result = beef_run_module(body.session, body.module_id, body.options)
     if not result:
@@ -1060,7 +1196,7 @@ async def beef_post_run_module(request: Request, body: BeefRunModule, user: str 
     return result
 
 @app.get("/beef/modules/{session}/{module_id}/{cmd_id}")
-async def beef_get_result(session: str, module_id: str, cmd_id: str, user: str = Depends(get_current_user)):
+async def beef_get_result(session: str, module_id: str, cmd_id: str, user: dict = Depends(get_current_user)):
     _require_beef()
     result = beef_module_result(session, module_id, cmd_id)
     if not result:
@@ -1068,7 +1204,7 @@ async def beef_get_result(session: str, module_id: str, cmd_id: str, user: str =
     return result
 
 @app.get("/beef/logs")
-async def beef_get_logs(session: str | None = None, user: str = Depends(get_current_user)):
+async def beef_get_logs(session: str | None = None, user: dict = Depends(get_current_user)):
     _require_beef()
     return beef_logs(session)
 
@@ -1093,16 +1229,16 @@ def _require_evilginx():
         )
 
 @app.get("/evilginx/stats")
-async def evilginx_get_stats(user: str = Depends(get_current_user)):
+async def evilginx_get_stats(user: dict = Depends(get_current_user)):
     return evilginx_stats()
 
 @app.get("/evilginx/sessions")
-async def evilginx_get_sessions(user: str = Depends(get_current_user)):
+async def evilginx_get_sessions(user: dict = Depends(get_current_user)):
     _require_evilginx()
     return evilginx_sessions()
 
 @app.get("/evilginx/sessions/{session_id}")
-async def evilginx_get_session(session_id: str, user: str = Depends(get_current_user)):
+async def evilginx_get_session(session_id: str, user: dict = Depends(get_current_user)):
     _require_evilginx()
     s = evilginx_session(session_id)
     if not s:
@@ -1110,7 +1246,7 @@ async def evilginx_get_session(session_id: str, user: str = Depends(get_current_
     return s
 
 @app.delete("/evilginx/sessions/{session_id}")
-async def evilginx_delete_session(request: Request, session_id: str, user: str = Depends(get_current_user)):
+async def evilginx_delete_session(request: Request, session_id: str, user: dict = Depends(require_role("admin", "operator"))):
     _require_evilginx()
     if not evilginx_delete(session_id):
         raise HTTPException(status_code=404, detail="Session not found")
@@ -1118,12 +1254,12 @@ async def evilginx_delete_session(request: Request, session_id: str, user: str =
     return {"status": "deleted", "session_id": session_id}
 
 @app.get("/evilginx/phishlets")
-async def evilginx_get_phishlets(user: str = Depends(get_current_user)):
+async def evilginx_get_phishlets(user: dict = Depends(get_current_user)):
     _require_evilginx()
     return evilginx_phishlets()
 
 @app.get("/evilginx/phishlets/{name}")
-async def evilginx_get_phishlet(name: str, user: str = Depends(get_current_user)):
+async def evilginx_get_phishlet(name: str, user: dict = Depends(get_current_user)):
     _require_evilginx()
     p = evilginx_phishlet(name)
     if not p:
@@ -1131,7 +1267,7 @@ async def evilginx_get_phishlet(name: str, user: str = Depends(get_current_user)
     return p
 
 @app.get("/evilginx/config")
-async def evilginx_get_config(user: str = Depends(get_current_user)):
+async def evilginx_get_config(user: dict = Depends(get_current_user)):
     _require_evilginx()
     return evilginx_config()
 
@@ -1143,7 +1279,7 @@ class MultiTargetScan(BaseModel):
 
 @app.post("/scan/multi")
 @limiter.limit("3/minute")
-async def multi_scan(request: Request, body: MultiTargetScan, user: str = Depends(get_current_user)):
+async def multi_scan(request: Request, body: MultiTargetScan, user: dict = Depends(require_role("admin", "operator"))):
     if not body.targets:
         raise HTTPException(status_code=400, detail="targets list is empty")
 
@@ -1177,7 +1313,7 @@ from modules.notify import (
 )
 
 @app.get("/notifications/status")
-async def notifications_status(user: str = Depends(get_current_user)):
+async def notifications_status(user: dict = Depends(get_current_user)):
     return {
         "email": bool(SMTP_HOST and SMTP_USER and SMTP_PASS and SMTP_TO),
         "slack": bool(SLACK_WEBHOOK_URL),
@@ -1187,7 +1323,7 @@ async def notifications_status(user: str = Depends(get_current_user)):
 
 @app.post("/notifications/test")
 @limiter.limit("3/minute")
-async def notifications_test(request: Request, user: str = Depends(get_current_user)):
+async def notifications_test(request: Request, user: dict = Depends(require_role("admin", "operator"))):
     test_result = {
         "target": "test.example.com",
         "findings_count": 42,
@@ -1202,12 +1338,12 @@ async def notifications_test(request: Request, user: str = Depends(get_current_u
 
 # ── Audit logs endpoint ──
 @app.get("/audit")
-async def audit_logs(limit: int = 100, user: str = Depends(get_current_user)):
+async def audit_logs(limit: int = 100, user: dict = Depends(require_role("admin"))):
     return get_audit_logs(limit)
 
 
 @app.post("/rag/build-index")
-async def build_rag_index(current_user=Depends(get_current_user)):
+async def build_rag_index(current_user: dict = Depends(require_role("admin"))):
     """Buduje indeks RAG z knowledge_base"""
     from modules.rag_knowledge import get_rag
     result = get_rag().build_index()
@@ -1215,7 +1351,7 @@ async def build_rag_index(current_user=Depends(get_current_user)):
 
 
 @app.get("/rag/search")
-async def rag_search(q: str, top_k: int = 5, current_user=Depends(get_current_user)):
+async def rag_search(q: str, top_k: int = 5, current_user: dict = Depends(get_current_user)):
     """Semantic search w knowledge base"""
     from modules.rag_knowledge import get_rag
     results = get_rag().search(q, top_k=top_k)

@@ -31,6 +31,19 @@ class Scan(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
 
+class User(Base):
+    __tablename__ = "users"
+    id            = Column(Integer, primary_key=True)
+    username      = Column(String, unique=True, nullable=False, index=True)
+    email         = Column(String, unique=True, nullable=True)
+    password_hash = Column(String, nullable=False)
+    role          = Column(String, default="viewer")   # admin / operator / viewer
+    is_active     = Column(Boolean, default=True)
+    created_by    = Column(String, nullable=True)
+    created_at    = Column(DateTime, default=datetime.utcnow)
+    last_login    = Column(DateTime, nullable=True)
+    notes         = Column(Text, nullable=True)
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id = Column(Integer, primary_key=True, index=True)
@@ -294,5 +307,106 @@ def get_osint_by_task_id(task_id: str):
             except Exception:
                 pass
         return {"task_id": s.task_id, "target": s.target, "status": s.status}
+    finally:
+        db.close()
+
+# ── User CRUD ────────────────────────────────────────────
+
+def _user_to_dict(u: "User") -> dict:
+    return {
+        "id": u.id,
+        "username": u.username,
+        "email": u.email,
+        "role": u.role,
+        "is_active": u.is_active,
+        "created_by": u.created_by,
+        "created_at": u.created_at.isoformat() if u.created_at else None,
+        "last_login": u.last_login.isoformat() if u.last_login else None,
+        "notes": u.notes,
+    }
+
+def get_user_by_username(username: str) -> dict | None:
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.username == username).first()
+        return _user_to_dict(u) if u else None
+    finally:
+        db.close()
+
+def get_user_by_username_raw(username: str):
+    """Return raw User row (with password_hash) for auth."""
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.username == username).first()
+        if not u:
+            return None
+        d = _user_to_dict(u)
+        d["password_hash"] = u.password_hash
+        return d
+    finally:
+        db.close()
+
+def get_user_by_id(user_id: int) -> dict | None:
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.id == user_id).first()
+        return _user_to_dict(u) if u else None
+    finally:
+        db.close()
+
+def create_user(username: str, password_hash: str, role: str = "viewer",
+                email: str = None, created_by: str = None, notes: str = None) -> dict:
+    db = SessionLocal()
+    try:
+        u = User(
+            username=username, password_hash=password_hash, role=role,
+            email=email, created_by=created_by, notes=notes,
+        )
+        db.add(u)
+        db.commit()
+        db.refresh(u)
+        return _user_to_dict(u)
+    finally:
+        db.close()
+
+def update_user(user_id: int, **kwargs) -> dict | None:
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.id == user_id).first()
+        if not u:
+            return None
+        for k, v in kwargs.items():
+            if hasattr(u, k) and v is not None:
+                setattr(u, k, v)
+        db.commit()
+        db.refresh(u)
+        return _user_to_dict(u)
+    finally:
+        db.close()
+
+def delete_user(user_id: int) -> bool:
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.id == user_id).first()
+        if not u:
+            return False
+        db.delete(u)
+        db.commit()
+        return True
+    finally:
+        db.close()
+
+def list_users() -> list[dict]:
+    db = SessionLocal()
+    try:
+        users = db.query(User).order_by(User.created_at.desc()).all()
+        return [_user_to_dict(u) for u in users]
+    finally:
+        db.close()
+
+def count_admins() -> int:
+    db = SessionLocal()
+    try:
+        return db.query(User).filter(User.role == "admin", User.is_active == True).count()
     finally:
         db.close()
