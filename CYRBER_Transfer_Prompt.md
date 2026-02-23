@@ -266,6 +266,7 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 - Blackbird – 600+ platform, AI profiling
 - URLScan.io, GreyNoise, Fullhunt.io (darmowe tier)
 - HaveIBeenPwned ($3.50/msc)
+- **Exiftool** — ekstrakcja metadanych EXIF ze zdjęć (GPS, model urządzenia, data, autor); demonstracja ryzyka dla szkoleń security awareness ("wrzuciłeś selfie → wiemy gdzie jesteś"); open-source, legalny, dostępny w Kali; priorytet niski
 
 ### Priorytet 8 – Hardware (po stabilizacji software)
 - WiFi Pineapple Mark VII – REST API wrapper
