@@ -160,7 +160,7 @@ Self-signed TLS cert (ważny do 2029), security headers (HSTS, X-Frame-Options, 
 
 ### Frontend / UI
 - Scan View (static/index.html) — **przepisany od zera**: 3-step flow (target→profil→start), animated pulsing ring hero, target validation (domain/IP/CIDR), profile cards z license lock overlay (admin bypass licencji), SSE live feed z typewriter effect (30ms/char) + terminal panel (surowy output SSE obok), 17 faz funkcjonalnych (MODULE_LABELS z 52 modułów), progress bar z ETA, completion screen, recent scans (5 ostatnich); nav uproszczony: SCAN | DASHBOARD | SCHEDULER | PHISHING | ADMIN
-- Scan Detail (static/scan_detail.html) — pełna strona szczegółów skanu: hero (risk ring + target + badges), 5 zakładek (Overview/Findings/Moduły/AI Analysis/Report), floating AI agent chat (POST /api/scan-agent, Claude Haiku + scan context, sessionStorage history)
+- Scan Detail (static/scan_detail.html) — pełna strona szczegółów skanu: hero (risk ring + target + badges), 6 zakładek (Overview/Findings/Moduły/AI Analysis/Report/Remediation), sparkline security score trend w Overview, floating AI agent chat (POST /api/scan-agent, Claude Haiku + scan context, sessionStorage history)
 - Dashboard (static/dashboard.html) — **przepisany od zera**: KPI bar (4 karty), filtry (data/profil/ryzyko/target + debounce), sortowalna tabela z paginacją, slide-in drilldown (4 zakładki), pure CSS/SVG. Klik wiersza → scan detail (desktop) / drilldown (mobile)
 - Cache-busting headers — no-cache na /ui, /dashboard, /scheduler, /phishing, /osint, /scan/{id}/detail
 - SSE Streaming (static/index.html + backend/main.py) — real-time postęp skanowania: connectSSE() primary z fallback na polling; GET /scan/stream/{task_id}?token=JWT; Redis pub/sub 49 kroków per skan
@@ -210,8 +210,8 @@ Prompt do LLM zawiera sekcję `=== KORELACJE MIEDZYMODULOWE ===` między KONTEKS
 ## 7. GUI / Frontend
 
 - `/ui` – index.html: **przepisany od zera** — 3-step scan launcher (target→profil→start), hero z animowanym pulsing ring, walidacja target (domain/IP/CIDR), profile cards z license lock overlay, SSE live feed z typewriter effect (30ms/char), 17 faz funkcjonalnych (MODULE_LABELS), progress bar z ETA, completion screen ze statystykami + link do scan detail, recent scans (5 ostatnich)
-- `/scan/{task_id}/detail` – scan_detail.html: pełna strona szczegółów skanu — hero (risk ring + target + badges), 5 zakładek (Overview z KPI+bar chart+top findings, Findings z severity toggles + WYJAŚNIJ AI, Moduły grid z expand JSON, AI Analysis z narrative+chains timeline, Report z iframe preview), floating AI agent chat (POST /api/scan-agent, Claude Haiku + kontekst skanu, sessionStorage history)
-- `/dashboard` – **przepisany od zera**: KPI bar (4 karty), filtry (data/profil/ryzyko/target + debounce), sortowalna tabela z paginacją (20/stronę), prawy slide-in drilldown panel (50% width, cubic-bezier) z 4 zakładkami: Summary (CSS conic-gradient risk ring, narrative, business impact, compliance), Findings (filtr severity + WYJAŚNIJ AI per finding), Moduły (grid ~44 modułów, expand JSON), Exploit Chains (vertical timeline, confidence badges). BEZ Chart.js — pure CSS/SVG. Klik wiersza → /scan/{task_id}/detail (desktop), drilldown fallback (mobile ≤768px).
+- `/scan/{task_id}/detail` – scan_detail.html: pełna strona szczegółów skanu — hero (risk ring + target + badges), 6 zakładek (Overview z KPI+bar chart+top findings+sparkline trend, Findings z severity toggles + WYJAŚNIJ AI, Moduły grid z expand JSON, AI Analysis z narrative+chains timeline, Report z iframe preview, Remediation z task cards+inline edit+TRACK ALL+RETEST), floating AI agent chat (POST /api/scan-agent, Claude Haiku + kontekst skanu, sessionStorage history)
+- `/dashboard` – **przepisany od zera**: KPI bar (4 karty), filtry (data/profil/ryzyko/target + debounce), sortowalna tabela z paginacją (20/stronę), prawy slide-in drilldown panel (50% width, cubic-bezier) z 4 zakładkami: Summary (CSS conic-gradient risk ring, narrative, business impact, compliance), Findings (filtr severity + WYJAŚNIJ AI per finding), Moduły (grid ~44 modułów, expand JSON), Exploit Chains (vertical timeline, confidence badges). BEZ Chart.js — pure CSS/SVG. Klik wiersza → /scan/{task_id}/detail (desktop), drilldown fallback (mobile ≤768px). **Security Score Timeline**: SVG line chart + stacked bars + 3 KPI (poprawa/fix rate/trend) + target selector dropdown.
 - `/command-center` – Command Center: unified dashboard trzech głównych widoków, szybki dostęp do skanów/alertów/akcji
 - `/scheduler` – planowanie skanów
 - `/phishing` – GoPhish UI + Phishing Campaign Wizard
@@ -250,7 +250,7 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 
 ---
 
-## 10. CYRBER LOOP – następny kierunek
+## 10. CYRBER LOOP – ZREALIZOWANE ✅
 
 ### Koncept: zamknięta pętla bezpieczeństwa
 
@@ -260,39 +260,57 @@ CYRBER przestaje być jednorazowym skanerem i staje się **ciągłym procesem be
 ZNAJDŹ → ZROZUM → NAPRAW → SPRAWDŹ → (powtórz)
 ```
 
-| Faza | Co robi | Komponent |
-|------|---------|-----------|
-| **ZNAJDŹ** | Skan 50+ modułami, exploit chainy, AI analiza | Istniejący pipeline (52 kroków) |
-| **ZROZUM** | AI tłumaczy per finding, business impact, compliance | AI Explain, Scan Agent, raporty |
-| **NAPRAW** | Remediation Tracker — zadania z właścicielem/deadlinem | NOWY: tabela DB + UI w scan_detail |
-| **SPRAWDŹ** | Auto-retest po oznaczeniu "naprawione" | NOWY: targeted re-scan per finding |
+| Faza | Co robi | Komponent | Status |
+|------|---------|-----------|--------|
+| **ZNAJDŹ** | Skan 50+ modułami, exploit chainy, AI analiza | Istniejący pipeline (52 kroków) | ✅ |
+| **ZROZUM** | AI tłumaczy per finding, business impact, compliance | AI Explain, Scan Agent, raporty | ✅ |
+| **NAPRAW** | Remediation Tracker — zadania z właścicielem/deadlinem | Tabela DB + API CRUD + UI tab | ✅ |
+| **SPRAWDŹ** | Auto-retest po oznaczeniu "naprawione" | Targeted re-scan per finding | ✅ |
 
-### Remediation Tracker
-- Każda podatność = zadanie (finding_id, owner, deadline, status: open/in_progress/fixed/verified/wontfix)
-- UI w scan_detail.html: nowa zakładka "Remediation" z listą zadań, assign owner, set deadline
-- API: POST /api/remediation (create), PATCH /api/remediation/{id} (update status), GET /api/scan/{task_id}/remediation (list)
-- Tabela PostgreSQL: `remediation_tasks` (id, scan_id, finding_name, severity, owner, deadline, status, created_at, updated_at, verified_at)
+### ✅ Remediation Tracker (zrealizowany)
+- Tabela PostgreSQL: `remediation_tasks` (13 kolumn + 4 retest: id, scan_id, finding_name, finding_severity, finding_module, owner, deadline, status, notes, created_at, updated_at, verified_at, retest_task_id, retest_status, retest_at, retest_result)
+- Status: open → in_progress → fixed → verified / wontfix
+- UI: 6. zakładka REMEDIATION w scan_detail.html — karty z kolorowym left-border per status, inline edit (owner/deadline/notes/status), TRACK ALL (bulk create z deduplicją), filtry severity/status
+- API: 5 endpointów (GET/POST /api/scan/{task_id}/remediation, PATCH/DELETE /api/remediation/{id}, POST /api/scan/{task_id}/remediation/bulk)
+- RBAC: admin/operator = edycja, viewer = readonly, admin = delete
+- Audit log na każdej mutacji
 
-### Auto-retest
-- Po oznaczeniu zadania jako "fixed" → CYRBER automatycznie uruchamia targeted re-scan (tylko moduł, który znalazł podatność)
-- Wynik: status zmienia się na "verified" (potwierdzone naprawienie) lub wraca do "open" (wciąż podatne)
-- Notyfikacja do ownera: email/Slack/Discord
+### ✅ Intelligence Sync (zrealizowany)
+- `modules/intelligence_sync.py` — synchronizacja publicznych baz podatności
+- CISA KEV: 1527 rekordów Known Exploited Vulnerabilities, pełny katalog
+- FIRST EPSS: Exploit Prediction Scoring System, batch po 100 CVE
+- NVD CVE 2.0: on-demand fetch per CVE (CVSS, CWE, opis, referencje)
+- 4 tabele cache: `kev_cache`, `epss_cache`, `cve_cache`, `intel_sync_log`
+- Celery Beat: codzienny sync o 3:00 AM (`run_intel_sync` task)
+- `enrich_finding(cve_id)` → CVSS + EPSS + KEV + calculated priority (CRITICAL/HIGH/MEDIUM/LOW/INFO)
+- `calculate_priority()` — CVSS + EPSS + KEV multi-factor
+- API: GET /api/intel/status, POST /api/intel/sync, GET /api/intel/enrich/{cve_id}
+- Admin panel: zakładka INTEL SYNC ze statystykami, logami, przyciskiem SYNC NOW
 
-### Security Score Timeline
-- Wykres postępu w czasie na dashboard: risk_score per skan na osi czasu
-- Wizualizacja trendu: poprawa/pogorszenie bezpieczeństwa
-- KPI: "Time to Remediate" (średni czas naprawy), "Fix Rate" (% naprawionych), "Regression Rate" (% powrotów)
+### ✅ Auto-retest (zrealizowany)
+- Po oznaczeniu zadania jako "fixed" → przycisk RETEST w UI
+- `run_targeted_retest()` w intelligence_sync.py: dynamiczny import skanera (13 modułów), analiza wyników (_check_finding_in_results: name match, findings lists, CVE pattern)
+- Celery task `retest_finding`: uruchamia re-scan, aktualizuje status → verified (nie znaleziono) / reopened (wciąż podatne)
+- API: POST /api/remediation/{id}/retest, GET /api/remediation/{id}/retest/status
+- UI: RETEST badge (pending/running/passed/failed), polling 5s, evidence panel
+- Testowane end-to-end: create → fix → retest → verified (0.2s)
 
-### Compliance Evidence Export
-- PDF dla audytora: NIS2/ISO27001/RODO compliance evidence
-- Zawartość: lista znalezionych podatności + status remediation + daty napraw + dowody (re-scan results)
-- Generowany z WeasyPrint + Jinja2 (istniejący stack)
-- Endpoint: GET /report/{task_id}/compliance?framework=nis2
+### ✅ Security Score Timeline (zrealizowany)
+- **Dashboard** (static/dashboard.html):
+  - Target selector dropdown z GET /api/dashboard/security-scores (10 targetów, trend ikony, score)
+  - SVG Line Chart (pure JS, zero bibliotek): oś Y 0-100 z gridlines, linia kolorowana (green<40, orange 40-70, red>70), area fill gradient 0.15 opacity, klikalne punkty → /scan/{task_id}/detail, tooltip on hover (date + score + findings)
+  - SVG Stacked Bars: mini słupki critical/high/medium/low per skan
+  - 3 KPI karty: POPRAWA (improvement first→last), FIX RATE (% remediated/total), TREND badge (IMPROVING/STABLE/DEGRADING)
+- **Scan Detail** (static/scan_detail.html):
+  - Mini sparkline SVG 150x40px w zakładce OVERVIEW (panel SECURITY SCORE TREND)
+  - Ostatnie 5 skanów targetu, linia + area fill, kolorowanie per trend
+  - Label: "Trend: ↓ poprawa (70 → 40)"
+- API: GET /api/target/{target}/timeline, GET /api/dashboard/security-scores
 
-### Integracje zewnętrzne
-- Jira: webhook na nowe finding → tworzenie issue, sync statusu zwrotnie
-- GitHub Issues: automatyczne tworzenie issues z findings, label per severity
-- Konfiguracja: POST /api/integrations (webhook URL + typ + auth token)
+### Do zrealizowania (kolejne sesje)
+- **Compliance Evidence PDF** — GET /report/{task_id}/compliance?framework=nis2
+- **Integracje zewnętrzne** — Jira webhook, GitHub Issues, MISP
+- **Notyfikacje do ownera** — email/Slack/Discord po retest
 
 ### Model biznesowy — subskrypcja CYRBER LOOP
 
@@ -309,13 +327,12 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 ## 11. Backlog (priorytety)
 
 ### Priorytet 0 – Następna sesja
-1. **CYRBER LOOP — Remediation Tracker** (nowa tabela DB `remediation_tasks` + UI zakładka w scan_detail + API CRUD)
-2. **Auto-retest po "naprawione"** (targeted re-scan per finding, status verified/open)
-3. **Security Score Timeline** w dashboard (wykres risk_score w czasie, KPI: Time to Remediate / Fix Rate)
-4. **Compliance Evidence PDF export** (GET /report/{task_id}/compliance, WeasyPrint + Jinja2)
-5. **Dark/Light theme toggle**
-6. **Compliance analysis** (NIS2/RODO/ISO27001)
-7. **Pentest-as-Code CI/CD** (GitHub Actions)
+1. **Compliance Evidence PDF export** (GET /report/{task_id}/compliance?framework=nis2, WeasyPrint + Jinja2)
+2. **ATT&CK full sync + ENISA EU VDB** (rozszerzenie intelligence_sync.py)
+3. **Dark/Light theme toggle** (CSS custom properties + localStorage)
+4. **Testy end-to-end całego nowego GUI na DVWA** (Remediation Tracker, Timeline, Intel Sync, Retest)
+5. **Pentest-as-Code CI/CD** (GitHub Actions — skan jako step w pipeline)
+6. **MISP integration** (enterprise — Threat Intelligence sharing)
 
 ### Priorytet 1 – AI Integration (w toku)
 - Cross-module reasoning ✅
@@ -372,7 +389,7 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 - Raspberry Pi Remote Sensor – Netbird mesh VPN
 - Proxmark3 – Faza 2
 
-### Zrealizowane – Sesja 24.02.2026
+### Zrealizowane – Sesja 24.02.2026 (część 1: infrastruktura + UI)
 - Admin Panel UI ✅ — static/admin.html, CRUD użytkowników, role RBAC, status licencji
 - RBAC ✅ — admin/operator/viewer, dekoratory require_role(), JWT claims
 - System licencji ✅ — on-prem HMAC-SHA256, 4 tiery (demo/basic/pro/enterprise), modules/license.py
@@ -390,6 +407,12 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 - Admin bypass licencji ✅ — rola admin omija lock profili, licencja ogranicza tylko klientów
 - Nav uproszczony ✅ — SCAN | DASHBOARD | SCHEDULER | PHISHING | ADMIN (usunięte OSINT, CMD CENTER)
 - Bugfix scan-agent ✅ — exploit_chains dict→list extraction (TypeError: unhashable type 'slice')
+
+### Zrealizowane – Sesja 24.02.2026 (część 2: CYRBER LOOP)
+- **Remediation Tracker** ✅ — tabela `remediation_tasks` (17 kolumn), 5 endpointów API, 8 funkcji CRUD, UI tab w scan_detail.html (karty, inline edit, TRACK ALL bulk, filtry, RBAC)
+- **Intelligence Sync** ✅ — modules/intelligence_sync.py, KEV (1527 rekordów), EPSS (batch), NVD on-demand, 4 tabele cache, Celery Beat 3:00 AM, enrich_finding() z calculated priority, admin panel INTEL SYNC tab
+- **Auto-retest** ✅ — run_targeted_retest() (13 modułów, dynamiczny import), retest_finding Celery task, 2 endpointy API, UI RETEST button z polling 5s, verified/reopened flow
+- **Security Score Timeline** ✅ — dashboard SVG line chart (pure JS, zero bibliotek) + stacked bars + 3 KPI + target selector, scan_detail sparkline SVG 150x40, 2 endpointy API (timeline + security-scores)
 
 ### Must-have przed pierwszym pilotem
 - Claude Code Security scan własnego kodu ⚠️
@@ -438,6 +461,12 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 
 Ostatnie commity na master (stan 24.02.2026 → najnowsze na górze):
 ```
+560b19c feat: Security Score Timeline UI
+8b9dc60 feat: Security Score Timeline API
+d9ca69c feat: Auto-retest - CYRBER LOOP krok 2
+649ed45 feat: Intelligence Sync - KEV/NVD/EPSS enrichment
+4ed42fe feat: Remediation Tracker - CYRBER LOOP krok 1
+ed4662b docs: transfer prompt - CYRBER LOOP koncept + priorytety
 84d70ef docs: transfer prompt - sesja 24.02.2026 final
 3fbca85 fix: bugfixy scan detail i agent
 0ba9aac docs: transfer prompt - scan detail page + index.html rewrite
