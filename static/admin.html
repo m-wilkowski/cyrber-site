@@ -587,6 +587,7 @@ tbody tr:last-child td { border-bottom: none; }
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('users')">USERS</button>
     <button class="tab-btn" onclick="switchTab('license')">LICENSE</button>
+    <button class="tab-btn" onclick="switchTab('intel')">INTEL SYNC</button>
   </div>
 
   <!-- ═══ USERS TAB ═══ -->
@@ -701,6 +702,56 @@ tbody tr:last-child td { border-bottom: none; }
     </div>
 
     <button class="btn" onclick="openModal('activateModal')">ACTIVATE LICENSE</button>
+
+  </div>
+
+  <!-- ═══ INTEL SYNC TAB ═══ -->
+  <div class="tab-panel" id="tabIntel">
+
+    <div class="stats-row" id="intelStatsRow">
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:8px">KEV CATALOG</div>
+          <div class="stat-num stat-accent" id="intelKevCount">—</div>
+          <div class="stat-label" style="margin-top:4px" id="intelKevLast">LAST SYNC: —</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:8px">EPSS SCORES</div>
+          <div class="stat-num" id="intelEpssCount" style="color:var(--green)">—</div>
+          <div class="stat-label" style="margin-top:4px" id="intelEpssLast">LAST SYNC: —</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:8px">NVD CVE CACHE</div>
+          <div class="stat-num" id="intelCveCount" style="color:var(--purple)">—</div>
+          <div class="stat-label" style="margin-top:4px" id="intelNvdLast">LAST SYNC: —</div>
+        </div>
+      </div>
+      <div class="stat-card" style="display:flex;align-items:center;justify-content:center">
+        <button class="btn" id="intelSyncBtn" onclick="triggerIntelSync()" style="font-size:14px;padding:14px 28px">SYNC NOW</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>SOURCE</th>
+            <th>STATUS</th>
+            <th>RECORDS</th>
+            <th>DURATION</th>
+            <th>ERROR</th>
+            <th>SYNCED AT</th>
+          </tr>
+        </thead>
+        <tbody id="intelLogsBody">
+          <tr><td colspan="6" class="empty-state">LOADING...</td></tr>
+        </tbody>
+      </table>
+    </div>
 
   </div>
 
@@ -890,6 +941,7 @@ function switchTab(name) {
   // Toggle header actions
   document.getElementById('headerActions').style.display = name === 'users' ? '' : 'none';
   if (name === 'license') loadLicense();
+  if (name === 'intel') loadIntelStatus();
 }
 
 /* ── USERS ── */
@@ -1162,6 +1214,87 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
 });
+
+/* ── INTEL SYNC ── */
+
+let _intelRefreshTimer = null;
+
+async function loadIntelStatus() {
+  try {
+    const r = await authFetch('/admin/intel-sync/status');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+
+    // Counts
+    document.getElementById('intelKevCount').textContent = data.counts.kev || 0;
+    document.getElementById('intelEpssCount').textContent = data.counts.epss || 0;
+    document.getElementById('intelCveCount').textContent = data.counts.cve || 0;
+
+    // Last sync per source
+    document.getElementById('intelKevLast').textContent = 'LAST SYNC: ' + (data.last_sync.KEV ? fmtDate(data.last_sync.KEV) : '—');
+    document.getElementById('intelEpssLast').textContent = 'LAST SYNC: ' + (data.last_sync.EPSS ? fmtDate(data.last_sync.EPSS) : '—');
+    document.getElementById('intelNvdLast').textContent = 'LAST SYNC: ' + (data.last_sync.NVD ? fmtDate(data.last_sync.NVD) : '—');
+
+    // Logs table
+    const tbody = document.getElementById('intelLogsBody');
+    if (!data.logs.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">NO SYNC HISTORY</td></tr>';
+    } else {
+      tbody.innerHTML = data.logs.map(l => {
+        const statusColor = l.status === 'success' ? 'var(--green)' : 'var(--red)';
+        const statusBadge = '<span class="badge" style="background:' +
+          (l.status === 'success' ? 'rgba(61,220,132,.12);color:var(--green);border:1px solid rgba(61,220,132,.3)' : 'rgba(255,68,68,.12);color:var(--red);border:1px solid rgba(255,68,68,.3)') +
+          '">' + (l.status || '').toUpperCase() + '</span>';
+        return '<tr>' +
+          '<td style="font-weight:600">' + escHtml(l.source) + '</td>' +
+          '<td>' + statusBadge + '</td>' +
+          '<td>' + (l.records_updated != null ? l.records_updated : '—') + '</td>' +
+          '<td>' + (l.duration_seconds != null ? l.duration_seconds + 's' : '—') + '</td>' +
+          '<td style="color:var(--red);font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(l.error_message || '') + '">' + escHtml(l.error_message || '—') + '</td>' +
+          '<td style="color:var(--silver);font-size:12px">' + fmtDate(l.synced_at) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    // Check if sync is running (last entry within 30s and status is not yet set)
+    // Auto-refresh every 10s when panel is active
+    stopIntelRefresh();
+    const tabIntel = document.getElementById('tabIntel');
+    if (tabIntel && tabIntel.classList.contains('active')) {
+      _intelRefreshTimer = setTimeout(loadIntelStatus, 10000);
+    }
+  } catch (e) {
+    document.getElementById('intelLogsBody').innerHTML =
+      '<tr><td colspan="6" class="empty-state">FAILED TO LOAD: ' + escHtml(e.message) + '</td></tr>';
+  }
+}
+
+function stopIntelRefresh() {
+  if (_intelRefreshTimer) {
+    clearTimeout(_intelRefreshTimer);
+    _intelRefreshTimer = null;
+  }
+}
+
+async function triggerIntelSync() {
+  const btn = document.getElementById('intelSyncBtn');
+  btn.disabled = true;
+  btn.textContent = 'SYNCING...';
+  try {
+    const r = await authFetch('/admin/intel-sync/run', { method: 'POST' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    toast('Synchronizacja uruchomiona (task: ' + (data.task_id || '').substring(0, 8) + '...)');
+    btn.textContent = 'SYNC STARTED';
+    // Start auto-refresh
+    setTimeout(loadIntelStatus, 3000);
+    setTimeout(() => { btn.disabled = false; btn.textContent = 'SYNC NOW'; }, 5000);
+  } catch (e) {
+    toast('Sync failed: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'SYNC NOW';
+  }
+}
 
 authFetch('/auth/me').then(r => r.json()).then(me => {
   if (me.role !== 'admin') {

@@ -1,5 +1,6 @@
 import os
 from celery import Celery
+from celery.schedules import crontab
 from modules.nmap_scan import scan as nmap_scan
 from modules.nuclei_scan import scan as nuclei_scan
 from modules.whatweb_scan import scan as whatweb_scan
@@ -57,7 +58,7 @@ from modules.searchsploit_scan import searchsploit_scan
 from modules.impacket_scan import impacket_scan
 from modules.certipy_scan import run_certipy
 from modules.osint_scan import osint_scan
-from modules.database import save_scan, get_due_schedules, update_schedule_run
+from modules.database import save_scan, get_due_schedules, update_schedule_run, get_all_cve_ids_from_findings
 from modules.notify import send_scan_notification
 from modules.scan_profiles import should_run_module, get_all_modules
 from modules.ai_analysis import analyze_scan_results as ai_analyze, reflect_on_scan
@@ -93,6 +94,10 @@ celery_app.conf.beat_schedule = {
     "check-schedules-every-minute": {
         "task": "modules.tasks.run_due_schedules",
         "schedule": 60.0,
+    },
+    "intel-sync-daily": {
+        "task": "modules.tasks.run_intel_sync",
+        "schedule": crontab(hour=3, minute=0),
     },
 }
 
@@ -477,3 +482,20 @@ def run_due_schedules():
         full_scan_task.delay(schedule.target)
         update_schedule_run(schedule.id)
     return {"triggered": len(schedules)}
+
+@celery_app.task
+def run_intel_sync():
+    """Sync KEV + EPSS intelligence feeds. Runs daily at 03:00 via Beat."""
+    from modules.intelligence_sync import sync_kev, sync_epss
+    results = {}
+    try:
+        results["kev"] = sync_kev()
+    except Exception as e:
+        results["kev_error"] = str(e)
+    try:
+        cve_ids = get_all_cve_ids_from_findings()
+        results["epss"] = sync_epss(cve_ids)
+        results["cve_ids_found"] = len(cve_ids)
+    except Exception as e:
+        results["epss_error"] = str(e)
+    return results

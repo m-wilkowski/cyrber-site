@@ -118,6 +118,9 @@ from modules.database import (
     delete_remediation_task, bulk_create_remediation_tasks,
     get_remediation_stats,
 )
+from modules.database import (
+    get_intel_sync_logs, get_intel_cache_counts,
+)
 from modules.license import (
     get_license_info, check_profile, check_scan_limit, check_user_limit,
     check_feature, activate_license,
@@ -1910,3 +1913,32 @@ async def bulk_create_remediation(task_id: str, body: RemediationBulk, request: 
     audit(request, current_user, "remediation_bulk_create", f"scan={task_id} count={len(created)}")
     stats = get_remediation_stats(task_id)
     return {"created": len(created), "tasks": created, "stats": stats}
+
+# ── Intelligence Sync ────────────────────────────────────
+
+@app.get("/admin/intel-sync/status")
+async def intel_sync_status(current_user: dict = Depends(require_role("admin"))):
+    logs = get_intel_sync_logs(limit=10)
+    counts = get_intel_cache_counts()
+    # Find last sync per source
+    last_sync = {}
+    for entry in logs:
+        src = entry["source"]
+        if src not in last_sync:
+            last_sync[src] = entry["synced_at"]
+    return {"logs": logs, "counts": counts, "last_sync": last_sync}
+
+@app.post("/admin/intel-sync/run")
+async def intel_sync_run(request: Request,
+                         current_user: dict = Depends(require_role("admin"))):
+    from modules.tasks import run_intel_sync
+    result = run_intel_sync.delay()
+    audit(request, current_user, "intel_sync_trigger", f"celery_task={result.id}")
+    return {"ok": True, "task_id": result.id}
+
+@app.get("/api/finding/enrich")
+async def finding_enrich(cve_id: str = Query(..., pattern=r"^CVE-\d{4}-\d{4,7}$"),
+                         current_user: dict = Depends(require_role("admin", "operator"))):
+    from modules.intelligence_sync import enrich_finding
+    result = enrich_finding(cve_id)
+    return result

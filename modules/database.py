@@ -1,4 +1,5 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, text, inspect as sa_inspect
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, Float, text, inspect as sa_inspect
+from sqlalchemy.types import JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -84,6 +85,47 @@ class Schedule(Base):
     last_run = Column(DateTime)
     next_run = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class CveCache(Base):
+    __tablename__ = "cve_cache"
+    cve_id        = Column(String, primary_key=True)  # CVE-2024-12345
+    cvss_score    = Column(Float)
+    cvss_vector   = Column(String)
+    description   = Column(Text)
+    published     = Column(String)
+    last_modified = Column(String)
+    cwe_id        = Column(String)
+    references    = Column(JSON)
+    updated_at    = Column(DateTime, default=datetime.utcnow)
+
+class KevCache(Base):
+    __tablename__ = "kev_cache"
+    cve_id             = Column(String, primary_key=True)
+    vendor_project     = Column(String)
+    product            = Column(String)
+    vulnerability_name = Column(String)
+    date_added         = Column(String)
+    short_description  = Column(Text)
+    required_action    = Column(Text)
+    due_date           = Column(String)
+    updated_at         = Column(DateTime, default=datetime.utcnow)
+
+class EpssCache(Base):
+    __tablename__ = "epss_cache"
+    cve_id     = Column(String, primary_key=True)
+    epss_score = Column(Float)    # 0.0 - 1.0
+    percentile = Column(Float)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+class IntelSyncLog(Base):
+    __tablename__ = "intel_sync_log"
+    id               = Column(Integer, primary_key=True)
+    source           = Column(String)   # KEV/NVD/EPSS
+    status           = Column(String)   # success/error
+    records_updated  = Column(Integer)
+    duration_seconds = Column(Float)
+    error_message    = Column(Text, nullable=True)
+    synced_at        = Column(DateTime, default=datetime.utcnow)
 
 def init_db(retries=10, delay=3):
     for i in range(retries):
@@ -600,5 +642,163 @@ def get_remediation_stats(scan_id: str) -> dict:
             if s in stats:
                 stats[s] += 1
         return stats
+    finally:
+        db.close()
+
+# ── Intel Sync CRUD ─────────────────────────────────────
+
+def upsert_kev_entries(entries: list[dict]) -> int:
+    db = SessionLocal()
+    try:
+        count = 0
+        for e in entries:
+            cve_id = e.get("cveID")
+            if not cve_id:
+                continue
+            row = db.query(KevCache).filter(KevCache.cve_id == cve_id).first()
+            if row:
+                row.vendor_project = e.get("vendorProject")
+                row.product = e.get("product")
+                row.vulnerability_name = e.get("vulnerabilityName")
+                row.date_added = e.get("dateAdded")
+                row.short_description = e.get("shortDescription")
+                row.required_action = e.get("requiredAction")
+                row.due_date = e.get("dueDate")
+                row.updated_at = datetime.utcnow()
+            else:
+                row = KevCache(
+                    cve_id=cve_id, vendor_project=e.get("vendorProject"),
+                    product=e.get("product"), vulnerability_name=e.get("vulnerabilityName"),
+                    date_added=e.get("dateAdded"), short_description=e.get("shortDescription"),
+                    required_action=e.get("requiredAction"), due_date=e.get("dueDate"),
+                )
+                db.add(row)
+            count += 1
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+def upsert_epss_entries(entries: list[dict]) -> int:
+    db = SessionLocal()
+    try:
+        count = 0
+        for e in entries:
+            cve_id = e.get("cve")
+            if not cve_id:
+                continue
+            score = float(e.get("epss", 0))
+            pctl = float(e.get("percentile", 0))
+            row = db.query(EpssCache).filter(EpssCache.cve_id == cve_id).first()
+            if row:
+                row.epss_score = score
+                row.percentile = pctl
+                row.updated_at = datetime.utcnow()
+            else:
+                row = EpssCache(cve_id=cve_id, epss_score=score, percentile=pctl)
+                db.add(row)
+            count += 1
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+def upsert_cve_entry(cve_id: str, data: dict) -> bool:
+    db = SessionLocal()
+    try:
+        row = db.query(CveCache).filter(CveCache.cve_id == cve_id).first()
+        if row:
+            for k, v in data.items():
+                if hasattr(row, k):
+                    setattr(row, k, v)
+            row.updated_at = datetime.utcnow()
+        else:
+            row = CveCache(cve_id=cve_id, **data)
+            db.add(row)
+        db.commit()
+        return True
+    finally:
+        db.close()
+
+def get_intel_enrichment(cve_id: str) -> dict:
+    db = SessionLocal()
+    try:
+        result = {"cve_id": cve_id}
+        cve = db.query(CveCache).filter(CveCache.cve_id == cve_id).first()
+        if cve:
+            result["cvss_score"] = cve.cvss_score
+            result["cvss_vector"] = cve.cvss_vector
+            result["description"] = cve.description
+            result["cwe_id"] = cve.cwe_id
+            result["references"] = cve.references
+            result["published"] = cve.published
+        kev = db.query(KevCache).filter(KevCache.cve_id == cve_id).first()
+        result["in_kev"] = kev is not None
+        if kev:
+            result["kev_vendor"] = kev.vendor_project
+            result["kev_product"] = kev.product
+            result["kev_action"] = kev.required_action
+            result["kev_due_date"] = kev.due_date
+        epss = db.query(EpssCache).filter(EpssCache.cve_id == cve_id).first()
+        if epss:
+            result["epss_score"] = epss.epss_score
+            result["epss_percentile"] = epss.percentile
+        return result
+    finally:
+        db.close()
+
+def save_intel_sync_log(source: str, status: str, records_updated: int,
+                        duration_seconds: float, error_message: str = None):
+    db = SessionLocal()
+    try:
+        log = IntelSyncLog(
+            source=source, status=status, records_updated=records_updated,
+            duration_seconds=duration_seconds, error_message=error_message,
+        )
+        db.add(log)
+        db.commit()
+    finally:
+        db.close()
+
+def get_intel_sync_logs(limit: int = 10) -> list[dict]:
+    db = SessionLocal()
+    try:
+        logs = db.query(IntelSyncLog).order_by(IntelSyncLog.synced_at.desc()).limit(limit).all()
+        return [
+            {
+                "id": l.id, "source": l.source, "status": l.status,
+                "records_updated": l.records_updated,
+                "duration_seconds": round(l.duration_seconds, 2) if l.duration_seconds else None,
+                "error_message": l.error_message,
+                "synced_at": l.synced_at.isoformat() if l.synced_at else None,
+            }
+            for l in logs
+        ]
+    finally:
+        db.close()
+
+def get_intel_cache_counts() -> dict:
+    db = SessionLocal()
+    try:
+        return {
+            "kev": db.query(KevCache).count(),
+            "cve": db.query(CveCache).count(),
+            "epss": db.query(EpssCache).count(),
+        }
+    finally:
+        db.close()
+
+def get_all_cve_ids_from_findings() -> list[str]:
+    """Extract unique CVE IDs from all scan raw_data."""
+    import re
+    db = SessionLocal()
+    try:
+        scans = db.query(Scan.raw_data).filter(Scan.raw_data.isnot(None)).all()
+        cve_ids = set()
+        cve_pattern = re.compile(r"CVE-\d{4}-\d{4,7}")
+        for (raw_data,) in scans:
+            if raw_data:
+                cve_ids.update(cve_pattern.findall(raw_data))
+        return sorted(cve_ids)
     finally:
         db.close()
