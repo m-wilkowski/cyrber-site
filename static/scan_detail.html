@@ -161,6 +161,43 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 .compliance-badge{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.1em;padding:6px 14px;border:1px solid var(--green);color:var(--green);display:flex;gap:8px;align-items:center}
 .compliance-badge.warn{border-color:var(--orange);color:var(--orange)}.compliance-badge.fail{border-color:var(--red);color:var(--red)}
 
+/* ── REMEDIATION ── */
+.rem-header{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.rem-stat{background:rgba(74,143,212,.04);border:1px solid var(--border2);padding:10px 18px;text-align:center;min-width:90px}
+.rem-stat-val{font-family:'Orbitron',sans-serif;font-size:18px;font-weight:700;color:var(--accent)}
+.rem-stat-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.15em;color:var(--silver);margin-top:2px}
+.rem-actions{display:flex;gap:8px;margin-left:auto;align-items:center}
+.rem-btn{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.1em;padding:8px 16px;cursor:pointer;border:1px solid var(--accent);color:var(--accent);background:none;transition:all .2s}
+.rem-btn:hover{background:var(--accent);color:var(--navy)}
+.rem-btn.primary{background:var(--accent);color:var(--navy)}
+.rem-btn.primary:hover{background:var(--accent2)}
+.rem-btn:disabled{opacity:.4;cursor:not-allowed}
+.rem-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.rem-card{background:rgba(74,143,212,.03);border:1px solid var(--border2);border-left:3px solid var(--silver);padding:14px 18px;margin-bottom:8px;transition:all .15s}
+.rem-card[data-status="open"]{border-left-color:var(--red)}
+.rem-card[data-status="in_progress"]{border-left-color:var(--orange)}
+.rem-card[data-status="fixed"]{border-left-color:var(--green)}
+.rem-card[data-status="verified"]{border-left-color:var(--accent)}
+.rem-card[data-status="wontfix"]{border-left-color:var(--silver)}
+.rem-card.hidden{display:none}
+.rem-card-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.rem-card-name{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;color:var(--white)}
+.rem-card-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.rem-card-row label{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.1em;color:var(--silver)}
+.rem-card-row select,.rem-card-row input{font-family:'Share Tech Mono',monospace;font-size:11px;background:var(--navy);color:var(--white);border:1px solid var(--border);padding:4px 8px;outline:none}
+.rem-card-row select:focus,.rem-card-row input:focus{border-color:var(--accent)}
+.rem-notes-toggle{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--accent);cursor:pointer;background:none;border:none;letter-spacing:.1em;margin-top:6px}
+.rem-notes-toggle:hover{text-decoration:underline}
+.rem-notes-area{display:none;margin-top:6px}
+.rem-notes-area.open{display:block}
+.rem-notes-area textarea{width:100%;font-family:'Share Tech Mono',monospace;font-size:11px;background:var(--navy);color:var(--white);border:1px solid var(--border);padding:8px;resize:vertical;min-height:50px;outline:none}
+.rem-notes-area textarea:focus{border-color:var(--accent)}
+.rem-card-actions{display:flex;gap:6px;margin-top:8px}
+.rem-save{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.1em;padding:4px 12px;cursor:pointer;border:1px solid var(--green);color:var(--green);background:none;transition:all .2s}
+.rem-save:hover{background:var(--green);color:var(--navy)}
+.rem-del{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.1em;padding:4px 12px;cursor:pointer;border:1px solid var(--red);color:var(--red);background:none;transition:all .2s}
+.rem-del:hover{background:var(--red);color:var(--navy)}
+
 /* ── BUSINESS IMPACT ── */
 .impact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:12px}
 .impact-card{background:rgba(74,143,212,.04);border:1px solid var(--border2);padding:20px;text-align:center}
@@ -259,6 +296,7 @@ footer{text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid v
     <button class="tab" data-tab="modules" onclick="switchTab('modules')">MODU\u0141Y</button>
     <button class="tab" data-tab="ai" onclick="switchTab('ai')">AI ANALYSIS</button>
     <button class="tab" data-tab="report" onclick="switchTab('report')">RAPORT</button>
+    <button class="tab" data-tab="remediation" onclick="switchTab('remediation')">REMEDIATION</button>
   </div>
 
   <div id="tab-overview" class="tab-panel active"></div>
@@ -266,6 +304,7 @@ footer{text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid v
   <div id="tab-modules" class="tab-panel"></div>
   <div id="tab-ai" class="tab-panel"></div>
   <div id="tab-report" class="tab-panel"></div>
+  <div id="tab-remediation" class="tab-panel"></div>
 
   <footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.1.0</footer>
 </div>
@@ -413,6 +452,7 @@ function switchTab(name){
   if(name==='modules'&&!document.getElementById('tab-modules').innerHTML)renderModules();
   if(name==='ai'&&!document.getElementById('tab-ai').innerHTML)loadAiTab();
   if(name==='report'&&!document.getElementById('tab-report').innerHTML)renderReport();
+  if(name==='remediation'&&!document.getElementById('tab-remediation').dataset.loaded)loadRemediation();
 }
 
 /* ═══════════════════════════════════
@@ -908,6 +948,248 @@ function sendAiMessage(){
 }
 
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&_aiPanelOpen)toggleAiPanel()});
+
+/* ═══════════════════════════════════
+   TAB 6: REMEDIATION TRACKER
+   ═══════════════════════════════════ */
+var _remTasks=[];
+var _remStats={total:0,open:0,in_progress:0,fixed:0,verified:0,wontfix:0};
+var _remSevFilter='';
+var _remStatusFilter='';
+var _userRole='viewer';
+
+// Detect user role for RBAC
+(function(){
+  var t=getToken();if(!t)return;
+  fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}})
+    .then(function(r){return r.json()})
+    .then(function(u){_userRole=u.role||'viewer'})
+    .catch(function(){});
+})();
+
+function loadRemediation(){
+  var el=document.getElementById('tab-remediation');
+  el.dataset.loaded='1';
+  el.innerHTML='<div class="loading pulse">LOADING REMEDIATION...</div>';
+  authFetch(API+'/api/scan/'+_taskId+'/remediation')
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+    .then(function(data){
+      _remTasks=data.tasks||[];
+      _remStats=data.stats||{total:0,open:0,in_progress:0,fixed:0,verified:0,wontfix:0};
+      renderRemediation();
+    })
+    .catch(function(e){el.innerHTML='<div class="empty">Error loading remediation: '+escH(e.message)+'</div>'});
+}
+
+function renderRemediation(){
+  var el=document.getElementById('tab-remediation');
+  var canEdit=(_userRole==='admin'||_userRole==='operator');
+  var canDelete=(_userRole==='admin');
+  var h='';
+
+  // Stats header
+  h+='<div class="rem-header">';
+  h+='<div class="rem-stat"><div class="rem-stat-val" id="remStatTotal">'+_remStats.total+'</div><div class="rem-stat-lbl">TOTAL</div></div>';
+  h+='<div class="rem-stat"><div class="rem-stat-val" style="color:var(--red)" id="remStatOpen">'+_remStats.open+'</div><div class="rem-stat-lbl">OPEN</div></div>';
+  h+='<div class="rem-stat"><div class="rem-stat-val" style="color:var(--orange)" id="remStatProgress">'+_remStats.in_progress+'</div><div class="rem-stat-lbl">IN PROGRESS</div></div>';
+  h+='<div class="rem-stat"><div class="rem-stat-val" style="color:var(--green)" id="remStatFixed">'+_remStats.fixed+'</div><div class="rem-stat-lbl">FIXED</div></div>';
+  h+='<div class="rem-stat"><div class="rem-stat-val" style="color:var(--accent)" id="remStatVerified">'+_remStats.verified+'</div><div class="rem-stat-lbl">VERIFIED</div></div>';
+  if(canEdit){
+    h+='<div class="rem-actions">';
+    h+='<button class="rem-btn primary" onclick="remTrackAll()" id="remTrackAllBtn"'+((_findings.length===0)?' disabled':'')+'>TRACK ALL FINDINGS</button>';
+    h+='</div>';
+  }
+  h+='</div>';
+
+  // Filters
+  h+='<div class="rem-filters">';
+  h+='<button class="fd-toggle active" data-rsev="" onclick="filterRemSev(\'\',this)">ALL</button>';
+  h+='<button class="fd-toggle" data-rsev="critical" onclick="filterRemSev(\'critical\',this)">CRITICAL</button>';
+  h+='<button class="fd-toggle" data-rsev="high" onclick="filterRemSev(\'high\',this)">HIGH</button>';
+  h+='<button class="fd-toggle" data-rsev="medium" onclick="filterRemSev(\'medium\',this)">MEDIUM</button>';
+  h+='<button class="fd-toggle" data-rsev="low" onclick="filterRemSev(\'low\',this)">LOW</button>';
+  h+='<select class="filter-select" onchange="filterRemStatus(this.value)">';
+  h+='<option value="">ALL STATUS</option>';
+  h+='<option value="open">OPEN</option>';
+  h+='<option value="in_progress">IN PROGRESS</option>';
+  h+='<option value="fixed">FIXED</option>';
+  h+='<option value="verified">VERIFIED</option>';
+  h+='<option value="wontfix">WONTFIX</option>';
+  h+='</select>';
+  h+='<span style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--silver)" id="remCount">'+_remTasks.length+' tasks</span>';
+  h+='</div>';
+
+  // Task cards
+  h+='<div id="remList">';
+  if(!_remTasks.length){
+    h+='<div class="empty">No remediation tasks yet.'+(canEdit?' Click TRACK ALL FINDINGS to create tasks from scan findings.':'')+'</div>';
+  } else {
+    _remTasks.forEach(function(t){h+=renderRemCard(t,canEdit,canDelete)});
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+function renderRemCard(t,canEdit,canDelete){
+  var sev=(t.finding_severity||'info').toLowerCase();
+  var h='';
+  h+='<div class="rem-card" data-status="'+escH(t.status)+'" data-sev="'+sev+'" id="rem-'+t.id+'">';
+  h+='<div class="rem-card-top">';
+  h+='<div style="display:flex;align-items:center;gap:8px">';
+  h+='<span class="fd-sev '+sev+'">'+sev.toUpperCase()+'</span>';
+  h+='<span class="rem-card-name">'+escH(t.finding_name)+'</span>';
+  if(t.finding_module)h+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver)">'+t.finding_module.toUpperCase()+'</span>';
+  h+='</div>';
+  h+='</div>';
+
+  h+='<div class="rem-card-row">';
+  h+='<label>STATUS</label>';
+  if(canEdit){
+    h+='<select id="remSt-'+t.id+'">';
+    ['open','in_progress','fixed','verified','wontfix'].forEach(function(s){
+      h+='<option value="'+s+'"'+(t.status===s?' selected':'')+'>'+s.toUpperCase().replace('_',' ')+'</option>';
+    });
+    h+='</select>';
+  } else {
+    h+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;color:var(--white)">'+escH((t.status||'open').toUpperCase())+'</span>';
+  }
+  h+='<label>OWNER</label>';
+  if(canEdit){
+    h+='<input type="text" id="remOwn-'+t.id+'" value="'+escH(t.owner||'')+'" placeholder="assign..." style="width:120px">';
+  } else {
+    h+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;color:var(--white)">'+escH(t.owner||'\u2014')+'</span>';
+  }
+  h+='<label>DEADLINE</label>';
+  if(canEdit){
+    h+='<input type="date" id="remDl-'+t.id+'" value="'+(t.deadline?t.deadline.substring(0,10):'')+'">';
+  } else {
+    h+='<span style="font-family:Share Tech Mono,monospace;font-size:11px;color:var(--white)">'+(t.deadline?t.deadline.substring(0,10):'\u2014')+'</span>';
+  }
+  h+='</div>';
+
+  // Notes toggle
+  h+='<button class="rem-notes-toggle" onclick="toggleRemNotes('+t.id+')">NOTES '+(t.notes?'('+t.notes.length+' chars)':'')+'</button>';
+  h+='<div class="rem-notes-area" id="remNotes-'+t.id+'">';
+  if(canEdit){
+    h+='<textarea id="remNotesTxt-'+t.id+'" placeholder="Add notes...">'+escH(t.notes||'')+'</textarea>';
+  } else {
+    h+='<div style="font-size:11px;color:var(--silver);white-space:pre-wrap">'+escH(t.notes||'No notes')+'</div>';
+  }
+  h+='</div>';
+
+  // Actions
+  if(canEdit){
+    h+='<div class="rem-card-actions">';
+    h+='<button class="rem-save" id="remSaveBtn-'+t.id+'" onclick="remSave('+t.id+')">SAVE</button>';
+    if(canDelete)h+='<button class="rem-del" onclick="remDelete('+t.id+')">DELETE</button>';
+    h+='</div>';
+  }
+  if(t.verified_at)h+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--accent);margin-top:6px">VERIFIED: '+formatDate(t.verified_at)+'</div>';
+  h+='</div>';
+  return h;
+}
+
+function toggleRemNotes(id){
+  var area=document.getElementById('remNotes-'+id);
+  if(area)area.classList.toggle('open');
+}
+
+function remSave(id){
+  var st=document.getElementById('remSt-'+id);
+  var own=document.getElementById('remOwn-'+id);
+  var dl=document.getElementById('remDl-'+id);
+  var notes=document.getElementById('remNotesTxt-'+id);
+  var btn=document.getElementById('remSaveBtn-'+id);
+
+  var payload={};
+  if(st)payload.status=st.value;
+  if(own)payload.owner=own.value;
+  if(dl)payload.deadline=dl.value||null;
+  if(notes)payload.notes=notes.value;
+
+  btn.disabled=true;btn.textContent='SAVING...';
+  authFetch(API+'/api/remediation/'+id,{
+    method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  })
+  .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .then(function(data){
+    btn.textContent='SAVED';btn.style.color='var(--navy)';btn.style.background='var(--green)';
+    // Update card border color
+    var card=document.getElementById('rem-'+id);
+    if(card)card.dataset.status=data.status;
+    // Update local data
+    for(var i=0;i<_remTasks.length;i++){if(_remTasks[i].id===id){_remTasks[i]=data;break}}
+    setTimeout(function(){btn.textContent='SAVE';btn.style.color='';btn.style.background='';btn.disabled=false},1500);
+    refreshRemStats();
+  })
+  .catch(function(e){btn.textContent='ERROR';btn.style.color='var(--red)';btn.disabled=false});
+}
+
+function remDelete(id){
+  if(!confirm('Delete this remediation task?'))return;
+  authFetch(API+'/api/remediation/'+id,{method:'DELETE'})
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+    .then(function(){
+      var card=document.getElementById('rem-'+id);
+      if(card)card.remove();
+      _remTasks=_remTasks.filter(function(t){return t.id!==id});
+      refreshRemStats();
+      var cnt=document.getElementById('remCount');
+      if(cnt)cnt.textContent=_remTasks.length+' tasks';
+    })
+    .catch(function(e){alert('Delete failed: '+e.message)});
+}
+
+function remTrackAll(){
+  if(!_findings.length){alert('No findings to track');return}
+  var btn=document.getElementById('remTrackAllBtn');
+  btn.disabled=true;btn.textContent='CREATING...';
+  var payload=_findings.map(function(f){return{name:f.name,severity:f.severity||'info',module:f._module||null}});
+  authFetch(API+'/api/scan/'+_taskId+'/remediation/bulk',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({findings:payload})
+  })
+  .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .then(function(data){
+    btn.textContent='CREATED '+data.created;
+    _remStats=data.stats||_remStats;
+    // Reload full list
+    setTimeout(function(){
+      document.getElementById('tab-remediation').dataset.loaded='';
+      loadRemediation();
+    },800);
+  })
+  .catch(function(e){btn.textContent='ERROR';btn.disabled=false;alert('Bulk create failed: '+e.message)});
+}
+
+function filterRemSev(sev,btn){
+  _remSevFilter=sev;
+  document.querySelectorAll('.rem-filters .fd-toggle').forEach(function(t){t.classList.toggle('active',t.dataset.rsev===sev)});
+  applyRemFilters();
+}
+function filterRemStatus(status){
+  _remStatusFilter=status;
+  applyRemFilters();
+}
+function applyRemFilters(){
+  var visible=0;
+  document.querySelectorAll('.rem-card').forEach(function(c){
+    var sevOk=!_remSevFilter||c.dataset.sev===_remSevFilter;
+    var stOk=!_remStatusFilter||c.dataset.status===_remStatusFilter;
+    if(sevOk&&stOk){c.classList.remove('hidden');visible++}else{c.classList.add('hidden')}
+  });
+  var cnt=document.getElementById('remCount');
+  if(cnt)cnt.textContent=visible+' / '+_remTasks.length+' tasks';
+}
+
+function refreshRemStats(){
+  var stats={total:0,open:0,in_progress:0,fixed:0,verified:0,wontfix:0};
+  _remTasks.forEach(function(t){stats.total++;var s=t.status||'open';if(stats[s]!==undefined)stats[s]++});
+  _remStats=stats;
+  var m={remStatTotal:'total',remStatOpen:'open',remStatProgress:'in_progress',remStatFixed:'fixed',remStatVerified:'verified'};
+  for(var id in m){var e=document.getElementById(id);if(e)e.textContent=stats[m[id]]}
+}
 </script>
 <script>
 (function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}}).catch(function(){});})();

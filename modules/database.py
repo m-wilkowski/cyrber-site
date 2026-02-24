@@ -60,6 +60,21 @@ class LicenseUsage(Base):
     scans_count = Column(Integer, default=0)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+class RemediationTask(Base):
+    __tablename__ = "remediation_tasks"
+    id              = Column(Integer, primary_key=True, index=True)
+    scan_id         = Column(String, nullable=False, index=True)       # task_id z Scan
+    finding_name    = Column(String, nullable=False)
+    finding_severity = Column(String, nullable=False)
+    finding_module  = Column(String, nullable=True)
+    owner           = Column(String, nullable=True)
+    deadline        = Column(DateTime, nullable=True)
+    status          = Column(String, default="open")  # open/in_progress/fixed/verified/wontfix
+    notes           = Column(Text, nullable=True)
+    created_at      = Column(DateTime, default=datetime.utcnow)
+    updated_at      = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    verified_at     = Column(DateTime, nullable=True)
+
 class Schedule(Base):
     __tablename__ = "schedules"
     id = Column(Integer, primary_key=True, index=True)
@@ -449,5 +464,141 @@ def increment_scan_count() -> int:
             db.add(row)
         db.commit()
         return row.scans_count
+    finally:
+        db.close()
+
+# ── Remediation CRUD ────────────────────────────────────
+
+def _remediation_to_dict(t: "RemediationTask") -> dict:
+    return {
+        "id": t.id,
+        "scan_id": t.scan_id,
+        "finding_name": t.finding_name,
+        "finding_severity": t.finding_severity,
+        "finding_module": t.finding_module,
+        "owner": t.owner,
+        "deadline": t.deadline.isoformat() if t.deadline else None,
+        "status": t.status,
+        "notes": t.notes,
+        "created_at": t.created_at.isoformat() if t.created_at else None,
+        "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+        "verified_at": t.verified_at.isoformat() if t.verified_at else None,
+    }
+
+def get_remediation_tasks(scan_id: str) -> list[dict]:
+    db = SessionLocal()
+    try:
+        tasks = db.query(RemediationTask).filter(
+            RemediationTask.scan_id == scan_id
+        ).order_by(RemediationTask.created_at.desc()).all()
+        return [_remediation_to_dict(t) for t in tasks]
+    finally:
+        db.close()
+
+def create_remediation_task(scan_id: str, finding_name: str, finding_severity: str,
+                            finding_module: str = None, owner: str = None,
+                            deadline: datetime = None, notes: str = None) -> dict:
+    db = SessionLocal()
+    try:
+        t = RemediationTask(
+            scan_id=scan_id, finding_name=finding_name,
+            finding_severity=finding_severity, finding_module=finding_module,
+            owner=owner, deadline=deadline, notes=notes,
+        )
+        db.add(t)
+        db.commit()
+        db.refresh(t)
+        return _remediation_to_dict(t)
+    finally:
+        db.close()
+
+def get_remediation_task_by_id(task_id: int) -> dict | None:
+    db = SessionLocal()
+    try:
+        t = db.query(RemediationTask).filter(RemediationTask.id == task_id).first()
+        return _remediation_to_dict(t) if t else None
+    finally:
+        db.close()
+
+def update_remediation_task(task_id: int, **kwargs) -> dict | None:
+    db = SessionLocal()
+    try:
+        t = db.query(RemediationTask).filter(RemediationTask.id == task_id).first()
+        if not t:
+            return None
+        for k, v in kwargs.items():
+            if hasattr(t, k) and v is not None:
+                setattr(t, k, v)
+        # Auto-set verified_at when status changes to verified
+        if kwargs.get("status") == "verified" and not t.verified_at:
+            t.verified_at = datetime.utcnow()
+        elif kwargs.get("status") and kwargs["status"] != "verified":
+            t.verified_at = None
+        t.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(t)
+        return _remediation_to_dict(t)
+    finally:
+        db.close()
+
+def delete_remediation_task(task_id: int) -> bool:
+    db = SessionLocal()
+    try:
+        t = db.query(RemediationTask).filter(RemediationTask.id == task_id).first()
+        if not t:
+            return False
+        db.delete(t)
+        db.commit()
+        return True
+    finally:
+        db.close()
+
+def bulk_create_remediation_tasks(scan_id: str, findings: list[dict]) -> list[dict]:
+    """Create remediation tasks from findings, deduplicating by (name, severity, module)."""
+    db = SessionLocal()
+    try:
+        existing = db.query(RemediationTask).filter(
+            RemediationTask.scan_id == scan_id
+        ).all()
+        existing_keys = {
+            (t.finding_name, t.finding_severity, t.finding_module) for t in existing
+        }
+        created = []
+        for f in findings:
+            name = f.get("name", "")
+            sev = f.get("severity", "info")
+            mod = f.get("module", f.get("_module"))
+            if not name:
+                continue
+            key = (name, sev, mod)
+            if key in existing_keys:
+                continue
+            existing_keys.add(key)
+            t = RemediationTask(
+                scan_id=scan_id, finding_name=name,
+                finding_severity=sev, finding_module=mod,
+            )
+            db.add(t)
+            created.append(t)
+        db.commit()
+        for t in created:
+            db.refresh(t)
+        return [_remediation_to_dict(t) for t in created]
+    finally:
+        db.close()
+
+def get_remediation_stats(scan_id: str) -> dict:
+    db = SessionLocal()
+    try:
+        tasks = db.query(RemediationTask).filter(
+            RemediationTask.scan_id == scan_id
+        ).all()
+        stats = {"total": 0, "open": 0, "in_progress": 0, "fixed": 0, "verified": 0, "wontfix": 0}
+        for t in tasks:
+            stats["total"] += 1
+            s = t.status or "open"
+            if s in stats:
+                stats[s] += 1
+        return stats
     finally:
         db.close()

@@ -112,6 +112,12 @@ from modules.database import (
     create_user, update_user, delete_user, list_users, count_admins,
     count_active_users, get_scans_this_month, increment_scan_count,
 )
+from modules.database import (
+    RemediationTask, get_remediation_tasks, create_remediation_task,
+    get_remediation_task_by_id, update_remediation_task,
+    delete_remediation_task, bulk_create_remediation_tasks,
+    get_remediation_stats,
+)
 from modules.license import (
     get_license_info, check_profile, check_scan_limit, check_user_limit,
     check_feature, activate_license,
@@ -1822,3 +1828,85 @@ async def scan_agent(request: Request, body: ScanAgentRequest, user: dict = Depe
         return {"response": response_text.strip()}
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI agent failed: {str(e)}")
+
+# ── Remediation Tracker ──────────────────────────────────
+
+class RemediationCreate(BaseModel):
+    finding_name: str
+    finding_severity: str
+    finding_module: str | None = None
+    owner: str | None = None
+    deadline: str | None = None
+    notes: str | None = None
+
+class RemediationUpdate(BaseModel):
+    status: str | None = None
+    owner: str | None = None
+    deadline: str | None = None
+    notes: str | None = None
+
+class RemediationBulk(BaseModel):
+    findings: list[dict]
+
+@app.get("/api/scan/{task_id}/remediation")
+async def get_scan_remediation(task_id: str, current_user: dict = Depends(get_current_user)):
+    tasks = get_remediation_tasks(task_id)
+    stats = get_remediation_stats(task_id)
+    return {"tasks": tasks, "stats": stats}
+
+@app.post("/api/scan/{task_id}/remediation")
+async def create_scan_remediation(task_id: str, body: RemediationCreate, request: Request,
+                                  current_user: dict = Depends(require_role("admin", "operator"))):
+    dl = None
+    if body.deadline:
+        try:
+            dl = datetime.fromisoformat(body.deadline)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid deadline format")
+    t = create_remediation_task(
+        scan_id=task_id, finding_name=body.finding_name,
+        finding_severity=body.finding_severity, finding_module=body.finding_module,
+        owner=body.owner, deadline=dl, notes=body.notes,
+    )
+    audit(request, current_user, "remediation_create", f"scan={task_id} finding={body.finding_name}")
+    return t
+
+@app.patch("/api/remediation/{rem_id}")
+async def patch_remediation(rem_id: int, body: RemediationUpdate, request: Request,
+                            current_user: dict = Depends(require_role("admin", "operator"))):
+    kwargs = {}
+    if body.status is not None:
+        if body.status not in ("open", "in_progress", "fixed", "verified", "wontfix"):
+            raise HTTPException(status_code=400, detail="Invalid status")
+        kwargs["status"] = body.status
+    if body.owner is not None:
+        kwargs["owner"] = body.owner
+    if body.deadline is not None:
+        try:
+            kwargs["deadline"] = datetime.fromisoformat(body.deadline) if body.deadline else None
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid deadline format")
+    if body.notes is not None:
+        kwargs["notes"] = body.notes
+    t = update_remediation_task(rem_id, **kwargs)
+    if not t:
+        raise HTTPException(status_code=404, detail="Remediation task not found")
+    audit(request, current_user, "remediation_update", f"id={rem_id} {list(kwargs.keys())}")
+    return t
+
+@app.delete("/api/remediation/{rem_id}")
+async def remove_remediation(rem_id: int, request: Request,
+                             current_user: dict = Depends(require_role("admin"))):
+    ok = delete_remediation_task(rem_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Remediation task not found")
+    audit(request, current_user, "remediation_delete", f"id={rem_id}")
+    return {"ok": True}
+
+@app.post("/api/scan/{task_id}/remediation/bulk")
+async def bulk_create_remediation(task_id: str, body: RemediationBulk, request: Request,
+                                  current_user: dict = Depends(require_role("admin", "operator"))):
+    created = bulk_create_remediation_tasks(task_id, body.findings)
+    audit(request, current_user, "remediation_bulk_create", f"scan={task_id} count={len(created)}")
+    stats = get_remediation_stats(task_id)
+    return {"created": len(created), "tasks": created, "stats": stats}
