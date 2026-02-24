@@ -121,6 +121,10 @@ from modules.database import (
 from modules.database import (
     get_intel_sync_logs, get_intel_cache_counts,
 )
+from modules.database import (
+    get_scans_by_target, get_remediation_counts_for_scan,
+    get_unique_targets_with_stats,
+)
 from modules.license import (
     get_license_info, check_profile, check_scan_limit, check_user_limit,
     check_feature, activate_license,
@@ -1986,3 +1990,129 @@ async def retest_status(rem_id: int,
         "retest_at": task.get("retest_at"),
         "retest_result": task.get("retest_result"),
     }
+
+# ── Security Score Timeline ──────────────────────────────
+
+_RISK_SCORE_MAP = {"KRYTYCZNE": 90, "WYSOKIE": 70, "ŚREDNIE": 40, "SREDNIE": 40, "NISKIE": 15}
+
+def _extract_severity_counts(raw: dict) -> dict:
+    """Extract finding severity counts from raw scan data."""
+    counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    # Walk through known module keys that contain findings lists
+    for key in raw:
+        val = raw[key]
+        if not isinstance(val, dict):
+            continue
+        findings = val.get("findings", [])
+        if not isinstance(findings, list):
+            continue
+        for f in findings:
+            if not isinstance(f, dict):
+                continue
+            sev = str(f.get("severity", "")).lower()
+            if sev in counts:
+                counts[sev] += 1
+    # Nuclei results
+    nuclei = raw.get("nuclei", {})
+    if isinstance(nuclei, dict):
+        for item in nuclei.get("results", nuclei.get("findings", [])):
+            if isinstance(item, dict):
+                sev = str(item.get("severity", item.get("info", {}).get("severity", ""))).lower()
+                if sev in counts:
+                    counts[sev] += 1
+    # sqlmap
+    sqlmap = raw.get("sqlmap", {})
+    if isinstance(sqlmap, dict) and sqlmap.get("vulnerable"):
+        counts["critical"] += 1
+    return counts
+
+@app.get("/api/target/{target:path}/timeline")
+async def target_timeline(target: str,
+                          current_user: dict = Depends(require_role("admin", "operator"))):
+    scans = get_scans_by_target(target)
+    if not scans:
+        return {"target": target, "timeline": [], "improvement": "N/A", "fix_rate": "N/A"}
+
+    timeline = []
+    for s in scans:
+        raw = s["raw"]
+        ai = raw.get("ai_analysis", {})
+
+        # Risk score: prefer ai_analysis.risk_score, fallback to risk_level mapping
+        risk_score = ai.get("risk_score")
+        if risk_score is None:
+            risk_score = _RISK_SCORE_MAP.get(s["risk_level"], 50) if s["risk_level"] else 50
+
+        sev_counts = _extract_severity_counts(raw)
+        rem = get_remediation_counts_for_scan(s["task_id"])
+
+        timeline.append({
+            "date": s["created_at"][:10] if s["created_at"] else None,
+            "task_id": s["task_id"],
+            "risk_score": risk_score,
+            "risk_level": s["risk_level"],
+            "profile": s["profile"],
+            "findings_total": s["findings_count"],
+            "critical": sev_counts["critical"],
+            "high": sev_counts["high"],
+            "medium": sev_counts["medium"],
+            "low": sev_counts["low"],
+            "remediated": rem["remediated"],
+            "verified": rem["verified"],
+        })
+
+    # Calculate improvement (first vs last)
+    first_score = timeline[0]["risk_score"]
+    last_score = timeline[-1]["risk_score"]
+    diff = first_score - last_score
+    if diff > 0:
+        improvement = f"-{diff} punkt{'ów' if diff != 1 else ''} (lepiej)"
+    elif diff < 0:
+        improvement = f"+{abs(diff)} punkt{'ów' if abs(diff) != 1 else ''} (gorzej)"
+    else:
+        improvement = "bez zmian"
+
+    # Fix rate: total remediated / total findings across all scans
+    total_rem = sum(t["remediated"] for t in timeline)
+    total_findings = sum(t["findings_total"] for t in timeline)
+    fix_rate = f"{round(total_rem / total_findings * 100)}%" if total_findings > 0 else "N/A"
+
+    return {
+        "target": target,
+        "timeline": timeline,
+        "improvement": improvement,
+        "fix_rate": fix_rate,
+    }
+
+@app.get("/api/dashboard/security-scores")
+async def dashboard_security_scores(
+        current_user: dict = Depends(require_role("admin", "operator"))):
+    targets = get_unique_targets_with_stats()
+    results = []
+    for t in targets:
+        last_risk = t["last_risk_level"]
+        prev_risk = t["prev_risk_level"]
+        last_score = _RISK_SCORE_MAP.get(last_risk, 50) if last_risk else 50
+        prev_score = _RISK_SCORE_MAP.get(prev_risk, 50) if prev_risk else None
+
+        if prev_score is not None:
+            if last_score < prev_score:
+                trend = "improving"
+            elif last_score > prev_score:
+                trend = "degrading"
+            else:
+                trend = "stable"
+        else:
+            trend = "new"
+
+        results.append({
+            "target": t["target"],
+            "scan_count": t["scan_count"],
+            "last_scan_at": t["last_scan_at"],
+            "last_task_id": t["last_task_id"],
+            "risk_score": last_score,
+            "risk_level": last_risk,
+            "findings_count": t["last_findings_count"],
+            "trend": trend,
+        })
+    return {"targets": results}
