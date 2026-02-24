@@ -75,6 +75,10 @@ class RemediationTask(Base):
     created_at      = Column(DateTime, default=datetime.utcnow)
     updated_at      = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     verified_at     = Column(DateTime, nullable=True)
+    retest_task_id  = Column(String, nullable=True)     # Celery task ID
+    retest_status   = Column(String, nullable=True)     # pending/running/verified/reopened
+    retest_at       = Column(DateTime, nullable=True)
+    retest_result   = Column(JSON, nullable=True)
 
 class Schedule(Base):
     __tablename__ = "schedules"
@@ -143,6 +147,23 @@ def init_db(retries=10, delay=3):
                     with engine.begin() as conn:
                         conn.execute(text("ALTER TABLE scans ADD COLUMN profile VARCHAR DEFAULT 'STRAZNIK'"))
                     print("Migration: added profile column")
+            except Exception:
+                pass
+            # Migrate: add retest columns to remediation_tasks if missing
+            try:
+                insp = sa_inspect(engine)
+                if 'remediation_tasks' in insp.get_table_names():
+                    rem_cols = [c['name'] for c in insp.get_columns('remediation_tasks')]
+                    for col_name, col_type in [
+                        ('retest_task_id', 'VARCHAR'),
+                        ('retest_status', 'VARCHAR'),
+                        ('retest_at', 'TIMESTAMP'),
+                        ('retest_result', 'JSON'),
+                    ]:
+                        if col_name not in rem_cols:
+                            with engine.begin() as conn:
+                                conn.execute(text(f"ALTER TABLE remediation_tasks ADD COLUMN {col_name} {col_type}"))
+                            print(f"Migration: added {col_name} to remediation_tasks")
             except Exception:
                 pass
             print("Database initialized successfully")
@@ -525,6 +546,10 @@ def _remediation_to_dict(t: "RemediationTask") -> dict:
         "created_at": t.created_at.isoformat() if t.created_at else None,
         "updated_at": t.updated_at.isoformat() if t.updated_at else None,
         "verified_at": t.verified_at.isoformat() if t.verified_at else None,
+        "retest_task_id": t.retest_task_id,
+        "retest_status": t.retest_status,
+        "retest_at": t.retest_at.isoformat() if t.retest_at else None,
+        "retest_result": t.retest_result,
     }
 
 def get_remediation_tasks(scan_id: str) -> list[dict]:

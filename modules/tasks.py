@@ -58,7 +58,11 @@ from modules.searchsploit_scan import searchsploit_scan
 from modules.impacket_scan import impacket_scan
 from modules.certipy_scan import run_certipy
 from modules.osint_scan import osint_scan
-from modules.database import save_scan, get_due_schedules, update_schedule_run, get_all_cve_ids_from_findings
+from modules.database import (
+    save_scan, get_due_schedules, update_schedule_run,
+    get_all_cve_ids_from_findings, update_remediation_task,
+    get_remediation_task_by_id, save_audit_log,
+)
 from modules.notify import send_scan_notification
 from modules.scan_profiles import should_run_module, get_all_modules
 from modules.ai_analysis import analyze_scan_results as ai_analyze, reflect_on_scan
@@ -499,3 +503,45 @@ def run_intel_sync():
     except Exception as e:
         results["epss_error"] = str(e)
     return results
+
+@celery_app.task(bind=True, max_retries=1)
+def retest_finding(self, remediation_id: int, finding_name: str,
+                   target: str, module: str):
+    """Run targeted re-scan for a single finding after it's marked as fixed."""
+    from modules.intelligence_sync import run_targeted_retest
+    from datetime import datetime
+
+    # Mark as running
+    update_remediation_task(remediation_id, retest_status="running")
+
+    try:
+        result = run_targeted_retest(finding_name, target, module or "nuclei")
+    except Exception as e:
+        update_remediation_task(
+            remediation_id,
+            retest_status="error",
+            retest_result={"error": str(e)},
+        )
+        save_audit_log("system", "retest_error", f"rem={remediation_id} error={e}")
+        raise
+
+    if result.get("error") and not result.get("still_vulnerable"):
+        # Scanner error — keep as fixed, mark retest error
+        new_status = "fixed"
+        retest_status = "error"
+    elif result["still_vulnerable"]:
+        new_status = "open"
+        retest_status = "reopened"
+    else:
+        new_status = "verified"
+        retest_status = "verified"
+
+    update_remediation_task(
+        remediation_id,
+        status=new_status,
+        retest_status=retest_status,
+        retest_result=result,
+    )
+    save_audit_log("system", "retest_complete",
+                   f"rem={remediation_id} result={retest_status}")
+    return {"remediation_id": remediation_id, "retest_status": retest_status}

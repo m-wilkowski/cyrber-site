@@ -1942,3 +1942,47 @@ async def finding_enrich(cve_id: str = Query(..., pattern=r"^CVE-\d{4}-\d{4,7}$"
     from modules.intelligence_sync import enrich_finding
     result = enrich_finding(cve_id)
     return result
+
+# ── Retest ───────────────────────────────────────────────
+
+@app.post("/api/remediation/{rem_id}/retest")
+async def trigger_retest(rem_id: int, request: Request,
+                         current_user: dict = Depends(require_role("admin", "operator"))):
+    task = get_remediation_task_by_id(rem_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Remediation task not found")
+    if task["status"] != "fixed":
+        raise HTTPException(status_code=400, detail="Only tasks with status 'fixed' can be retested")
+    if task.get("retest_status") == "running":
+        raise HTTPException(status_code=409, detail="Retest already in progress")
+
+    # Get target from the associated scan
+    scan = get_scan_by_task_id(task["scan_id"])
+    if not scan:
+        raise HTTPException(status_code=404, detail="Associated scan not found")
+
+    from modules.tasks import retest_finding
+    celery_result = retest_finding.delay(
+        rem_id, task["finding_name"], scan["target"], task["finding_module"]
+    )
+    from modules.database import update_remediation_task as _update_rem
+    _update_rem(rem_id,
+                retest_task_id=celery_result.id,
+                retest_status="pending",
+                retest_at=datetime.utcnow())
+    audit(request, current_user, "retest_trigger", f"rem={rem_id} celery={celery_result.id}")
+    return {"message": "Retest uruchomiony", "task_id": celery_result.id}
+
+@app.get("/api/remediation/{rem_id}/retest/status")
+async def retest_status(rem_id: int,
+                        current_user: dict = Depends(require_role("admin", "operator"))):
+    task = get_remediation_task_by_id(rem_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Remediation task not found")
+    return {
+        "remediation_id": rem_id,
+        "status": task["status"],
+        "retest_status": task.get("retest_status"),
+        "retest_at": task.get("retest_at"),
+        "retest_result": task.get("retest_result"),
+    }

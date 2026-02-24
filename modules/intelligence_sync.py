@@ -177,3 +177,113 @@ def calculate_priority(cvss: float, epss: float, kev: bool) -> str:
     if cvss > 0:
         return "LOW"
     return "INFO"
+
+
+# ── Targeted Retest ─────────────────────────────────────
+
+# Map finding module → scan function import path
+_MODULE_SCANNERS = {
+    "nuclei":   "modules.nuclei_scan:scan",
+    "nmap":     "modules.nmap_scan:scan",
+    "testssl":  "modules.testssl_scan:scan",
+    "sqlmap":   "modules.sqlmap_scan:scan",
+    "nikto":    "modules.nikto_scan:scan",
+    "zap":      "modules.zap_scan:zap_scan",
+    "wpscan":   "modules.wpscan_scan:wpscan_scan",
+    "wapiti":   "modules.wapiti_scan:wapiti_scan",
+    "sslyze":   "modules.sslyze_scan:sslyze_scan",
+    "gobuster": "modules.gobuster_scan:scan",
+    "whatweb":  "modules.whatweb_scan:scan",
+    "joomscan": "modules.joomscan_scan:joomscan_scan",
+    "certipy":  "modules.certipy_scan:run_certipy",
+}
+
+
+def _import_scanner(module_path: str):
+    """Dynamic import: 'modules.foo:scan' → function."""
+    mod_path, func_name = module_path.rsplit(":", 1)
+    import importlib
+    mod = importlib.import_module(mod_path)
+    return getattr(mod, func_name)
+
+
+def _check_finding_in_results(result: dict, finding_name: str) -> tuple[bool, str]:
+    """Check if a finding name appears in scan results. Returns (still_vulnerable, evidence)."""
+    if not result or not isinstance(result, dict):
+        return False, "Empty scan result"
+
+    # Check raw output text for finding name
+    raw_str = str(result).lower()
+    finding_lower = finding_name.lower()
+
+    # Direct name match in raw output
+    if finding_lower in raw_str:
+        return True, f"Finding '{finding_name}' still present in scan output"
+
+    # Check findings/vulnerabilities lists
+    for key in ["findings", "vulnerabilities", "results", "issues"]:
+        items = result.get(key, [])
+        if isinstance(items, list):
+            for item in items:
+                item_str = str(item).lower()
+                if finding_lower in item_str:
+                    return True, f"Finding matched in {key}: {str(item)[:200]}"
+
+    # Check specific module result patterns
+    if result.get("vulnerable"):
+        return True, "Scanner reports target still vulnerable"
+
+    # Check CVE patterns
+    import re
+    cve_match = re.search(r"(CVE-\d{4}-\d{4,7})", finding_name, re.IGNORECASE)
+    if cve_match:
+        cve_id = cve_match.group(1).upper()
+        if cve_id.lower() in raw_str:
+            return True, f"{cve_id} still detected in scan output"
+
+    return False, "Finding not detected in re-scan output"
+
+
+def run_targeted_retest(finding_name: str, target: str, module: str) -> dict:
+    """Run a targeted re-scan for a specific finding and check if it's still present."""
+    t0 = time.time()
+
+    # Select scanner
+    scanner_path = _MODULE_SCANNERS.get(module)
+    if not scanner_path:
+        # Fallback: nuclei generic scan
+        scanner_path = "modules.nuclei_scan:scan"
+
+    try:
+        scanner_fn = _import_scanner(scanner_path)
+    except Exception as e:
+        return {
+            "still_vulnerable": False,
+            "evidence": f"Could not load scanner for module '{module}': {e}",
+            "scanner_used": scanner_path,
+            "duration": round(time.time() - t0, 2),
+            "error": True,
+        }
+
+    # Run scan
+    try:
+        result = scanner_fn(target)
+    except Exception as e:
+        return {
+            "still_vulnerable": False,
+            "evidence": f"Scanner execution failed: {e}",
+            "scanner_used": scanner_path,
+            "duration": round(time.time() - t0, 2),
+            "error": True,
+        }
+
+    # Analyze results
+    still_vulnerable, evidence = _check_finding_in_results(result, finding_name)
+
+    return {
+        "still_vulnerable": still_vulnerable,
+        "evidence": evidence,
+        "scanner_used": scanner_path,
+        "duration": round(time.time() - t0, 2),
+        "error": False,
+    }

@@ -197,6 +197,15 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 .rem-save:hover{background:var(--green);color:var(--navy)}
 .rem-del{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.1em;padding:4px 12px;cursor:pointer;border:1px solid var(--red);color:var(--red);background:none;transition:all .2s}
 .rem-del:hover{background:var(--red);color:var(--navy)}
+.rem-retest{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.1em;padding:4px 12px;cursor:pointer;border:1px solid var(--accent);color:var(--accent);background:none;transition:all .2s}
+.rem-retest:hover{background:var(--accent);color:var(--navy)}
+.rem-retest:disabled{opacity:.4;cursor:not-allowed}
+.retest-badge{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.1em;padding:2px 8px;border:1px solid;display:inline-block;margin-left:6px}
+.retest-badge.verified{color:var(--green);border-color:var(--green);background:rgba(61,220,132,.08)}
+.retest-badge.reopened{color:var(--red);border-color:var(--red);background:rgba(255,68,68,.08)}
+.retest-badge.pending,.retest-badge.running{color:var(--accent);border-color:var(--accent);background:rgba(74,143,212,.08)}
+.retest-badge.error{color:var(--orange);border-color:var(--orange);background:rgba(255,140,0,.08)}
+.retest-evidence{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--silver);margin-top:6px;padding:8px;background:rgba(74,143,212,.03);border:1px solid var(--border2);line-height:1.5}
 
 /* ── BUSINESS IMPACT ── */
 .impact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:12px}
@@ -1035,10 +1044,21 @@ function renderRemCard(t,canEdit,canDelete){
   var h='';
   h+='<div class="rem-card" data-status="'+escH(t.status)+'" data-sev="'+sev+'" id="rem-'+t.id+'">';
   h+='<div class="rem-card-top">';
-  h+='<div style="display:flex;align-items:center;gap:8px">';
+  h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
   h+='<span class="fd-sev '+sev+'">'+sev.toUpperCase()+'</span>';
   h+='<span class="rem-card-name">'+escH(t.finding_name)+'</span>';
   if(t.finding_module)h+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver)">'+t.finding_module.toUpperCase()+'</span>';
+  // Retest badge
+  if(t.retest_status){
+    var rsCls=t.retest_status;
+    var rsLabel=t.retest_status.toUpperCase();
+    if(t.retest_status==='verified')rsLabel='\u2705 VERIFIED';
+    else if(t.retest_status==='reopened')rsLabel='\u274C REOPENED';
+    else if(t.retest_status==='running')rsLabel='\u23F3 RETESTING...';
+    else if(t.retest_status==='pending')rsLabel='\u23F3 PENDING';
+    else if(t.retest_status==='error')rsLabel='\u26A0 RETEST ERROR';
+    h+='<span class="retest-badge '+rsCls+'">'+rsLabel+'</span>';
+  }
   h+='</div>';
   h+='</div>';
 
@@ -1077,14 +1097,26 @@ function renderRemCard(t,canEdit,canDelete){
   }
   h+='</div>';
 
+  // Retest evidence (if completed)
+  if(t.retest_result&&t.retest_result.evidence){
+    h+='<div class="retest-evidence"><b>RETEST EVIDENCE:</b> '+escH(t.retest_result.evidence);
+    if(t.retest_result.duration)h+=' ('+t.retest_result.duration+'s)';
+    if(t.retest_result.scanner_used)h+=' ['+escH(t.retest_result.scanner_used)+']';
+    h+='</div>';
+  }
+
   // Actions
   if(canEdit){
     h+='<div class="rem-card-actions">';
     h+='<button class="rem-save" id="remSaveBtn-'+t.id+'" onclick="remSave('+t.id+')">SAVE</button>';
+    // RETEST button — only for fixed status, not already running
+    var canRetest=(t.status==='fixed'&&t.retest_status!=='running'&&t.retest_status!=='pending');
+    h+='<button class="rem-retest" id="remRetestBtn-'+t.id+'" onclick="remRetest('+t.id+')"'+(canRetest?'':' disabled')+'>RETEST</button>';
     if(canDelete)h+='<button class="rem-del" onclick="remDelete('+t.id+')">DELETE</button>';
     h+='</div>';
   }
   if(t.verified_at)h+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--accent);margin-top:6px">VERIFIED: '+formatDate(t.verified_at)+'</div>';
+  if(t.retest_at)h+='<div style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver);margin-top:2px">RETEST: '+formatDate(t.retest_at)+'</div>';
   h+='</div>';
   return h;
 }
@@ -1189,6 +1221,68 @@ function refreshRemStats(){
   _remStats=stats;
   var m={remStatTotal:'total',remStatOpen:'open',remStatProgress:'in_progress',remStatFixed:'fixed',remStatVerified:'verified'};
   for(var id in m){var e=document.getElementById(id);if(e)e.textContent=stats[m[id]]}
+}
+
+/* ── RETEST ── */
+var _retestPollers={};
+
+function remRetest(id){
+  var btn=document.getElementById('remRetestBtn-'+id);
+  if(!btn)return;
+  btn.disabled=true;btn.textContent='STARTING...';
+  authFetch(API+'/api/remediation/'+id+'/retest',{method:'POST'})
+    .then(function(r){if(!r.ok)return r.json().then(function(d){throw new Error(d.detail||'HTTP '+r.status)});return r.json()})
+    .then(function(data){
+      btn.textContent='RETESTING...';
+      // Update local state
+      for(var i=0;i<_remTasks.length;i++){if(_remTasks[i].id===id){_remTasks[i].retest_status='pending';break}}
+      // Start polling
+      pollRetestStatus(id);
+    })
+    .catch(function(e){
+      btn.textContent='RETEST';btn.disabled=false;
+      alert('Retest failed: '+e.message);
+    });
+}
+
+function pollRetestStatus(id){
+  // Clear existing poller for this id
+  if(_retestPollers[id])clearInterval(_retestPollers[id]);
+  _retestPollers[id]=setInterval(function(){
+    authFetch(API+'/api/remediation/'+id+'/retest/status')
+      .then(function(r){return r.json()})
+      .then(function(data){
+        var rs=data.retest_status;
+        if(!rs||rs==='pending'||rs==='running')return; // Still in progress
+        // Done — stop polling
+        clearInterval(_retestPollers[id]);
+        delete _retestPollers[id];
+        // Update local task data
+        for(var i=0;i<_remTasks.length;i++){
+          if(_remTasks[i].id===id){
+            _remTasks[i].status=data.status;
+            _remTasks[i].retest_status=rs;
+            _remTasks[i].retest_result=data.retest_result;
+            break;
+          }
+        }
+        // Re-render the card
+        var card=document.getElementById('rem-'+id);
+        if(card){
+          var canEdit=(_userRole==='admin'||_userRole==='operator');
+          var canDelete=(_userRole==='admin');
+          var t=null;
+          for(var i=0;i<_remTasks.length;i++){if(_remTasks[i].id===id){t=_remTasks[i];break}}
+          if(t){
+            var tmp=document.createElement('div');
+            tmp.innerHTML=renderRemCard(t,canEdit,canDelete);
+            card.parentNode.replaceChild(tmp.firstChild,card);
+          }
+        }
+        refreshRemStats();
+      })
+      .catch(function(){});
+  },5000);
 }
 </script>
 <script>
