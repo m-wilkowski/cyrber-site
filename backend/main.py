@@ -130,6 +130,7 @@ from modules.license import (
     check_feature, activate_license,
 )
 from modules.pdf_report import generate_report
+from modules.compliance_map import generate_compliance_summary
 from modules.exploit_chains import generate_exploit_chains
 from modules.hacker_narrative import generate_hacker_narrative
 
@@ -146,6 +147,8 @@ if not get_user_by_username("admin"):
         notes="Default admin created at startup",
     )
     print("Bootstrap: created default admin user")
+else:
+    print("Bootstrap: admin user already exists, skipping")
 
 # ── Audit helper ──
 def audit(request: Request, user, action: str, target: str = None):
@@ -215,6 +218,376 @@ async def admin_page():
 @app.get("/report/{task_id}")
 async def report_page(task_id: str):
     return FileResponse("static/report.html", headers=_NO_CACHE)
+
+@app.get("/report/{task_id}/compliance")
+async def compliance_pdf(task_id: str):
+    """Generate Compliance Evidence PDF (NIS2 / ISO 27001). Shareable link — no auth required."""
+    import hashlib
+    from weasyprint import HTML
+
+    scan = get_scan_by_task_id(task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    target = scan.get("target", "unknown")
+    risk_level = scan.get("risk_level", "N/A")
+    findings_count = scan.get("findings_count", 0)
+    created_at = scan.get("created_at", "")[:10] if scan.get("created_at") else "N/A"
+    completed_at = scan.get("completed_at", "")[:10] if scan.get("completed_at") else "N/A"
+    profile = scan.get("profile", "STRAZNIK")
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    doc_hash = hashlib.sha256(f"{task_id}:{now_str}".encode()).hexdigest()
+
+    # Collect findings from scan raw data
+    raw = {}
+    if scan.get("raw_data"):
+        try:
+            raw = json.loads(scan["raw_data"]) if isinstance(scan["raw_data"], str) else scan["raw_data"]
+        except Exception:
+            pass
+
+    findings_list = []
+    # Nuclei
+    for f in (raw.get("nuclei", {}).get("findings", []) if isinstance(raw.get("nuclei"), dict) else []):
+        name = (f.get("info", {}).get("name") if isinstance(f, dict) else "") or (f.get("name", "") if isinstance(f, dict) else str(f))
+        sev = (f.get("info", {}).get("severity") if isinstance(f, dict) else "") or (f.get("severity", "info") if isinstance(f, dict) else "info")
+        findings_list.append({"name": name, "severity": sev, "module": "nuclei"})
+    # ZAP
+    for a in (raw.get("zap", {}).get("alerts", []) if isinstance(raw.get("zap"), dict) else []):
+        if isinstance(a, dict):
+            findings_list.append({"name": a.get("name") or a.get("alert", ""), "severity": a.get("risk", "info"), "module": "zap"})
+    # SQLMap
+    if isinstance(raw.get("sqlmap"), dict) and raw["sqlmap"].get("vulnerable"):
+        findings_list.append({"name": "SQL Injection", "severity": "critical", "module": "sqlmap"})
+    # TestSSL
+    for f in (raw.get("testssl", {}).get("findings", []) if isinstance(raw.get("testssl"), dict) else []):
+        if isinstance(f, dict):
+            findings_list.append({"name": f.get("name") or f.get("id", ""), "severity": f.get("severity", "info"), "module": "testssl"})
+    # Nikto
+    for f in (raw.get("nikto", {}).get("findings", []) if isinstance(raw.get("nikto"), dict) else []):
+        if isinstance(f, dict):
+            findings_list.append({"name": f.get("name") or f.get("msg", ""), "severity": "medium", "module": "nikto"})
+    # Generic: iterate modules for findings lists
+    for mod_key in raw:
+        if mod_key in ("nuclei", "zap", "sqlmap", "testssl", "nikto", "ai_analysis"):
+            continue
+        mod_data = raw[mod_key]
+        if not isinstance(mod_data, dict):
+            continue
+        for f in mod_data.get("findings", []):
+            if isinstance(f, dict) and f.get("name"):
+                findings_list.append({"name": f["name"], "severity": f.get("severity", "info"), "module": mod_key})
+
+    # Remediation tasks
+    rem_tasks = get_remediation_tasks(task_id)
+
+    # Compliance summary
+    summary = generate_compliance_summary(findings_list, rem_tasks)
+    stats = summary["stats"]
+
+    # Status colors
+    def _status_symbol(s):
+        return {"OK": "✓", "PARTIAL": "~", "FAIL": "✗"}.get(s, "?")
+
+    def _status_color(s):
+        return {"OK": "#3ddc84", "PARTIAL": "#f5c518", "FAIL": "#ff4444"}.get(s, "#4a8fd4")
+
+    def _overall_color(s):
+        return {"ZGODNY": "#3ddc84", "CZĘŚCIOWO ZGODNY": "#f5c518", "NIEZGODNY": "#ff4444"}.get(s, "#4a8fd4")
+
+    def _sev_color(s):
+        sl = (s or "").lower()
+        return {"critical": "#ff4444", "high": "#ff8c00", "medium": "#f5c518", "low": "#3ddc84"}.get(sl, "#4a8fd4")
+
+    def _rem_status_pl(s):
+        return {"open": "Otwarty", "in_progress": "W trakcie", "fixed": "Naprawiony", "verified": "Zweryfikowany", "wontfix": "Zaakceptowany"}.get(s, s)
+
+    # ── Build HTML ──
+    # NIS2 table rows
+    nis2_rows = ""
+    for r in summary["nis2_articles"]:
+        sc = _status_color(r["status"])
+        sym = _status_symbol(r["status"])
+        detail = f'{r["findings_count"]} znalezionych, {r["fixed_count"]} naprawionych' if r["findings_count"] else "Brak podatności"
+        nis2_rows += f"""<tr>
+            <td style="color:{sc};font-weight:700;font-size:16px;text-align:center;width:30px">{sym}</td>
+            <td class="mono" style="white-space:nowrap">{r["article"]}</td>
+            <td>{r["requirement"]}</td>
+            <td style="color:{sc}">{detail}</td>
+        </tr>"""
+
+    # ISO table rows
+    iso_rows = ""
+    for r in summary["iso27001_controls"]:
+        sc = _status_color(r["status"])
+        sym = _status_symbol(r["status"])
+        detail = f'{r["findings_count"]} znalezionych, {r["fixed_count"]} naprawionych' if r["findings_count"] else "Brak podatności"
+        iso_rows += f"""<tr>
+            <td style="color:{sc};font-weight:700;font-size:16px;text-align:center;width:30px">{sym}</td>
+            <td class="mono" style="white-space:nowrap">{r["control"]}</td>
+            <td>{r["name"]}</td>
+            <td style="color:{sc}">{detail}</td>
+        </tr>"""
+
+    # Remediation evidence rows (only fixed/verified)
+    rem_rows = ""
+    evidence_count = 0
+    for t in rem_tasks:
+        if t.get("status") not in ("fixed", "verified"):
+            continue
+        evidence_count += 1
+        sev = t.get("finding_severity", "info")
+        sc = _sev_color(sev)
+        retest_status = t.get("retest_status") or "—"
+        retest_badge = ""
+        if retest_status == "passed":
+            retest_badge = '<span style="color:#3ddc84;font-weight:700">✓ VERIFIED</span>'
+        elif retest_status == "failed":
+            retest_badge = '<span style="color:#ff4444;font-weight:700">✗ FAILED</span>'
+        else:
+            retest_badge = f'<span style="color:#4a8fd4">{retest_status}</span>'
+
+        rem_rows += f"""<tr>
+            <td><span style="color:{sc};font-weight:600">{(sev or 'info').upper()}</span></td>
+            <td>{t.get("finding_name", "")}</td>
+            <td class="mono">{(t.get("created_at") or "")[:10]}</td>
+            <td class="mono">{(t.get("updated_at") or "")[:10]}</td>
+            <td>{t.get("owner") or "—"}</td>
+            <td>{_rem_status_pl(t.get("status", ""))}</td>
+            <td>{retest_badge}</td>
+        </tr>"""
+
+    if not rem_rows:
+        rem_rows = '<tr><td colspan="7" style="text-align:center;color:#4a8fd4;padding:20px">Brak naprawionych podatności do wykazania jako dowód</td></tr>'
+
+    # Gaps section
+    gaps_html = ""
+    if summary["gaps"]:
+        gaps_html = "<div class='section'><div class='section-title'>// ZIDENTYFIKOWANE LUKI</div>"
+        for g in summary["gaps"]:
+            gaps_html += f"<div class='gap-item'>⚠ {g}</div>"
+        gaps_html += "</div>"
+
+    overall_color = _overall_color(summary["overall_status"])
+
+    html_content = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  * {{ margin:0; padding:0; box-sizing:border-box; }}
+  body {{ font-family: 'Rajdhani', sans-serif; background:#080c18; color:#b8ccec; padding:0; font-size:13px; }}
+  .mono {{ font-family: monospace; font-size:11px; }}
+
+  .page {{ padding:40px; page-break-after:always; min-height:100vh; }}
+  .page:last-child {{ page-break-after:auto; }}
+
+  /* ── Cover ── */
+  .cover {{ display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; min-height:100vh; }}
+  .cover-brand {{ font-size:48px; font-weight:700; letter-spacing:0.4em; color:#e8f0fc; margin-bottom:8px; }}
+  .cover-sub {{ font-size:10px; color:#4a8fd4; letter-spacing:0.4em; margin-bottom:60px; }}
+  .cover-title {{ font-size:22px; font-weight:600; color:#4a8fd4; letter-spacing:0.15em; margin-bottom:40px; border:1px solid rgba(74,143,212,0.3); padding:16px 40px; }}
+  .cover-meta {{ font-size:11px; color:#4a8fd4; line-height:2.2; }}
+  .cover-meta b {{ color:#e8f0fc; font-weight:600; }}
+  .cover-hash {{ margin-top:40px; font-family:monospace; font-size:9px; color:rgba(74,143,212,0.4); word-break:break-all; max-width:500px; }}
+  .cover-conf {{ margin-top:24px; font-size:9px; letter-spacing:0.3em; color:rgba(255,68,68,0.5); }}
+
+  /* ── Common ── */
+  .header {{ border-bottom:2px solid #4a8fd4; padding-bottom:16px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:flex-end; }}
+  .brand {{ font-size:24px; font-weight:700; letter-spacing:0.3em; color:#e8f0fc; }}
+  .brand-sub {{ font-size:8px; color:#4a8fd4; letter-spacing:0.3em; }}
+  .page-title {{ font-size:10px; color:#4a8fd4; letter-spacing:0.2em; text-align:right; }}
+
+  .section {{ margin-bottom:24px; }}
+  .section-title {{ font-size:10px; color:#4a8fd4; letter-spacing:0.3em; border-bottom:1px solid rgba(74,143,212,0.2); padding-bottom:6px; margin-bottom:14px; }}
+
+  .muted {{ color:#4a8fd4; font-size:11px; }}
+
+  .overall-box {{ background:rgba(74,143,212,0.06); border:2px solid {overall_color}; padding:20px 28px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; }}
+  .overall-label {{ font-size:11px; color:#4a8fd4; letter-spacing:0.2em; }}
+  .overall-value {{ font-size:28px; font-weight:700; color:{overall_color}; letter-spacing:0.15em; }}
+  .overall-score {{ font-size:11px; color:#4a8fd4; text-align:right; }}
+  .overall-score b {{ font-size:22px; color:{overall_color}; }}
+
+  .stats-grid {{ display:flex; gap:16px; margin-bottom:24px; }}
+  .stat-card {{ flex:1; background:rgba(74,143,212,0.04); border:1px solid rgba(74,143,212,0.15); padding:14px; text-align:center; }}
+  .stat-value {{ font-size:24px; font-weight:700; color:#e8f0fc; }}
+  .stat-label {{ font-size:9px; color:#4a8fd4; letter-spacing:0.15em; margin-top:4px; }}
+
+  table {{ width:100%; border-collapse:collapse; font-size:11px; margin-top:8px; }}
+  th {{ text-align:left; font-size:9px; letter-spacing:0.15em; color:#4a8fd4; padding:8px; border-bottom:1px solid rgba(74,143,212,0.3); }}
+  td {{ padding:8px; border-bottom:1px solid rgba(74,143,212,0.08); vertical-align:top; }}
+
+  .gap-item {{ padding:8px 0; border-bottom:1px solid rgba(255,68,68,0.1); font-size:12px; color:#ff8c00; }}
+  .methodology {{ font-size:12px; line-height:1.8; color:#b8ccec; }}
+  .methodology b {{ color:#e8f0fc; }}
+
+  .sign-box {{ border:1px solid rgba(74,143,212,0.2); padding:24px; margin-top:24px; text-align:center; }}
+  .sign-hash {{ font-family:monospace; font-size:10px; color:#4a8fd4; word-break:break-all; margin:12px 0; }}
+  .sign-note {{ font-size:10px; color:rgba(74,143,212,0.5); line-height:1.8; }}
+
+  .footer {{ padding-top:16px; border-top:1px solid rgba(74,143,212,0.15); font-size:8px; color:rgba(74,143,212,0.3); text-align:center; letter-spacing:0.2em; margin-top:auto; }}
+</style>
+</head>
+<body>
+
+<!-- ═══ PAGE 1: COVER ═══ -->
+<div class="page cover">
+  <div class="cover-brand">CYRBER</div>
+  <div class="cover-sub">AUTONOMOUS SECURITY RECONNAISSANCE PLATFORM</div>
+  <div class="cover-title">RAPORT ZGODNOŚCI NIS2 / ISO 27001</div>
+  <div class="cover-meta">
+    <b>TARGET:</b> {target}<br>
+    <b>DATA TESTU:</b> {created_at} — {completed_at}<br>
+    <b>PROFIL SKANOWANIA:</b> {profile}<br>
+    <b>DATA RAPORTU:</b> {now_str}<br>
+    <b>PODATNOŚCI:</b> {findings_count}<br>
+  </div>
+  <div class="cover-hash">HASH DOKUMENTU: {doc_hash}</div>
+  <div class="cover-conf">DOKUMENT POUFNY — WYŁĄCZNIE DLA UPOWAŻNIONYCH OSÓB</div>
+</div>
+
+<!-- ═══ PAGE 2: EXECUTIVE SUMMARY ═══ -->
+<div class="page">
+  <div class="header">
+    <div><div class="brand">CYRBER</div><div class="brand-sub">COMPLIANCE EVIDENCE</div></div>
+    <div class="page-title">PODSUMOWANIE WYKONAWCZE</div>
+  </div>
+
+  <div class="overall-box">
+    <div>
+      <div class="overall-label">OGÓLNA OCENA ZGODNOŚCI</div>
+      <div class="overall-value">{summary["overall_status"]}</div>
+    </div>
+    <div class="overall-score">
+      COMPLIANCE SCORE<br><b>{summary["compliance_score"]}%</b>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">// CEL I ZAKRES</div>
+    <div class="methodology">
+      Celem niniejszego raportu jest dostarczenie dowodów zgodności z wymogami
+      <b>Dyrektywy NIS2 (2022/2555)</b> oraz <b>normy ISO/IEC 27001:2022</b>
+      w zakresie bezpieczeństwa systemów informacyjnych.
+      <br><br>
+      Zakres testów obejmował target <b>{target}</b> z wykorzystaniem profilu <b>{profile}</b>
+      ({findings_count} modułów skanujących). Zastosowana metodologia jest zgodna z:
+      <b>OWASP Testing Guide v4</b>, <b>PTES (Penetration Testing Execution Standard)</b>,
+      <b>NIST SP 800-115</b>.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">// WYNIKI</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">{findings_count}</div>
+        <div class="stat-label">ZNALEZIONYCH</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:#3ddc84">{stats["fixed"]}</div>
+        <div class="stat-label">NAPRAWIONYCH</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:#3ddc84">{stats["verified"]}</div>
+        <div class="stat-label">ZWERYFIKOWANYCH</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:#ff4444">{stats["open"]}</div>
+        <div class="stat-label">OTWARTYCH</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">// ZGODNOŚĆ NIS2 — PRZEGLĄD</div>
+    <table>
+      <thead><tr><th></th><th>ARTYKUŁ</th><th>WYMAGANIE</th><th>STATUS</th></tr></thead>
+      <tbody>{nis2_rows}</tbody>
+    </table>
+  </div>
+
+  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · POUFNE · {now_str}</div>
+</div>
+
+<!-- ═══ PAGE 3: ISO 27001 DETAILS ═══ -->
+<div class="page">
+  <div class="header">
+    <div><div class="brand">CYRBER</div><div class="brand-sub">COMPLIANCE EVIDENCE</div></div>
+    <div class="page-title">ISO/IEC 27001:2022 — KONTROLE</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">// SZCZEGÓŁY KONTROLI ISO 27001</div>
+    <table>
+      <thead><tr><th></th><th>KONTROLA</th><th>NAZWA</th><th>STATUS</th></tr></thead>
+      <tbody>{iso_rows}</tbody>
+    </table>
+  </div>
+
+  {gaps_html}
+
+  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · POUFNE · {now_str}</div>
+</div>
+
+<!-- ═══ PAGE 4: REMEDIATION EVIDENCE ═══ -->
+<div class="page">
+  <div class="header">
+    <div><div class="brand">CYRBER</div><div class="brand-sub">COMPLIANCE EVIDENCE</div></div>
+    <div class="page-title">DOWODY NAPRAW — REMEDIATION EVIDENCE</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">// NAPRAWIONE PODATNOŚCI ({evidence_count})</div>
+    <table>
+      <thead><tr>
+        <th>SEVERITY</th><th>FINDING</th><th>ZNALEZIONY</th><th>NAPRAWIONY</th>
+        <th>WŁAŚCICIEL</th><th>STATUS</th><th>RETEST</th>
+      </tr></thead>
+      <tbody>{rem_rows}</tbody>
+    </table>
+  </div>
+
+  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · POUFNE · {now_str}</div>
+</div>
+
+<!-- ═══ PAGE 5: DIGITAL SIGNATURE ═══ -->
+<div class="page">
+  <div class="header">
+    <div><div class="brand">CYRBER</div><div class="brand-sub">COMPLIANCE EVIDENCE</div></div>
+    <div class="page-title">PODPIS CYFROWY</div>
+  </div>
+
+  <div class="sign-box">
+    <div style="font-size:12px;color:#4a8fd4;letter-spacing:0.2em;margin-bottom:16px">HASH DOKUMENTU (SHA-256)</div>
+    <div class="sign-hash">{doc_hash}</div>
+    <div style="font-size:11px;color:#b8ccec;margin:16px 0">
+      Wygenerowano: <b>{now_str}</b><br>
+      Target: <b>{target}</b><br>
+      Task ID: <b>{task_id}</b>
+    </div>
+    <div class="sign-note">
+      Ten dokument został wygenerowany automatycznie przez platformę CYRBER.<br>
+      Integralność dokumentu można zweryfikować porównując hash SHA-256:<br>
+      <span style="font-family:monospace">sha256("{task_id}:{now_str}") = {doc_hash}</span><br><br>
+      Dokument stanowi dowód przeprowadzenia testów bezpieczeństwa<br>
+      i może być przedstawiony audytorom NIS2 oraz ISO 27001.
+    </div>
+  </div>
+
+  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · POUFNE · {now_str}</div>
+</div>
+
+</body></html>"""
+
+    pdf_bytes = HTML(string=html_content, base_url=".").write_pdf()
+
+    safe_t = unicodedata.normalize("NFKD", target).encode("ascii", "ignore").decode("ascii")
+    safe_t = _re.sub(r'[^\w\-.]', '_', safe_t).strip('_') or "scan"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=cyrber_compliance_{safe_t}_{task_id[:8]}.pdf"}
+    )
 
 @app.get("/scan/{task_id}/detail")
 async def scan_detail_page(task_id: str):

@@ -278,7 +278,7 @@ footer{text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid v
 <body>
 
 <nav>
-  <a class="nav-brand" href="/ui">CYRBER<span>AUTONOMOUS RECON</span></a>
+  <a class="nav-brand" href="/ui"><img src="/static/cyrber_wolf.png" alt="" style="width:28px;height:28px;object-fit:contain">CYRBER<span>AUTONOMOUS RECON</span></a>
   <div class="nav-links">
     <a class="nav-link" href="/command-center">CMD CENTER</a>
     <a class="nav-link" href="/ui">SCAN</a>
@@ -920,9 +920,10 @@ function renderReport(){
   h+='<select class="report-select" id="reportLevel"><option value="executive">EXECUTIVE</option><option value="technical">TECHNICAL</option></select></div>';
   h+='</div>';
 
-  h+='<div style="display:flex;gap:12px;margin-top:16px">';
+  h+='<div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">';
   h+='<a class="hero-btn hero-btn-primary" href="'+API+'/scans/'+_taskId+'/pdf" target="_blank">GENERUJ PDF</a>';
   h+='<a class="hero-btn" href="/report/'+_taskId+'" target="_blank">OTWORZ RAPORT KLIENCKI</a>';
+  h+='<a class="hero-btn" href="/report/'+_taskId+'/compliance" target="_blank" style="border-color:var(--purple);color:var(--purple)">COMPLIANCE EVIDENCE PDF (NIS2/ISO27001)</a>';
   h+='</div></div>';
 
   // Inline preview
