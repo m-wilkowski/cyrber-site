@@ -35,7 +35,7 @@ Syn starszy dostał briefing (dokument CYRBER_Briefing_WWW.docx) z opisem projek
 
 ## 3. Infrastruktura techniczna
 
-**Lokalizacja:** `~/cyrber/` na Fedora (localhost)  
+**Lokalizacja:** `~/cyrber/` na Fedora (localhost)
 **GitHub:** https://github.com/m-wilkowski/cyrber-site (branch: master)
 
 **Stos:**
@@ -250,14 +250,72 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 
 ---
 
-## 10. Backlog (priorytety)
+## 10. CYRBER LOOP – następny kierunek
+
+### Koncept: zamknięta pętla bezpieczeństwa
+
+CYRBER przestaje być jednorazowym skanerem i staje się **ciągłym procesem bezpieczeństwa**. Pętla:
+
+```
+ZNAJDŹ → ZROZUM → NAPRAW → SPRAWDŹ → (powtórz)
+```
+
+| Faza | Co robi | Komponent |
+|------|---------|-----------|
+| **ZNAJDŹ** | Skan 50+ modułami, exploit chainy, AI analiza | Istniejący pipeline (52 kroków) |
+| **ZROZUM** | AI tłumaczy per finding, business impact, compliance | AI Explain, Scan Agent, raporty |
+| **NAPRAW** | Remediation Tracker — zadania z właścicielem/deadlinem | NOWY: tabela DB + UI w scan_detail |
+| **SPRAWDŹ** | Auto-retest po oznaczeniu "naprawione" | NOWY: targeted re-scan per finding |
+
+### Remediation Tracker
+- Każda podatność = zadanie (finding_id, owner, deadline, status: open/in_progress/fixed/verified/wontfix)
+- UI w scan_detail.html: nowa zakładka "Remediation" z listą zadań, assign owner, set deadline
+- API: POST /api/remediation (create), PATCH /api/remediation/{id} (update status), GET /api/scan/{task_id}/remediation (list)
+- Tabela PostgreSQL: `remediation_tasks` (id, scan_id, finding_name, severity, owner, deadline, status, created_at, updated_at, verified_at)
+
+### Auto-retest
+- Po oznaczeniu zadania jako "fixed" → CYRBER automatycznie uruchamia targeted re-scan (tylko moduł, który znalazł podatność)
+- Wynik: status zmienia się na "verified" (potwierdzone naprawienie) lub wraca do "open" (wciąż podatne)
+- Notyfikacja do ownera: email/Slack/Discord
+
+### Security Score Timeline
+- Wykres postępu w czasie na dashboard: risk_score per skan na osi czasu
+- Wizualizacja trendu: poprawa/pogorszenie bezpieczeństwa
+- KPI: "Time to Remediate" (średni czas naprawy), "Fix Rate" (% naprawionych), "Regression Rate" (% powrotów)
+
+### Compliance Evidence Export
+- PDF dla audytora: NIS2/ISO27001/RODO compliance evidence
+- Zawartość: lista znalezionych podatności + status remediation + daty napraw + dowody (re-scan results)
+- Generowany z WeasyPrint + Jinja2 (istniejący stack)
+- Endpoint: GET /report/{task_id}/compliance?framework=nis2
+
+### Integracje zewnętrzne
+- Jira: webhook na nowe finding → tworzenie issue, sync statusu zwrotnie
+- GitHub Issues: automatyczne tworzenie issues z findings, label per severity
+- Konfiguracja: POST /api/integrations (webhook URL + typ + auth token)
+
+### Model biznesowy — subskrypcja CYRBER LOOP
+
+| Plan | Cena/msc | Zawartość |
+|------|----------|-----------|
+| **LOOP Starter** | €299 | 1 target, skany tygodniowe, Remediation Tracker, email notify |
+| **LOOP Professional** | €699 | 5 targetów, skany dzienne, auto-retest, Jira/GitHub integration, compliance PDF |
+| **LOOP Enterprise** | €1 499 | Unlimited targets, continuous scanning, custom integrations, dedicated support, SLA 4h |
+
+Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring revenue.
+
+---
+
+## 11. Backlog (priorytety)
 
 ### Priorytet 0 – Następna sesja
-1. Dark/Light theme toggle
-2. Compliance analysis (NIS2/RODO/ISO27001)
-3. Pentest-as-Code CI/CD (GitHub Actions)
-4. Continuous threat simulation
-5. Test end-to-end całego nowego GUI na DVWA
+1. **CYRBER LOOP — Remediation Tracker** (nowa tabela DB `remediation_tasks` + UI zakładka w scan_detail + API CRUD)
+2. **Auto-retest po "naprawione"** (targeted re-scan per finding, status verified/open)
+3. **Security Score Timeline** w dashboard (wykres risk_score w czasie, KPI: Time to Remediate / Fix Rate)
+4. **Compliance Evidence PDF export** (GET /report/{task_id}/compliance, WeasyPrint + Jinja2)
+5. **Dark/Light theme toggle**
+6. **Compliance analysis** (NIS2/RODO/ISO27001)
+7. **Pentest-as-Code CI/CD** (GitHub Actions)
 
 ### Priorytet 1 – AI Integration (w toku)
 - Cross-module reasoning ✅
@@ -341,24 +399,30 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 
 ---
 
-## 11. Model biznesowy
+## 12. Model biznesowy
 
-**Cel:** SMB (50–250 pracowników), sektor publiczny (NIS2/RODO), startupy.  
-**Nie target:** Enterprise €50k+  
-**Geograficznie:** Polska primary, EU secondary  
+**Cel:** SMB (50–250 pracowników), sektor publiczny (NIS2/RODO), startupy.
+**Nie target:** Enterprise €50k+
+**Geograficznie:** Polska primary, EU secondary
 **Pierwsza sprzedaż:** Sieć Energylogserver (warm leads)
 
-**Ceny:**
+**Ceny (jednorazowy pentest):**
 - SZCZENIAK: €4 000
 - STRAŻNIK: €7 500
 - CERBER: €15 000+
-- Continuous Monitoring: €999/msc
+
+**Ceny (CYRBER LOOP — subskrypcja):**
+- LOOP Starter: €299/msc (1 target, tygodniowe skany)
+- LOOP Professional: €699/msc (5 targetów, dzienne skany, auto-retest, integracje)
+- LOOP Enterprise: €1 499/msc (unlimited, continuous, SLA 4h)
+
+**Continuous Monitoring:** €999/msc (legacy, zastępowany przez LOOP)
 
 **Finansowanie:** Bootstrap, próg rentowności po pierwszym projekcie.
 
 ---
 
-## 12. Styl pracy z Michałem
+## 13. Styl pracy z Michałem
 
 - Pracuje z Claude Code (terminal) – daje prompty, wkleja outputy
 - Oczekuje konkretnych, gotowych do wklejenia promptów dla Claude Code
@@ -370,27 +434,31 @@ Skan STRAŻNIK na DVWA (localhost:8888), 350 sekund:
 
 ---
 
-## 13. Aktualny stan commitów
+## 14. Aktualny stan commitów
 
-Ostatnie commity na master (sesja 24.02.2026 finał → najnowsze na górze):
-- `fix: bugfixy scan detail i agent`
-- `feat: Scan View rewrite - 3-step flow + SSE live feed`
-- `feat: Scan Detail Page + Floating AI Agent`
-- `feat: dashboard pełny rewrite + AI explain`
-- `feat: Client Report View - raport dla CEO/managera`
-- `feat: Auto-Flow po skanie - rekomendowane akcje`
-- `feat: Command Center - unified dashboard trzech glownych widoków`
-- `feat: Nginx reverse proxy + HTTPS/TLS`
-- `feat: hardening - security headers, rate limiting, docker no-new-privileges`
-- `feat: system licencji on-prem HMAC-SHA256`
-- `feat: RBAC admin/operator/viewer + JWT claims`
-- `feat: Admin Panel UI - zarządzanie użytkownikami i licencjami`
-- `feat: Garak LLM security scanner - osobny kontener`
-- `feat: Certipy - AD Certificate Services enumeration`
-- `feat: BeEF-XSS integration - Browser Exploitation Framework`
-- `feat: exiftool moduł - ekstrakcja metadanych EXIF z obrazków`
-- `feat: RAG z PayloadsAllTheThings - FAISS + fastembed`
-- `feat: SSE real-time streaming postępu skanowania`
+Ostatnie commity na master (stan 24.02.2026 → najnowsze na górze):
+```
+84d70ef docs: transfer prompt - sesja 24.02.2026 final
+3fbca85 fix: bugfixy scan detail i agent
+0ba9aac docs: transfer prompt - scan detail page + index.html rewrite
+44aff0c feat: Scan View rewrite - 3-step flow + SSE live feed
+3de1492 feat: Scan Detail Page + Floating AI Agent
+924626b docs: transfer prompt - sesja 24.02.2026 czesc 3
+1c2b17b feat: dashboard pełny rewrite + AI explain
+b334ece feat: Client Report View - raport dla CEO/managera
+cdd112c feat: Auto-Flow po skanie - rekomendowane akcje
+6bbeff1 feat: Command Center - unified dashboard trzech glow
+f9251ea feat: Nginx reverse proxy + HTTPS/TLS
+6cb7eff feat: hardening - security headers, rate limiting, docker no-new-privileges
+cecbf0d feat: system licencji on-prem HMAC-SHA256
+4bd0375 feat: system licencji on-prem HMAC-SHA256
+f357c0d feat: Admin Panel UI - zarzadzanie uzytkownikami
+390b184 feat: system uzytkownikow i ról RBAC
+df9b945 docs: transfer prompt - sesja 24.02.2026 kompletna
+3fd35be feat: Garak LLM security scanner - osobny kontener
+2d3b67e feat: Certipy - AD Certificate Services enumeration
+f660d59 docs: SET usunieto z backlogu - nieintegrowalny TUI, zastapiony GoPhish+BeEF+Evilginx
+```
 
 ---
 
