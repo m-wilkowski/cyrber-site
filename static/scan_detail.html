@@ -39,6 +39,10 @@ body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(r
 nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:56px;background:rgba(8,12,24,.92);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
 .nav-brand{display:flex;align-items:center;gap:12px;font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;letter-spacing:.15em;color:var(--white);text-decoration:none}
 .nav-brand span{font-size:10px;font-weight:400;color:var(--accent);letter-spacing:.3em;display:block;margin-top:-2px}
+.nav-ring{position:relative;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--accent);display:flex;align-items:center;justify-content:center;animation:navRingPulse 3s ease-in-out infinite;flex-shrink:0}
+.nav-ring::before{content:'';position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(74,143,212,.18);animation:navRingPulse 3s ease-in-out infinite .5s}
+.nav-ring svg{width:22px;height:22px}
+@keyframes navRingPulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
 .nav-links{display:flex;gap:4px}
 .nav-link{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.15em;color:var(--silver);text-decoration:none;padding:6px 14px;border:1px solid transparent;transition:all .2s}
 .nav-link:hover{color:var(--accent);border-color:var(--border)}
@@ -278,13 +282,12 @@ footer{text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid v
 <body>
 
 <nav>
-  <a class="nav-brand" href="/ui"><img src="/static/cyrber_wolf.png" alt="" style="width:28px;height:28px;object-fit:contain">CYRBER<span>AUTONOMOUS RECON</span></a>
+  <a class="nav-brand" href="/ui"><div class="nav-ring"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2L8 7H4L7 10.5L6 16L11 13L16 16L15 10.5L18 7H14L11 2Z" fill="#4a8fd4" opacity="0.9"/></svg></div>CYRBER<span>AUTONOMOUS RECON</span></a>
   <div class="nav-links">
-    <a class="nav-link" href="/command-center">CMD CENTER</a>
     <a class="nav-link" href="/ui">SCAN</a>
     <a class="nav-link" href="/dashboard">DASHBOARD</a>
-    <a class="nav-link" href="/scheduler">SCHEDULER</a>
     <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="/scheduler">SCHEDULER</a>
     <a class="nav-link" href="/osint">OSINT</a>
     <a class="nav-link" href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
     <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
