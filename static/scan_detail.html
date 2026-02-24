@@ -535,7 +535,16 @@ function renderOverview(){
   h+='<div class="compliance-badge'+(isCrit?' fail':isHigh?' warn':'')+'">NIS2: '+(isCrit?'NARUSZENIE':isHigh?'RYZYKO':'ZGODNOSC')+'</div>';
   h+='</div></div>';
 
+  // Security Score Sparkline
+  h+='<div class="panel"><div class="panel-label">SECURITY SCORE TREND</div>';
+  h+='<div id="sparklineArea" style="display:flex;align-items:center;gap:16px">';
+  h+='<div class="loading pulse" style="padding:8px 0">LOADING...</div>';
+  h+='</div></div>';
+
   el.innerHTML=h;
+
+  // Load sparkline data
+  loadSparkline();
 
   // Lazy load chains for preview
   authFetch(API+'/scans/'+_taskId+'/chains')
@@ -561,6 +570,56 @@ function renderOverview(){
       cp.innerHTML=ch;
     })
     .catch(function(){document.getElementById('chainsPreview').innerHTML='<div class="empty">Brak danych</div>'});
+}
+
+function loadSparkline(){
+  if(!_scan||!_scan.target)return;
+  authFetch(API+'/api/target/'+encodeURIComponent(_scan.target)+'/timeline')
+    .then(function(r){return r.json()})
+    .then(function(data){
+      var tl=data.timeline||[];
+      var area=document.getElementById('sparklineArea');
+      if(!area)return;
+      if(tl.length<2){area.innerHTML='<span style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--silver);letter-spacing:.1em">PIERWSZY SKAN TEGO TARGETU</span>';return}
+
+      var pts=tl.slice(-5);
+      var W=150,H=40,pad=4;
+      var cW=W-pad*2,cH=H-pad*2;
+      var scores=pts.map(function(p){return p.risk_score||0});
+      var mn=Math.min.apply(null,scores);
+      var mx=Math.max.apply(null,scores);
+      if(mx===mn){mx=mn+10}
+
+      var coords=[];
+      pts.forEach(function(p,i){
+        var x=pad+(pts.length>1?(i/(pts.length-1))*cW:cW/2);
+        var y=pad+cH-((p.risk_score||0)-mn)/(mx-mn)*cH;
+        coords.push({x:x,y:y,score:p.risk_score||0});
+      });
+
+      var first=coords[0].score,last=coords[coords.length-1].score;
+      var diff=last-first;
+      var lineColor=diff<0?'var(--green)':diff>0?'var(--red)':'var(--accent)';
+      var trendText=diff<0?'\u2193 poprawa':diff>0?'\u2191 pogorszenie':'\u2192 stabilny';
+      var trendColor=diff<0?'var(--green)':diff>0?'var(--red)':'var(--accent)';
+
+      var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:150px;height:40px" xmlns="http://www.w3.org/2000/svg">';
+      var aPath='M'+coords[0].x+','+coords[0].y;
+      for(var i=1;i<coords.length;i++)aPath+=' L'+coords[i].x+','+coords[i].y;
+      aPath+=' L'+coords[coords.length-1].x+','+(H-pad)+' L'+coords[0].x+','+(H-pad)+' Z';
+      svg+='<path d="'+aPath+'" fill="'+lineColor+'" opacity="0.1"/>';
+      var lPath='M'+coords[0].x+','+coords[0].y;
+      for(var i=1;i<coords.length;i++)lPath+=' L'+coords[i].x+','+coords[i].y;
+      svg+='<path d="'+lPath+'" fill="none" stroke="'+lineColor+'" stroke-width="2" stroke-linecap="round"/>';
+      coords.forEach(function(c){svg+='<circle cx="'+c.x+'" cy="'+c.y+'" r="2.5" fill="'+lineColor+'"/>'});
+      svg+='</svg>';
+
+      area.innerHTML=svg+'<span style="font-family:Share Tech Mono,monospace;font-size:11px;color:'+trendColor+';letter-spacing:.05em">Trend: '+trendText+' ('+first+' \u2192 '+last+')</span>';
+    })
+    .catch(function(){
+      var area=document.getElementById('sparklineArea');
+      if(area)area.innerHTML='<span style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--silver)">Timeline niedostepny</span>';
+    });
 }
 
 /* ═══════════════════════════════════

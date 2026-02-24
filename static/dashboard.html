@@ -440,6 +440,101 @@ nav {
   letter-spacing: .15em;
 }
 
+/* ══════════════════════════════════════
+   SECURITY SCORE TIMELINE
+   ══════════════════════════════════════ */
+.tl-section { margin-top: 0; }
+
+.tl-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.tl-select {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  background: var(--navy);
+  color: var(--white);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  outline: none;
+  min-width: 280px;
+  cursor: pointer;
+}
+.tl-select:focus { border-color: var(--accent); }
+
+.tl-trend-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  padding: 3px 10px;
+  border: 1px solid;
+}
+.tl-trend-badge.improving { color: var(--green); border-color: var(--green); }
+.tl-trend-badge.stable    { color: var(--accent); border-color: var(--accent); }
+.tl-trend-badge.degrading { color: var(--red); border-color: var(--red); }
+.tl-trend-badge.new       { color: var(--silver); border-color: var(--silver); }
+
+.tl-chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  margin-bottom: 8px;
+}
+
+.tl-bar-wrap {
+  position: relative;
+  width: 100%;
+  height: 50px;
+  margin-bottom: 16px;
+}
+
+.tl-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--silver);
+  letter-spacing: .15em;
+}
+
+.tl-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.tl-kpi {
+  background: rgba(74,143,212,.04);
+  border: 1px solid var(--border2);
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.tl-kpi-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.tl-kpi-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .2em;
+  color: var(--silver);
+}
+
+@media (max-width: 768px) {
+  .tl-kpi-grid { grid-template-columns: 1fr; }
+  .tl-select { min-width: 100%; }
+}
+
 /* ── FOOTER ── */
 footer {
   text-align: center;
@@ -1094,6 +1189,42 @@ footer {
 
     <!-- PAGINATION -->
     <div class="pagination" id="pagination"></div>
+  </div>
+
+  <!-- SECURITY SCORE TIMELINE -->
+  <div class="panel tl-section">
+    <div class="panel-label">
+      <span>SECURITY SCORE TIMELINE</span>
+      <span id="tlLastScore" style="color:var(--silver)"></span>
+    </div>
+
+    <div class="tl-selector-row">
+      <select class="tl-select" id="tlTargetSelect" onchange="loadTimeline(this.value)">
+        <option value="">Wybierz target...</option>
+      </select>
+      <span id="tlTrendBadge"></span>
+    </div>
+
+    <div id="tlChartArea">
+      <div class="tl-empty">WYBIERZ TARGET ABY ZOBACZYC TIMELINE</div>
+    </div>
+
+    <div id="tlKpiArea" style="display:none">
+      <div class="tl-kpi-grid">
+        <div class="tl-kpi">
+          <div class="tl-kpi-value" id="tlKpiImprove" style="color:var(--green)">&mdash;</div>
+          <div class="tl-kpi-label">POPRAWA</div>
+        </div>
+        <div class="tl-kpi">
+          <div class="tl-kpi-value" id="tlKpiFixRate" style="color:var(--accent)">&mdash;</div>
+          <div class="tl-kpi-label">FIX RATE</div>
+        </div>
+        <div class="tl-kpi">
+          <div class="tl-kpi-value" id="tlKpiTrend">&mdash;</div>
+          <div class="tl-kpi-label">TREND</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.1.0</footer>
@@ -2055,10 +2186,223 @@ function updateCountdownDisplay() {
 }
 
 /* ══════════════════════════════════════
+   SECURITY SCORE TIMELINE
+   ══════════════════════════════════════ */
+var _tlData = null;
+var _tlScores = null;
+
+function loadSecurityScores() {
+  authFetch(API + '/api/dashboard/security-scores')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var sel = document.getElementById('tlTargetSelect');
+      var targets = data.targets || [];
+      // Keep current selection
+      var cur = sel.value;
+      sel.innerHTML = '<option value="">Wybierz target...</option>';
+      targets.forEach(function(t) {
+        var trendIcon = t.trend === 'improving' ? '\u{1F4C8}' : t.trend === 'degrading' ? '\u{1F4C9}' : '\u27A1\uFE0F';
+        var score = t.risk_score || 0;
+        var opt = document.createElement('option');
+        opt.value = t.target;
+        opt.textContent = trendIcon + ' ' + t.target + '  (score: ' + score + ', scans: ' + t.scan_count + ')';
+        sel.appendChild(opt);
+      });
+      if (cur) { sel.value = cur; }
+      _tlScores = targets;
+    })
+    .catch(function(e) { console.error('loadSecurityScores error:', e); });
+}
+
+function loadTimeline(target) {
+  if (!target) {
+    document.getElementById('tlChartArea').innerHTML = '<div class="tl-empty">WYBIERZ TARGET ABY ZOBACZYC TIMELINE</div>';
+    document.getElementById('tlKpiArea').style.display = 'none';
+    document.getElementById('tlTrendBadge').innerHTML = '';
+    document.getElementById('tlLastScore').textContent = '';
+    return;
+  }
+
+  document.getElementById('tlChartArea').innerHTML = '<div class="tl-empty pulse">LOADING TIMELINE...</div>';
+
+  authFetch(API + '/api/target/' + encodeURIComponent(target) + '/timeline')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      _tlData = data;
+      renderTimeline(data);
+    })
+    .catch(function(e) {
+      document.getElementById('tlChartArea').innerHTML = '<div class="tl-empty">Error: ' + escH(e.message) + '</div>';
+    });
+}
+
+function renderTimeline(data) {
+  var timeline = data.timeline || [];
+  if (!timeline.length) {
+    document.getElementById('tlChartArea').innerHTML = '<div class="tl-empty">BRAK DANYCH DLA TEGO TARGETU</div>';
+    document.getElementById('tlKpiArea').style.display = 'none';
+    return;
+  }
+
+  // Trend badge
+  var tInfo = (_tlScores || []).find(function(t) { return t.target === data.target; });
+  var trend = (tInfo && tInfo.trend) || 'new';
+  if (trend === 'new' && timeline.length >= 2) {
+    var fs = timeline[0].risk_score || 0, ls = timeline[timeline.length - 1].risk_score || 0;
+    trend = ls < fs ? 'improving' : ls > fs ? 'degrading' : 'stable';
+  }
+  var trendLabel = { improving: 'IMPROVING', stable: 'STABLE', degrading: 'DEGRADING', 'new': 'NEW' };
+  var trendIcon = { improving: '\u{1F4C8}', stable: '\u27A1\uFE0F', degrading: '\u{1F4C9}', 'new': '\u{1F195}' };
+  document.getElementById('tlTrendBadge').innerHTML =
+    '<span class="tl-trend-badge ' + trend + '">' + (trendIcon[trend] || '') + ' ' + (trendLabel[trend] || trend.toUpperCase()) + '</span>';
+
+  var lastPt = timeline[timeline.length - 1];
+  document.getElementById('tlLastScore').textContent = 'SCORE: ' + (lastPt.risk_score || 0);
+
+  // Build SVG
+  var h = '';
+  var pad = { top: 20, right: 30, bottom: 30, left: 45 };
+  var W = 900, H = 200;
+  var cW = W - pad.left - pad.right;
+  var cH = H - pad.top - pad.bottom;
+
+  h += '<div class="tl-chart-wrap"><svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:200px" xmlns="http://www.w3.org/2000/svg">';
+
+  // Defs — gradient for area fill
+  h += '<defs>';
+  h += '<linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">';
+  h += '<stop offset="0%" stop-color="var(--accent)" stop-opacity="0.15"/>';
+  h += '<stop offset="100%" stop-color="var(--accent)" stop-opacity="0.01"/>';
+  h += '</linearGradient>';
+  h += '</defs>';
+
+  // Y-axis grid + labels
+  var yTicks = [0, 25, 50, 75, 100];
+  yTicks.forEach(function(v) {
+    var y = pad.top + cH - (v / 100) * cH;
+    h += '<line x1="' + pad.left + '" y1="' + y + '" x2="' + (W - pad.right) + '" y2="' + y + '" stroke="rgba(74,143,212,.12)" stroke-dasharray="4,4"/>';
+    h += '<text x="' + (pad.left - 8) + '" y="' + (y + 3) + '" fill="var(--silver)" font-family="Share Tech Mono,monospace" font-size="9" text-anchor="end">' + v + '</text>';
+  });
+
+  // Compute points
+  var n = timeline.length;
+  var points = [];
+  timeline.forEach(function(pt, i) {
+    var x = pad.left + (n > 1 ? (i / (n - 1)) * cW : cW / 2);
+    var score = pt.risk_score || 0;
+    var y = pad.top + cH - (score / 100) * cH;
+    points.push({ x: x, y: y, score: score, date: pt.date, findings: pt.findings_total || 0, task_id: pt.task_id });
+  });
+
+  // Area fill
+  var areaPath = 'M' + points[0].x + ',' + points[0].y;
+  for (var i = 1; i < points.length; i++) {
+    areaPath += ' L' + points[i].x + ',' + points[i].y;
+  }
+  areaPath += ' L' + points[points.length - 1].x + ',' + (pad.top + cH);
+  areaPath += ' L' + points[0].x + ',' + (pad.top + cH) + ' Z';
+  h += '<path d="' + areaPath + '" fill="url(#areaGrad)"/>';
+
+  // Line segments (color-coded)
+  for (var i = 0; i < points.length - 1; i++) {
+    var avgScore = (points[i].score + points[i + 1].score) / 2;
+    var lineColor = avgScore > 70 ? 'var(--red)' : avgScore > 40 ? 'var(--orange)' : 'var(--green)';
+    h += '<line x1="' + points[i].x + '" y1="' + points[i].y + '" x2="' + points[i + 1].x + '" y2="' + points[i + 1].y + '" stroke="' + lineColor + '" stroke-width="2" stroke-linecap="round"/>';
+  }
+
+  // X-axis labels (skip if too many)
+  var labelEvery = Math.max(1, Math.ceil(n / 8));
+  points.forEach(function(pt, i) {
+    if (i % labelEvery !== 0 && i !== n - 1) return;
+    var dateStr = pt.date ? pt.date.slice(5, 10) : '';
+    h += '<text x="' + pt.x + '" y="' + (H - 6) + '" fill="var(--silver)" font-family="Share Tech Mono,monospace" font-size="8" text-anchor="middle">' + dateStr + '</text>';
+  });
+
+  // Data points (circles) with tooltip group
+  points.forEach(function(pt) {
+    var ptColor = pt.score > 70 ? 'var(--red)' : pt.score > 40 ? 'var(--orange)' : 'var(--green)';
+    h += '<g class="tl-point" style="cursor:pointer" onclick="window.open(\'/scan/' + pt.task_id + '/detail\',\'_blank\')">';
+    // Invisible larger hit area
+    h += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="12" fill="transparent"/>';
+    // Visible dot
+    h += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="5" fill="var(--navy)" stroke="' + ptColor + '" stroke-width="2"/>';
+    // Tooltip
+    var tipY = pt.y - 14;
+    if (tipY < 14) tipY = pt.y + 18;
+    h += '<text x="' + pt.x + '" y="' + tipY + '" fill="var(--white)" font-family="Share Tech Mono,monospace" font-size="8" text-anchor="middle" opacity="0" class="tl-tip">';
+    h += (pt.date ? pt.date.slice(0, 10) : '') + ' | ' + pt.score + ' | ' + pt.findings + 'f</text>';
+    h += '</g>';
+  });
+
+  h += '</svg></div>';
+
+  // Stacked bar chart (mini severity bars per scan)
+  h += '<div class="tl-bar-wrap"><svg viewBox="0 0 ' + W + ' 50" style="width:100%;height:50px" xmlns="http://www.w3.org/2000/svg">';
+
+  var barW = Math.max(6, Math.min(20, cW / n - 2));
+  timeline.forEach(function(pt, i) {
+    var x = pad.left + (n > 1 ? (i / (n - 1)) * cW : cW / 2) - barW / 2;
+    var cr = pt.critical || 0, hi = pt.high || 0, me = pt.medium || 0, lo = pt.low || 0;
+    var total = cr + hi + me + lo;
+    if (!total) return;
+    var maxH = 40;
+    var scale = maxH / total;
+
+    var yOff = 45;
+    if (cr) { var bh = cr * scale; yOff -= bh; h += '<rect x="' + x + '" y="' + yOff + '" width="' + barW + '" height="' + bh + '" fill="var(--red)" opacity="0.8" rx="1"/>'; }
+    if (hi) { var bh = hi * scale; yOff -= bh; h += '<rect x="' + x + '" y="' + yOff + '" width="' + barW + '" height="' + bh + '" fill="var(--orange)" opacity="0.8" rx="1"/>'; }
+    if (me) { var bh = me * scale; yOff -= bh; h += '<rect x="' + x + '" y="' + yOff + '" width="' + barW + '" height="' + bh + '" fill="var(--yellow)" opacity="0.8" rx="1"/>'; }
+    if (lo) { var bh = lo * scale; yOff -= bh; h += '<rect x="' + x + '" y="' + yOff + '" width="' + barW + '" height="' + bh + '" fill="var(--green)" opacity="0.8" rx="1"/>'; }
+  });
+
+  h += '</svg></div>';
+
+  document.getElementById('tlChartArea').innerHTML = h;
+
+  // Add hover effect via CSS
+  addTlHoverStyle();
+
+  // KPIs
+  document.getElementById('tlKpiArea').style.display = '';
+
+  var impStr = data.improvement || 'N/A';
+  var impEl = document.getElementById('tlKpiImprove');
+  impEl.textContent = impStr;
+  impEl.style.fontSize = impStr.length > 10 ? '16px' : '28px';
+  impEl.style.color = impStr.indexOf('lepiej') !== -1 ? 'var(--green)' : impStr.indexOf('gorzej') !== -1 ? 'var(--red)' : 'var(--accent)';
+
+  document.getElementById('tlKpiFixRate').textContent = data.fix_rate || 'N/A';
+
+  // Compute trend from timeline data
+  var tl = data.timeline || [];
+  var computedTrend = 'new';
+  if (tl.length >= 2) {
+    var firstS = tl[0].risk_score || 0;
+    var lastS = tl[tl.length - 1].risk_score || 0;
+    computedTrend = lastS < firstS ? 'improving' : lastS > firstS ? 'degrading' : 'stable';
+  }
+  var trendEl = document.getElementById('tlKpiTrend');
+  var trendColors = { improving: 'var(--green)', stable: 'var(--accent)', degrading: 'var(--red)', 'new': 'var(--silver)' };
+  var trendLabels = { improving: 'IMPROVING', stable: 'STABLE', degrading: 'DEGRADING', 'new': 'NEW' };
+  trendEl.textContent = trendLabels[computedTrend] || 'NEW';
+  trendEl.style.color = trendColors[computedTrend] || 'var(--silver)';
+}
+
+var _tlStyleAdded = false;
+function addTlHoverStyle() {
+  if (_tlStyleAdded) return;
+  _tlStyleAdded = true;
+  var s = document.createElement('style');
+  s.textContent = '.tl-point .tl-tip{transition:opacity .15s}.tl-point:hover .tl-tip{opacity:1!important}.tl-point:hover circle:nth-child(2){r:7}';
+  document.head.appendChild(s);
+}
+
+/* ══════════════════════════════════════
    INIT
    ══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function() {
   loadDashboard();
+  loadSecurityScores();
   startCountdownLoop();
 });
 </script>
