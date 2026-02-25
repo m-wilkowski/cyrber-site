@@ -2,6 +2,7 @@
 <html lang="pl">
 <head>
 <script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CYRBER — Login</title>
@@ -11,65 +12,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --navy:    #080c18;
-    --navy2:   #0c1220;
-    --navy3:   #101828;
-    --panel:   #0a1020;
-    --accent:  #4a8fd4;
-    --accent2: #7ab3e8;
-    --purple:  #9b59b6;
-    --silver:  #8a9bb5;
-    --white:   #e8eef8;
-    --border:  rgba(74,143,212,.18);
-    --border2: rgba(74,143,212,.10);
-    --red:     #ff4444;
-    --yellow:  #f5c518;
-    --green:   #3ddc84;
-    --orange:  #ff8c00;
-  }
-  html[data-theme="light"]{--navy:#f0f4f8;--navy2:#e2e8f0;--navy3:#cbd5e1;--panel:#ffffff;--accent:#2563eb;--accent2:#1d4ed8;--purple:#7c3aed;--silver:#64748b;--white:#1e293b;--border:rgba(37,99,235,.18);--border2:rgba(37,99,235,.10);--red:#dc2626;--yellow:#ca8a04;--green:#16a34a;--orange:#ea580c}
-  html[data-theme="light"] body::before{background:radial-gradient(ellipse 80% 50% at 15% 60%,rgba(37,99,235,.03) 0%,transparent 70%),radial-gradient(ellipse 60% 40% at 85% 15%,rgba(37,99,235,.02) 0%,transparent 60%),radial-gradient(ellipse 100% 30% at 50% 100%,rgba(37,99,235,.02) 0%,transparent 60%)}
-  html[data-theme="light"] body::after{background-image:linear-gradient(rgba(37,99,235,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.05) 1px,transparent 1px)}
-  .theme-toggle{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px;color:var(--silver);transition:all .2s;position:fixed;top:16px;right:16px;z-index:100}
-  .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .theme-toggle{position:fixed;top:var(--sp-4);right:var(--sp-4);z-index:100}
 
   body {
-    background: var(--navy);
-    color: var(--white);
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 15px;
-    min-height: 100vh;
-    overflow-x: hidden;
     display: flex;
     align-items: flex-end;
     justify-content: center;
     padding-bottom: 5vh;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 80% 50% at 15% 60%, rgba(20,40,80,0.55) 0%, transparent 70%),
-      radial-gradient(ellipse 60% 40% at 85% 15%, rgba(10,20,50,0.7) 0%, transparent 60%),
-      radial-gradient(ellipse 100% 30% at 50% 100%, rgba(74,143,212,0.04) 0%, transparent 60%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(74,143,212,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(74,143,212,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
   }
 
   .login-container {
@@ -77,7 +26,7 @@
     z-index: 1;
     width: 100%;
     max-width: 400px;
-    padding: 0 20px;
+    padding: 0 var(--sp-5);
   }
 
   .login-brand {
@@ -94,55 +43,59 @@
     font-size: 56px;
     font-weight: 900;
     letter-spacing: .2em;
-    color: var(--white);
+    color: var(--text-primary);
   }
 
   .login-brand span {
     display: block;
     font-family: 'Orbitron', sans-serif;
-    font-size: 10px;
+    font-size: var(--text-sm);
     font-weight: 400;
     color: var(--accent);
     letter-spacing: .3em;
-    margin-top: 4px;
+    margin-top: var(--sp-1);
   }
 
   .login-card {
-    background: rgba(12,18,32,.82);
+    background: var(--card-bg);
     border: 1px solid var(--border);
-    padding: 32px;
-    backdrop-filter: blur(12px);
+    border-radius: var(--radius-md);
+    padding: var(--sp-8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: var(--card-shadow);
   }
 
   .login-card h2 {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
+    font-size: var(--text-base);
     letter-spacing: .2em;
-    color: var(--silver);
-    margin-bottom: 24px;
+    color: var(--text-secondary);
+    margin-bottom: var(--sp-6);
   }
 
   .form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-bottom: 16px;
+    gap: var(--sp-1);
+    margin-bottom: var(--sp-4);
   }
 
   label {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
+    font-size: var(--text-sm);
     letter-spacing: .15em;
-    color: var(--silver);
+    color: var(--text-secondary);
   }
 
   input {
-    background: var(--navy3);
+    background: var(--input-bg);
     border: 1px solid var(--border);
-    color: var(--white);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
     font-family: 'Share Tech Mono', monospace;
-    font-size: 13px;
-    padding: 12px 14px;
+    font-size: var(--text-md);
+    padding: var(--sp-3) var(--sp-4);
     outline: none;
     width: 100%;
     transition: border-color .2s;
@@ -154,28 +107,31 @@
 
   .btn {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 12px;
+    font-size: var(--text-base);
     letter-spacing: .15em;
-    padding: 12px 24px;
-    border: 1px solid var(--accent);
-    background: rgba(74,143,212,.1);
-    color: var(--accent);
+    padding: var(--sp-3) var(--sp-6);
+    border: 1px solid rgba(74,143,212,.3);
+    border-radius: var(--radius-sm);
+    background: var(--btn-primary-bg);
+    color: #fff;
     cursor: pointer;
     width: 100%;
-    margin-top: 8px;
+    margin-top: var(--sp-2);
     transition: all .2s;
   }
 
   .btn:hover {
-    background: rgba(74,143,212,.2);
+    background: var(--btn-primary-hover);
+    box-shadow: 0 0 24px var(--glow);
   }
 
   .msg {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 12px;
-    padding: 10px 14px;
-    margin-top: 16px;
+    font-size: var(--text-base);
+    padding: var(--sp-2) var(--sp-4);
+    margin-top: var(--sp-4);
     border-left: 3px solid var(--red);
+    border-radius: var(--radius-sm);
     background: rgba(255,68,68,.08);
     color: var(--red);
     display: none;
@@ -185,13 +141,13 @@
 
   footer {
     position: fixed;
-    bottom: 20px;
+    bottom: var(--sp-5);
     left: 0;
     right: 0;
     text-align: center;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: rgba(74,143,212,.18);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
     letter-spacing: .22em;
     z-index: 1;
   }
@@ -212,12 +168,12 @@
   }
 
   @media (max-width: 768px) {
-    .login-card { max-width: 360px; padding: 28px; }
+    .login-card { max-width: 360px; padding: var(--sp-6); }
     .login-brand h1 { font-size: 44px; }
   }
   @media (max-width: 480px) {
     .login-brand h1 { font-size: 36px; }
-    .login-card { padding: 24px; }
+    .login-card { padding: var(--sp-6); }
     body { padding-bottom: 4vh; }
   }
 </style>
