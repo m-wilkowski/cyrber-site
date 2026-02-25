@@ -233,6 +233,15 @@
 /* ── FOOTER ── */
 footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-top:1px solid var(--border);font-family:'Share Tech Mono',monospace;font-size:var(--text-sm);color:var(--text-muted);letter-spacing:.22em}
 
+/* ── ENRICHMENT BADGES ── */
+.fd-enrich{display:flex;gap:6px;flex-wrap:wrap;margin-top:var(--sp-1)}
+.enrich-badge{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.08em;padding:2px var(--sp-2);border:1px solid;border-radius:var(--radius-sm);white-space:nowrap}
+.enrich-badge.kev{color:var(--red);border-color:var(--red);background:rgba(255,68,68,.08)}
+.enrich-badge.euvd{color:#f59e0b;border-color:#f59e0b;background:rgba(245,158,11,.08)}
+.enrich-badge.misp{color:#e11d48;border-color:#e11d48;background:rgba(225,29,72,.08)}
+.enrich-badge.epss{color:var(--orange,#ff8c00);border-color:var(--orange,#ff8c00);background:rgba(255,140,0,.08)}
+.enrich-badge.attack{color:#5eead4;border-color:#5eead4;background:rgba(94,234,212,.08)}
+
 /* ── SCROLLBAR ── */
 .ai-messages::-webkit-scrollbar,.mod-raw::-webkit-scrollbar{width:4px}
 .ai-messages::-webkit-scrollbar-track,.mod-raw::-webkit-scrollbar-track{background:var(--bg-root)}
@@ -413,6 +422,7 @@ function renderHero(){
   h+='<div class="hero-actions">';
   h+='<a class="hero-btn hero-btn-primary" href="'+API+'/scans/'+_taskId+'/pdf" target="_blank">POBIERZ PDF</a>';
   h+='<a class="hero-btn" href="/report/'+_taskId+'" target="_blank">RAPORT KLIENCKI</a>';
+  h+='<button class="hero-btn" onclick="exportToMisp()" style="border-color:#e11d48;color:#e11d48">EXPORT TO MISP</button>';
   h+='<a class="hero-btn hero-btn-back" href="/dashboard">\u2190 WR\u00d3\u0106 DO DASHBOARD</a>';
   h+='</div></div>';
 
@@ -483,6 +493,8 @@ function renderOverview(){
       h+='<span class="fd-sev '+sev+'">'+sev.toUpperCase()+'</span>';
       h+='<div class="top-fd-name">'+escH(f.name)+'</div>';
       h+='<div class="top-fd-mod">'+escH((f._module||'').toUpperCase())+'</div>';
+      var tb='';if(f.in_kev)tb+='<span class="enrich-badge kev">KEV</span>';if(f.in_misp)tb+='<span class="enrich-badge misp">MISP</span>';if(f.in_euvd)tb+='<span class="enrich-badge euvd">EUVD</span>';
+      if(tb)h+='<div style="display:flex;gap:4px;margin-top:2px">'+tb+'</div>';
       h+='</div>';
     });
     h+='</div>';
@@ -594,27 +606,37 @@ function loadSparkline(){
 /* ═══════════════════════════════════
    TAB 2: FINDINGS
    ═══════════════════════════════════ */
+function enrichBadges(f){
+  var b='<div class="fd-enrich">';var any=false;
+  if(f.in_kev){b+='<span class="enrich-badge kev">KEV</span>';any=true}
+  if(f.in_euvd){b+='<span class="enrich-badge euvd">EUVD</span>';any=true}
+  if(f.in_misp){b+='<span class="enrich-badge misp" title="'+(f.misp_event_count||0)+' MISP events">MISP ('+(f.misp_event_count||0)+')</span>';any=true}
+  if(f.epss_score){b+='<span class="enrich-badge epss">EPSS: '+(f.epss_score*100).toFixed(1)+'%</span>';any=true}
+  if(f.attack_techniques&&f.attack_techniques.length){b+='<span class="enrich-badge attack">ATT&amp;CK: '+f.attack_techniques.length+'</span>';any=true}
+  b+='</div>';return any?b:'';
+}
+function _enrich(f){return{in_kev:f.in_kev,in_euvd:f.in_euvd,in_misp:f.in_misp,misp_event_count:f.misp_event_count,epss_score:f.epss_score,attack_techniques:f.attack_techniques}}
 function collectFindings(detail){
   var findings=[];
   var sevOrd={critical:0,high:1,medium:2,low:3,info:4};
 
   var nf=(detail.nuclei&&detail.nuclei.findings)||[];
-  nf.forEach(function(f){findings.push({name:(f.info&&f.info.name)||f.name||f.template_id||'',description:(f.info&&f.info.description)||f.matched_at||'',severity:(f.info&&f.info.severity)||f.severity||'info',_module:'nuclei'})});
+  nf.forEach(function(f){findings.push(Object.assign({name:(f.info&&f.info.name)||f.name||f.template_id||'',description:(f.info&&f.info.description)||f.matched_at||'',severity:(f.info&&f.info.severity)||f.severity||'info',_module:'nuclei'},_enrich(f)))});
 
   var za=(detail.zap&&detail.zap.alerts)||[];
-  za.forEach(function(a){var r=(a.risk||'').toLowerCase();var sev=r==='high'?'high':r==='medium'?'medium':r==='low'?'low':'info';findings.push({name:a.name||a.alert||'',description:a.description||'',severity:sev,_module:'zap'})});
+  za.forEach(function(a){var r=(a.risk||'').toLowerCase();var sev=r==='high'?'high':r==='medium'?'medium':r==='low'?'low':'info';findings.push(Object.assign({name:a.name||a.alert||'',description:a.description||'',severity:sev,_module:'zap'},_enrich(a)))});
 
   if(detail.sqlmap&&detail.sqlmap.vulnerable)findings.push({name:'SQL Injection',description:'SQLMap detected injection vulnerability',severity:'critical',_module:'sqlmap'});
 
   var wv=(detail.wpscan&&detail.wpscan.vulnerabilities)||[];
-  wv.forEach(function(v){findings.push({name:v.title||v.name||'',description:v.description||'',severity:'high',_module:'wpscan'})});
+  wv.forEach(function(v){findings.push(Object.assign({name:v.title||v.name||'',description:v.description||'',severity:'high',_module:'wpscan'},_enrich(v)))});
 
   var ni=(detail.nikto&&detail.nikto.findings)||[];
-  ni.forEach(function(f){findings.push({name:f.name||f.msg||'',description:f.description||f.msg||'',severity:'medium',_module:'nikto'})});
+  ni.forEach(function(f){findings.push(Object.assign({name:f.name||f.msg||'',description:f.description||f.msg||'',severity:'medium',_module:'nikto'},_enrich(f)))});
 
-  if(detail.testssl&&detail.testssl.findings)detail.testssl.findings.forEach(function(f){findings.push({name:f.name||f.id||'',description:f.finding||'',severity:(f.severity||'info').toLowerCase(),_module:'testssl'})});
-  if(detail.certipy&&detail.certipy.findings)detail.certipy.findings.forEach(function(f){findings.push({name:f.name||'',description:f.description||'',severity:(f.severity||'high').toLowerCase(),_module:'certipy'})});
-  if(detail.gobuster&&detail.gobuster.findings)detail.gobuster.findings.forEach(function(f){findings.push({name:f.path||f.name||'',description:f.description||'Discovered path',severity:'info',_module:'gobuster'})});
+  if(detail.testssl&&detail.testssl.findings)detail.testssl.findings.forEach(function(f){findings.push(Object.assign({name:f.name||f.id||'',description:f.finding||'',severity:(f.severity||'info').toLowerCase(),_module:'testssl'},_enrich(f)))});
+  if(detail.certipy&&detail.certipy.findings)detail.certipy.findings.forEach(function(f){findings.push(Object.assign({name:f.name||'',description:f.description||'',severity:(f.severity||'high').toLowerCase(),_module:'certipy'},_enrich(f)))});
+  if(detail.gobuster&&detail.gobuster.findings)detail.gobuster.findings.forEach(function(f){findings.push(Object.assign({name:f.path||f.name||'',description:f.description||'Discovered path',severity:'info',_module:'gobuster'},_enrich(f)))});
 
   findings.sort(function(a,b){return(sevOrd[(a.severity||'info').toLowerCase()]||5)-(sevOrd[(b.severity||'info').toLowerCase()]||5)});
   return findings;
@@ -654,6 +676,7 @@ function renderFindings(){
     h+='<div class="fd-name">'+escH(f.name)+'</div>';
     if(f.description)h+='<div class="fd-desc">'+escH(String(f.description).substring(0,300))+'</div>';
     if(f._module)h+='<div class="fd-meta">MODULE: '+f._module.toUpperCase()+'</div>';
+    h+=enrichBadges(f);
     h+='<button class="fd-explain-btn" onclick="explainFinding('+i+',this)">&#x1F916; WYJA\u015aNIJ</button>';
     h+='<div id="explain-'+i+'"></div>';
     h+='</div></div>';
@@ -893,6 +916,7 @@ function renderReport(){
   h+='<a class="hero-btn hero-btn-primary" href="'+API+'/scans/'+_taskId+'/pdf" target="_blank">GENERUJ PDF</a>';
   h+='<a class="hero-btn" href="/report/'+_taskId+'" target="_blank">OTWORZ RAPORT KLIENCKI</a>';
   h+='<a class="hero-btn" href="/report/'+_taskId+'/compliance" target="_blank" style="border-color:var(--purple);color:var(--purple)">COMPLIANCE EVIDENCE PDF (NIS2/ISO27001)</a>';
+  h+='<button class="hero-btn" onclick="exportToMisp()" style="border-color:#e11d48;color:#e11d48">EXPORT TO MISP</button>';
   h+='</div></div>';
 
   // Inline preview
@@ -1077,6 +1101,8 @@ function renderRemCard(t,canEdit,canDelete){
   h+='<span class="fd-sev '+sev+'">'+sev.toUpperCase()+'</span>';
   h+='<span class="rem-card-name">'+escH(t.finding_name)+'</span>';
   if(t.finding_module)h+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver)">'+t.finding_module.toUpperCase()+'</span>';
+  if(t.in_kev)h+='<span class="enrich-badge kev">KEV</span>';
+  if(t.in_misp)h+='<span class="enrich-badge misp">MISP</span>';
   // Retest badge
   if(t.retest_status){
     var rsCls=t.retest_status;
@@ -1312,6 +1338,18 @@ function pollRetestStatus(id){
       })
       .catch(function(){});
   },5000);
+}
+function exportToMisp(){
+  if(!confirm('Export this scan to MISP as a new event?'))return;
+  var btn=event.target;btn.disabled=true;btn.textContent='EXPORTING...';
+  authFetch(API+'/api/misp/export/'+_taskId,{method:'POST'})
+    .then(function(r){if(!r.ok){if(r.status===503)throw new Error('MISP not configured');throw new Error('HTTP '+r.status)}return r.json()})
+    .then(function(data){
+      if(data.skipped){alert('MISP not configured on server');return}
+      alert('Exported to MISP!\nEvent ID: '+data.event_id+'\nAttributes: '+data.attribute_count);
+    })
+    .catch(function(e){alert('MISP export failed: '+e.message)})
+    .finally(function(){btn.disabled=false;btn.textContent='EXPORT TO MISP'});
 }
 </script>
 <script>

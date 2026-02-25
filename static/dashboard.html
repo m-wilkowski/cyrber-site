@@ -759,6 +759,13 @@ footer {
 .fd-name { font-size: 13px; font-weight: 600; color: var(--white); margin-bottom: 3px; word-break: break-word; }
 .fd-desc { font-size: 11px; color: var(--silver); line-height: 1.4; word-break: break-word; }
 .fd-meta { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--silver); margin-top: 4px; letter-spacing: .05em; }
+.fd-enrich{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.enrich-badge{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.08em;padding:2px 6px;border:1px solid;border-radius:var(--radius-sm);white-space:nowrap}
+.enrich-badge.kev{color:var(--red);border-color:var(--red);background:rgba(255,68,68,.08)}
+.enrich-badge.euvd{color:#f59e0b;border-color:#f59e0b;background:rgba(245,158,11,.08)}
+.enrich-badge.misp{color:#e11d48;border-color:#e11d48;background:rgba(225,29,72,.08)}
+.enrich-badge.epss{color:var(--orange,#ff8c00);border-color:var(--orange,#ff8c00);background:rgba(255,140,0,.08)}
+.enrich-badge.attack{color:#5eead4;border-color:#5eead4;background:rgba(94,234,212,.08)}
 
 .fd-explain-btn {
   font-family: 'Share Tech Mono', monospace;
@@ -1715,6 +1722,7 @@ function renderTabSummary() {
   h += '<div class="dd-actions">';
   h += '<a class="dd-btn dd-btn-primary" href="' + API + '/scans/' + _drilldownTaskId + '/pdf" target="_blank">DOWNLOAD PDF</a>';
   h += '<a class="dd-btn" href="/report/' + _drilldownTaskId + '" target="_blank">CLIENT REPORT</a>';
+  h += '<button class="dd-btn" onclick="exportToMisp(\'' + _drilldownTaskId + '\')" style="border-color:#e11d48;color:#e11d48">EXPORT TO MISP</button>';
   h += '<button class="dd-btn" onclick="closeDrilldown()">ZAMKNIJ</button>';
   h += '</div>';
 
@@ -1737,6 +1745,16 @@ function toggleNarrative() {
 /* ══════════════════════════════════════
    TAB 2: FINDINGS
    ══════════════════════════════════════ */
+function _enrich(f){return{in_kev:f.in_kev,in_euvd:f.in_euvd,in_misp:f.in_misp,misp_event_count:f.misp_event_count,epss_score:f.epss_score,attack_techniques:f.attack_techniques}}
+function enrichBadges(f){
+  var b='<div class="fd-enrich">';var any=false;
+  if(f.in_kev){b+='<span class="enrich-badge kev">KEV</span>';any=true}
+  if(f.in_euvd){b+='<span class="enrich-badge euvd">EUVD</span>';any=true}
+  if(f.in_misp){b+='<span class="enrich-badge misp" title="'+(f.misp_event_count||0)+' MISP events">MISP ('+(f.misp_event_count||0)+')</span>';any=true}
+  if(f.epss_score){b+='<span class="enrich-badge epss">EPSS: '+(f.epss_score*100).toFixed(1)+'%</span>';any=true}
+  if(f.attack_techniques&&f.attack_techniques.length){b+='<span class="enrich-badge attack">ATT&amp;CK: '+f.attack_techniques.length+'</span>';any=true}
+  b+='</div>';return any?b:'';
+}
 function collectFindings(detail) {
   var findings = [];
   var sevOrd = {critical:0, high:1, medium:2, low:3, info:4};
@@ -1744,12 +1762,12 @@ function collectFindings(detail) {
   // Nuclei
   var nf = (detail.nuclei && detail.nuclei.findings) || [];
   nf.forEach(function(f) {
-    findings.push({
+    findings.push(Object.assign({
       name: (f.info && f.info.name) || f.name || f.template_id || '',
       description: (f.info && f.info.description) || f.matched_at || '',
       severity: (f.info && f.info.severity) || f.severity || 'info',
       _module: 'nuclei'
-    });
+    }, _enrich(f)));
   });
 
   // ZAP alerts
@@ -1757,7 +1775,7 @@ function collectFindings(detail) {
   za.forEach(function(a) {
     var r = (a.risk || '').toLowerCase();
     var sev = r === 'high' ? 'high' : r === 'medium' ? 'medium' : r === 'low' ? 'low' : 'info';
-    findings.push({ name: a.name || a.alert || '', description: a.description || '', severity: sev, _module: 'zap' });
+    findings.push(Object.assign({ name: a.name || a.alert || '', description: a.description || '', severity: sev, _module: 'zap' }, _enrich(a)));
   });
 
   // SQLMap
@@ -1768,33 +1786,33 @@ function collectFindings(detail) {
   // WPScan
   var wv = (detail.wpscan && detail.wpscan.vulnerabilities) || [];
   wv.forEach(function(v) {
-    findings.push({ name: v.title || v.name || '', description: v.description || '', severity: 'high', _module: 'wpscan' });
+    findings.push(Object.assign({ name: v.title || v.name || '', description: v.description || '', severity: 'high', _module: 'wpscan' }, _enrich(v)));
   });
 
   // Nikto
   var ni = (detail.nikto && detail.nikto.findings) || [];
   ni.forEach(function(f) {
-    findings.push({ name: f.name || f.msg || '', description: f.description || f.msg || '', severity: 'medium', _module: 'nikto' });
+    findings.push(Object.assign({ name: f.name || f.msg || '', description: f.description || f.msg || '', severity: 'medium', _module: 'nikto' }, _enrich(f)));
   });
 
   // TestSSL
   if (detail.testssl && detail.testssl.findings) {
     detail.testssl.findings.forEach(function(f) {
-      findings.push({ name: f.name || f.id || '', description: f.finding || '', severity: (f.severity || 'info').toLowerCase(), _module: 'testssl' });
+      findings.push(Object.assign({ name: f.name || f.id || '', description: f.finding || '', severity: (f.severity || 'info').toLowerCase(), _module: 'testssl' }, _enrich(f)));
     });
   }
 
   // Certipy
   if (detail.certipy && detail.certipy.findings) {
     detail.certipy.findings.forEach(function(f) {
-      findings.push({ name: f.name || '', description: f.description || '', severity: (f.severity || 'high').toLowerCase(), _module: 'certipy' });
+      findings.push(Object.assign({ name: f.name || '', description: f.description || '', severity: (f.severity || 'high').toLowerCase(), _module: 'certipy' }, _enrich(f)));
     });
   }
 
   // Gobuster
   if (detail.gobuster && detail.gobuster.findings) {
     detail.gobuster.findings.forEach(function(f) {
-      findings.push({ name: f.path || f.name || '', description: f.description || 'Discovered path', severity: 'info', _module: 'gobuster' });
+      findings.push(Object.assign({ name: f.path || f.name || '', description: f.description || 'Discovered path', severity: 'info', _module: 'gobuster' }, _enrich(f)));
     });
   }
 
@@ -1848,6 +1866,7 @@ function buildFindingCard(f, idx, sev) {
   h += '<div class="fd-name">' + escH(f.name) + '</div>';
   if (f.description) h += '<div class="fd-desc">' + escH(String(f.description).substring(0, 200)) + '</div>';
   if (f._module) h += '<div class="fd-meta">MODULE: ' + f._module.toUpperCase() + '</div>';
+  h += enrichBadges(f);
   h += '<button class="fd-explain-btn" onclick="explainFinding(' + idx + ',this)">&#x1F916; WYJA\u015aNIJ</button>';
   h += '<div id="explain-' + idx + '"></div>';
   h += '</div></div>';
@@ -2322,6 +2341,16 @@ document.addEventListener('DOMContentLoaded', function() {
   loadSecurityScores();
   startCountdownLoop();
 });
+function exportToMisp(taskId){
+  if(!confirm('Export this scan to MISP as a new event?'))return;
+  authFetch(API+'/api/misp/export/'+taskId,{method:'POST'})
+    .then(function(r){if(!r.ok){if(r.status===503)throw new Error('MISP not configured');throw new Error('HTTP '+r.status)}return r.json()})
+    .then(function(data){
+      if(data.skipped){alert('MISP not configured on server');return}
+      alert('Exported to MISP!\nEvent ID: '+data.event_id+'\nAttributes: '+data.attribute_count);
+    })
+    .catch(function(e){alert('MISP export failed: '+e.message)});
+}
 </script>
 <script>
 (function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}}).catch(function(){});})();

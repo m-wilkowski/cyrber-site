@@ -470,6 +470,10 @@
           <div class="cc-service-name">Garak AI Sec</div>
           <span id="garakBadge" class="badge badge-offline">OFFLINE</span>
         </div>
+        <div class="cc-service">
+          <div class="cc-service-name">MISP Threat Intel</div>
+          <span id="mispBadge" class="badge badge-offline">CHECKING</span>
+        </div>
       </div>
 
       <div class="cc-item">
@@ -788,6 +792,22 @@ function loadGarak() {
   });
 }
 
+function loadMISP() {
+  authFetch(API + '/admin/intel-sync/status').then(function(r) {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function(data) {
+    var evts = data.counts && data.counts.misp_events || 0;
+    var hasData = evts > 0;
+    var hasSynced = data.last_sync && data.last_sync.MISP;
+    document.getElementById('mispBadge').className = 'badge ' + (hasData || hasSynced ? 'badge-online' : 'badge-offline');
+    document.getElementById('mispBadge').textContent = hasData ? evts + ' EVENTS' : (hasSynced ? 'SYNCED' : 'NOT CONFIGURED');
+  }).catch(function() {
+    document.getElementById('mispBadge').className = 'badge badge-offline';
+    document.getElementById('mispBadge').textContent = 'OFFLINE';
+  });
+}
+
 function loadCompliance() {
   authFetch(API + '/scans?limit=1').then(function(r) { return r.json(); }).then(function(scans) {
     if (!scans || !scans.length) return;
@@ -840,6 +860,7 @@ function refreshAll() {
   loadCriticalFindings();
   loadRAG();
   loadGarak();
+  loadMISP();
   loadCompliance();
 }
 

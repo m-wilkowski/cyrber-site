@@ -336,6 +336,13 @@ body {
   color: var(--text2);
   line-height: 1.5;
 }
+.finding-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.finding-tag{font-family:'JetBrains Mono','Share Tech Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;padding:3px 8px;border:1px solid;border-radius:6px}
+.finding-tag.tag-kev{color:#dc2626;border-color:#dc2626;background:rgba(220,38,38,.06)}
+.finding-tag.tag-euvd{color:#d97706;border-color:#d97706;background:rgba(217,119,6,.06)}
+.finding-tag.tag-misp{color:#e11d48;border-color:#e11d48;background:rgba(225,29,72,.06)}
+.finding-tag.tag-epss{color:#ea580c;border-color:#ea580c;background:rgba(234,88,12,.06)}
+.finding-tag.tag-attack{color:#0d9488;border-color:#0d9488;background:rgba(13,148,136,.06)}
 
 /* ── RECOMMENDATIONS ── */
 .rec-item {
@@ -679,10 +686,18 @@ function renderReport(d) {
   findings.forEach(function(f) {
     var sevCls = (f.severity || '').toLowerCase() === 'critical' ? 'sev-critical' : 'sev-high';
     var sevLabel = (f.severity || '').toLowerCase() === 'critical' ? 'CRITICAL' : 'HIGH';
+    var tags=[];
+    if(f.in_kev)tags.push('<span class="finding-tag tag-kev">KEV</span>');
+    if(f.in_euvd)tags.push('<span class="finding-tag tag-euvd">EUVD</span>');
+    if(f.in_misp)tags.push('<span class="finding-tag tag-misp">MISP ('+(f.misp_event_count||0)+' events)</span>');
+    if(f.epss_score)tags.push('<span class="finding-tag tag-epss">EPSS: '+(f.epss_score*100).toFixed(1)+'%</span>');
+    if(f.attack_techniques&&f.attack_techniques.length)tags.push('<span class="finding-tag tag-attack">ATT&amp;CK: '+f.attack_techniques.length+'</span>');
     flHtml += '<div class="finding-item">' +
       '<span class="finding-severity ' + sevCls + '">' + sevLabel + '</span>' +
       '<div><div class="finding-name">' + (f.name || 'Security issue') + '</div>' +
-      '<div class="finding-desc">' + (f.description || '') + '</div></div></div>';
+      '<div class="finding-desc">' + (f.description || '') + '</div>' +
+      (tags.length?'<div class="finding-tags">'+tags.join('')+'</div>':'') +
+      '</div></div>';
   });
   document.getElementById('findingsList').innerHTML = flHtml;
 
