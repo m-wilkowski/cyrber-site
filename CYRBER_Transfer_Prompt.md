@@ -491,4 +491,47 @@ f660d59 docs: SET usunieto z backlogu - nieintegrowalny TUI, zastapiony GoPhish+
 
 ---
 
+## 15. Projekty do analizy
+
+### Sirius Scan (https://github.com/SiriusScan/Sirius)
+Open-source vulnerability scanner, 978 gwiazdek, MIT, stack: Go + Next.js + RabbitMQ + PostgreSQL.
+
+**Co warto zaadaptować do CYRBER:**
+1. Remote Agents architektura - sirius-engine używa gRPC (port 50051) + RabbitMQ do komunikacji agent↔serwer.
+   Inspiracja dla hardware head (Flipper Zero, WiFi Pineapple jako agenty raportujące do CYRBER).
+   Plik do analizy: sirius-engine/
+
+2. Network topology visualization - interaktywna mapa sieci z odkrytych hostów podczas skanów CIDR.
+   Przydatne dla enterprise przy skanach 10.0.0.0/24 i większych.
+
+3. Visual workflow editor - drag-and-drop konfiguracja modułów.
+   Rozważyć dla enterprise tier jako alternatywa dla poziomów Szczeniak/Strażnik/Cerber.
+
+**Czego NIE brać:**
+- Stack Go - przepisywanie backendu bez sensu
+- RabbitMQ zamiast Redis/Celery - mamy działający system
+
+**Priorytet analizy:** średni, przy sprincie hardware head
+
+---
+
+## 16. Hardware Head — architektura (zaplanowana)
+
+**Wzorzec:** cyrber-hw-bridge (Python daemon na laptopie operatora)
+
+**Urządzenia:**
+- **WiFi Pineapple** — REST API port 1471, OpenWRT/ARM
+- **Flipper Zero** — USB serial (`/dev/ttyACM0`) lub BLE, pyserial
+
+**Jak działa:**
+- Bridge rejestruje się w CYRBER jako hardware agent z UUID
+- Wyniki trafiają przez istniejące endpointy API do Redis/Celery
+
+**Referencja:** SiriusScan/app-agent (gRPC wzorzec, MIT) — https://github.com/SiriusScan/app-agent
+NIE kopiować stack Go/gRPC, zaadaptować KONCEPT modułowego agenta w Pythonie.
+
+**Priorytet:** sprint po social engineering (Evilginx2)
+
+---
+
 *Transfer prompt wygenerowany: luty 2026*
