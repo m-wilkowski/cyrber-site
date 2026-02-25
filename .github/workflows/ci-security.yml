@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  security-events: write
+  contents: read
+  actions: read
+  pull-requests: write
+
 concurrency:
   group: security-${{ github.ref }}
   cancel-in-progress: true
@@ -28,8 +34,6 @@ jobs:
     needs: scan-dvwa
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
     steps:
       - name: Post scan results to PR
         uses: actions/github-script@v7
