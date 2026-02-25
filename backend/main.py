@@ -20,7 +20,9 @@ import ipaddress
 import unicodedata
 import json
 import re as _re
+import html as _html
 import requests as http_requests
+import logging
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from modules.nmap_scan import scan as nmap_scan
@@ -33,7 +35,23 @@ from modules.scan_profiles import get_profiles_list, get_profile
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
 # ── JWT config ──
-JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
+_logger = logging.getLogger("cyrber")
+
+def _load_jwt_secret() -> str:
+    env_val = os.getenv("JWT_SECRET")
+    if env_val:
+        return env_val
+    secret_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".jwt_secret")
+    if os.path.exists(secret_path):
+        with open(secret_path) as f:
+            return f.read().strip()
+    _logger.warning("JWT_SECRET not set — generating and persisting to %s", secret_path)
+    new_secret = secrets.token_hex(32)
+    with open(secret_path, "w") as f:
+        f.write(new_secret)
+    return new_secret
+
+JWT_SECRET = _load_jwt_secret()
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 8
 
@@ -88,11 +106,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data:; "
-            "connect-src 'self'"
+            "connect-src 'self'; "
+            "object-src 'none'; "
+            "frame-ancestors 'self'"
         )
         return response
 
@@ -217,13 +237,35 @@ async def osint_page():
 async def admin_page():
     return FileResponse("static/admin.html", headers=_NO_CACHE)
 
+def _get_user_or_share_token(
+    task_id: str,
+    token: str = None,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> dict:
+    """Authenticate via JWT header OR HMAC share token query param."""
+    if credentials:
+        try:
+            return get_current_user(credentials)
+        except HTTPException:
+            pass
+    if token:
+        import hmac, hashlib
+        expected = hmac.new(JWT_SECRET.encode(), task_id.encode(), hashlib.sha256).hexdigest()
+        if hmac.compare_digest(token, expected):
+            return {"username": "_shared_link", "role": "viewer"}
+    raise HTTPException(status_code=401, detail="Not authenticated — provide JWT or valid share token")
+
 @app.get("/report/{task_id}")
-async def report_page(task_id: str):
+async def report_page(task_id: str, token: str = Query(None),
+                      credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    _get_user_or_share_token(task_id, token, credentials)
     return FileResponse("static/report.html", headers=_NO_CACHE)
 
 @app.get("/report/{task_id}/compliance")
-async def compliance_pdf(task_id: str):
-    """Generate Compliance Evidence PDF (NIS2 / ISO 27001). Shareable link — no auth required."""
+async def compliance_pdf(task_id: str, token: str = Query(None),
+                         credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    """Generate Compliance Evidence PDF (NIS2 / ISO 27001)."""
+    _get_user_or_share_token(task_id, token, credentials)
     import hashlib
     from weasyprint import HTML
 
@@ -231,12 +273,13 @@ async def compliance_pdf(task_id: str):
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
 
-    target = scan.get("target", "unknown")
+    target = _html.escape(scan.get("target", "unknown"))
     risk_level = scan.get("risk_level", "N/A")
     findings_count = scan.get("findings_count", 0)
     created_at = scan.get("created_at", "")[:10] if scan.get("created_at") else "N/A"
     completed_at = scan.get("completed_at", "")[:10] if scan.get("completed_at") else "N/A"
-    profile = scan.get("profile", "STRAZNIK")
+    profile = _html.escape(scan.get("profile", "STRAZNIK"))
+    task_id = _html.escape(task_id)
     now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     doc_hash = hashlib.sha256(f"{task_id}:{now_str}".encode()).hexdigest()
 
@@ -295,14 +338,15 @@ async def compliance_pdf(task_id: str):
         return {"OK": "#3ddc84", "PARTIAL": "#f5c518", "FAIL": "#ff4444"}.get(s, "#4a8fd4")
 
     def _overall_color(s):
-        return {"ZGODNY": "#3ddc84", "CZĘŚCIOWO ZGODNY": "#f5c518", "NIEZGODNY": "#ff4444"}.get(s, "#4a8fd4")
+        return {"COMPLIANT": "#3ddc84", "PARTIALLY COMPLIANT": "#f5c518", "NON-COMPLIANT": "#ff4444",
+                "ZGODNY": "#3ddc84", "CZĘŚCIOWO ZGODNY": "#f5c518", "NIEZGODNY": "#ff4444"}.get(s, "#4a8fd4")
 
     def _sev_color(s):
         sl = (s or "").lower()
         return {"critical": "#ff4444", "high": "#ff8c00", "medium": "#f5c518", "low": "#3ddc84"}.get(sl, "#4a8fd4")
 
-    def _rem_status_pl(s):
-        return {"open": "Otwarty", "in_progress": "W trakcie", "fixed": "Naprawiony", "verified": "Zweryfikowany", "wontfix": "Zaakceptowany"}.get(s, s)
+    def _rem_status_label(s):
+        return {"open": "Open", "in_progress": "In Progress", "fixed": "Fixed", "verified": "Verified", "wontfix": "Accepted"}.get(s, s)
 
     # ── Build HTML ──
     # NIS2 table rows
@@ -310,7 +354,7 @@ async def compliance_pdf(task_id: str):
     for r in summary["nis2_articles"]:
         sc = _status_color(r["status"])
         sym = _status_symbol(r["status"])
-        detail = f'{r["findings_count"]} znalezionych, {r["fixed_count"]} naprawionych' if r["findings_count"] else "Brak podatności"
+        detail = f'{r["findings_count"]} found, {r["fixed_count"]} fixed' if r["findings_count"] else "No vulnerabilities"
         nis2_rows += f"""<tr>
             <td style="color:{sc};font-weight:700;font-size:16px;text-align:center;width:30px">{sym}</td>
             <td class="mono" style="white-space:nowrap">{r["article"]}</td>
@@ -323,7 +367,7 @@ async def compliance_pdf(task_id: str):
     for r in summary["iso27001_controls"]:
         sc = _status_color(r["status"])
         sym = _status_symbol(r["status"])
-        detail = f'{r["findings_count"]} znalezionych, {r["fixed_count"]} naprawionych' if r["findings_count"] else "Brak podatności"
+        detail = f'{r["findings_count"]} found, {r["fixed_count"]} fixed' if r["findings_count"] else "No vulnerabilities"
         iso_rows += f"""<tr>
             <td style="color:{sc};font-weight:700;font-size:16px;text-align:center;width:30px">{sym}</td>
             <td class="mono" style="white-space:nowrap">{r["control"]}</td>
@@ -355,17 +399,17 @@ async def compliance_pdf(task_id: str):
             <td class="mono">{(t.get("created_at") or "")[:10]}</td>
             <td class="mono">{(t.get("updated_at") or "")[:10]}</td>
             <td>{t.get("owner") or "—"}</td>
-            <td>{_rem_status_pl(t.get("status", ""))}</td>
+            <td>{_rem_status_label(t.get("status", ""))}</td>
             <td>{retest_badge}</td>
         </tr>"""
 
     if not rem_rows:
-        rem_rows = '<tr><td colspan="7" style="text-align:center;color:#4a8fd4;padding:20px">Brak naprawionych podatności do wykazania jako dowód</td></tr>'
+        rem_rows = '<tr><td colspan="7" style="text-align:center;color:#4a8fd4;padding:20px">No fixed vulnerabilities to present as evidence</td></tr>'
 
     # Gaps section
     gaps_html = ""
     if summary["gaps"]:
-        gaps_html = "<div class='section'><div class='section-title'>// ZIDENTYFIKOWANE LUKI</div>"
+        gaps_html = "<div class='section'><div class='section-title'>// IDENTIFIED GAPS</div>"
         for g in summary["gaps"]:
             gaps_html += f"<div class='gap-item'>⚠ {g}</div>"
         gaps_html += "</div>"
@@ -435,28 +479,28 @@ async def compliance_pdf(task_id: str):
 <div class="page cover">
   <div class="cover-brand">CYRBER</div>
   <div class="cover-sub">AUTONOMOUS SECURITY RECONNAISSANCE PLATFORM</div>
-  <div class="cover-title">RAPORT ZGODNOŚCI NIS2 / ISO 27001</div>
+  <div class="cover-title">COMPLIANCE REPORT — NIS2 / ISO 27001</div>
   <div class="cover-meta">
     <b>TARGET:</b> {target}<br>
-    <b>DATA TESTU:</b> {created_at} — {completed_at}<br>
-    <b>PROFIL SKANOWANIA:</b> {profile}<br>
-    <b>DATA RAPORTU:</b> {now_str}<br>
-    <b>PODATNOŚCI:</b> {findings_count}<br>
+    <b>TEST DATE:</b> {created_at} — {completed_at}<br>
+    <b>SCAN PROFILE:</b> {profile}<br>
+    <b>REPORT DATE:</b> {now_str}<br>
+    <b>FINDINGS:</b> {findings_count}<br>
   </div>
-  <div class="cover-hash">HASH DOKUMENTU: {doc_hash}</div>
-  <div class="cover-conf">DOKUMENT POUFNY — WYŁĄCZNIE DLA UPOWAŻNIONYCH OSÓB</div>
+  <div class="cover-hash">DOCUMENT HASH: {doc_hash}</div>
+  <div class="cover-conf">CONFIDENTIAL — AUTHORIZED PERSONNEL ONLY</div>
 </div>
 
 <!-- ═══ PAGE 2: EXECUTIVE SUMMARY ═══ -->
 <div class="page">
   <div class="header">
     <div><div class="brand">CYRBER</div><div class="brand-sub">COMPLIANCE EVIDENCE</div></div>
-    <div class="page-title">PODSUMOWANIE WYKONAWCZE</div>
+    <div class="page-title">EXECUTIVE SUMMARY</div>
   </div>
 
   <div class="overall-box">
     <div>
-      <div class="overall-label">OGÓLNA OCENA ZGODNOŚCI</div>
+      <div class="overall-label">OVERALL COMPLIANCE ASSESSMENT</div>
       <div class="overall-value">{summary["overall_status"]}</div>
     </div>
     <div class="overall-score">
@@ -465,118 +509,118 @@ async def compliance_pdf(task_id: str):
   </div>
 
   <div class="section">
-    <div class="section-title">// CEL I ZAKRES</div>
+    <div class="section-title">// PURPOSE AND SCOPE</div>
     <div class="methodology">
-      Celem niniejszego raportu jest dostarczenie dowodów zgodności z wymogami
-      <b>Dyrektywy NIS2 (2022/2555)</b> oraz <b>normy ISO/IEC 27001:2022</b>
-      w zakresie bezpieczeństwa systemów informacyjnych.
+      The purpose of this report is to provide compliance evidence for the requirements of
+      <b>NIS2 Directive (2022/2555)</b> and <b>ISO/IEC 27001:2022</b>
+      in the scope of information systems security.
       <br><br>
-      Zakres testów obejmował target <b>{target}</b> z wykorzystaniem profilu <b>{profile}</b>
-      ({findings_count} modułów skanujących). Zastosowana metodologia jest zgodna z:
+      The scope of testing covered target <b>{target}</b> using scan profile <b>{profile}</b>
+      ({findings_count} scanning modules). The methodology is aligned with:
       <b>OWASP Testing Guide v4</b>, <b>PTES (Penetration Testing Execution Standard)</b>,
       <b>NIST SP 800-115</b>.
     </div>
   </div>
 
   <div class="section">
-    <div class="section-title">// WYNIKI</div>
+    <div class="section-title">// RESULTS</div>
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-value">{findings_count}</div>
-        <div class="stat-label">ZNALEZIONYCH</div>
+        <div class="stat-label">FOUND</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" style="color:#3ddc84">{stats["fixed"]}</div>
-        <div class="stat-label">NAPRAWIONYCH</div>
+        <div class="stat-label">FIXED</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" style="color:#3ddc84">{stats["verified"]}</div>
-        <div class="stat-label">ZWERYFIKOWANYCH</div>
+        <div class="stat-label">VERIFIED</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" style="color:#ff4444">{stats["open"]}</div>
-        <div class="stat-label">OTWARTYCH</div>
+        <div class="stat-label">OPEN</div>
       </div>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-title">// ZGODNOŚĆ NIS2 — PRZEGLĄD</div>
+    <div class="section-title">// NIS2 COMPLIANCE — OVERVIEW</div>
     <table>
-      <thead><tr><th></th><th>ARTYKUŁ</th><th>WYMAGANIE</th><th>STATUS</th></tr></thead>
+      <thead><tr><th></th><th>ARTICLE</th><th>REQUIREMENT</th><th>STATUS</th></tr></thead>
       <tbody>{nis2_rows}</tbody>
     </table>
   </div>
 
-  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · POUFNE · {now_str}</div>
+  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · CONFIDENTIAL · {now_str}</div>
 </div>
 
 <!-- ═══ PAGE 3: ISO 27001 DETAILS ═══ -->
 <div class="page">
   <div class="header">
     <div><div class="brand">CYRBER</div><div class="brand-sub">COMPLIANCE EVIDENCE</div></div>
-    <div class="page-title">ISO/IEC 27001:2022 — KONTROLE</div>
+    <div class="page-title">ISO/IEC 27001:2022 — CONTROLS</div>
   </div>
 
   <div class="section">
-    <div class="section-title">// SZCZEGÓŁY KONTROLI ISO 27001</div>
+    <div class="section-title">// ISO 27001 CONTROL DETAILS</div>
     <table>
-      <thead><tr><th></th><th>KONTROLA</th><th>NAZWA</th><th>STATUS</th></tr></thead>
+      <thead><tr><th></th><th>CONTROL</th><th>NAME</th><th>STATUS</th></tr></thead>
       <tbody>{iso_rows}</tbody>
     </table>
   </div>
 
   {gaps_html}
 
-  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · POUFNE · {now_str}</div>
+  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · CONFIDENTIAL · {now_str}</div>
 </div>
 
 <!-- ═══ PAGE 4: REMEDIATION EVIDENCE ═══ -->
 <div class="page">
   <div class="header">
     <div><div class="brand">CYRBER</div><div class="brand-sub">COMPLIANCE EVIDENCE</div></div>
-    <div class="page-title">DOWODY NAPRAW — REMEDIATION EVIDENCE</div>
+    <div class="page-title">REMEDIATION EVIDENCE</div>
   </div>
 
   <div class="section">
-    <div class="section-title">// NAPRAWIONE PODATNOŚCI ({evidence_count})</div>
+    <div class="section-title">// FIXED VULNERABILITIES ({evidence_count})</div>
     <table>
       <thead><tr>
-        <th>SEVERITY</th><th>FINDING</th><th>ZNALEZIONY</th><th>NAPRAWIONY</th>
-        <th>WŁAŚCICIEL</th><th>STATUS</th><th>RETEST</th>
+        <th>SEVERITY</th><th>FINDING</th><th>FOUND</th><th>FIXED</th>
+        <th>OWNER</th><th>STATUS</th><th>RETEST</th>
       </tr></thead>
       <tbody>{rem_rows}</tbody>
     </table>
   </div>
 
-  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · POUFNE · {now_str}</div>
+  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · CONFIDENTIAL · {now_str}</div>
 </div>
 
 <!-- ═══ PAGE 5: DIGITAL SIGNATURE ═══ -->
 <div class="page">
   <div class="header">
     <div><div class="brand">CYRBER</div><div class="brand-sub">COMPLIANCE EVIDENCE</div></div>
-    <div class="page-title">PODPIS CYFROWY</div>
+    <div class="page-title">DIGITAL SIGNATURE</div>
   </div>
 
   <div class="sign-box">
     <div style="font-size:12px;color:#4a8fd4;letter-spacing:0.2em;margin-bottom:16px">HASH DOKUMENTU (SHA-256)</div>
     <div class="sign-hash">{doc_hash}</div>
     <div style="font-size:11px;color:#b8ccec;margin:16px 0">
-      Wygenerowano: <b>{now_str}</b><br>
+      Generated: <b>{now_str}</b><br>
       Target: <b>{target}</b><br>
       Task ID: <b>{task_id}</b>
     </div>
     <div class="sign-note">
-      Ten dokument został wygenerowany automatycznie przez platformę CYRBER.<br>
-      Integralność dokumentu można zweryfikować porównując hash SHA-256:<br>
+      This document was automatically generated by the CYRBER platform.<br>
+      Document integrity can be verified by comparing the SHA-256 hash:<br>
       <span style="font-family:monospace">sha256("{task_id}:{now_str}") = {doc_hash}</span><br><br>
-      Dokument stanowi dowód przeprowadzenia testów bezpieczeństwa<br>
-      i może być przedstawiony audytorom NIS2 oraz ISO 27001.
+      This document serves as evidence of security testing<br>
+      and can be presented to NIS2 and ISO 27001 auditors.
     </div>
   </div>
 
-  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · POUFNE · {now_str}</div>
+  <div class="footer">CYRBER · COMPLIANCE EVIDENCE · CONFIDENTIAL · {now_str}</div>
 </div>
 
 </body></html>"""
@@ -732,21 +776,21 @@ async def license_activate_endpoint(request: Request, body: LicenseActivateReque
 # ── Protected routes (JWT required) ──
 
 @app.get("/scan/nmap")
-async def run_nmap(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_nmap(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return nmap_scan(target)
 
 @app.get("/scan/nuclei")
-async def run_nuclei(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_nuclei(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return nuclei_scan(target)
 
 @app.get("/scan/full")
-async def run_full(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_full(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     nmap = nmap_scan(target)
     nuclei = nuclei_scan(target)
     return {"target": target, "ports": nmap.get("ports", []), "nmap_raw": nmap, "nuclei": nuclei}
 
 @app.get("/scan/analyze")
-async def run_analyze(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_analyze(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     nmap = nmap_scan(target)
     nuclei = nuclei_scan(target)
     scan_data = {"target": target, "ports": nmap.get("ports", []), "nuclei": nuclei}
@@ -765,12 +809,13 @@ class ScanStartRequest(BaseModel):
 async def scan_start_post(request: Request, body: ScanStartRequest, user: dict = Depends(require_role("admin", "operator"))):
     if not get_profile(body.profile):
         raise HTTPException(status_code=400, detail=f"Invalid profile: {body.profile}")
-    if not check_profile(body.profile.upper()):
+    is_admin = user.get("role") == "admin"
+    if not is_admin and not check_profile(body.profile.upper()):
         raise HTTPException(status_code=402, detail=f"Profile {body.profile.upper()} not available in your license tier")
-    if not check_scan_limit(get_scans_this_month()):
+    if not is_admin and not check_scan_limit(get_scans_this_month()):
         raise HTTPException(status_code=402, detail="Monthly scan limit reached — upgrade your license")
-    increment_scan_count()
     task = full_scan_task.delay(body.target, profile=body.profile.upper())
+    increment_scan_count()
     audit(request, user, "scan_start", body.target)
     return {"task_id": task.id, "status": "started", "target": body.target, "profile": body.profile.upper()}
 
@@ -779,12 +824,13 @@ async def scan_start_post(request: Request, body: ScanStartRequest, user: dict =
 async def scan_start(request: Request, target: str = Query(...), profile: str = Query("STRAZNIK"), user: dict = Depends(require_role("admin", "operator"))):
     if not get_profile(profile):
         profile = "STRAZNIK"
-    if not check_profile(profile.upper()):
+    is_admin = user.get("role") == "admin"
+    if not is_admin and not check_profile(profile.upper()):
         raise HTTPException(status_code=402, detail=f"Profile {profile.upper()} not available in your license tier")
-    if not check_scan_limit(get_scans_this_month()):
+    if not is_admin and not check_scan_limit(get_scans_this_month()):
         raise HTTPException(status_code=402, detail="Monthly scan limit reached — upgrade your license")
-    increment_scan_count()
     task = full_scan_task.delay(target, profile=profile.upper())
+    increment_scan_count()
     audit(request, user, "scan_start", target)
     return {"task_id": task.id, "status": "started", "target": target, "profile": profile.upper()}
 
@@ -862,7 +908,7 @@ async def scan_detail(task_id: str, user: dict = Depends(get_current_user)):
 async def scan_pdf(request: Request, task_id: str, user: dict = Depends(get_current_user)):
     scan = get_scan_by_task_id(task_id)
     if not scan:
-        return {"error": "Scan not found"}
+        raise HTTPException(status_code=404, detail="Scan not found")
     pdf_bytes = generate_report(scan)
     audit(request, user, "pdf_download", scan.get("target"))
     raw_t = scan.get("target", "unknown")
@@ -984,59 +1030,61 @@ async def scan_autoflow(task_id: str, user: dict = Depends(get_current_user)):
 
 # ── Client report API (no auth — shareable link) ──
 
-_FINDING_PL = {
-    "sql": "Podatnosc na wstrzykniecie SQL",
-    "xss": "Atak Cross-Site Scripting (XSS)",
-    "rce": "Zdalne wykonanie kodu",
-    "lfi": "Odczyt plikow serwera",
-    "rfi": "Wczytanie zdalnego pliku",
-    "ssrf": "Falszywe zapytanie po stronie serwera",
-    "xxe": "Atak na parser XML",
-    "idor": "Nieautoryzowany dostep do danych",
-    "csrf": "Falszywe zadanie miedzyserwerowe",
-    "open-redirect": "Przekierowanie na zlosliwa strone",
-    "directory-listing": "Widoczna struktura katalogow",
-    "default-login": "Domyslne dane logowania",
-    "info-disclosure": "Wyciek informacji technicznych",
-    "misconfig": "Bledna konfiguracja serwera",
-    "ssl": "Problem z certyfikatem lub szyfrowaniem",
-    "cve": "Znana podatnosc oprogramowania",
+_FINDING_NAMES = {
+    "sql": "SQL Injection Vulnerability",
+    "xss": "Cross-Site Scripting (XSS)",
+    "rce": "Remote Code Execution",
+    "lfi": "Local File Inclusion",
+    "rfi": "Remote File Inclusion",
+    "ssrf": "Server-Side Request Forgery (SSRF)",
+    "xxe": "XML External Entity (XXE)",
+    "idor": "Insecure Direct Object Reference (IDOR)",
+    "csrf": "Cross-Site Request Forgery (CSRF)",
+    "open-redirect": "Open Redirect",
+    "directory-listing": "Directory Listing Enabled",
+    "default-login": "Default Credentials",
+    "info-disclosure": "Information Disclosure",
+    "misconfig": "Server Misconfiguration",
+    "ssl": "SSL/TLS Certificate Issue",
+    "cve": "Known Software Vulnerability",
 }
 
-_FINDING_DESC_PL = {
-    "sql": "Atakujacy moze odczytac lub zmodyfikowac baze danych firmy, w tym dane klientow i hasla.",
-    "xss": "Atakujacy moze przejac sesje uzytkownikow i wykrasc ich dane logowania.",
-    "rce": "Atakujacy moze przejac pelna kontrole nad serwerem i danymi firmy.",
-    "lfi": "Atakujacy moze odczytac poufne pliki serwera, w tym konfiguracje i hasla.",
-    "rfi": "Atakujacy moze uruchomic zlosliwy kod na serwerze firmy.",
-    "ssrf": "Atakujacy moze uzyskac dostep do wewnetrznych systemow firmy.",
-    "xxe": "Atakujacy moze odczytac pliki serwera przez spreparowane dane XML.",
-    "idor": "Atakujacy moze uzyskac dostep do danych innych uzytkownikow.",
-    "csrf": "Atakujacy moze wykonywac operacje w imieniu zalogowanego uzytkownika.",
-    "open-redirect": "Uzytkownicy moga zostac przekierowani na falszywe strony logowania.",
-    "directory-listing": "Struktura serwera jest widoczna publicznie, co ulatwia atak.",
-    "default-login": "System uzywa fabrycznych hasel, co umozliwia natychmiastowy dostep.",
-    "info-disclosure": "Serwer ujawnia informacje techniczne przydatne dla atakujacego.",
-    "misconfig": "Nieprawidlowa konfiguracja umozliwia obejscie zabezpieczen.",
-    "ssl": "Komunikacja moze byc przechwycona przez osoby trzecie.",
-    "cve": "Oprogramowanie zawiera znana luke, dla ktorej istnieja gotowe narzedzia ataku.",
+_FINDING_DESCS = {
+    "sql": "An attacker could read or modify the company database, including customer data and passwords.",
+    "xss": "An attacker could hijack user sessions and steal login credentials.",
+    "rce": "An attacker could gain full control over the server and company data.",
+    "lfi": "An attacker could read sensitive server files, including configuration and passwords.",
+    "rfi": "An attacker could execute malicious code on the company server.",
+    "ssrf": "An attacker could access internal company systems.",
+    "xxe": "An attacker could read server files through crafted XML data.",
+    "idor": "An attacker could access other users' data without authorization.",
+    "csrf": "An attacker could perform operations on behalf of a logged-in user.",
+    "open-redirect": "Users could be redirected to fake login pages.",
+    "directory-listing": "Server directory structure is publicly visible, facilitating attacks.",
+    "default-login": "System uses factory-default credentials, enabling immediate access.",
+    "info-disclosure": "Server exposes technical information useful for attackers.",
+    "misconfig": "Improper configuration allows bypassing security controls.",
+    "ssl": "Communication could be intercepted by third parties.",
+    "cve": "Software contains a known vulnerability with readily available exploit tools.",
 }
 
 def _classify_finding(name_lower):
-    for key in _FINDING_PL:
+    for key in _FINDING_NAMES:
         if key in name_lower:
             return key
     return "cve"
 
 @app.get("/api/report/{task_id}")
-async def api_report(task_id: str):
+async def api_report(task_id: str, token: str = Query(None),
+                     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+    _get_user_or_share_token(task_id, token, credentials)
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     if scan.get("status") != "completed":
         raise HTTPException(status_code=400, detail="Scan not completed yet")
 
-    risk = (scan.get("risk_level") or "NISKIE").upper()
+    risk = _normalize_risk(scan.get("risk_level") or "LOW")
     narrative = scan.get("hacker_narrative") or {}
 
     # Build client-safe findings (only critical + high)
@@ -1055,8 +1103,8 @@ async def api_report(task_id: str):
         raw_name = (f.get("info") or {}).get("name") or f.get("name") or f.get("template_id") or ""
         cat = _classify_finding(raw_name.lower())
         client_findings.append({
-            "name": _FINDING_PL.get(cat, raw_name),
-            "description": _FINDING_DESC_PL.get(cat, "Wykryto problem bezpieczenstwa wymagajacy analizy."),
+            "name": _FINDING_NAMES.get(cat, raw_name),
+            "description": _FINDING_DESCS.get(cat, "A security issue was detected that requires analysis."),
             "severity": "critical" if sev == "critical" else "high",
         })
 
@@ -1074,8 +1122,8 @@ async def api_report(task_id: str):
     top_issues = scan.get("top_issues") or []
     recs_list = []
     for i, issue in enumerate(top_issues[:5]):
-        pri = "PILNE" if i == 0 else "WAZNE" if i < 3 else "ZALECANE"
-        time_est = "1-3 dni" if i == 0 else "1-2 tygodnie" if i < 3 else "1 miesiac"
+        pri = "URGENT" if i == 0 else "IMPORTANT" if i < 3 else "RECOMMENDED"
+        time_est = "1-3 days" if i == 0 else "1-2 weeks" if i < 3 else "1 month"
         # Strip technical details — keep only first sentence
         clean = issue.split(".")[0].split(" - ")[0].split(":")[0].strip()
         if len(clean) < 10:
@@ -1083,15 +1131,15 @@ async def api_report(task_id: str):
         recs_list.append({"priority": pri, "text": clean, "time": time_est})
 
     if not recs_list and recs_text:
-        recs_list.append({"priority": "WAZNE", "text": recs_text[:200], "time": "-"})
+        recs_list.append({"priority": "IMPORTANT", "text": recs_text[:200], "time": "-"})
 
     # Compliance
     risk_norm = risk.replace("\u015a", "S").replace("\u015b", "S")
     is_crit = risk_norm in ("KRYTYCZNE", "CRITICAL")
     is_high = risk_norm in ("WYSOKIE", "HIGH")
     compliance = [
-        {"name": "RODO / GDPR", "icon": "\U0001F6E1", "status": "Naruszenie" if is_crit else "Ryzyko" if is_high else "Zgodnosc"},
-        {"name": "NIS2", "icon": "\U0001F3DB", "status": "Naruszenie" if is_crit else "Ryzyko" if is_high else "Zgodnosc"},
+        {"name": "GDPR", "icon": "\U0001F6E1", "status": "Violation" if is_crit else "At Risk" if is_high else "Compliant"},
+        {"name": "NIS2", "icon": "\U0001F3DB", "status": "Violation" if is_crit else "At Risk" if is_high else "Compliant"},
     ]
 
     return {
@@ -1134,31 +1182,31 @@ from modules.cwe_mapping import cwe_mapping
 from modules.owasp_mapping import owasp_mapping
 
 @app.get("/scan/gobuster")
-async def run_gobuster(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_gobuster(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return gobuster_scan(target)
 
 @app.get("/scan/whatweb")
-async def run_whatweb(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_whatweb(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return whatweb_scan(target)
 
 @app.get("/scan/testssl")
-async def run_testssl(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_testssl(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return testssl_scan(target)
 
 @app.get("/scan/sqlmap")
-async def run_sqlmap(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_sqlmap(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return sqlmap_scan(target)
 
 @app.get("/scan/nikto")
-async def run_nikto(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_nikto(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return nikto_scan(target)
 
 @app.get("/scan/harvester")
-async def run_harvester(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_harvester(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return harvester_scan(target)
 
 @app.get("/scan/masscan")
-async def run_masscan(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_masscan(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return masscan_scan(target)
 
 # requires paid API plan - module ready
@@ -1167,63 +1215,63 @@ async def run_masscan(target: str = Query(...), user: dict = Depends(get_current
 #     return censys_scan(target)
 
 @app.get("/scan/ipinfo")
-async def run_ipinfo(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_ipinfo(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return ipinfo_scan(target)
 
 @app.get("/scan/enum4linux")
-async def run_enum4linux(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_enum4linux(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return enum4linux_scan(target)
 
 @app.get("/scan/mitre")
-async def run_mitre(task_id: str = Query(...), user: dict = Depends(get_current_user)):
+def run_mitre(task_id: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return mitre_map(scan)
 
 @app.get("/scan/abuseipdb")
-async def run_abuseipdb(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_abuseipdb(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return abuseipdb_scan(target)
 
 @app.get("/scan/otx")
-async def run_otx(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_otx(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return otx_scan(target)
 
 @app.get("/scan/exploitdb")
-async def run_exploitdb(task_id: str = Query(...), user: dict = Depends(get_current_user)):
+def run_exploitdb(task_id: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return exploitdb_scan(scan)
 
 @app.get("/scan/nvd")
-async def run_nvd(task_id: str = Query(...), user: dict = Depends(get_current_user)):
+def run_nvd(task_id: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return nvd_scan(scan)
 
 @app.get("/scan/whois")
-async def run_whois(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_whois(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return whois_scan(target)
 
 @app.get("/scan/dnsrecon")
-async def run_dnsrecon(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_dnsrecon(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return dnsrecon_scan(target)
 
 @app.get("/scan/amass")
-async def run_amass(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_amass(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return amass_scan(target)
 
 @app.get("/scan/cwe")
-async def run_cwe(task_id: str = Query(...), user: dict = Depends(get_current_user)):
+def run_cwe(task_id: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return cwe_mapping(scan)
 
 @app.get("/scan/owasp")
-async def run_owasp(task_id: str = Query(...), user: dict = Depends(get_current_user)):
+def run_owasp(task_id: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     scan = get_scan_by_task_id(task_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
@@ -1259,127 +1307,127 @@ from modules.searchsploit_scan import searchsploit_scan
 from modules.impacket_scan import impacket_scan
 
 @app.get("/scan/wpscan")
-async def run_wpscan(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_wpscan(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return wpscan_scan(target)
 
 @app.get("/scan/zap")
-async def run_zap(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_zap(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return zap_scan(target)
 
 @app.get("/scan/wapiti")
-async def run_wapiti(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_wapiti(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return wapiti_scan(target)
 
 @app.get("/scan/joomscan")
-async def run_joomscan(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_joomscan(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return joomscan_scan(target)
 
 @app.get("/scan/cmsmap")
-async def run_cmsmap(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_cmsmap(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return cmsmap_scan(target)
 
 @app.get("/scan/droopescan")
-async def run_droopescan(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_droopescan(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return droopescan_scan(target)
 
 @app.get("/scan/retirejs")
-async def run_retirejs(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_retirejs(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return retirejs_scan(target)
 
 @app.get("/scan/subfinder")
-async def run_subfinder(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_subfinder(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return subfinder_scan(target)
 
 @app.get("/scan/httpx")
-async def run_httpx(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_httpx(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return httpx_scan(target)
 
 @app.get("/scan/naabu")
-async def run_naabu(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_naabu(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return naabu_scan(target)
 
 @app.get("/scan/katana")
-async def run_katana(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_katana(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return katana_scan(target)
 
 @app.get("/scan/dnsx")
-async def run_dnsx(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_dnsx(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return dnsx_scan(target)
 
 @app.get("/scan/netdiscover")
-async def run_netdiscover(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_netdiscover(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return netdiscover_scan(target)
 
 @app.get("/scan/arpscan")
-async def run_arpscan(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_arpscan(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return arpscan_scan(target)
 
 @app.get("/scan/fping")
-async def run_fping(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_fping(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return fping_scan(target)
 
 @app.get("/scan/traceroute")
-async def run_traceroute(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_traceroute(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return traceroute_scan(target)
 
 @app.get("/scan/nbtscan")
-async def run_nbtscan(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_nbtscan(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return nbtscan_scan(target)
 
 @app.get("/scan/snmpwalk")
-async def run_snmpwalk(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_snmpwalk(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return snmpwalk_scan(target)
 
 @app.get("/scan/netexec")
-async def run_netexec(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_netexec(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return netexec_scan(target)
 
 @app.get("/scan/bloodhound")
-async def run_bloodhound(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_bloodhound(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return bloodhound_scan(target)
 
 @app.get("/scan/responder")
-async def run_responder(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_responder(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return responder_scan(target)
 
 @app.get("/scan/fierce")
-async def run_fierce(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_fierce(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return fierce_scan(target)
 
 @app.get("/scan/smbmap")
-async def run_smbmap(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_smbmap(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return smbmap_scan(target)
 
 @app.get("/scan/onesixtyone")
-async def run_onesixtyone(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_onesixtyone(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return onesixtyone_scan(target)
 
 @app.get("/scan/ikescan")
-async def run_ikescan(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_ikescan(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return ikescan_scan(target)
 
 @app.get("/scan/sslyze")
-async def run_sslyze(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_sslyze(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return sslyze_scan(target)
 
 @app.get("/scan/searchsploit")
-async def run_searchsploit(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_searchsploit(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return searchsploit_scan(target)
 
 @app.get("/scan/impacket")
-async def run_impacket(target: str = Query(...), user: dict = Depends(get_current_user)):
+def run_impacket(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
     return impacket_scan(target)
 
 from modules.certipy_scan import run_certipy
 
 @app.get("/scan/certipy")
-async def scan_certipy(
+def scan_certipy(
     target: str = Query(...),
     dc_ip: str = Query(""),
     username: str = Query(""),
     password: str = Query(""),
     domain: str = Query(""),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_role("admin", "operator")),
 ):
     return run_certipy(target, username=username or None, password=password or None,
                        domain=domain or None, dc_ip=dc_ip or None)
@@ -1990,15 +2038,16 @@ async def multi_scan(request: Request, body: MultiTargetScan, user: dict = Depen
         raise HTTPException(status_code=400, detail="max 254 targets per request")
 
     scan_profile = body.profile.upper() if get_profile(body.profile) else "STRAZNIK"
-    if not check_profile(scan_profile):
+    is_admin = user.get("role") == "admin"
+    if not is_admin and not check_profile(scan_profile):
         raise HTTPException(status_code=402, detail=f"Profile {scan_profile} not available in your license tier")
     current_scans = get_scans_this_month()
-    if not check_scan_limit(current_scans + len(expanded) - 1):
+    if not is_admin and not check_scan_limit(current_scans + len(expanded) - 1):
         raise HTTPException(status_code=402, detail="Monthly scan limit would be exceeded — upgrade your license")
     tasks = []
     for target in expanded:
-        increment_scan_count()
         task = full_scan_task.delay(target, profile=scan_profile)
+        increment_scan_count()
         tasks.append({"task_id": task.id, "target": target, "status": "started", "profile": scan_profile})
     audit(request, user, "multi_scan", f"{len(expanded)} targets")
     return {"count": len(tasks), "tasks": tasks}
@@ -2074,27 +2123,25 @@ async def explain_finding(request: Request, body: ExplainFindingRequest, user: d
 
     # Check Redis cache first
     try:
-        r = aioredis.from_url(REDIS_URL)
-        cached = await r.get(cache_key)
-        if cached:
-            await r.aclose()
-            return json.loads(cached)
-        await r.aclose()
+        async with aioredis.from_url(REDIS_URL) as r:
+            cached = await r.get(cache_key)
+            if cached:
+                return json.loads(cached)
     except Exception:
         pass
 
     from modules.llm_provider import ClaudeProvider
     prompt = (
-        "Jesteś ekspertem cyberbezpieczeństwa. Wyjaśnij to znalezisko właścicielowi firmy "
-        "w prostym języku polskim, bez technicznego żargonu.\n\n"
+        "You are a cybersecurity expert. Explain this finding to a business owner "
+        "in plain English, without technical jargon.\n\n"
         f"Finding: {body.finding_name}\n"
-        f"Opis: {body.finding_description}\n"
-        f"Cel: {body.target}\n"
-        f"Krytyczność: {body.severity}\n\n"
-        "Odpowiedz DOKŁADNIE w formacie JSON (bez markdown):\n"
-        '{"explanation": "Co to jest - 2-3 zdania", '
-        '"risk_pl": "Czym grozi firmie - 2-3 zdania", '
-        '"fix_pl": "Jak to naprawić - 2-3 zdania"}'
+        f"Description: {body.finding_description}\n"
+        f"Target: {body.target}\n"
+        f"Severity: {body.severity}\n\n"
+        "Respond EXACTLY in JSON format (no markdown):\n"
+        '{"explanation": "What this is - 2-3 sentences", '
+        '"risk": "Business impact - 2-3 sentences", '
+        '"fix": "How to fix it - 2-3 sentences"}'
     )
     try:
         provider = ClaudeProvider(model="claude-haiku-4-5-20251001")
@@ -2113,9 +2160,8 @@ async def explain_finding(request: Request, body: ExplainFindingRequest, user: d
 
         # Store in Redis cache (TTL 24h)
         try:
-            r = aioredis.from_url(REDIS_URL)
-            await r.setex(cache_key, 86400, json.dumps(result, ensure_ascii=False))
-            await r.aclose()
+            async with aioredis.from_url(REDIS_URL) as r:
+                await r.setex(cache_key, 86400, json.dumps(result, ensure_ascii=False))
         except Exception:
             pass
 
@@ -2174,8 +2220,8 @@ async def scan_agent(request: Request, body: ScanAgentRequest, user: dict = Depe
         chains_summary = "\n".join(chain_descs)
 
     system_prompt = (
-        "Jesteś ekspertem cyberbezpieczeństwa CYRBER AI. Odpowiadasz po polsku, "
-        "konkretnie i pomocnie. Masz pełny kontekst skanu bezpieczeństwa.\n\n"
+        "You are the CYRBER AI cybersecurity expert. You respond concisely and helpfully "
+        "in English. You have full context of the security scan.\n\n"
         f"TARGET: {target}\n"
         f"RISK LEVEL: {risk}\n"
         f"FINDINGS COUNT: {findings_count}\n"
@@ -2187,9 +2233,9 @@ async def scan_agent(request: Request, body: ScanAgentRequest, user: dict = Depe
         system_prompt += f"\nEXPLOIT CHAINS:\n{chains_summary}\n"
 
     system_prompt += (
-        "\nOdpowiadaj zwięźle (max 3-4 zdania). "
-        "Jeśli pytanie dotyczy CVE, wyjaśnij co to jest i jak naprawić. "
-        "Jeśli pytanie dotyczy parametru skanu, wyjaśnij w kontekście tego targetu."
+        "\nRespond concisely (max 3-4 sentences). "
+        "If the question is about a CVE, explain what it is and how to fix it. "
+        "If the question is about a scan parameter, explain in the context of this target."
     )
 
     try:
@@ -2200,10 +2246,10 @@ async def scan_agent(request: Request, body: ScanAgentRequest, user: dict = Depe
             role = msg.get("role", "user")
             content = msg.get("content", "")
             if role == "user":
-                prompt_parts.append(f"Użytkownik: {content}")
+                prompt_parts.append(f"User: {content}")
             elif role == "assistant":
                 prompt_parts.append(f"AI: {content}")
-        prompt_parts.append(f"Użytkownik: {body.message}")
+        prompt_parts.append(f"User: {body.message}")
         prompt = "\n".join(prompt_parts)
 
         response_text = provider.chat(prompt, system=system_prompt, max_tokens=800)
@@ -2399,7 +2445,7 @@ async def trigger_retest(rem_id: int, request: Request,
                 retest_status="pending",
                 retest_at=datetime.utcnow())
     audit(request, current_user, "retest_trigger", f"rem={rem_id} celery={celery_result.id}")
-    return {"message": "Retest uruchomiony", "task_id": celery_result.id}
+    return {"message": "Retest started", "task_id": celery_result.id}
 
 @app.get("/api/remediation/{rem_id}/retest/status")
 async def retest_status(rem_id: int,
@@ -2417,13 +2463,29 @@ async def retest_status(rem_id: int,
 
 # ── Security Score Timeline ──────────────────────────────
 
-_RISK_SCORE_MAP = {"KRYTYCZNE": 90, "WYSOKIE": 70, "ŚREDNIE": 40, "SREDNIE": 40, "NISKIE": 15}
+_RISK_PL_TO_EN = {
+    "KRYTYCZNE": "CRITICAL", "WYSOKIE": "HIGH",
+    "ŚREDNIE": "MEDIUM", "SREDNIE": "MEDIUM", "NISKIE": "LOW",
+}
+_RISK_SCORE_MAP = {
+    "CRITICAL": 90, "HIGH": 70, "MEDIUM": 40, "LOW": 15,
+    # Legacy PL keys for backward compat
+    "KRYTYCZNE": 90, "WYSOKIE": 70, "ŚREDNIE": 40, "SREDNIE": 40, "NISKIE": 15,
+}
+
+def _normalize_risk(risk: str) -> str:
+    """Normalize PL risk level to EN. Pass-through if already EN."""
+    if not risk:
+        return risk
+    return _RISK_PL_TO_EN.get(risk.upper(), risk.upper())
 
 def _extract_severity_counts(raw: dict) -> dict:
     """Extract finding severity counts from raw scan data."""
     counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     # Walk through known module keys that contain findings lists
     for key in raw:
+        if key in ("nuclei", "sqlmap", "ai_analysis"):
+            continue
         val = raw[key]
         if not isinstance(val, dict):
             continue
@@ -2490,11 +2552,11 @@ async def target_timeline(target: str,
     last_score = timeline[-1]["risk_score"]
     diff = first_score - last_score
     if diff > 0:
-        improvement = f"-{diff} punkt{'ów' if diff != 1 else ''} (lepiej)"
+        improvement = f"-{diff} point{'s' if diff != 1 else ''} (improved)"
     elif diff < 0:
-        improvement = f"+{abs(diff)} punkt{'ów' if abs(diff) != 1 else ''} (gorzej)"
+        improvement = f"+{abs(diff)} point{'s' if abs(diff) != 1 else ''} (degraded)"
     else:
-        improvement = "bez zmian"
+        improvement = "no change"
 
     # Fix rate: total remediated / total findings across all scans
     total_rem = sum(t["remediated"] for t in timeline)

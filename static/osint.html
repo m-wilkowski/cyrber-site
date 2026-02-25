@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
@@ -1189,7 +1189,7 @@ function renderHistory() {
   filtered.forEach(function(s) {
     var sm = s.summary || {};
     var st = s.search_type || 'domain';
-    var date = s.completed_at ? new Date(s.completed_at).toLocaleString('pl-PL') : 'pending';
+    var date = s.completed_at ? new Date(s.completed_at).toLocaleString('en-US') : 'pending';
     var summary = _histSummary(st, sm);
     h += '<tr onclick="loadOsintDetail(\'' + s.task_id + '\',\'' + st + '\')">';
     h += '<td><span class="type-badge type-' + st + '">' + st.toUpperCase() + '</span></td>';

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
@@ -844,12 +844,12 @@ function toast(msg, type = 'success') {
 function fmtDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleDateString('pl-PL') + ' ' + d.toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString('en-US') + ' ' + d.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit'});
 }
 
 function fmtDateShort(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('pl-PL');
+  return new Date(iso).toLocaleDateString('en-US');
 }
 
 function roleBadge(role) {

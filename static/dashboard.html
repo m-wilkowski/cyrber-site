@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
@@ -247,11 +247,15 @@
   border-radius: var(--radius-sm);
 }
 
-.risk-NISKIE    { color: var(--green);  border-color: var(--green);  }
+.risk-NISKIE,
+.risk-LOW       { color: var(--green);  border-color: var(--green);  }
 .risk-SREDNIE,
-.risk-ŚREDNIE   { color: var(--yellow); border-color: var(--yellow); }
-.risk-WYSOKIE   { color: var(--orange); border-color: var(--orange); }
-.risk-KRYTYCZNE { color: var(--red);    border-color: var(--red);    }
+.risk-ŚREDNIE,
+.risk-MEDIUM    { color: var(--yellow); border-color: var(--yellow); }
+.risk-WYSOKIE,
+.risk-HIGH      { color: var(--orange); border-color: var(--orange); }
+.risk-KRYTYCZNE,
+.risk-CRITICAL  { color: var(--red);    border-color: var(--red);    }
 
 /* ── PROFILE BADGE ── */
 .prof-badge {
@@ -1070,7 +1074,7 @@ footer {
         <input type="date" class="filter-input" id="filterDateTo">
       </div>
       <div class="filter-group">
-        <label>PROFIL</label>
+        <label>PROFILE</label>
         <select class="filter-select" id="filterProfile">
           <option value="">ALL</option>
           <option value="SZCZENIAK">SZCZENIAK</option>
@@ -1079,18 +1083,18 @@ footer {
         </select>
       </div>
       <div class="filter-group">
-        <label>RYZYKO</label>
+        <label>RISK</label>
         <select class="filter-select" id="filterRisk">
           <option value="">ALL</option>
-          <option value="KRYTYCZNE">KRYTYCZNE</option>
-          <option value="WYSOKIE">WYSOKIE</option>
-          <option value="ŚREDNIE">SREDNIE</option>
-          <option value="NISKIE">NISKIE</option>
+          <option value="CRITICAL">CRITICAL</option>
+          <option value="HIGH">HIGH</option>
+          <option value="MEDIUM">MEDIUM</option>
+          <option value="LOW">LOW</option>
         </select>
       </div>
       <div class="filter-group">
         <label>TARGET</label>
-        <input type="text" class="filter-input" id="filterTarget" placeholder="szukaj...">
+        <input type="text" class="filter-input" id="filterTarget" placeholder="search...">
       </div>
       <button class="btn-reset" onclick="resetFilters()">&#x21BA; RESET</button>
     </div>
@@ -1113,7 +1117,7 @@ footer {
 
     <div class="tl-selector-row">
       <select class="tl-select" id="tlTargetSelect" onchange="loadTimeline(this.value)">
-        <option value="">Wybierz target...</option>
+        <option value="">Select target...</option>
       </select>
       <span id="tlTrendBadge"></span>
     </div>
@@ -1195,7 +1199,7 @@ function escH(s) {
 
 function formatDate(iso) {
   if (!iso) return '\u2014';
-  return new Date(iso).toLocaleString('pl-PL', {
+  return new Date(iso).toLocaleString('en-US', {
     day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'
   });
 }
@@ -1218,12 +1222,12 @@ function scoreColor(score) {
 }
 
 function riskColor(level) {
-  var m = { KRYTYCZNE: 'var(--red)', WYSOKIE: 'var(--orange)', SREDNIE: 'var(--yellow)', 'ŚREDNIE': 'var(--yellow)', NISKIE: 'var(--green)' };
+  var m = { CRITICAL: 'var(--red)', HIGH: 'var(--orange)', MEDIUM: 'var(--yellow)', LOW: 'var(--green)', KRYTYCZNE: 'var(--red)', WYSOKIE: 'var(--orange)', SREDNIE: 'var(--yellow)', 'ŚREDNIE': 'var(--yellow)', NISKIE: 'var(--green)' };
   return m[level] || 'var(--accent)';
 }
 
-var RISK_SCORE_MAP = { KRYTYCZNE: 90, WYSOKIE: 70, SREDNIE: 40, 'ŚREDNIE': 40, NISKIE: 15 };
-var RISK_ORDER = { KRYTYCZNE: 1, WYSOKIE: 2, SREDNIE: 3, 'ŚREDNIE': 3, NISKIE: 4 };
+var RISK_SCORE_MAP = { CRITICAL: 90, HIGH: 70, MEDIUM: 40, LOW: 15, KRYTYCZNE: 90, WYSOKIE: 70, SREDNIE: 40, 'ŚREDNIE': 40, NISKIE: 15 };
+var RISK_ORDER = { CRITICAL: 1, HIGH: 2, MEDIUM: 3, LOW: 4, KRYTYCZNE: 1, WYSOKIE: 2, SREDNIE: 3, 'ŚREDNIE': 3, NISKIE: 4 };
 
 /* ══════════════════════════════════════
    STATE
@@ -1267,7 +1271,7 @@ function loadDashboard() {
       renderKPIs();
 
       document.getElementById('lastUpdate').textContent =
-        'UPDATED: ' + new Date().toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        'UPDATED: ' + new Date().toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
       resetCountdown();
     })
     .catch(function(e) {
@@ -1481,13 +1485,13 @@ function renderTable() {
 
   var cols = [
     { key: 'target', label: 'TARGET' },
-    { key: 'profile', label: 'PROFIL' },
-    { key: 'created_at', label: 'DATA' },
+    { key: 'profile', label: 'PROFILE' },
+    { key: 'created_at', label: 'DATE' },
     { key: 'findings_count', label: 'FINDINGS' },
-    { key: 'risk_level', label: 'RYZYKO' },
+    { key: 'risk_level', label: 'RISK' },
     { key: 'score', label: 'SCORE' },
-    { key: 'duration', label: 'CZAS' },
-    { key: '_actions', label: 'AKCJE' }
+    { key: 'duration', label: 'TIME' },
+    { key: '_actions', label: 'ACTIONS' }
   ];
 
   var html = '<table class="scan-table"><thead><tr>';
@@ -1699,12 +1703,12 @@ function renderTabSummary() {
 
   // Compliance
   var risk = (_drilldownScan.risk_level || '').replace('\u015a', 'S').replace('\u015b', 's');
-  var isCrit = risk === 'KRYTYCZNE';
-  var isHigh = risk === 'WYSOKIE';
+  var isCrit = risk === 'KRYTYCZNE' || risk === 'CRITICAL';
+  var isHigh = risk === 'WYSOKIE' || risk === 'HIGH';
   h += '<div class="dd-section-label">COMPLIANCE</div>';
   h += '<div class="compliance-row">';
-  h += '<div class="compliance-badge' + (isCrit ? ' fail' : isHigh ? ' warn' : '') + '">\uD83D\uDEE1 RODO/GDPR: ' + (isCrit ? 'Naruszenie' : isHigh ? 'Ryzyko' : 'Zgodnosc') + '</div>';
-  h += '<div class="compliance-badge' + (isCrit ? ' fail' : isHigh ? ' warn' : '') + '">\uD83C\uDFDB NIS2: ' + (isCrit ? 'Naruszenie' : isHigh ? 'Ryzyko' : 'Zgodnosc') + '</div>';
+  h += '<div class="compliance-badge' + (isCrit ? ' fail' : isHigh ? ' warn' : '') + '">\uD83D\uDEE1 RODO/GDPR: ' + (isCrit ? 'Violation' : isHigh ? 'At Risk' : 'Compliant') + '</div>';
+  h += '<div class="compliance-badge' + (isCrit ? ' fail' : isHigh ? ' warn' : '') + '">\uD83C\uDFDB NIS2: ' + (isCrit ? 'Violation' : isHigh ? 'At Risk' : 'Compliant') + '</div>';
   h += '</div>';
 
   // Actions
@@ -2019,7 +2023,7 @@ function renderTabChains() {
   var chains = _drilldownChains || [];
 
   if (!chains.length) {
-    el.innerHTML = '<div class="empty">Brak danych o exploit chains dla tego skanu.</div>';
+    el.innerHTML = '<div class="empty">No exploit chain data for this scan.</div>';
     return;
   }
 
@@ -2112,7 +2116,7 @@ function loadSecurityScores() {
       var targets = data.targets || [];
       // Keep current selection
       var cur = sel.value;
-      sel.innerHTML = '<option value="">Wybierz target...</option>';
+      sel.innerHTML = '<option value="">Select target...</option>';
       targets.forEach(function(t) {
         var trendIcon = t.trend === 'improving' ? '\u{1F4C8}' : t.trend === 'degrading' ? '\u{1F4C9}' : '\u27A1\uFE0F';
         var score = t.risk_score || 0;

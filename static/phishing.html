@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
@@ -451,7 +451,7 @@
 
   <!-- NEW CAMPAIGN — WIZARD -->
   <div class="card">
-    <h2>// NOWA KAMPANIA</h2>
+    <h2>// NEW CAMPAIGN</h2>
 
     <!-- Step indicators -->
     <div class="wiz-steps">
@@ -467,7 +467,7 @@
       <div class="wiz-step-line"></div>
       <div class="wiz-step" data-step="3" onclick="wizGotoStep(3)">
         <div class="wiz-step-dot"></div>
-        <div class="wiz-step-label">KAMPANIA</div>
+        <div class="wiz-step-label">CAMPAIGN</div>
       </div>
       <div class="wiz-step-line"></div>
       <div class="wiz-step" data-step="4" onclick="wizGotoStep(4)">
@@ -479,16 +479,16 @@
     <!-- Step 1: RECON DATA -->
     <div class="wiz-panel on" id="wizStep1">
       <div class="form-group" style="margin-bottom:12px">
-        <label>WYBIERZ SKAN ROZPOZNAWCZY</label>
+        <label>SELECT RECON SCAN</label>
         <select id="wizScanSelect">
-          <option value="">-- Brak (pomiń recon) --</option>
+          <option value="">-- None (skip recon) --</option>
         </select>
       </div>
       <div class="recon-intel" id="wizReconIntel" style="display:none">
         <div class="recon-grid" id="reconGrid"></div>
       </div>
       <div class="wiz-nav">
-        <button class="btn" onclick="wizNext(1)">DALEJ &rarr;</button>
+        <button class="btn" onclick="wizNext(1)">NEXT &rarr;</button>
       </div>
     </div>
 
@@ -497,18 +497,18 @@
       <div class="vector-cards">
         <div class="vector-card selected" id="vecGophish" onclick="wizSelectVector('gophish')">
           <div class="vector-card-title">GOPHISH</div>
-          <div class="vector-card-desc">Klasyczny phishing emailowy z trackingiem otwarć, kliknięć i przesłanych danych. Pełna integracja z REST API.</div>
+          <div class="vector-card-desc">Classic email phishing with open, click, and submitted data tracking. Full REST API integration.</div>
           <div class="vector-card-status">
             <span class="status-dot offline" id="gophishDot"></span>
-            <span id="gophishStatus">SPRAWDZAM...</span>
+            <span id="gophishStatus">CHECKING...</span>
           </div>
         </div>
         <div class="vector-card" id="vecEvilginx" onclick="wizSelectVector('evilginx')">
           <div class="vector-card-title">EVILGINX2</div>
-          <div class="vector-card-desc">Man-in-the-middle reverse proxy przechwytujący sesje i tokeny MFA w czasie rzeczywistym.</div>
+          <div class="vector-card-desc">Man-in-the-middle reverse proxy intercepting sessions and MFA tokens in real time.</div>
           <div class="vector-card-status">
             <span class="status-dot offline" id="evilginxDot"></span>
-            <span id="evilginxStatus">SPRAWDZAM...</span>
+            <span id="evilginxStatus">CHECKING...</span>
           </div>
         </div>
       </div>
@@ -516,43 +516,43 @@
         <div class="form-group" style="margin-top:12px">
           <label>PHISHLET</label>
           <select id="wizPhishletSelect">
-            <option value="">-- Wybierz phishlet --</option>
+            <option value="">-- Select phishlet --</option>
           </select>
         </div>
       </div>
       <div class="wiz-nav">
-        <button class="btn" onclick="wizBack(2)">&larr; WSTECZ</button>
-        <button class="btn" onclick="wizNext(2)">DALEJ &rarr;</button>
+        <button class="btn" onclick="wizBack(2)">&larr; BACK</button>
+        <button class="btn" onclick="wizNext(2)">NEXT &rarr;</button>
       </div>
     </div>
 
-    <!-- Step 3: KAMPANIA -->
+    <!-- Step 3: CAMPAIGN -->
     <div class="wiz-panel" id="wizStep3">
       <!-- GoPhish fields -->
       <div id="gophishFields">
         <div class="form-row" style="margin-bottom:12px">
           <div class="form-group">
-            <label>NAZWA KAMPANII</label>
+            <label>CAMPAIGN NAME</label>
             <input type="text" id="campName" placeholder="Q1 2026 Awareness Test">
           </div>
           <div class="form-group">
-            <label>DOMENA NADAWCY</label>
+            <label>SENDER DOMAIN</label>
             <input type="text" id="campDomain" placeholder="security-test.example.com">
           </div>
         </div>
 
         <div class="form-row" style="margin-bottom:12px;align-items:flex-end">
           <div class="form-group">
-            <label>SZABLON EMAILA (TEMAT)</label>
-            <input type="text" id="campSubject" placeholder="Pilne: Zresetuj hasło do konta firmowego">
+            <label>EMAIL TEMPLATE (SUBJECT)</label>
+            <input type="text" id="campSubject" placeholder="Urgent: Reset your corporate account password">
           </div>
           <button class="btn btn-ai" id="aiGenBtn" onclick="wizAiGenerate()">AI GENERATE</button>
         </div>
 
         <div class="form-row" style="margin-bottom:12px">
           <div class="form-group">
-            <label>TREŚĆ EMAILA (HTML)</label>
-            <textarea id="campBody" placeholder="<p>Drogi pracowniku,</p><p>Wykryliśmy podejrzaną aktywność na Twoim koncie. Kliknij <a href='{{.URL}}'>tutaj</a> aby zweryfikować tożsamość.</p>"></textarea>
+            <label>EMAIL BODY (HTML)</label>
+            <textarea id="campBody" placeholder="<p>Dear employee,</p><p>We detected suspicious activity on your account. Click <a href='{{.URL}}'>here</a> to verify your identity.</p>"></textarea>
           </div>
         </div>
 
@@ -564,8 +564,8 @@
         </div>
 
         <div class="form-group" style="margin-bottom:12px">
-          <label>ODBIORCY (jeden email na linię)</label>
-          <textarea id="campTargets" placeholder="jan.kowalski@firma.pl&#10;anna.nowak@firma.pl&#10;piotr.wisniewski@firma.pl" style="min-height:100px"></textarea>
+          <label>RECIPIENTS (one email per line)</label>
+          <textarea id="campTargets" placeholder="john.doe@company.com&#10;jane.smith@company.com&#10;bob.wilson@company.com" style="min-height:100px"></textarea>
         </div>
 
         <div id="wizAiMsg"></div>
@@ -575,14 +575,14 @@
       <div id="evilginxFields" style="display:none">
         <div class="form-row" style="margin-bottom:12px">
           <div class="form-group">
-            <label>NAZWA KAMPANII</label>
+            <label>CAMPAIGN NAME</label>
             <input type="text" id="evilCampName" placeholder="Evilginx MFA Bypass Test">
           </div>
         </div>
         <div class="form-row" style="margin-bottom:12px">
           <div class="form-group">
             <label>PHISHLET</label>
-            <input type="text" id="evilPhishlet" readonly placeholder="Wybierz w Step 2">
+            <input type="text" id="evilPhishlet" readonly placeholder="Select in Step 2">
           </div>
         </div>
         <div class="form-row" style="margin-bottom:12px">
@@ -593,16 +593,16 @@
         </div>
         <div class="form-row" style="margin-bottom:12px">
           <div class="form-group">
-            <label>REDIRECT URL (po przechwyceniu)</label>
+            <label>REDIRECT URL (after capture)</label>
             <input type="text" id="evilRedirectUrl" placeholder="https://real-login.example.com">
           </div>
         </div>
-        <div class="msg warn">Evilginx2 nie ma pełnego REST API — konfiguracja wymaga dostępu do CLI. Ustawienia tutaj służą jako szablon.</div>
+        <div class="msg warn">Evilginx2 does not have a full REST API — configuration requires CLI access. Settings here serve as a template.</div>
       </div>
 
       <div class="wiz-nav">
-        <button class="btn" onclick="wizBack(3)">&larr; WSTECZ</button>
-        <button class="btn" onclick="wizNext(3)">DALEJ &rarr;</button>
+        <button class="btn" onclick="wizBack(3)">&larr; BACK</button>
+        <button class="btn" onclick="wizNext(3)">NEXT &rarr;</button>
       </div>
     </div>
 
@@ -612,12 +612,12 @@
 
       <div class="consent">
         <input type="checkbox" id="consentCheck">
-        <label for="consentCheck">Potwierdzam posiadanie pisemnej zgody na przeprowadzenie testu social engineering wobec wymienionych odbiorców. Kampania jest prowadzona wyłącznie w celach edukacyjnych / audytowych na rzecz autoryzowanej organizacji.</label>
+        <label for="consentCheck">I confirm that I have written authorization to conduct social engineering testing against the listed recipients. This campaign is conducted solely for educational / audit purposes on behalf of an authorized organization.</label>
       </div>
 
       <div class="wiz-nav">
-        <button class="btn" onclick="wizBack(4)">&larr; WSTECZ</button>
-        <button class="btn btn-primary" id="launchBtn" onclick="launchCampaign()" disabled>URUCHOM KAMPANIĘ</button>
+        <button class="btn" onclick="wizBack(4)">&larr; BACK</button>
+        <button class="btn btn-primary" id="launchBtn" onclick="launchCampaign()" disabled>LAUNCH CAMPAIGN</button>
       </div>
 
       <div id="msg"></div>
@@ -626,15 +626,15 @@
 
   <!-- ACTIVE CAMPAIGNS -->
   <div class="card">
-    <h2>// KAMPANIE</h2>
-    <div id="campaigns-list"><div class="empty">Ładowanie...</div></div>
+    <h2>// CAMPAIGNS</h2>
+    <div id="campaigns-list"><div class="empty">Loading...</div></div>
   </div>
 
   <!-- CAMPAIGN RESULTS (shown on click) -->
   <div class="card result-panel" id="resultPanel">
-    <h2 id="resultTitle">// WYNIKI KAMPANII</h2>
+    <h2 id="resultTitle">// CAMPAIGN RESULTS</h2>
     <div class="stats-row" id="resultStats"></div>
-    <div id="resultEvents"><div class="empty">Brak zdarzeń</div></div>
+    <div id="resultEvents"><div class="empty">No events</div></div>
   </div>
 
   <footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.1.0</footer>
@@ -670,17 +670,17 @@ async function fetchCampaigns() {
     var data = await r.json();
     renderCampaigns(data);
   } catch(e) {
-    document.getElementById('campaigns-list').innerHTML = '<div class="empty">Błąd ładowania kampanii</div>';
+    document.getElementById('campaigns-list').innerHTML = '<div class="empty">Error loading campaigns</div>';
   }
 }
 
 function renderCampaigns(campaigns) {
   var el = document.getElementById('campaigns-list');
   if (!campaigns || !campaigns.length) {
-    el.innerHTML = '<div class="empty">Brak kampanii</div>';
+    el.innerHTML = '<div class="empty">No campaigns</div>';
     return;
   }
-  var html = '<table><thead><tr><th>NAZWA</th><th>STATUS</th><th>WYSŁANO</th><th>OTWARTO</th><th>KLIKNIĘTO</th><th>CREDENTIALS</th><th>DATA</th><th></th></tr></thead><tbody>';
+  var html = '<table><thead><tr><th>NAME</th><th>STATUS</th><th>SENT</th><th>OPENED</th><th>CLICKED</th><th>CREDENTIALS</th><th>DATE</th><th></th></tr></thead><tbody>';
   campaigns.forEach(function(c) {
     var st = (c.status || 'unknown').toLowerCase();
     var badgeCls = st === 'completed' ? 'badge-completed' : (st === 'sending' || st === 'in progress' ? 'badge-active' : 'badge-draft');
@@ -694,7 +694,7 @@ function renderCampaigns(campaigns) {
     html += '<td>' + (stats.clicked || 0) + '</td>';
     html += '<td style="color:' + ((stats.submitted_data||0) > 0 ? 'var(--red)' : 'var(--silver)') + '">' + (stats.submitted_data || 0) + '</td>';
     html += '<td>' + date + '</td>';
-    html += '<td style="white-space:nowrap"><button class="btn" onclick="viewResults(' + c.id + ')" style="margin-right:6px">WYNIKI</button><button class="btn btn-danger" onclick="deleteCampaign(' + c.id + ')">USUŃ</button></td>';
+    html += '<td style="white-space:nowrap"><button class="btn" onclick="viewResults(' + c.id + ')" style="margin-right:6px">RESULTS</button><button class="btn btn-danger" onclick="deleteCampaign(' + c.id + ')">DELETE</button></td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
@@ -711,15 +711,15 @@ async function launchCampaign() {
   var rawTargets = document.getElementById('campTargets').value.trim();
   var consent = document.getElementById('consentCheck').checked;
 
-  if (!consent) { showMsg('Wymagane potwierdzenie zgody', true); return; }
-  if (!name) { showMsg('Podaj nazwę kampanii', true); return; }
-  if (!domain) { showMsg('Podaj domenę nadawcy', true); return; }
-  if (!subject) { showMsg('Podaj temat emaila', true); return; }
-  if (!body) { showMsg('Podaj treść emaila', true); return; }
-  if (!rawTargets) { showMsg('Podaj listę odbiorców', true); return; }
+  if (!consent) { showMsg('Authorization consent is required', true); return; }
+  if (!name) { showMsg('Campaign name is required', true); return; }
+  if (!domain) { showMsg('Sender domain is required', true); return; }
+  if (!subject) { showMsg('Email subject is required', true); return; }
+  if (!body) { showMsg('Email body is required', true); return; }
+  if (!rawTargets) { showMsg('Recipient list is required', true); return; }
 
   var targets = rawTargets.split('\n').map(function(e){ return e.trim(); }).filter(function(e){ return e.length > 0 && e.includes('@'); });
-  if (!targets.length) { showMsg('Brak poprawnych adresów email', true); return; }
+  if (!targets.length) { showMsg('No valid email addresses found', true); return; }
 
   document.getElementById('launchBtn').disabled = true;
 
@@ -738,7 +738,7 @@ async function launchCampaign() {
     });
     if (r.ok) {
       var data = await r.json();
-      showMsg('Kampania "' + name + '" uruchomiona (' + targets.length + ' odbiorców)');
+      showMsg('Campaign "' + name + '" launched (' + targets.length + ' recipients)');
       document.getElementById('campName').value = '';
       document.getElementById('campTargets').value = '';
       document.getElementById('consentCheck').checked = false;
@@ -746,18 +746,18 @@ async function launchCampaign() {
       fetchCampaigns();
     } else {
       var err = await r.json();
-      showMsg(err.detail || 'Błąd tworzenia kampanii', true);
+      showMsg(err.detail || 'Error creating campaign', true);
       document.getElementById('launchBtn').disabled = !document.getElementById('consentCheck').checked;
     }
   } catch(e) {
-    showMsg('Błąd połączenia: ' + e.message, true);
+    showMsg('Connection error: ' + e.message, true);
     document.getElementById('launchBtn').disabled = !document.getElementById('consentCheck').checked;
   }
 }
 
 // ── delete campaign ──
 async function deleteCampaign(id) {
-  if (!confirm('Usunąć kampanię #' + id + '?')) return;
+  if (!confirm('Delete campaign #' + id + '?')) return;
   try {
     var r = await authFetch('/phishing/campaigns/' + id, {
       method: 'DELETE'
@@ -776,22 +776,22 @@ async function viewResults(id) {
     var data = await r.json();
     renderResults(data, id);
   } catch(e) {
-    showMsg('Błąd ładowania wyników', true);
+    showMsg('Error loading results', true);
   }
 }
 
 function renderResults(data, id) {
   var panel = document.getElementById('resultPanel');
-  document.getElementById('resultTitle').textContent = '// WYNIKI KAMPANII #' + id;
+  document.getElementById('resultTitle').textContent = '// CAMPAIGN RESULTS #' + id;
 
   var stats = data.stats || {};
   var statsHtml = '';
   var items = [
-    {val: stats.total || 0, lbl: 'WYSŁANO', color: 'var(--accent)'},
-    {val: stats.opened || 0, lbl: 'OTWARTO', color: 'var(--yellow)'},
-    {val: stats.clicked || 0, lbl: 'KLIKNIĘTO', color: 'var(--orange)'},
+    {val: stats.total || 0, lbl: 'SENT', color: 'var(--accent)'},
+    {val: stats.opened || 0, lbl: 'OPENED', color: 'var(--yellow)'},
+    {val: stats.clicked || 0, lbl: 'CLICKED', color: 'var(--orange)'},
     {val: stats.submitted_data || 0, lbl: 'CREDENTIALS', color: 'var(--red)'},
-    {val: stats.error || 0, lbl: 'BŁĘDY', color: 'var(--silver)'}
+    {val: stats.error || 0, lbl: 'ERRORS', color: 'var(--silver)'}
   ];
   items.forEach(function(it) {
     statsHtml += '<div class="stat-box"><div class="stat-val" style="color:' + it.color + '">' + it.val + '</div><div class="stat-lbl">' + it.lbl + '</div></div>';
@@ -808,7 +808,7 @@ function renderResults(data, id) {
       evHtml += '<div class="event-row"><div class="event-icon">' + icon + '</div><div class="event-email">' + (ev.email || '—') + '</div><div style="flex:1;color:var(--silver);font-size:10px">' + (ev.message || ev.status || '') + '</div><div class="event-time">' + time + '</div></div>';
     });
   } else {
-    evHtml = '<div class="empty">Brak zdarzeń</div>';
+    evHtml = '<div class="empty">No events</div>';
   }
   document.getElementById('resultEvents').innerHTML = evHtml;
 
@@ -929,11 +929,11 @@ async function wizOnScanSelect() {
 
     // Build grid
     var html = '';
-    html += '<div class="recon-box"><div class="recon-box-label">CEL</div><div class="recon-box-value">' + escHtml(target) + '</div></div>';
-    html += '<div class="recon-box"><div class="recon-box-label">RYZYKO</div><div class="recon-box-value" style="color:' + riskColor(riskLevel) + '">' + escHtml(riskLevel) + ' (' + riskScore + '/100)</div></div>';
-    html += '<div class="recon-box"><div class="recon-box-label">TECHNOLOGIE</div><div class="recon-box-value">' + (techs.length ? escHtml(techs.join(', ')) : '—') + '</div></div>';
-    html += '<div class="recon-box"><div class="recon-box-label">EMAILE</div><div class="recon-box-value">' + (emails.length ? escHtml(emails.join(', ')) : '—') + '</div></div>';
-    html += '<div class="recon-box"><div class="recon-box-label">TOP PODATNOŚCI</div><div class="recon-box-value">' + (vulns.length ? escHtml(vulns.join('; ')) : '—') + '</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">TARGET</div><div class="recon-box-value">' + escHtml(target) + '</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">RISK</div><div class="recon-box-value" style="color:' + riskColor(riskLevel) + '">' + escHtml(riskLevel) + ' (' + riskScore + '/100)</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">TECHNOLOGIES</div><div class="recon-box-value">' + (techs.length ? escHtml(techs.join(', ')) : '—') + '</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">EMAILS</div><div class="recon-box-value">' + (emails.length ? escHtml(emails.join(', ')) : '—') + '</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">TOP VULNERABILITIES</div><div class="recon-box-value">' + (vulns.length ? escHtml(vulns.join('; ')) : '—') + '</div></div>';
 
     grid.innerHTML = html;
     intel.style.display = 'block';
@@ -995,7 +995,7 @@ async function wizCheckAvailability() {
       var phishletsData = await r3.json();
       wizState.phishlets = Array.isArray(phishletsData) ? phishletsData : (phishletsData.phishlets || []);
       var pSel = document.getElementById('wizPhishletSelect');
-      pSel.innerHTML = '<option value="">-- Wybierz phishlet --</option>';
+      pSel.innerHTML = '<option value="">-- Select phishlet --</option>';
       wizState.phishlets.forEach(function(p) {
         var name = typeof p === 'string' ? p : (p.name || p.hostname || '');
         if (!name) return;
@@ -1069,7 +1069,7 @@ async function wizAiGenerate() {
     emails: emails.slice(0, 10),
     vulnerabilities: vulns,
     executive_summary: analysis.executive_summary || analysis.summary || '',
-    language: 'pl'
+    language: 'en'
   };
 
   try {
@@ -1082,12 +1082,12 @@ async function wizAiGenerate() {
     if (r.ok && data.subject) {
       document.getElementById('campSubject').value = data.subject;
       document.getElementById('campBody').value = data.body || '';
-      msgEl.innerHTML = '<div class="msg">Email wygenerowany przez AI (' + (data.provider || 'LLM') + '). Pretext: ' + escHtml(data.pretext || '') + '</div>';
+      msgEl.innerHTML = '<div class="msg">Email generated by AI (' + (data.provider || 'LLM') + '). Pretext: ' + escHtml(data.pretext || '') + '</div>';
     } else {
-      msgEl.innerHTML = '<div class="msg error">' + escHtml(data.detail || 'Błąd generowania') + '</div>';
+      msgEl.innerHTML = '<div class="msg error">' + escHtml(data.detail || 'Generation error') + '</div>';
     }
   } catch(e) {
-    msgEl.innerHTML = '<div class="msg error">Błąd połączenia: ' + escHtml(e.message) + '</div>';
+    msgEl.innerHTML = '<div class="msg error">Connection error: ' + escHtml(e.message) + '</div>';
   }
 
   btn.classList.remove('loading');
@@ -1099,18 +1099,18 @@ function wizBuildReview() {
   var tbl = document.getElementById('reviewTable');
   var rows = [];
 
-  rows.push(['WEKTOR', wizState.vector === 'gophish' ? 'GoPhish (Email)' : 'Evilginx2 (MITM)']);
+  rows.push(['VECTOR', wizState.vector === 'gophish' ? 'GoPhish (Email)' : 'Evilginx2 (MITM)']);
 
   if (wizState.vector === 'gophish') {
-    rows.push(['NAZWA', document.getElementById('campName').value || '—']);
-    rows.push(['DOMENA', document.getElementById('campDomain').value || '—']);
-    rows.push(['TEMAT', document.getElementById('campSubject').value || '—']);
+    rows.push(['NAME', document.getElementById('campName').value || '—']);
+    rows.push(['DOMAIN', document.getElementById('campDomain').value || '—']);
+    rows.push(['SUBJECT', document.getElementById('campSubject').value || '—']);
     rows.push(['BODY', '<pre style="white-space:pre-wrap;font-size:11px;max-height:150px;overflow:auto;margin:0">' + escHtml(document.getElementById('campBody').value || '—') + '</pre>']);
     rows.push(['LANDING', document.getElementById('campLanding').value || '—']);
     var targets = document.getElementById('campTargets').value.trim().split('\n').filter(function(e){ return e.trim(); });
-    rows.push(['ODBIORCY', targets.length + ' adresów']);
+    rows.push(['RECIPIENTS', targets.length + ' addresses']);
   } else {
-    rows.push(['NAZWA', document.getElementById('evilCampName').value || '—']);
+    rows.push(['NAME', document.getElementById('evilCampName').value || '—']);
     rows.push(['PHISHLET', document.getElementById('evilPhishlet').value || '—']);
     rows.push(['LURE URL', document.getElementById('evilLureUrl').value || '—']);
     rows.push(['REDIRECT', document.getElementById('evilRedirectUrl').value || '—']);

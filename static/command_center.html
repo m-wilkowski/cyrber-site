@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
@@ -530,7 +530,7 @@ function loadRecentScans() {
     scans.forEach(function(s) {
       var risk = (s.risk_level || 'N/A').toUpperCase();
       var target = s.target || 'unknown';
-      var time = s.created_at ? new Date(s.created_at).toLocaleString('pl-PL', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      var time = s.created_at ? new Date(s.created_at).toLocaleString('en-US', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
       html += '<div class="cc-scan-item">' +
         '<span class="cc-scan-target" title="' + target + '">' + target + '</span>' +
         '<span class="risk-badge ' + risk + '">' + risk + '</span>' +

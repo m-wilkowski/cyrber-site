@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/theme.css">
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CYRBER — SCAN</title>
 <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
@@ -349,7 +349,7 @@
 
 /* ── RISK BADGES ── */
 .risk-badge{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:var(--text-sm);letter-spacing:.1em;padding:3px var(--sp-2);border:1px solid;border-radius:var(--radius-sm)}
-.risk-NISKIE{color:var(--green);border-color:var(--green)}.risk-SREDNIE,.risk-ŚREDNIE{color:var(--yellow);border-color:var(--yellow)}.risk-WYSOKIE{color:var(--orange);border-color:var(--orange)}.risk-KRYTYCZNE{color:var(--red);border-color:var(--red)}
+.risk-LOW,.risk-NISKIE{color:var(--green);border-color:var(--green)}.risk-MEDIUM,.risk-SREDNIE,.risk-ŚREDNIE{color:var(--yellow);border-color:var(--yellow)}.risk-HIGH,.risk-WYSOKIE{color:var(--orange);border-color:var(--orange)}.risk-CRITICAL,.risk-KRYTYCZNE{color:var(--red);border-color:var(--red)}
 
 /* ── FOOTER ── */
 footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-top:1px solid var(--border);font-family:'Share Tech Mono',monospace;font-size:var(--text-sm);color:var(--text-muted);letter-spacing:.22em}
@@ -380,7 +380,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
 <body>
 
 <nav>
-  <a class="nav-brand" href="/ui"><div class="nav-ring" style="background-image:url(/static/cyrber_wolf.png);background-size:80%;background-repeat:no-repeat;background-position:center center;"></div>CYRBER<span>AUTONOMOUS RECON</span></a>
+  <a class="nav-brand" href="/ui"><div class="nav-ring" style="background-image:url(/static/cyrber_wolf.png);background-size:100%;background-repeat:no-repeat;background-position:center center;"></div>CYRBER<span>AUTONOMOUS RECON</span></a>
   <div class="nav-links">
     <a class="nav-link active" href="/ui">SCAN</a>
     <a class="nav-link" href="/dashboard">DASHBOARD</a>
@@ -405,30 +405,30 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
         <div class="hero-ring"><div class="hero-ring-text"><img src="/static/cyrber_logo.jpg" style="width:220px;height:220px;object-fit:cover;object-position:center 30%;border-radius:50%;"></div></div>
         <div class="hero-title">CYRBER</div>
         <div class="hero-tagline">AUTONOMOUS SECURITY TESTING</div>
-        <div class="hero-sub">Wybierz cel. Wybierz poziom. Reszta dzieje si&#281; sama.</div>
+        <div class="hero-sub">Pick a target. Choose a level. The rest happens automatically.</div>
       </div>
 
       <!-- SCAN FORM -->
       <div class="scan-form" id="scanForm">
 
-        <div class="step-label"><span class="step-num">1</span> CEL</div>
+        <div class="step-label"><span class="step-num">1</span> TARGET</div>
         <div class="target-wrap">
           <input class="target-input" id="targetInput" type="text"
-            placeholder="Wpisz domen&#281;, IP lub zakres CIDR..."
+            placeholder="Enter domain, IP or CIDR range..."
             autocomplete="off" spellcheck="false">
           <div class="target-hint">example.com &nbsp;|&nbsp; 192.168.1.1 &nbsp;|&nbsp; 10.0.0.0/24</div>
-          <div class="target-error" id="targetError">Nieprawid&#322;owy format</div>
+          <div class="target-error" id="targetError">Invalid format</div>
         </div>
 
-        <div class="step-label"><span class="step-num">2</span> POZIOM</div>
+        <div class="step-label"><span class="step-num">2</span> LEVEL</div>
         <div class="profile-grid" id="profileGrid">
           <div class="profile-card" data-profile="SZCZENIAK" onclick="selectProfile('SZCZENIAK',this)">
-            <div class="lock-overlay"><span class="lock-text">WYMAGA PRO</span></div>
+            <div class="lock-overlay"><span class="lock-text">REQUIRES PRO</span></div>
             <div class="profile-icon"><img src="/static/szczeniak.jpg" style="width:190px;height:190px;object-fit:cover;object-position:center 40%;border-radius:16px;"></div>
             <div class="profile-name">SZCZENIAK</div>
-            <div class="profile-desc">Rekon + Web<br>Podstawowy skan</div>
+            <div class="profile-desc">Recon + Web<br>Basic scan</div>
             <div class="profile-time">~15 min</div>
-            <div class="profile-modules" data-modules="28">28 modu&#322;&#243;w</div>
+            <div class="profile-modules" data-modules="28">28 modules</div>
             <div class="profile-cats">
               <span class="profile-cat">Recon</span>
               <span class="profile-cat">Web</span>
@@ -438,12 +438,12 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
             <div class="profile-bar-wrap"><div class="profile-bar-fill" style="width:54%"></div></div>
           </div>
           <div class="profile-card" data-profile="STRAZNIK" onclick="selectProfile('STRAZNIK',this)">
-            <div class="lock-overlay"><span class="lock-text">WYMAGA PRO</span></div>
+            <div class="lock-overlay"><span class="lock-text">REQUIRES PRO</span></div>
             <div class="profile-icon"><img src="/static/straznik.jpg" style="width:190px;height:190px;object-fit:cover;object-position:center 40%;border-radius:16px;"></div>
             <div class="profile-name">STRA&#x17B;NIK</div>
-            <div class="profile-desc">+ Sie&#263; + AD<br>Zaawansowany test</div>
+            <div class="profile-desc">+ Network + AD<br>Advanced test</div>
             <div class="profile-time">~30 min</div>
-            <div class="profile-modules" data-modules="38">38 modu&#322;&#243;w</div>
+            <div class="profile-modules" data-modules="38">38 modules</div>
             <div class="profile-cats">
               <span class="profile-cat">Recon</span>
               <span class="profile-cat">Web</span>
@@ -455,12 +455,12 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
             <div class="profile-bar-wrap"><div class="profile-bar-fill" style="width:73%"></div></div>
           </div>
           <div class="profile-card" data-profile="CERBER" onclick="selectProfile('CERBER',this)">
-            <div class="lock-overlay"><span class="lock-text">WYMAGA ENTERPRISE</span></div>
+            <div class="lock-overlay"><span class="lock-text">REQUIRES ENTERPRISE</span></div>
             <div class="profile-icon"><img src="/static/cerber.jpg" style="width:190px;height:190px;object-fit:cover;object-position:center 40%;border-radius:16px;"></div>
             <div class="profile-name">CERBER</div>
-            <div class="profile-desc">+ Social Eng + AI<br>Pe&#322;ny arsena&#322;</div>
+            <div class="profile-desc">+ Social Eng + AI<br>Full arsenal</div>
             <div class="profile-time">~60 min</div>
-            <div class="profile-modules" data-modules="52">52 modu&#322;y</div>
+            <div class="profile-modules" data-modules="52">52 modules</div>
             <div class="profile-cats">
               <span class="profile-cat">Recon</span>
               <span class="profile-cat">Web</span>
@@ -476,8 +476,8 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
         </div>
 
         <div class="start-wrap">
-          <button class="start-btn" id="startBtn" disabled onclick="startScan()">URUCHOM SKAN</button>
-          <div class="start-note">Skan zostanie uruchomiony w tle. Wyniki pojawi&#261; si&#281; w dashboard.</div>
+          <button class="start-btn" id="startBtn" disabled onclick="startScan()">LAUNCH SCAN</button>
+          <div class="start-note">Scan will run in the background. Results will appear on the dashboard.</div>
         </div>
       </div>
     </div>
@@ -489,11 +489,11 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
       <div class="sidebar-card">
         <div class="sidebar-title">
           <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 11a1 1 0 011-1h2a1 1 0 011 1v3a1 1 0 01-1 1H2a1 1 0 01-1-1v-3zm5-4a1 1 0 011-1h2a1 1 0 011 1v7a1 1 0 01-1 1H7a1 1 0 01-1-1V7zm5-5a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V2z"/></svg>
-          STATYSTYKI
+          STATISTICS
         </div>
         <div class="quick-stats" id="quickStats">
-          <div class="qs-item"><div class="qs-val" id="qsTotalScans">-</div><div class="qs-lbl">SKANY</div></div>
-          <div class="qs-item"><div class="qs-val" id="qsUniqueTargets">-</div><div class="qs-lbl">CELE</div></div>
+          <div class="qs-item"><div class="qs-val" id="qsTotalScans">-</div><div class="qs-lbl">SCANS</div></div>
+          <div class="qs-item"><div class="qs-val" id="qsUniqueTargets">-</div><div class="qs-lbl">TARGETS</div></div>
           <div class="qs-item"><div class="qs-val" id="qsAvgRisk">-</div><div class="qs-lbl">AVG RISK</div></div>
         </div>
       </div>
@@ -502,7 +502,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
       <div class="sidebar-card">
         <div class="sidebar-title">
           <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a.5.5 0 00-1 0V8a.5.5 0 00.252.434l3.5 2a.5.5 0 00.496-.868L8 7.71V3.5z"/><path d="M8 16A8 8 0 108 0a8 8 0 000 16zm7-8A7 7 0 111 8a7 7 0 0114 0z"/></svg>
-          OSTATNIE SKANY
+          RECENT SCANS
         </div>
         <div class="recent-list" id="recentList">
           <div class="loading pulse">LOADING...</div>
@@ -516,10 +516,10 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
           SYSTEM
         </div>
         <div class="sys-rows" id="sysInfo">
-          <div class="sys-row"><span class="sys-row-label">Licencja</span><span class="sys-row-val" id="sysLicense">-</span></div>
-          <div class="sys-row"><span class="sys-row-label">Pipeline</span><span class="sys-row-val" id="sysPipeline">52 krok&#243;w</span></div>
-          <div class="sys-row"><span class="sys-row-label">Profile</span><span class="sys-row-val" id="sysProfiles">3 dost&#281;pne</span></div>
-          <div class="sys-row"><span class="sys-row-label">Rola</span><span class="sys-row-val" id="sysRole">-</span></div>
+          <div class="sys-row"><span class="sys-row-label">License</span><span class="sys-row-val" id="sysLicense">-</span></div>
+          <div class="sys-row"><span class="sys-row-label">Pipeline</span><span class="sys-row-val" id="sysPipeline">52 steps</span></div>
+          <div class="sys-row"><span class="sys-row-label">Profiles</span><span class="sys-row-val" id="sysProfiles">3 available</span></div>
+          <div class="sys-row"><span class="sys-row-label">Role</span><span class="sys-row-val" id="sysRole">-</span></div>
         </div>
       </div>
     </div>
@@ -531,19 +531,19 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
     <div class="metrics-row">
       <div class="metric-item">
         <div class="metric-val" id="metricElapsed">00:00</div>
-        <div class="metric-lbl">CZAS</div>
+        <div class="metric-lbl">TIME</div>
       </div>
       <div class="metric-item">
         <div class="metric-val accent" id="metricStep">0/52</div>
-        <div class="metric-lbl">KROK</div>
+        <div class="metric-lbl">STEP</div>
       </div>
       <div class="metric-item">
         <div class="metric-val" id="metricFindings">0</div>
-        <div class="metric-lbl">ZNALEZISKA</div>
+        <div class="metric-lbl">FINDINGS</div>
       </div>
       <div class="metric-item">
         <div class="metric-val" id="metricProfile">-</div>
-        <div class="metric-lbl">PROFIL</div>
+        <div class="metric-lbl">PROFILE</div>
       </div>
     </div>
   </div>
@@ -554,7 +554,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
       <div class="feed-panel">
         <div class="feed-header">
           <div>
-            <div class="feed-title">&#x26A1; SKANOWANIE</div>
+            <div class="feed-title">&#x26A1; SCANNING</div>
             <div class="feed-target" id="feedTarget"></div>
           </div>
           <div class="feed-profile" id="feedProfile"></div>
@@ -571,7 +571,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
         <div class="step-list" id="stepList"></div>
 
         <div class="feed-stop">
-          <button class="stop-btn" onclick="stopScan()">ZATRZYMAJ SKAN</button>
+          <button class="stop-btn" onclick="stopScan()">STOP SCAN</button>
         </div>
       </div>
 
@@ -591,7 +591,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
   <div class="complete-panel" id="completePanel">
     <div class="complete-header">
       <div class="complete-icon">&#x2705;</div>
-      <div class="complete-title">SKAN ZAKO&#x143;CZONY</div>
+      <div class="complete-title">SCAN COMPLETE</div>
     </div>
     <div class="severity-grid" id="severityGrid">
       <div class="sev-card sev-critical"><div class="sev-count" id="sevCrit">0</div><div class="sev-label">CRITICAL</div></div>
@@ -630,94 +630,94 @@ function authFetch(url,opts){
   return fetch(url,opts).then(function(r){if(r.status===401){localStorage.removeItem('cyrber_token');window.location.href='/login'}return r});
 }
 function escH(s){if(!s)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
-function formatDate(iso){if(!iso)return'\u2014';return new Date(iso).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function formatDate(iso){if(!iso)return'\u2014';return new Date(iso).toLocaleString('en-US',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
 function timeAgo(iso){
   if(!iso)return'';
   var diff=Math.floor((Date.now()-new Date(iso).getTime())/1000);
-  if(diff<60)return diff+'s temu';
-  if(diff<3600)return Math.floor(diff/60)+'m temu';
-  if(diff<86400)return Math.floor(diff/3600)+'h temu';
-  return Math.floor(diff/86400)+'d temu';
+  if(diff<60)return diff+'s ago';
+  if(diff<3600)return Math.floor(diff/60)+'m ago';
+  if(diff<86400)return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
 }
 
 /* ═══════════════════════════════════
    MODULE → FUNCTION LANGUAGE MAP
    ═══════════════════════════════════ */
 var MODULE_LABELS = {
-  nmap:        'Szukam otwartych drzwi...',
-  masscan:     'Szukam otwartych drzwi...',
-  naabu:       'Szukam otwartych drzwi...',
-  amass:       'Mapuj\u0119 powierzchni\u0119 ataku...',
-  subfinder:   'Mapuj\u0119 powierzchni\u0119 ataku...',
-  httpx:       'Mapuj\u0119 powierzchni\u0119 ataku...',
-  dnsx:        'Mapuj\u0119 powierzchni\u0119 ataku...',
-  dnsrecon:    'Mapuj\u0119 powierzchni\u0119 ataku...',
-  fierce:      'Mapuj\u0119 powierzchni\u0119 ataku...',
-  katana:      'Mapuj\u0119 powierzchni\u0119 ataku...',
-  nuclei:      'Testuj\u0119 odporno\u015b\u0107 na w\u0142amania...',
-  nikto:       'Testuj\u0119 odporno\u015b\u0107 na w\u0142amania...',
-  wapiti:      'Testuj\u0119 odporno\u015b\u0107 na w\u0142amania...',
-  zap:         'Testuj\u0119 odporno\u015b\u0107 na w\u0142amania...',
-  wpscan:      'Testuj\u0119 odporno\u015b\u0107 na w\u0142amania...',
-  joomscan:    'Testuj\u0119 odporno\u015b\u0107 na w\u0142amania...',
-  cmsmap:      'Testuj\u0119 odporno\u015b\u0107 na w\u0142amania...',
-  droopescan:  'Testuj\u0119 odporno\u015b\u0107 na w\u0142amania...',
-  retirejs:    'Testuj\u0119 odporno\u015b\u0107 na w\u0142amania...',
-  gobuster:    'Szukam ukrytych zasob\u00f3w...',
-  testssl:     'Sprawdzam szyfrowanie i certyfikaty...',
-  sslyze:      'Sprawdzam szyfrowanie i certyfikaty...',
-  sqlmap:      'Testuj\u0119 bazy danych...',
-  whatweb:     'Rozpoznaj\u0119 systemy i zabezpieczenia...',
-  ipinfo:      'Zbieram informacje wywiadowcze...',
-  whois:       'Zbieram informacje wywiadowcze...',
-  harvester:   'Zbieram informacje wywiadowcze...',
-  exiftool:    'Zbieram informacje wywiadowcze...',
-  abuseipdb:   'Zbieram informacje wywiadowcze...',
-  otx:         'Zbieram informacje wywiadowcze...',
-  netdiscover: 'Analizuj\u0119 konfiguracj\u0119 sieci...',
-  arpscan:     'Analizuj\u0119 konfiguracj\u0119 sieci...',
-  fping:       'Analizuj\u0119 konfiguracj\u0119 sieci...',
-  traceroute:  'Analizuj\u0119 konfiguracj\u0119 sieci...',
-  nbtscan:     'Analizuj\u0119 konfiguracj\u0119 sieci...',
-  snmpwalk:    'Analizuj\u0119 konfiguracj\u0119 sieci...',
-  onesixtyone: 'Analizuj\u0119 konfiguracj\u0119 sieci...',
-  ikescan:     'Analizuj\u0119 konfiguracj\u0119 sieci...',
-  netexec:     'Analizuj\u0119 struktur\u0119 Active Directory...',
-  enum4linux:  'Analizuj\u0119 struktur\u0119 Active Directory...',
-  bloodhound:  'Analizuj\u0119 struktur\u0119 Active Directory...',
-  responder:   'Analizuj\u0119 struktur\u0119 Active Directory...',
-  smbmap:      'Analizuj\u0119 struktur\u0119 Active Directory...',
-  impacket:    'Analizuj\u0119 struktur\u0119 Active Directory...',
-  certipy:     'Analizuj\u0119 struktur\u0119 Active Directory...',
-  searchsploit:'Szukam znanych exploit\u00f3w...',
-  garak:       'Testuj\u0119 bezpiecze\u0144stwo AI/LLM...',
-  ai_analysis: 'AI analizuje i buduje scenariusze ataku...',
-  exploit_chains:'\u0141\u0105cz\u0119 znaleziska w \u0142a\u0144cuchy exploit\u00f3w...',
-  hacker_narrative:'Generuj\u0119 narracje pentestera...',
-  false_positive_filter:'Filtruj\u0119 fa\u0142szywe alarmy...',
-  pdf_report:  'Generuj\u0119 raport PDF...',
-  complete:    'Skan zako\u0144czony!'
+  nmap:        'Scanning for open ports...',
+  masscan:     'Scanning for open ports...',
+  naabu:       'Scanning for open ports...',
+  amass:       'Mapping attack surface...',
+  subfinder:   'Mapping attack surface...',
+  httpx:       'Mapping attack surface...',
+  dnsx:        'Mapping attack surface...',
+  dnsrecon:    'Mapping attack surface...',
+  fierce:      'Mapping attack surface...',
+  katana:      'Mapping attack surface...',
+  nuclei:      'Testing for vulnerabilities...',
+  nikto:       'Testing for vulnerabilities...',
+  wapiti:      'Testing for vulnerabilities...',
+  zap:         'Testing for vulnerabilities...',
+  wpscan:      'Testing for vulnerabilities...',
+  joomscan:    'Testing for vulnerabilities...',
+  cmsmap:      'Testing for vulnerabilities...',
+  droopescan:  'Testing for vulnerabilities...',
+  retirejs:    'Testing for vulnerabilities...',
+  gobuster:    'Discovering hidden resources...',
+  testssl:     'Checking encryption & certificates...',
+  sslyze:      'Checking encryption & certificates...',
+  sqlmap:      'Testing databases...',
+  whatweb:     'Fingerprinting systems & defenses...',
+  ipinfo:      'Gathering intelligence...',
+  whois:       'Gathering intelligence...',
+  harvester:   'Gathering intelligence...',
+  exiftool:    'Gathering intelligence...',
+  abuseipdb:   'Gathering intelligence...',
+  otx:         'Gathering intelligence...',
+  netdiscover: 'Analyzing network configuration...',
+  arpscan:     'Analyzing network configuration...',
+  fping:       'Analyzing network configuration...',
+  traceroute:  'Analyzing network configuration...',
+  nbtscan:     'Analyzing network configuration...',
+  snmpwalk:    'Analyzing network configuration...',
+  onesixtyone: 'Analyzing network configuration...',
+  ikescan:     'Analyzing network configuration...',
+  netexec:     'Analyzing Active Directory...',
+  enum4linux:  'Analyzing Active Directory...',
+  bloodhound:  'Analyzing Active Directory...',
+  responder:   'Analyzing Active Directory...',
+  smbmap:      'Analyzing Active Directory...',
+  impacket:    'Analyzing Active Directory...',
+  certipy:     'Analyzing Active Directory...',
+  searchsploit:'Searching known exploits...',
+  garak:       'Testing AI/LLM security...',
+  ai_analysis: 'AI analyzing & building attack scenarios...',
+  exploit_chains:'Chaining findings into exploit paths...',
+  hacker_narrative:'Generating pentester narrative...',
+  false_positive_filter:'Filtering false positives...',
+  pdf_report:  'Generating PDF report...',
+  complete:    'Scan complete!'
 };
 
 /* Deduplicate: group modules into functional phases */
 var PHASE_ORDER = [
-  'Mapuj\u0119 powierzchni\u0119 ataku...',
-  'Szukam otwartych drzwi...',
-  'Rozpoznaj\u0119 systemy i zabezpieczenia...',
-  'Zbieram informacje wywiadowcze...',
-  'Testuj\u0119 odporno\u015b\u0107 na w\u0142amania...',
-  'Szukam ukrytych zasob\u00f3w...',
-  'Sprawdzam szyfrowanie i certyfikaty...',
-  'Testuj\u0119 bazy danych...',
-  'Analizuj\u0119 konfiguracj\u0119 sieci...',
-  'Analizuj\u0119 struktur\u0119 Active Directory...',
-  'Szukam znanych exploit\u00f3w...',
-  'Testuj\u0119 bezpiecze\u0144stwo AI/LLM...',
-  'Filtruj\u0119 fa\u0142szywe alarmy...',
-  'AI analizuje i buduje scenariusze ataku...',
-  '\u0141\u0105cz\u0119 znaleziska w \u0142a\u0144cuchy exploit\u00f3w...',
-  'Generuj\u0119 narracje pentestera...',
-  'Generuj\u0119 raport PDF...'
+  'Mapping attack surface...',
+  'Scanning for open ports...',
+  'Fingerprinting systems & defenses...',
+  'Gathering intelligence...',
+  'Testing for vulnerabilities...',
+  'Discovering hidden resources...',
+  'Checking encryption & certificates...',
+  'Testing databases...',
+  'Analyzing network configuration...',
+  'Analyzing Active Directory...',
+  'Searching known exploits...',
+  'Testing AI/LLM security...',
+  'Filtering false positives...',
+  'AI analyzing & building attack scenarios...',
+  'Chaining findings into exploit paths...',
+  'Generating pentester narrative...',
+  'Generating PDF report...'
 ];
 
 /* ═══════════════════════════════════
@@ -727,6 +727,7 @@ var _selectedProfile = '';
 var _targetValid = false;
 var _taskId = null;
 var _eventSource = null;
+var _pollInterval = null;
 var _scanStartTime = null;
 var _phaseStates = {};
 var _allowedProfiles = ['SZCZENIAK','STRAZNIK','CERBER'];
@@ -820,12 +821,14 @@ function updateStartBtn() {
    ═══════════════════════════════════ */
 function loadUserRole() {
   return authFetch(API + '/auth/me')
-    .then(function(r) { return r.json(); })
+    .then(function(r) { if(!r.ok) throw new Error(r.status); return r.json(); })
     .then(function(u) {
       _userRole = u.role || '';
       document.getElementById('sysRole').textContent = _userRole.toUpperCase() || '-';
       if (_userRole === 'admin') {
         _allowedProfiles = ['SZCZENIAK', 'STRAZNIK', 'CERBER'];
+        var adminLink = document.getElementById('adminNavLink');
+        if (adminLink) adminLink.style.display = '';
         applyLicenseLocks();
       }
     })
@@ -837,7 +840,7 @@ function loadUserRole() {
    ═══════════════════════════════════ */
 function loadLicenseInfo() {
   authFetch(API + '/license')
-    .then(function(r) { return r.json(); })
+    .then(function(r) { if(!r.ok) throw new Error(r.status); return r.json(); })
     .then(function(info) {
       _licenseTier = info.tier || 'demo';
       var licEl = document.getElementById('sysLicense');
@@ -849,11 +852,11 @@ function loadLicenseInfo() {
       } else {
         _allowedProfiles = info.allowed_profiles || ['SZCZENIAK'];
       }
-      document.getElementById('sysProfiles').textContent = _allowedProfiles.length + ' dost\u0119pne';
+      document.getElementById('sysProfiles').textContent = _allowedProfiles.length + ' available';
       applyLicenseLocks();
     })
     .catch(function() {
-      _allowedProfiles = ['SZCZENIAK', 'STRAZNIK', 'CERBER'];
+      if (_userRole !== 'admin') _allowedProfiles = ['SZCZENIAK'];
       applyLicenseLocks();
     });
 }
@@ -880,12 +883,12 @@ function applyLicenseLocks() {
    ═══════════════════════════════════ */
 function loadQuickStats() {
   authFetch(API + '/scans?limit=100')
-    .then(function(r) { return r.json(); })
+    .then(function(r) { if(!r.ok) throw new Error(r.status); return r.json(); })
     .then(function(scans) {
       // Quick stats
       var totalScans = scans.length;
       var targets = {};
-      var riskMap = {NISKIE:1, SREDNIE:2, '\u015aREDNIE':2, WYSOKIE:3, KRYTYCZNE:4};
+      var riskMap = {LOW:1, MEDIUM:2, HIGH:3, CRITICAL:4, NISKIE:1, SREDNIE:2, '\u015aREDNIE':2, WYSOKIE:3, KRYTYCZNE:4};
       var riskSum = 0, riskCount = 0;
 
       scans.forEach(function(s) {
@@ -915,14 +918,14 @@ function loadQuickStats() {
       document.getElementById('qsTotalScans').textContent = '0';
       document.getElementById('qsUniqueTargets').textContent = '0';
       document.getElementById('qsAvgRisk').textContent = 'N/A';
-      document.getElementById('recentList').innerHTML = '<div class="recent-empty">Brak danych</div>';
+      document.getElementById('recentList').innerHTML = '<div class="recent-empty">No data</div>';
     });
 }
 
 function renderRecentList(scans) {
   var el = document.getElementById('recentList');
   if (!scans.length) {
-    el.innerHTML = '<div class="recent-empty">Brak skan\u00f3w. Uruchom pierwszy skan.</div>';
+    el.innerHTML = '<div class="recent-empty">No scans yet. Launch your first scan.</div>';
     return;
   }
   var h = '';
@@ -955,7 +958,7 @@ function startScan() {
   if (!target || !_selectedProfile) return;
 
   document.getElementById('startBtn').disabled = true;
-  document.getElementById('startBtn').textContent = 'URUCHAMIAM...';
+  document.getElementById('startBtn').textContent = 'LAUNCHING...';
 
   authFetch(API + '/scan/start', {
     method: 'POST',
@@ -977,9 +980,9 @@ function startScan() {
     connectSSE(_taskId);
   })
   .catch(function(e) {
-    alert('B\u0142\u0105d: ' + e.message);
+    alert('Error: ' + e.message);
     document.getElementById('startBtn').disabled = false;
-    document.getElementById('startBtn').textContent = 'URUCHOM SKAN';
+    document.getElementById('startBtn').textContent = 'LAUNCH SCAN';
   });
 }
 
@@ -1031,7 +1034,7 @@ function showLiveFeed(target, profile) {
   // Clear terminal
   var termBody = document.getElementById('terminalBody');
   termBody.innerHTML = '';
-  appendTerminal({module:'cyrber', status:'init', message:'Skan uruchomiony: ' + target + ' [' + profile + ']'});
+  appendTerminal({module:'cyrber', status:'init', message:'Scan started: ' + target + ' [' + profile + ']'});
 
   renderStepList();
   document.getElementById('liveFeed').classList.add('active');
@@ -1148,7 +1151,7 @@ function appendTerminal(data) {
   var body = document.getElementById('terminalBody');
   if (!body) return;
   var now = new Date();
-  var ts = now.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var ts = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   var mod = data.module || '???';
   var status = data.status || '';
   var msg = data.message || '';
@@ -1186,7 +1189,7 @@ function handleSSEEvent(data) {
 
   // Map module to functional label
   var label = MODULE_LABELS[mod];
-  if (label && label !== 'Skan zako\u0144czony!') {
+  if (label && label !== 'Scan complete!') {
     if (status === 'started') {
       setPhaseActive(label);
     } else if (status === 'done') {
@@ -1214,16 +1217,17 @@ function handleSSEEvent(data) {
    POLLING FALLBACK
    ═══════════════════════════════════ */
 function startPolling(taskId) {
+  if (_pollInterval) clearInterval(_pollInterval);
   var pollCount = 0;
   var maxPolls = 360;
-  var interval = setInterval(function() {
+  _pollInterval = setInterval(function() {
     pollCount++;
-    if (pollCount > maxPolls) { clearInterval(interval); return; }
+    if (pollCount > maxPolls) { clearInterval(_pollInterval); _pollInterval = null; return; }
     authFetch(API + '/scan/status/' + taskId)
-      .then(function(r) { return r.json(); })
+      .then(function(r) { if(!r.ok) throw new Error(r.status); return r.json(); })
       .then(function(data) {
         if (data.status === 'completed' || data.status === 'SUCCESS') {
-          clearInterval(interval);
+          clearInterval(_pollInterval); _pollInterval = null;
           stopElapsedTimer();
           for (var k in _phaseStates) _phaseStates[k] = 'done';
           renderStepList();
@@ -1239,12 +1243,13 @@ function startPolling(taskId) {
 
 function stopScan() {
   if (_eventSource) { _eventSource.close(); _eventSource = null; }
+  if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
   stopElapsedTimer();
   document.getElementById('liveFeed').classList.remove('active');
   document.getElementById('metricsBar').classList.remove('active');
   document.getElementById('idleLayout').style.display = '';
   document.getElementById('startBtn').disabled = false;
-  document.getElementById('startBtn').textContent = 'URUCHOM SKAN';
+  document.getElementById('startBtn').textContent = 'LAUNCH SCAN';
 }
 
 /* ═══════════════════════════════════
@@ -1255,11 +1260,11 @@ function showCompletion() {
   document.getElementById('metricsBar').classList.remove('active');
 
   authFetch(API + '/scans/' + _taskId)
-    .then(function(r) { return r.json(); })
+    .then(function(r) { if(!r.ok) throw new Error(r.status); return r.json(); })
     .then(function(scan) {
       var findings = scan.findings_count || 0;
       var elapsed = _scanStartTime ? Math.round((Date.now() - _scanStartTime) / 60000) : 0;
-      var startTime = scan.created_at ? new Date(scan.created_at).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}) : '--:--';
+      var startTime = scan.created_at ? new Date(scan.created_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}) : '--:--';
 
       // Severity breakdown — try to parse from raw_data
       var sevCounts = {critical:0, high:0, medium:0, low:0};
@@ -1295,9 +1300,9 @@ function showCompletion() {
       var sevTotal = sevCounts.critical + sevCounts.high + sevCounts.medium + sevCounts.low;
       if (sevTotal === 0 && findings > 0) {
         var risk = scan.risk_level || '';
-        if (risk === 'KRYTYCZNE') { sevCounts.critical = Math.round(findings*0.15); sevCounts.high = Math.round(findings*0.3); sevCounts.medium = Math.round(findings*0.35); sevCounts.low = findings - sevCounts.critical - sevCounts.high - sevCounts.medium; }
-        else if (risk === 'WYSOKIE') { sevCounts.high = Math.round(findings*0.3); sevCounts.medium = Math.round(findings*0.4); sevCounts.low = findings - sevCounts.high - sevCounts.medium; }
-        else if (risk === '\u015aREDNIE' || risk === 'SREDNIE') { sevCounts.medium = Math.round(findings*0.4); sevCounts.low = findings - sevCounts.medium; }
+        if (risk === 'KRYTYCZNE' || risk === 'CRITICAL') { sevCounts.critical = Math.round(findings*0.15); sevCounts.high = Math.round(findings*0.3); sevCounts.medium = Math.round(findings*0.35); sevCounts.low = findings - sevCounts.critical - sevCounts.high - sevCounts.medium; }
+        else if (risk === 'WYSOKIE' || risk === 'HIGH') { sevCounts.high = Math.round(findings*0.3); sevCounts.medium = Math.round(findings*0.4); sevCounts.low = findings - sevCounts.high - sevCounts.medium; }
+        else if (risk === '\u015aREDNIE' || risk === 'SREDNIE' || risk === 'MEDIUM') { sevCounts.medium = Math.round(findings*0.4); sevCounts.low = findings - sevCounts.medium; }
         else { sevCounts.low = findings; }
       }
 
@@ -1320,31 +1325,31 @@ function showCompletion() {
         tfHtml += '</div>';
       });
       if (!topIssues.length) {
-        tfHtml = '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:var(--text-muted);padding:var(--sp-3) 0">Brak danych top findings</div>';
+        tfHtml = '<div style="font-family:Share Tech Mono,monospace;font-size:var(--text-sm);color:var(--text-muted);padding:var(--sp-3) 0">No top findings data</div>';
       }
       document.getElementById('topFindingsList').innerHTML = tfHtml;
 
       // Timeline
       var tlHtml = '';
       tlHtml += '<div class="timeline-row"><span class="timeline-row-label">Start</span><span class="timeline-row-val">' + startTime + '</span></div>';
-      tlHtml += '<div class="timeline-row"><span class="timeline-row-label">Czas</span><span class="timeline-row-val">' + elapsed + ' min</span></div>';
-      tlHtml += '<div class="timeline-row"><span class="timeline-row-label">Modu\u0142y</span><span class="timeline-row-val">' + _modulesRan + ' uruchomionych</span></div>';
-      tlHtml += '<div class="timeline-row"><span class="timeline-row-label">Pomini\u0119te</span><span class="timeline-row-val">' + _modulesSkipped + '</span></div>';
+      tlHtml += '<div class="timeline-row"><span class="timeline-row-label">Duration</span><span class="timeline-row-val">' + elapsed + ' min</span></div>';
+      tlHtml += '<div class="timeline-row"><span class="timeline-row-label">Modules</span><span class="timeline-row-val">' + _modulesRan + ' executed</span></div>';
+      tlHtml += '<div class="timeline-row"><span class="timeline-row-label">Skipped</span><span class="timeline-row-val">' + _modulesSkipped + '</span></div>';
       tlHtml += '<div class="timeline-row"><span class="timeline-row-label">Findings</span><span class="timeline-row-val">' + findings + '</span></div>';
       document.getElementById('timelineRows').innerHTML = tlHtml;
 
       // Actions
       var ah = '';
-      ah += '<a class="complete-btn complete-btn-primary" href="/scan/' + _taskId + '/detail">WYNIKI</a>';
+      ah += '<a class="complete-btn complete-btn-primary" href="/scan/' + _taskId + '/detail">RESULTS</a>';
       ah += '<a class="complete-btn" href="/report/' + _taskId + '" target="_blank">PDF</a>';
-      ah += '<button class="complete-btn" onclick="newScan()">NOWY SKAN</button>';
+      ah += '<button class="complete-btn" onclick="newScan()">NEW SCAN</button>';
       document.getElementById('completeActions').innerHTML = ah;
 
       document.getElementById('completePanel').classList.add('active');
     })
     .catch(function() {
-      var ah = '<a class="complete-btn complete-btn-primary" href="/scan/' + _taskId + '/detail">WYNIKI</a>';
-      ah += '<button class="complete-btn" onclick="newScan()">NOWY SKAN</button>';
+      var ah = '<a class="complete-btn complete-btn-primary" href="/scan/' + _taskId + '/detail">RESULTS</a>';
+      ah += '<button class="complete-btn" onclick="newScan()">NEW SCAN</button>';
       document.getElementById('completeActions').innerHTML = ah;
       document.getElementById('completePanel').classList.add('active');
     });
@@ -1363,15 +1368,12 @@ function newScan() {
   document.getElementById('targetInput').classList.remove('valid', 'invalid');
   document.querySelectorAll('.profile-card').forEach(function(c) { c.classList.remove('selected'); });
   document.getElementById('startBtn').disabled = true;
-  document.getElementById('startBtn').textContent = 'URUCHOM SKAN';
+  document.getElementById('startBtn').textContent = 'LAUNCH SCAN';
   document.getElementById('progressFill').style.width = '0%';
   document.getElementById('progressPct').textContent = '0%';
   document.getElementById('progressEta').textContent = '';
   loadQuickStats();
 }
-</script>
-<script>
-(function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}}).catch(function(){});})();
 </script>
 </body>
 </html>

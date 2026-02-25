@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <script src="/static/theme.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CYRBER — Raport Bezpieczeństwa</title>
+<title>CYRBER — Security Report</title>
 <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -470,7 +470,7 @@ body {
 
   <div id="loadingState" class="loading">
     <div class="loading-spinner"></div>
-    <div>Generowanie raportu...</div>
+    <div>Generating report...</div>
   </div>
 
   <div id="errorState" class="error-msg" style="display:none"></div>
@@ -485,28 +485,28 @@ body {
         </div>
         <div class="report-date" id="reportDate"></div>
       </div>
-      <div class="report-title">RAPORT BEZPIECZENSTWA</div>
+      <div class="report-title">SECURITY REPORT</div>
       <div class="report-target" id="reportTarget"></div>
       <div id="riskBadge"></div>
     </div>
 
-    <!-- SEKCJA 1 -->
+    <!-- SECTION 1 -->
     <div class="section">
-      <div class="section-num">SEKCJA 01</div>
-      <div class="section-title">Podsumowanie dla Zarzadu</div>
+      <div class="section-num">SECTION 01</div>
+      <div class="section-title">Executive Summary</div>
       <div class="section-text" id="execSummary"></div>
       <div class="kpi-row">
         <div class="kpi">
           <div class="kpi-value" id="kpiFindings">0</div>
-          <div class="kpi-label">Znalezione problemy</div>
+          <div class="kpi-label">Issues Found</div>
         </div>
         <div class="kpi">
           <div class="kpi-value danger" id="kpiCritical">0</div>
-          <div class="kpi-label">Krytyczne</div>
+          <div class="kpi-label">Critical</div>
         </div>
         <div class="kpi">
           <div class="kpi-value" id="kpiTime">-</div>
-          <div class="kpi-label">Czas do przejecia</div>
+          <div class="kpi-label">Time to Compromise</div>
         </div>
       </div>
       <div class="gauge-wrap">
@@ -518,59 +518,59 @@ body {
           </svg>
           <div class="gauge-text">
             <div class="gauge-num" id="gaugeNum">0</div>
-            <div class="gauge-label">Skala ryzyka</div>
+            <div class="gauge-label">Risk Score</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- SEKCJA 2 -->
+    <!-- SECTION 2 -->
     <div class="section">
-      <div class="section-num">SEKCJA 02</div>
-      <div class="section-title">Co to oznacza dla firmy</div>
+      <div class="section-num">SECTION 02</div>
+      <div class="section-title">Business Impact</div>
       <div class="impact-row">
         <div class="impact-card">
           <div class="impact-icon">&#x1F4B0;</div>
-          <div class="impact-title">Potencjalne straty</div>
+          <div class="impact-title">Potential Losses</div>
           <div class="impact-value" id="impactLoss" style="color:var(--red)">-</div>
-          <div class="impact-desc" id="impactLossDesc">Szacowana wartosc strat w przypadku udanego ataku</div>
+          <div class="impact-desc" id="impactLossDesc">Estimated losses in case of a successful attack</div>
         </div>
         <div class="impact-card">
           <div class="impact-icon">&#x1F6E0;</div>
-          <div class="impact-title">Koszt naprawy</div>
+          <div class="impact-title">Remediation Cost</div>
           <div class="impact-value" id="impactFix" style="color:var(--green)">-</div>
-          <div class="impact-desc">Szacowany koszt wdrozenia poprawek bezpieczenstwa</div>
+          <div class="impact-desc">Estimated cost of implementing security fixes</div>
         </div>
       </div>
       <div class="compliance-row" id="complianceRow"></div>
     </div>
 
-    <!-- SEKCJA 3 -->
+    <!-- SECTION 3 -->
     <div class="section">
-      <div class="section-num">SEKCJA 03</div>
-      <div class="section-title">Znalezione problemy</div>
+      <div class="section-num">SECTION 03</div>
+      <div class="section-title">Findings</div>
       <div class="section-text" style="margin-bottom:20px">
-        Ponizej przedstawiono najwazniejsze problemy bezpieczenstwa wykryte podczas testu.
+        Below are the most significant security issues discovered during the assessment.
       </div>
       <div id="findingsList"></div>
     </div>
 
-    <!-- SEKCJA 4 -->
+    <!-- SECTION 4 -->
     <div class="section">
-      <div class="section-num">SEKCJA 04</div>
-      <div class="section-title">Co nalezy naprawic</div>
+      <div class="section-num">SECTION 04</div>
+      <div class="section-title">Recommendations</div>
       <div class="section-text" style="margin-bottom:20px">
-        Rekomendowane dzialania w kolejnosci priorytetu.
+        Recommended actions in order of priority.
       </div>
       <div id="recList"></div>
     </div>
 
     <div class="report-footer">
       <div class="footer-text">
-        Raport wygenerowany przez <strong>CYRBER</strong> &mdash; <span id="footerDate"></span><br>
-        Kontakt: <a href="mailto:security@example.com">security@example.com</a>
+        Report generated by <strong>CYRBER</strong> &mdash; <span id="footerDate"></span><br>
+        Contact: <a href="mailto:security@example.com">security@example.com</a>
       </div>
-      <button class="btn-print" onclick="window.print()">DRUKUJ RAPORT</button>
+      <button class="btn-print" onclick="window.print()">PRINT REPORT</button>
     </div>
 
   </div>
@@ -581,13 +581,13 @@ var taskId = window.location.pathname.split('/report/')[1];
 if (!taskId) {
   document.getElementById('loadingState').style.display = 'none';
   document.getElementById('errorState').style.display = '';
-  document.getElementById('errorState').textContent = 'Brak identyfikatora skanu w adresie URL.';
+  document.getElementById('errorState').textContent = 'Missing scan identifier in URL.';
 }
 
 if (taskId) {
   fetch('/api/report/' + taskId)
     .then(function(r) {
-      if (!r.ok) throw new Error(r.status === 404 ? 'Skan nie zostal znaleziony.' : 'Blad serwera (' + r.status + ')');
+      if (!r.ok) throw new Error(r.status === 404 ? 'Scan not found.' : 'Server error (' + r.status + ')');
       return r.json();
     })
     .then(function(d) { renderReport(d); })
@@ -599,33 +599,33 @@ if (taskId) {
 }
 
 var RISK_MAP = {
-  'KRYTYCZNE': {label:'KRYTYCZNY', score:9, cls:'risk-KRYTYCZNE'},
-  'CRITICAL':  {label:'KRYTYCZNY', score:9, cls:'risk-CRITICAL'},
-  'WYSOKIE':   {label:'WYSOKI',    score:7, cls:'risk-WYSOKIE'},
-  'HIGH':      {label:'WYSOKI',    score:7, cls:'risk-HIGH'},
-  'SREDNIE':   {label:'SREDNI',    score:4, cls:'risk-SREDNIE'},
-  'MEDIUM':    {label:'SREDNI',    score:4, cls:'risk-MEDIUM'},
-  'NISKIE':    {label:'NISKI',     score:2, cls:'risk-NISKIE'},
-  'LOW':       {label:'NISKI',     score:2, cls:'risk-LOW'},
+  'CRITICAL':  {label:'CRITICAL',  score:9, cls:'risk-CRITICAL'},
+  'KRYTYCZNE': {label:'CRITICAL',  score:9, cls:'risk-KRYTYCZNE'},
+  'HIGH':      {label:'HIGH',      score:7, cls:'risk-HIGH'},
+  'WYSOKIE':   {label:'HIGH',      score:7, cls:'risk-WYSOKIE'},
+  'MEDIUM':    {label:'MEDIUM',    score:4, cls:'risk-MEDIUM'},
+  'SREDNIE':   {label:'MEDIUM',    score:4, cls:'risk-SREDNIE'},
+  'LOW':       {label:'LOW',       score:2, cls:'risk-LOW'},
+  'NISKIE':    {label:'LOW',       score:2, cls:'risk-NISKIE'},
 };
 
 function renderReport(d) {
   document.getElementById('loadingState').style.display = 'none';
   document.getElementById('reportContent').style.display = '';
 
-  var risk = (d.risk_level || 'NISKIE').toUpperCase();
+  var risk = (d.risk_level || 'LOW').toUpperCase();
   var riskNorm = risk.replace(/Ś/g,'S').replace(/ś/g,'S');
-  var rm = RISK_MAP[riskNorm] || RISK_MAP[risk] || RISK_MAP['NISKIE'];
+  var rm = RISK_MAP[riskNorm] || RISK_MAP[risk] || RISK_MAP['LOW'];
 
   // Header
-  var dateStr = d.date ? new Date(d.date).toLocaleDateString('pl-PL', {day:'2-digit', month:'long', year:'numeric'}) : new Date().toLocaleDateString('pl-PL', {day:'2-digit', month:'long', year:'numeric'});
-  document.getElementById('reportDate').innerHTML = 'Data raportu:<br><strong>' + dateStr + '</strong>';
-  document.getElementById('reportTarget').textContent = 'Cel: ' + (d.target || '-');
-  document.getElementById('riskBadge').innerHTML = '<span class="risk-badge-large ' + rm.cls + '">POZIOM RYZYKA: ' + rm.label + '</span>';
-  document.title = 'CYRBER — Raport: ' + (d.target || '');
+  var dateStr = d.date ? new Date(d.date).toLocaleDateString('en-US', {day:'2-digit', month:'long', year:'numeric'}) : new Date().toLocaleDateString('en-US', {day:'2-digit', month:'long', year:'numeric'});
+  document.getElementById('reportDate').innerHTML = 'Report date:<br><strong>' + dateStr + '</strong>';
+  document.getElementById('reportTarget').textContent = 'Target: ' + (d.target || '-');
+  document.getElementById('riskBadge').innerHTML = '<span class="risk-badge-large ' + rm.cls + '">RISK LEVEL: ' + rm.label + '</span>';
+  document.title = 'CYRBER — Report: ' + (d.target || '');
 
   // Sekcja 1
-  document.getElementById('execSummary').textContent = d.executive_summary || d.summary || 'Brak podsumowania.';
+  document.getElementById('execSummary').textContent = d.executive_summary || d.summary || 'No summary available.';
   document.getElementById('kpiFindings').textContent = d.findings_count || 0;
   document.getElementById('kpiCritical').textContent = d.critical_count || 0;
   document.getElementById('kpiTime').textContent = d.time_to_compromise || '-';
@@ -643,19 +643,19 @@ function renderReport(d) {
   gn.style.color = gaugeColor;
 
   // Sekcja 2
-  document.getElementById('impactLoss').textContent = d.potential_loss || 'Nie oszacowano';
-  document.getElementById('impactFix').textContent = d.fix_cost || 'Nie oszacowano';
+  document.getElementById('impactLoss').textContent = d.potential_loss || 'Not estimated';
+  document.getElementById('impactFix').textContent = d.fix_cost || 'Not estimated';
 
   var compHtml = '';
   var complianceItems = d.compliance || [];
   if (!complianceItems.length) {
     complianceItems = [
-      {name: 'RODO / GDPR', icon: '\uD83D\uDEE1', status: riskNorm === 'KRYTYCZNE' || riskNorm === 'CRITICAL' ? 'Naruszenie' : riskNorm === 'WYSOKIE' || riskNorm === 'HIGH' ? 'Ryzyko' : 'Zgodnosc'},
-      {name: 'NIS2', icon: '\uD83C\uDFDB', status: riskNorm === 'KRYTYCZNE' || riskNorm === 'CRITICAL' ? 'Naruszenie' : riskNorm === 'WYSOKIE' || riskNorm === 'HIGH' ? 'Ryzyko' : 'Zgodnosc'}
+      {name: 'RODO / GDPR', icon: '\uD83D\uDEE1', status: riskNorm === 'KRYTYCZNE' || riskNorm === 'CRITICAL' ? 'Violation' : riskNorm === 'WYSOKIE' || riskNorm === 'HIGH' ? 'At Risk' : 'Compliant'},
+      {name: 'NIS2', icon: '\uD83C\uDFDB', status: riskNorm === 'KRYTYCZNE' || riskNorm === 'CRITICAL' ? 'Violation' : riskNorm === 'WYSOKIE' || riskNorm === 'HIGH' ? 'At Risk' : 'Compliant'}
     ];
   }
   complianceItems.forEach(function(c) {
-    var statusColor = c.status === 'Naruszenie' ? 'var(--red)' : c.status === 'Ryzyko' ? 'var(--orange)' : 'var(--green)';
+    var statusColor = c.status === 'Violation' || c.status === 'Naruszenie' ? 'var(--red)' : c.status === 'At Risk' || c.status === 'Ryzyko' ? 'var(--orange)' : 'var(--green)';
     compHtml += '<div class="compliance-badge">' +
       '<span class="compliance-icon">' + (c.icon || '\uD83D\uDEE1') + '</span>' +
       '<div><div class="compliance-name">' + c.name + '</div>' +
@@ -667,14 +667,14 @@ function renderReport(d) {
   var findings = d.findings || [];
   var flHtml = '';
   if (!findings.length) {
-    flHtml = '<div style="color:var(--text3);padding:20px 0;">Nie wykryto problemow krytycznych ani wysokich.</div>';
+    flHtml = '<div style="color:var(--text3);padding:20px 0;">No critical or high severity issues detected.</div>';
   }
   findings.forEach(function(f) {
     var sevCls = (f.severity || '').toLowerCase() === 'critical' ? 'sev-critical' : 'sev-high';
-    var sevLabel = (f.severity || '').toLowerCase() === 'critical' ? 'KRYTYCZNY' : 'WYSOKI';
+    var sevLabel = (f.severity || '').toLowerCase() === 'critical' ? 'CRITICAL' : 'HIGH';
     flHtml += '<div class="finding-item">' +
       '<span class="finding-severity ' + sevCls + '">' + sevLabel + '</span>' +
-      '<div><div class="finding-name">' + (f.name || 'Problem bezpieczenstwa') + '</div>' +
+      '<div><div class="finding-name">' + (f.name || 'Security issue') + '</div>' +
       '<div class="finding-desc">' + (f.description || '') + '</div></div></div>';
   });
   document.getElementById('findingsList').innerHTML = flHtml;
@@ -683,18 +683,19 @@ function renderReport(d) {
   var recs = d.recommendations_list || [];
   var rlHtml = '';
   if (!recs.length && d.recommendations_text) {
-    recs = [{priority: 'WAZNE', text: d.recommendations_text, time: '-'}];
+    recs = [{priority: 'IMPORTANT', text: d.recommendations_text, time: '-'}];
   }
   if (!recs.length) {
-    rlHtml = '<div style="color:var(--text3);padding:20px 0;">Brak szczegolowych rekomendacji.</div>';
+    rlHtml = '<div style="color:var(--text3);padding:20px 0;">No detailed recommendations available.</div>';
   }
   recs.forEach(function(r, i) {
-    var priCls = (r.priority || '').toUpperCase() === 'PILNE' ? 'pri-urgent' : (r.priority || '').toUpperCase() === 'WAZNE' ? 'pri-important' : 'pri-recommended';
+    var pri = (r.priority || '').toUpperCase();
+    var priCls = (pri === 'URGENT' || pri === 'PILNE') ? 'pri-urgent' : (pri === 'IMPORTANT' || pri === 'WAZNE') ? 'pri-important' : 'pri-recommended';
     rlHtml += '<div class="rec-item">' +
       '<div class="rec-num">' + String(i + 1).padStart(2, '0') + '</div>' +
-      '<div><span class="rec-priority ' + priCls + '">' + (r.priority || 'ZALECANE').toUpperCase() + '</span>' +
+      '<div><span class="rec-priority ' + priCls + '">' + (r.priority || 'RECOMMENDED').toUpperCase() + '</span>' +
       '<div class="rec-text">' + r.text + '</div>' +
-      '<div class="rec-time">Szacowany czas: ' + (r.time || '-') + '</div></div></div>';
+      '<div class="rec-time">Estimated time: ' + (r.time || '-') + '</div></div></div>';
   });
   document.getElementById('recList').innerHTML = rlHtml;
 
