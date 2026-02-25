@@ -62,6 +62,7 @@ from modules.database import (
     save_scan, get_due_schedules, update_schedule_run,
     get_all_cve_ids_from_findings, update_remediation_task,
     get_remediation_task_by_id, save_audit_log,
+    get_scan_history,
 )
 from modules.notify import send_scan_notification
 from modules.scan_profiles import should_run_module, get_all_modules
@@ -114,6 +115,10 @@ celery_app.conf.beat_schedule = {
     "misp-sync-daily": {
         "task": "modules.tasks.run_misp_sync",
         "schedule": crontab(hour=3, minute=15),
+    },
+    "urlhaus-sync-daily": {
+        "task": "modules.tasks.run_urlhaus_sync",
+        "schedule": crontab(hour=3, minute=45),
     },
 }
 
@@ -643,6 +648,20 @@ def run_misp_sync():
     """Sync MISP events/attributes. Runs daily at 03:15."""
     from modules.misp_integration import sync_misp
     return {"misp": sync_misp(days_back=7)}
+
+@celery_app.task
+def run_urlhaus_sync():
+    """Sync URLhaus for all known scan targets. Runs daily at 03:45."""
+    from modules.intelligence_sync import sync_urlhaus_batch
+    targets = set()
+    db_scans = get_scan_history(limit=100)
+    for s in db_scans:
+        t = s.get("target", "")
+        if t:
+            targets.add(t)
+    if not targets:
+        return {"urlhaus": "no_targets"}
+    return {"urlhaus": sync_urlhaus_batch(list(targets))}
 
 @celery_app.task(bind=True, max_retries=1)
 def retest_finding(self, remediation_id: int, finding_name: str,

@@ -94,7 +94,7 @@ def require_role(*allowed_roles: str):
     return _checker
 
 # ── App ──
-app = FastAPI(title="CYRBER API", version="0.1.0")
+app = FastAPI(title="CYRBER API", version="0.3.0")
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -2420,6 +2420,54 @@ async def api_misp_events(q: str = Query("", min_length=0),
                           current_user: dict = Depends(get_current_user)):
     from modules.database import search_misp_events
     return search_misp_events(query=q, limit=limit)
+
+# ── Shodan / URLhaus / GreyNoise API ─────────────────────
+
+@app.get("/api/intel/shodan/lookup")
+async def api_shodan_lookup(target: str = Query(..., min_length=4),
+                            current_user: dict = Depends(get_current_user)):
+    from modules.database import get_shodan_cache
+    from modules.intelligence_sync import sync_shodan
+    cached = get_shodan_cache(target)
+    if cached:
+        return cached
+    result = sync_shodan(target)
+    if not result:
+        return {"ip": target, "ports": [], "cpes": [], "hostnames": [], "tags": [], "vulns": []}
+    return result
+
+@app.get("/api/intel/urlhaus/lookup")
+async def api_urlhaus_lookup(target: str = Query(..., min_length=2),
+                             current_user: dict = Depends(get_current_user)):
+    from modules.database import get_urlhaus_cache
+    from modules.intelligence_sync import sync_urlhaus
+    cached = get_urlhaus_cache(target)
+    if cached:
+        return cached
+    result = sync_urlhaus(target)
+    if not result:
+        return {"host": target, "urls_count": 0, "blacklisted": False, "tags": [], "urls": []}
+    return result
+
+@app.get("/api/intel/greynoise/lookup")
+async def api_greynoise_lookup(target: str = Query(..., min_length=4),
+                               current_user: dict = Depends(get_current_user)):
+    from modules.database import get_greynoise_cache
+    from modules.intelligence_sync import sync_greynoise
+    cached = get_greynoise_cache(target)
+    if cached:
+        return cached
+    result = sync_greynoise(target)
+    if not result:
+        return {"ip": target, "noise": False, "riot": False, "classification": "unknown", "name": "N/A", "link": ""}
+    return result
+
+@app.get("/api/intel/target/enrich")
+async def api_target_enrich(target: str = Query(..., min_length=2),
+                            current_user: dict = Depends(get_current_user)):
+    """Combined enrichment for a scan target (Shodan + URLhaus + GreyNoise)."""
+    from modules.intelligence_sync import enrich_target
+    return enrich_target(target)
 
 # ── ATT&CK API ───────────────────────────────────────────
 

@@ -675,6 +675,27 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="stat-label" style="margin-top:var(--sp-1)" id="intelMispLast">LAST SYNC: —</div>
         </div>
       </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">SHODAN IDB</div>
+          <div class="stat-num" id="intelShodanCount" style="color:#06b6d4">—</div>
+          <div class="stat-label" style="margin-top:var(--sp-1)">ON-DEMAND</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">URLHAUS</div>
+          <div class="stat-num" id="intelUrlhausCount" style="color:#a855f7">—</div>
+          <div class="stat-label" style="margin-top:var(--sp-1)" id="intelUrlhausLast">LAST SYNC: —</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">GREYNOISE</div>
+          <div class="stat-num" id="intelGreynoiseCount" style="color:#84cc16">—</div>
+          <div class="stat-label" style="margin-top:var(--sp-1)">ON-DEMAND</div>
+        </div>
+      </div>
       <div class="stat-card" style="display:flex;align-items:center;justify-content:center">
         <button class="btn" id="intelSyncBtn" onclick="triggerIntelSync()" style="font-size:var(--text-md);padding:var(--sp-4) var(--sp-7)">SYNC NOW</button>
       </div>
@@ -1177,6 +1198,9 @@ async function loadIntelStatus() {
     document.getElementById('intelAttackCount').textContent = data.counts.attack_techniques || 0;
     document.getElementById('intelEuvdCount').textContent = data.counts.euvd || 0;
     document.getElementById('intelMispCount').textContent = (data.counts.misp_events || 0) + ' / ' + (data.counts.misp_attributes || 0);
+    document.getElementById('intelShodanCount').textContent = data.counts.shodan || 0;
+    document.getElementById('intelUrlhausCount').textContent = data.counts.urlhaus || 0;
+    document.getElementById('intelGreynoiseCount').textContent = data.counts.greynoise || 0;
 
     // Last sync per source
     document.getElementById('intelKevLast').textContent = 'LAST SYNC: ' + (data.last_sync.KEV ? fmtDate(data.last_sync.KEV) : '—');
@@ -1185,6 +1209,7 @@ async function loadIntelStatus() {
     document.getElementById('intelAttackLast').textContent = 'LAST SYNC: ' + (data.last_sync['ATT&CK'] ? fmtDate(data.last_sync['ATT&CK']) : '—');
     document.getElementById('intelEuvdLast').textContent = 'LAST SYNC: ' + (data.last_sync.EUVD ? fmtDate(data.last_sync.EUVD) : '—');
     document.getElementById('intelMispLast').textContent = 'LAST SYNC: ' + (data.last_sync.MISP ? fmtDate(data.last_sync.MISP) : '—');
+    document.getElementById('intelUrlhausLast').textContent = 'LAST SYNC: ' + (data.last_sync.URLhaus ? fmtDate(data.last_sync.URLhaus) : '—');
 
     // Logs table
     const tbody = document.getElementById('intelLogsBody');

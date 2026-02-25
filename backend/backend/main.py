@@ -94,7 +94,7 @@ def require_role(*allowed_roles: str):
     return _checker
 
 # ── App ──
-app = FastAPI(title="CYRBER API", version="0.1.0")
+app = FastAPI(title="CYRBER API", version="0.3.0")
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):

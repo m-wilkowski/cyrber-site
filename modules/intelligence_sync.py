@@ -1,5 +1,5 @@
 """
-CYRBER Intelligence Sync — KEV / EPSS / NVD / ATT&CK / CAPEC / EUVD enrichment.
+CYRBER Intelligence Sync — KEV / EPSS / NVD / ATT&CK / CAPEC / EUVD / Shodan / URLhaus / GreyNoise enrichment.
 Pobiera dane z publicznych baz podatności i zapisuje do cache w PostgreSQL.
 """
 import time
@@ -14,6 +14,9 @@ from modules.database import (
     upsert_attack_mitigations, upsert_attack_mitigation_links,
     upsert_cwe_attack_map, upsert_euvd_entries,
     get_techniques_for_cwe, get_euvd_by_cve,
+    upsert_shodan_cache, get_shodan_cache,
+    upsert_urlhaus_cache, get_urlhaus_cache,
+    upsert_greynoise_cache, get_greynoise_cache,
 )
 
 log = logging.getLogger("cyrber.intel")
@@ -24,6 +27,9 @@ NVD_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 ATTACK_URL = "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
 CAPEC_URL = "https://raw.githubusercontent.com/mitre/cti/master/capec/2.1/stix-capec.json"
 EUVD_URL = "https://euvdservices.enisa.europa.eu/api/search"
+SHODAN_INTERNETDB_URL = "https://internetdb.shodan.io"
+URLHAUS_API_URL = "https://urlhaus-api.abuse.ch/v1"
+GREYNOISE_API_URL = "https://api.greynoise.io/v3/community"
 
 REQUEST_TIMEOUT = 60
 ATTACK_TIMEOUT = 120  # enterprise-attack.json is ~30MB
@@ -474,6 +480,67 @@ def enrich_finding(cve_id: str) -> dict:
         result["misp_event_count"] = 0
         result["misp_events"] = []
 
+    # URLhaus lookup (by CVE in host field — rare, but check)
+    try:
+        urlhaus = get_urlhaus_cache(cve_id)
+        result["in_urlhaus"] = bool(urlhaus and urlhaus.get("urls_count", 0) > 0)
+    except Exception:
+        result["in_urlhaus"] = False
+
+    return result
+
+
+def enrich_target(target: str) -> dict:
+    """Enrich a scan target (IP or hostname) with Shodan, URLhaus, GreyNoise.
+    On-demand: fetches live data if not cached."""
+    import ipaddress
+    result = {}
+
+    is_ip = False
+    try:
+        ipaddress.ip_address(target)
+        is_ip = True
+    except ValueError:
+        pass
+
+    # Shodan InternetDB (IP only)
+    if is_ip:
+        try:
+            shodan = get_shodan_cache(target)
+            if not shodan:
+                shodan = sync_shodan(target)
+            if shodan:
+                result["shodan"] = shodan
+        except Exception:
+            pass
+
+    # URLhaus (IP or hostname)
+    try:
+        urlhaus = get_urlhaus_cache(target)
+        if not urlhaus:
+            urlhaus = sync_urlhaus(target)
+        if urlhaus:
+            result["urlhaus"] = urlhaus
+            result["in_urlhaus"] = urlhaus.get("urls_count", 0) > 0
+        else:
+            result["in_urlhaus"] = False
+    except Exception:
+        result["in_urlhaus"] = False
+
+    # GreyNoise (IP only)
+    if is_ip:
+        try:
+            gn = get_greynoise_cache(target)
+            if not gn:
+                gn = sync_greynoise(target)
+            if gn:
+                result["greynoise"] = gn
+                result["greynoise_classification"] = gn.get("classification", "unknown")
+            else:
+                result["greynoise_classification"] = "unknown"
+        except Exception:
+            result["greynoise_classification"] = "unknown"
+
     return result
 
 
@@ -604,3 +671,127 @@ def run_targeted_retest(finding_name: str, target: str, module: str) -> dict:
         "duration": round(time.time() - t0, 2),
         "error": False,
     }
+
+
+# ── Shodan InternetDB ────────────────────────────────────────────
+
+def sync_shodan(ip: str) -> dict | None:
+    """Fetch IP data from Shodan InternetDB (free, no API key).
+    Returns cached dict or None on error."""
+    t0 = time.time()
+    try:
+        resp = requests.get(f"{SHODAN_INTERNETDB_URL}/{ip}", timeout=REQUEST_TIMEOUT)
+        if resp.status_code == 404:
+            # No data for this IP — cache empty result
+            data = {"ports": [], "cpes": [], "hostnames": [], "tags": [], "vulns": []}
+            upsert_shodan_cache(ip, data)
+            return data
+        resp.raise_for_status()
+        data = resp.json()
+        result = {
+            "ports": data.get("ports", []),
+            "cpes": data.get("cpes", []),
+            "hostnames": data.get("hostnames", []),
+            "tags": data.get("tags", []),
+            "vulns": data.get("vulns", []),
+        }
+        upsert_shodan_cache(ip, result)
+        duration = time.time() - t0
+        log.info(f"Shodan InternetDB: {ip} — {len(result['ports'])} ports, {len(result['vulns'])} vulns in {duration:.1f}s")
+        return result
+    except Exception as exc:
+        log.warning(f"Shodan InternetDB lookup failed for {ip}: {exc}")
+        return None
+
+
+# ── URLhaus ───────────────────────────────────────────────────────
+
+def sync_urlhaus(host: str) -> dict | None:
+    """Lookup host in URLhaus (free, no API key).
+    Works for both IP and domain."""
+    t0 = time.time()
+    try:
+        resp = requests.post(
+            f"{URLHAUS_API_URL}/host/",
+            data={"host": host},
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        if data.get("query_status") == "no_results":
+            result = {"urls_count": 0, "blacklisted": False, "tags": [], "urls": []}
+            upsert_urlhaus_cache(host, result)
+            return result
+
+        urls_raw = data.get("urls", [])
+        result = {
+            "urls_count": int(data.get("urls_online", 0) or len(urls_raw)),
+            "blacklisted": data.get("blacklists", {}).get("surbl", "") != "" or
+                           data.get("blacklists", {}).get("spamhaus_dbl", "") != "",
+            "tags": list(set(t for u in urls_raw for t in (u.get("tags") or []) if t)),
+            "urls": [
+                {"url": u.get("url", ""), "status": u.get("url_status", ""),
+                 "threat": u.get("threat", ""), "date_added": u.get("date_added", "")}
+                for u in urls_raw[:20]
+            ],
+        }
+        upsert_urlhaus_cache(host, result)
+        duration = time.time() - t0
+        log.info(f"URLhaus: {host} — {result['urls_count']} URLs, blacklisted={result['blacklisted']} in {duration:.1f}s")
+        return result
+    except Exception as exc:
+        log.warning(f"URLhaus lookup failed for {host}: {exc}")
+        return None
+
+
+def sync_urlhaus_batch(hosts: list[str]) -> dict:
+    """Batch sync URLhaus for multiple hosts. Used by Celery beat."""
+    t0 = time.time()
+    results = {"synced": 0, "errors": 0}
+    for host in hosts:
+        try:
+            sync_urlhaus(host)
+            results["synced"] += 1
+        except Exception:
+            results["errors"] += 1
+        time.sleep(0.5)  # rate limit courtesy
+    duration = time.time() - t0
+    save_intel_sync_log("URLhaus", "success", results["synced"], duration)
+    log.info(f"URLhaus batch: {results['synced']}/{len(hosts)} in {duration:.1f}s")
+    return results
+
+
+# ── GreyNoise Community ──────────────────────────────────────────
+
+def sync_greynoise(ip: str) -> dict | None:
+    """Lookup IP in GreyNoise Community API (free, no API key)."""
+    t0 = time.time()
+    try:
+        resp = requests.get(
+            f"{GREYNOISE_API_URL}/{ip}",
+            headers={"Accept": "application/json"},
+            timeout=REQUEST_TIMEOUT,
+        )
+        if resp.status_code == 404:
+            # IP not found — cache as unknown
+            data = {"noise": False, "riot": False, "classification": "unknown",
+                    "name": "N/A", "link": ""}
+            upsert_greynoise_cache(ip, data)
+            return data
+        resp.raise_for_status()
+        data = resp.json()
+        result = {
+            "noise": data.get("noise", False),
+            "riot": data.get("riot", False),
+            "classification": data.get("classification", "unknown"),
+            "name": data.get("name", ""),
+            "link": data.get("link", ""),
+        }
+        upsert_greynoise_cache(ip, result)
+        duration = time.time() - t0
+        log.info(f"GreyNoise: {ip} — {result['classification']}, noise={result['noise']}, riot={result['riot']} in {duration:.1f}s")
+        return result
+    except Exception as exc:
+        log.warning(f"GreyNoise lookup failed for {ip}: {exc}")
+        return None

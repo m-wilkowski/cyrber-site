@@ -221,6 +221,35 @@ class MispAttribute(Base):
     tags           = Column(JSON)
     updated_at     = Column(DateTime, default=datetime.utcnow)
 
+class ShodanCache(Base):
+    __tablename__ = "shodan_cache"
+    ip             = Column(String, primary_key=True)
+    ports          = Column(JSON)      # [80, 443, ...]
+    cpes           = Column(JSON)      # ["cpe:/a:apache:httpd:2.4.41", ...]
+    hostnames      = Column(JSON)      # ["example.com", ...]
+    tags           = Column(JSON)      # ["cloud", "vpn", ...]
+    vulns          = Column(JSON)      # ["CVE-2021-44228", ...]
+    fetched_at     = Column(DateTime, default=datetime.utcnow)
+
+class UrlhausCache(Base):
+    __tablename__ = "urlhaus_cache"
+    host           = Column(String, primary_key=True)
+    urls_count     = Column(Integer, default=0)
+    blacklisted    = Column(Boolean, default=False)
+    tags           = Column(JSON)
+    urls           = Column(JSON)      # top entries
+    fetched_at     = Column(DateTime, default=datetime.utcnow)
+
+class GreynoiseCache(Base):
+    __tablename__ = "greynoise_cache"
+    ip             = Column(String, primary_key=True)
+    noise          = Column(Boolean, default=False)
+    riot           = Column(Boolean, default=False)
+    classification = Column(String)    # benign / malicious / unknown
+    name           = Column(String)
+    link           = Column(String)
+    fetched_at     = Column(DateTime, default=datetime.utcnow)
+
 def init_db(retries=10, delay=3):
     for i in range(retries):
         try:
@@ -907,6 +936,9 @@ def get_intel_cache_counts() -> dict:
             "euvd": db.query(EuvdCache).count(),
             "misp_events": db.query(MispEvent).count(),
             "misp_attributes": db.query(MispAttribute).count(),
+            "shodan": db.query(ShodanCache).count(),
+            "urlhaus": db.query(UrlhausCache).count(),
+            "greynoise": db.query(GreynoiseCache).count(),
         }
     finally:
         db.close()
@@ -1309,6 +1341,102 @@ def search_misp_events(query: str, limit: int = 20) -> list[dict]:
              "attribute_count": ev.attribute_count}
             for ev in events
         ]
+    finally:
+        db.close()
+
+def upsert_shodan_cache(ip: str, data: dict) -> None:
+    db = SessionLocal()
+    try:
+        row = db.query(ShodanCache).filter(ShodanCache.ip == ip).first()
+        if row:
+            row.ports = data.get("ports")
+            row.cpes = data.get("cpes")
+            row.hostnames = data.get("hostnames")
+            row.tags = data.get("tags")
+            row.vulns = data.get("vulns")
+            row.fetched_at = datetime.utcnow()
+        else:
+            row = ShodanCache(ip=ip, ports=data.get("ports"), cpes=data.get("cpes"),
+                              hostnames=data.get("hostnames"), tags=data.get("tags"),
+                              vulns=data.get("vulns"))
+            db.add(row)
+        db.commit()
+    finally:
+        db.close()
+
+def get_shodan_cache(ip: str) -> dict | None:
+    db = SessionLocal()
+    try:
+        row = db.query(ShodanCache).filter(ShodanCache.ip == ip).first()
+        if not row:
+            return None
+        return {"ip": row.ip, "ports": row.ports, "cpes": row.cpes,
+                "hostnames": row.hostnames, "tags": row.tags, "vulns": row.vulns,
+                "fetched_at": str(row.fetched_at)}
+    finally:
+        db.close()
+
+def upsert_urlhaus_cache(host: str, data: dict) -> None:
+    db = SessionLocal()
+    try:
+        row = db.query(UrlhausCache).filter(UrlhausCache.host == host).first()
+        if row:
+            row.urls_count = data.get("urls_count", 0)
+            row.blacklisted = data.get("blacklisted", False)
+            row.tags = data.get("tags")
+            row.urls = data.get("urls")
+            row.fetched_at = datetime.utcnow()
+        else:
+            row = UrlhausCache(host=host, urls_count=data.get("urls_count", 0),
+                               blacklisted=data.get("blacklisted", False),
+                               tags=data.get("tags"), urls=data.get("urls"))
+            db.add(row)
+        db.commit()
+    finally:
+        db.close()
+
+def get_urlhaus_cache(host: str) -> dict | None:
+    db = SessionLocal()
+    try:
+        row = db.query(UrlhausCache).filter(UrlhausCache.host == host).first()
+        if not row:
+            return None
+        return {"host": row.host, "urls_count": row.urls_count,
+                "blacklisted": row.blacklisted, "tags": row.tags,
+                "urls": row.urls, "fetched_at": str(row.fetched_at)}
+    finally:
+        db.close()
+
+def upsert_greynoise_cache(ip: str, data: dict) -> None:
+    db = SessionLocal()
+    try:
+        row = db.query(GreynoiseCache).filter(GreynoiseCache.ip == ip).first()
+        if row:
+            row.noise = data.get("noise", False)
+            row.riot = data.get("riot", False)
+            row.classification = data.get("classification")
+            row.name = data.get("name")
+            row.link = data.get("link")
+            row.fetched_at = datetime.utcnow()
+        else:
+            row = GreynoiseCache(ip=ip, noise=data.get("noise", False),
+                                 riot=data.get("riot", False),
+                                 classification=data.get("classification"),
+                                 name=data.get("name"), link=data.get("link"))
+            db.add(row)
+        db.commit()
+    finally:
+        db.close()
+
+def get_greynoise_cache(ip: str) -> dict | None:
+    db = SessionLocal()
+    try:
+        row = db.query(GreynoiseCache).filter(GreynoiseCache.ip == ip).first()
+        if not row:
+            return None
+        return {"ip": row.ip, "noise": row.noise, "riot": row.riot,
+                "classification": row.classification, "name": row.name,
+                "link": row.link, "fetched_at": str(row.fetched_at)}
     finally:
         db.close()
 
