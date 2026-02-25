@@ -263,6 +263,19 @@ class ExploitdbCache(Base):
     url            = Column(String)
     updated_at     = Column(DateTime, default=datetime.utcnow)
 
+class MalwarebazaarCache(Base):
+    __tablename__ = "malwarebazaar_cache"
+    sha256_hash    = Column(String, primary_key=True)
+    md5_hash       = Column(String, index=True)
+    sha1_hash      = Column(String, index=True)
+    file_name      = Column(String)
+    file_type      = Column(String)
+    tags           = Column(JSON)       # ["Emotet", "trojan"]
+    signature      = Column(String)     # "Emotet"
+    first_seen     = Column(String)
+    reporter       = Column(String)
+    fetched_at     = Column(DateTime, default=datetime.utcnow)
+
 def init_db(retries=10, delay=3):
     for i in range(retries):
         try:
@@ -953,6 +966,7 @@ def get_intel_cache_counts() -> dict:
             "urlhaus": db.query(UrlhausCache).count(),
             "greynoise": db.query(GreynoiseCache).count(),
             "exploitdb": db.query(ExploitdbCache).count(),
+            "malwarebazaar": db.query(MalwarebazaarCache).count(),
         }
     finally:
         db.close()
@@ -1509,6 +1523,51 @@ def search_exploitdb(query: str, limit: int = 20) -> list[dict]:
              "url": r.url or f"https://www.exploit-db.com/exploits/{r.exploit_id}"}
             for r in rows
         ]
+    finally:
+        db.close()
+
+def upsert_malwarebazaar_entries(entries: list[dict]) -> int:
+    """Batch upsert MalwareBazaar hash entries."""
+    db = SessionLocal()
+    try:
+        count = 0
+        for e in entries:
+            sha256 = e.get("sha256_hash")
+            if not sha256:
+                continue
+            row = db.query(MalwarebazaarCache).filter(MalwarebazaarCache.sha256_hash == sha256).first()
+            if row:
+                for k, v in e.items():
+                    if hasattr(row, k) and k != "sha256_hash":
+                        setattr(row, k, v)
+                row.fetched_at = datetime.utcnow()
+            else:
+                row = MalwarebazaarCache(**e)
+                db.add(row)
+            count += 1
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+def get_malwarebazaar_by_hash(hash_val: str) -> dict | None:
+    """Find MalwareBazaar entry by sha256, md5, or sha1 hash."""
+    db = SessionLocal()
+    try:
+        row = db.query(MalwarebazaarCache).filter(
+            (MalwarebazaarCache.sha256_hash == hash_val) |
+            (MalwarebazaarCache.md5_hash == hash_val) |
+            (MalwarebazaarCache.sha1_hash == hash_val)
+        ).first()
+        if not row:
+            return None
+        return {
+            "sha256_hash": row.sha256_hash, "md5_hash": row.md5_hash,
+            "sha1_hash": row.sha1_hash, "file_name": row.file_name,
+            "file_type": row.file_type, "tags": row.tags or [],
+            "signature": row.signature, "first_seen": row.first_seen,
+            "reporter": row.reporter,
+        }
     finally:
         db.close()
 

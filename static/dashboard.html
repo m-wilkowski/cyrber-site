@@ -767,6 +767,7 @@ footer {
 .enrich-badge.epss{color:var(--orange,#ff8c00);border-color:var(--orange,#ff8c00);background:rgba(255,140,0,.08)}
 .enrich-badge.attack{color:#5eead4;border-color:#5eead4;background:rgba(94,234,212,.08)}
 .enrich-badge.exploit{color:#ef4444;border-color:#ef4444;background:rgba(239,68,68,.1);font-weight:700}
+.enrich-badge.malware{color:#ec4899;border-color:#ec4899;background:rgba(236,72,153,.1);font-weight:700}
 
 .fd-explain-btn {
   font-family: 'Share Tech Mono', monospace;
@@ -1746,7 +1747,7 @@ function toggleNarrative() {
 /* ══════════════════════════════════════
    TAB 2: FINDINGS
    ══════════════════════════════════════ */
-function _enrich(f){return{in_kev:f.in_kev,in_euvd:f.in_euvd,in_misp:f.in_misp,misp_event_count:f.misp_event_count,epss_score:f.epss_score,attack_techniques:f.attack_techniques,exploitdb_count:f.exploitdb_count,exploitdb_ids:f.exploitdb_ids}}
+function _enrich(f){return{in_kev:f.in_kev,in_euvd:f.in_euvd,in_misp:f.in_misp,misp_event_count:f.misp_event_count,epss_score:f.epss_score,attack_techniques:f.attack_techniques,exploitdb_count:f.exploitdb_count,exploitdb_ids:f.exploitdb_ids,in_malwarebazaar:f.in_malwarebazaar,malware_signature:f.malware_signature}}
 function enrichBadges(f){
   var b='<div class="fd-enrich">';var any=false;
   if(f.in_kev){b+='<span class="enrich-badge kev">KEV</span>';any=true}
@@ -1755,6 +1756,7 @@ function enrichBadges(f){
   if(f.epss_score){b+='<span class="enrich-badge epss">EPSS: '+(f.epss_score*100).toFixed(1)+'%</span>';any=true}
   if(f.attack_techniques&&f.attack_techniques.length){b+='<span class="enrich-badge attack">ATT&amp;CK: '+f.attack_techniques.length+'</span>';any=true}
   if(f.exploitdb_count){b+='<span class="enrich-badge exploit">EXPLOIT ('+f.exploitdb_count+')</span>';any=true}
+  if(f.in_malwarebazaar){b+='<span class="enrich-badge malware" title="'+(f.malware_signature||'malware')+'">MALWARE</span>';any=true}
   b+='</div>';return any?b:'';
 }
 function collectFindings(detail) {

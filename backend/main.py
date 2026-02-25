@@ -2493,6 +2493,29 @@ async def intel_sync_exploitdb(request: Request,
     audit(request, current_user, "exploitdb_sync_trigger", f"celery_task={result.id}")
     return {"ok": True, "task_id": result.id}
 
+# ── MalwareBazaar API ────────────────────────────────────
+
+@app.get("/api/intel/malwarebazaar/lookup")
+async def api_malwarebazaar_lookup(hash: str = Query(..., min_length=32),
+                                   current_user: dict = Depends(get_current_user)):
+    from modules.database import get_malwarebazaar_by_hash
+    from modules.intelligence_sync import lookup_malwarebazaar
+    cached = get_malwarebazaar_by_hash(hash)
+    if cached:
+        return {"hash": hash, "found": True, **cached}
+    result = lookup_malwarebazaar(hash)
+    if not result:
+        return {"hash": hash, "found": False}
+    return {"hash": hash, "found": True, **result}
+
+@app.post("/admin/intel-sync/malwarebazaar")
+async def intel_sync_malwarebazaar(request: Request,
+                                   current_user: dict = Depends(require_role("admin"))):
+    from modules.tasks import run_malwarebazaar_sync
+    result = run_malwarebazaar_sync.delay()
+    audit(request, current_user, "malwarebazaar_sync_trigger", f"celery_task={result.id}")
+    return {"ok": True, "task_id": result.id}
+
 # ── ATT&CK API ───────────────────────────────────────────
 
 @app.get("/api/attack/techniques")

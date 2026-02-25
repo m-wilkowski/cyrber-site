@@ -19,6 +19,7 @@ from modules.database import (
     upsert_urlhaus_cache, get_urlhaus_cache,
     upsert_greynoise_cache, get_greynoise_cache,
     upsert_exploitdb_entries, get_exploitdb_by_cve,
+    upsert_malwarebazaar_entries, get_malwarebazaar_by_hash,
 )
 
 log = logging.getLogger("cyrber.intel")
@@ -34,6 +35,7 @@ URLHAUS_API_URL = "https://urlhaus-api.abuse.ch/v1"
 GREYNOISE_API_URL = "https://api.greynoise.io/v3/community"
 EXPLOITDB_REPO = "https://github.com/offensive-security/exploitdb.git"
 EXPLOITDB_PATH = "/opt/exploitdb"
+MALWAREBAZAAR_API_URL = "https://mb-api.abuse.ch/api/v1/"
 
 REQUEST_TIMEOUT = 60
 ATTACK_TIMEOUT = 120  # enterprise-attack.json is ~30MB
@@ -923,3 +925,90 @@ def _parse_exploitdb_csv(csv_path: str) -> list[dict]:
             })
 
     return entries
+
+
+# ── MalwareBazaar (abuse.ch) ──────────────────────────────
+
+def sync_malwarebazaar(limit: int = 100) -> int:
+    """Fetch recent MalwareBazaar samples and cache in DB. Free, no API key."""
+    t0 = time.time()
+    try:
+        resp = requests.post(
+            MALWAREBAZAAR_API_URL,
+            data={"query": "get_recent", "selector": str(limit)},
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        if data.get("query_status") != "ok":
+            log.warning(f"MalwareBazaar: unexpected status {data.get('query_status')}")
+            save_intel_sync_log("MalwareBazaar", "error", 0, time.time() - t0,
+                                data.get("query_status", "unknown"))
+            return 0
+
+        entries = []
+        for sample in (data.get("data") or []):
+            entries.append({
+                "sha256_hash": sample.get("sha256_hash", ""),
+                "md5_hash": sample.get("md5_hash", ""),
+                "sha1_hash": sample.get("sha1_hash", ""),
+                "file_name": sample.get("file_name", ""),
+                "file_type": sample.get("file_type", ""),
+                "tags": sample.get("tags"),
+                "signature": sample.get("signature"),
+                "first_seen": sample.get("first_seen", ""),
+                "reporter": sample.get("reporter", ""),
+            })
+
+        count = upsert_malwarebazaar_entries(entries)
+        duration = time.time() - t0
+        save_intel_sync_log("MalwareBazaar", "success", count, duration)
+        log.info(f"MalwareBazaar sync: {count} samples in {duration:.1f}s")
+        return count
+
+    except Exception as exc:
+        duration = time.time() - t0
+        save_intel_sync_log("MalwareBazaar", "error", 0, duration, str(exc))
+        log.error(f"MalwareBazaar sync failed: {exc}")
+        raise
+
+
+def lookup_malwarebazaar(hash_val: str) -> dict | None:
+    """Lookup a hash in MalwareBazaar. DB-first, live API fallback."""
+    # DB cache first
+    cached = get_malwarebazaar_by_hash(hash_val)
+    if cached:
+        return cached
+
+    # Live lookup
+    try:
+        resp = requests.post(
+            MALWAREBAZAAR_API_URL,
+            data={"query": "get_info", "hash": hash_val},
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        if data.get("query_status") != "ok" or not data.get("data"):
+            return None
+
+        sample = data["data"][0] if isinstance(data["data"], list) else data["data"]
+        entry = {
+            "sha256_hash": sample.get("sha256_hash", ""),
+            "md5_hash": sample.get("md5_hash", ""),
+            "sha1_hash": sample.get("sha1_hash", ""),
+            "file_name": sample.get("file_name", ""),
+            "file_type": sample.get("file_type", ""),
+            "tags": sample.get("tags"),
+            "signature": sample.get("signature"),
+            "first_seen": sample.get("first_seen", ""),
+            "reporter": sample.get("reporter", ""),
+        }
+        upsert_malwarebazaar_entries([entry])
+        return entry
+
+    except Exception as exc:
+        log.warning(f"MalwareBazaar lookup failed for {hash_val}: {exc}")
+        return None

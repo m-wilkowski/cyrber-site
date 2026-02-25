@@ -124,6 +124,10 @@ celery_app.conf.beat_schedule = {
         "task": "modules.tasks.run_exploitdb_sync",
         "schedule": crontab(hour=4, minute=30, day_of_week=0),  # Sunday 04:30
     },
+    "malwarebazaar-sync-daily": {
+        "task": "modules.tasks.run_malwarebazaar_sync",
+        "schedule": crontab(hour=3, minute=50),
+    },
 }
 
 _SKIPPED = {"skipped": True, "reason": "not in profile", "findings": []}
@@ -672,6 +676,12 @@ def run_exploitdb_sync():
     """Sync ExploitDB git repo + CSV parse. Runs weekly Sunday 04:30."""
     from modules.intelligence_sync import sync_exploitdb
     return {"exploitdb": sync_exploitdb()}
+
+@celery_app.task
+def run_malwarebazaar_sync():
+    """Sync recent MalwareBazaar samples. Runs daily 03:50."""
+    from modules.intelligence_sync import sync_malwarebazaar
+    return {"malwarebazaar": sync_malwarebazaar()}
 
 @celery_app.task(bind=True, max_retries=1)
 def retest_finding(self, remediation_id: int, finding_name: str,
