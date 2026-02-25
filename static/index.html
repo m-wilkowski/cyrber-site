@@ -59,7 +59,7 @@
 .hero{text-align:center;padding:var(--sp-6) 0 var(--sp-5)}
 
 .hero-ring{
-  display:inline-block;width:100px;height:100px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;width:220px;height:220px;border-radius:50%;overflow:hidden;
   border:2px solid var(--accent);position:relative;margin-bottom:var(--sp-4);
   animation:heroRingPulse 3s ease-in-out infinite;
 }
@@ -380,7 +380,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
 <body>
 
 <nav>
-  <a class="nav-brand" href="/ui"><div class="nav-ring"><img src="/static/cyrber_logo.jpg" alt="CYRBER" style="width:26px;height:26px;object-fit:contain;border-radius:50%;"></div>CYRBER<span>AUTONOMOUS RECON</span></a>
+  <a class="nav-brand" href="/ui"><div class="nav-ring" style="background-image:url(/static/cyrber_wolf.png);background-size:cover;background-position:center;"></div>CYRBER<span>AUTONOMOUS RECON</span></a>
   <div class="nav-links">
     <a class="nav-link active" href="/ui">SCAN</a>
     <a class="nav-link" href="/dashboard">DASHBOARD</a>
@@ -402,7 +402,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
     <div class="idle-main">
       <!-- HERO -->
       <div class="hero" id="heroSection">
-        <div class="hero-ring"><div class="hero-ring-text"><svg width="40" height="40" viewBox="0 0 22 22" fill="none"><path d="M11 2L8 7H4L7 10.5L6 16L11 13L16 16L15 10.5L18 7H14L11 2Z" fill="#4a8fd4" opacity="0.9"/></svg></div></div>
+        <div class="hero-ring"><div class="hero-ring-text"><img src="/static/cyrber_logo.jpg" style="width:220px;height:220px;object-fit:cover;object-position:center 30%;border-radius:50%;"></div></div>
         <div class="hero-title">CYRBER</div>
         <div class="hero-tagline">AUTONOMOUS SECURITY TESTING</div>
         <div class="hero-sub">Wybierz cel. Wybierz poziom. Reszta dzieje si&#281; sama.</div>
@@ -424,7 +424,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
         <div class="profile-grid" id="profileGrid">
           <div class="profile-card" data-profile="SZCZENIAK" onclick="selectProfile('SZCZENIAK',this)">
             <div class="lock-overlay"><span class="lock-text">WYMAGA PRO</span></div>
-            <div class="profile-icon">&#x1F436;</div>
+            <div class="profile-icon"><img src="/static/szczeniak.jpg" style="width:190px;height:190px;object-fit:cover;object-position:center 40%;border-radius:16px;"></div>
             <div class="profile-name">SZCZENIAK</div>
             <div class="profile-desc">Rekon + Web<br>Podstawowy skan</div>
             <div class="profile-time">~15 min</div>
@@ -439,7 +439,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
           </div>
           <div class="profile-card" data-profile="STRAZNIK" onclick="selectProfile('STRAZNIK',this)">
             <div class="lock-overlay"><span class="lock-text">WYMAGA PRO</span></div>
-            <div class="profile-icon">&#x1F6E1;&#xFE0F;</div>
+            <div class="profile-icon"><img src="/static/straznik.jpg" style="width:190px;height:190px;object-fit:cover;object-position:center 40%;border-radius:16px;"></div>
             <div class="profile-name">STRA&#x17B;NIK</div>
             <div class="profile-desc">+ Sie&#263; + AD<br>Zaawansowany test</div>
             <div class="profile-time">~30 min</div>
@@ -456,7 +456,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
           </div>
           <div class="profile-card" data-profile="CERBER" onclick="selectProfile('CERBER',this)">
             <div class="lock-overlay"><span class="lock-text">WYMAGA ENTERPRISE</span></div>
-            <div class="profile-icon">&#x1F531;</div>
+            <div class="profile-icon"><img src="/static/cerber.jpg" style="width:190px;height:190px;object-fit:cover;object-position:center 40%;border-radius:16px;"></div>
             <div class="profile-name">CERBER</div>
             <div class="profile-desc">+ Social Eng + AI<br>Pe&#322;ny arsena&#322;</div>
             <div class="profile-time">~60 min</div>
