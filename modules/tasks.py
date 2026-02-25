@@ -111,6 +111,10 @@ celery_app.conf.beat_schedule = {
         "task": "modules.tasks.run_euvd_sync",
         "schedule": crontab(hour=3, minute=30),
     },
+    "misp-sync-daily": {
+        "task": "modules.tasks.run_misp_sync",
+        "schedule": crontab(hour=3, minute=15),
+    },
 }
 
 _SKIPPED = {"skipped": True, "reason": "not in profile", "findings": []}
@@ -581,7 +585,7 @@ def run_due_schedules():
 
 @celery_app.task
 def run_intel_sync():
-    """Sync all intelligence feeds: KEV + EPSS + ATT&CK + CAPEC + EUVD."""
+    """Sync all intelligence feeds: KEV + EPSS + ATT&CK + CAPEC + EUVD + MISP."""
     from modules.intelligence_sync import sync_kev, sync_epss, sync_attack, sync_capec_cwe_map, sync_euvd
     results = {}
     try:
@@ -606,6 +610,11 @@ def run_intel_sync():
         results["euvd"] = sync_euvd(days_back=7)
     except Exception as e:
         results["euvd_error"] = str(e)
+    try:
+        from modules.misp_integration import sync_misp
+        results["misp"] = sync_misp(days_back=7)
+    except Exception as e:
+        results["misp_error"] = str(e)
     return results
 
 @celery_app.task
@@ -628,6 +637,12 @@ def run_euvd_sync():
     """Sync ENISA EUVD. Runs daily at 03:30."""
     from modules.intelligence_sync import sync_euvd
     return {"euvd": sync_euvd(days_back=7)}
+
+@celery_app.task
+def run_misp_sync():
+    """Sync MISP events/attributes. Runs daily at 03:15."""
+    from modules.misp_integration import sync_misp
+    return {"misp": sync_misp(days_back=7)}
 
 @celery_app.task(bind=True, max_retries=1)
 def retest_finding(self, remediation_id: int, finding_name: str,

@@ -457,6 +457,23 @@ def enrich_finding(cve_id: str) -> dict:
     except Exception:
         result["in_euvd"] = False
 
+    # MISP lookup
+    try:
+        from modules.database import get_misp_by_cve
+        misp = get_misp_by_cve(cve_id)
+        if misp:
+            result["in_misp"] = True
+            result["misp_event_count"] = misp["event_count"]
+            result["misp_events"] = misp["events"][:3]
+        else:
+            result["in_misp"] = False
+            result["misp_event_count"] = 0
+            result["misp_events"] = []
+    except Exception:
+        result["in_misp"] = False
+        result["misp_event_count"] = 0
+        result["misp_events"] = []
+
     return result
 
 

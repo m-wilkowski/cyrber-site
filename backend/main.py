@@ -2382,6 +2382,45 @@ async def intel_sync_euvd(request: Request,
     audit(request, current_user, "euvd_sync_trigger", f"celery_task={result.id}")
     return {"ok": True, "task_id": result.id}
 
+# ── MISP API ─────────────────────────────────────────────
+
+@app.post("/admin/intel-sync/misp")
+async def intel_sync_misp(request: Request,
+                          current_user: dict = Depends(require_role("admin"))):
+    from modules.tasks import run_misp_sync
+    result = run_misp_sync.delay()
+    audit(request, current_user, "misp_sync_trigger", f"celery_task={result.id}")
+    return {"ok": True, "task_id": result.id}
+
+@app.post("/api/misp/export/{task_id}")
+async def api_misp_export(task_id: str, request: Request,
+                          current_user: dict = Depends(require_role("admin", "operator"))):
+    from modules.misp_integration import export_scan_to_misp, is_misp_configured
+    if not is_misp_configured():
+        raise HTTPException(status_code=503, detail="MISP not configured")
+    scan = get_scan_by_task_id(task_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    result = export_scan_to_misp(scan, task_id)
+    audit(request, current_user, "misp_export", f"task_id={task_id} event_id={result.get('event_id')}")
+    return result
+
+@app.get("/api/misp/search")
+async def api_misp_search(value: str = Query(..., min_length=2),
+                          type: str = Query(None),
+                          limit: int = Query(20, le=100),
+                          current_user: dict = Depends(get_current_user)):
+    from modules.misp_integration import lookup_misp_indicator
+    results = lookup_misp_indicator(value, attr_type=type)
+    return results[:limit]
+
+@app.get("/api/misp/events")
+async def api_misp_events(q: str = Query("", min_length=0),
+                          limit: int = Query(20, le=100),
+                          current_user: dict = Depends(get_current_user)):
+    from modules.database import search_misp_events
+    return search_misp_events(query=q, limit=limit)
+
 # ── ATT&CK API ───────────────────────────────────────────
 
 @app.get("/api/attack/techniques")

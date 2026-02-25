@@ -196,6 +196,31 @@ class EuvdCache(Base):
     references         = Column(JSON)
     updated_at         = Column(DateTime, default=datetime.utcnow)
 
+class MispEvent(Base):
+    __tablename__ = "misp_events"
+    event_id       = Column(Integer, primary_key=True)
+    uuid           = Column(String, unique=True, index=True)
+    info           = Column(Text)
+    threat_level_id = Column(Integer)
+    analysis       = Column(Integer)
+    date           = Column(String)
+    org            = Column(String)
+    tags           = Column(JSON)
+    attribute_count = Column(Integer, default=0)
+    updated_at     = Column(DateTime, default=datetime.utcnow)
+
+class MispAttribute(Base):
+    __tablename__ = "misp_attributes"
+    id             = Column(Integer, primary_key=True, autoincrement=True)
+    attribute_id   = Column(Integer, unique=True, index=True)
+    event_id       = Column(Integer, index=True)
+    type           = Column(String)
+    value          = Column(String, index=True)
+    category       = Column(String)
+    to_ids         = Column(Boolean, default=False)
+    tags           = Column(JSON)
+    updated_at     = Column(DateTime, default=datetime.utcnow)
+
 def init_db(retries=10, delay=3):
     for i in range(retries):
         try:
@@ -880,6 +905,8 @@ def get_intel_cache_counts() -> dict:
             "attack_tactics": db.query(AttackTactic).count(),
             "attack_mitigations": db.query(AttackMitigation).count(),
             "euvd": db.query(EuvdCache).count(),
+            "misp_events": db.query(MispEvent).count(),
+            "misp_attributes": db.query(MispAttribute).count(),
         }
     finally:
         db.close()
@@ -1179,6 +1206,109 @@ def get_euvd_by_cve(cve_id: str) -> dict | None:
                     "url": f"https://euvd.enisa.europa.eu/detail/{row.euvd_id}",
                 }
         return None
+    finally:
+        db.close()
+
+def upsert_misp_events(events: list[dict]) -> int:
+    db = SessionLocal()
+    try:
+        count = 0
+        for e in events:
+            eid = e.get("event_id")
+            if not eid:
+                continue
+            row = db.query(MispEvent).filter(MispEvent.event_id == eid).first()
+            if row:
+                for k, v in e.items():
+                    if hasattr(row, k) and k != "event_id":
+                        setattr(row, k, v)
+                row.updated_at = datetime.utcnow()
+            else:
+                row = MispEvent(**e)
+                db.add(row)
+            count += 1
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+def upsert_misp_attributes(attributes: list[dict]) -> int:
+    db = SessionLocal()
+    try:
+        count = 0
+        for a in attributes:
+            aid = a.get("attribute_id")
+            if not aid:
+                continue
+            row = db.query(MispAttribute).filter(MispAttribute.attribute_id == aid).first()
+            if row:
+                for k, v in a.items():
+                    if hasattr(row, k) and k != "attribute_id" and k != "id":
+                        setattr(row, k, v)
+                row.updated_at = datetime.utcnow()
+            else:
+                row = MispAttribute(**{k: v for k, v in a.items() if k != "id"})
+                db.add(row)
+            count += 1
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+def get_misp_by_cve(cve_id: str) -> dict | None:
+    """Find MISP attributes matching a CVE ID."""
+    db = SessionLocal()
+    try:
+        attrs = db.query(MispAttribute).filter(
+            MispAttribute.type == "vulnerability",
+            MispAttribute.value.ilike(f"%{cve_id}%")
+        ).all()
+        if not attrs:
+            return None
+        event_ids = list({a.event_id for a in attrs})
+        events = db.query(MispEvent).filter(MispEvent.event_id.in_(event_ids)).all()
+        return {
+            "cve_id": cve_id,
+            "event_count": len(events),
+            "events": [
+                {"event_id": ev.event_id, "info": ev.info, "threat_level_id": ev.threat_level_id,
+                 "org": ev.org, "date": ev.date, "tags": ev.tags}
+                for ev in events[:5]
+            ],
+        }
+    finally:
+        db.close()
+
+def get_misp_by_indicator(value: str) -> list[dict]:
+    """Search MISP attributes by any value."""
+    db = SessionLocal()
+    try:
+        attrs = db.query(MispAttribute).filter(
+            MispAttribute.value.ilike(f"%{value}%")
+        ).limit(50).all()
+        return [
+            {"attribute_id": a.attribute_id, "event_id": a.event_id,
+             "type": a.type, "value": a.value, "category": a.category,
+             "to_ids": a.to_ids, "tags": a.tags}
+            for a in attrs
+        ]
+    finally:
+        db.close()
+
+def search_misp_events(query: str, limit: int = 20) -> list[dict]:
+    """Search MISP events by info field."""
+    db = SessionLocal()
+    try:
+        events = db.query(MispEvent).filter(
+            MispEvent.info.ilike(f"%{query}%")
+        ).order_by(MispEvent.updated_at.desc()).limit(limit).all()
+        return [
+            {"event_id": ev.event_id, "uuid": ev.uuid, "info": ev.info,
+             "threat_level_id": ev.threat_level_id, "analysis": ev.analysis,
+             "date": ev.date, "org": ev.org, "tags": ev.tags,
+             "attribute_count": ev.attribute_count}
+            for ev in events
+        ]
     finally:
         db.close()
 
