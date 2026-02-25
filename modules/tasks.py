@@ -118,10 +118,68 @@ _SKIPPED = {"skipped": True, "reason": "not in profile", "findings": []}
 def _skip():
     return dict(_SKIPPED)
 
+
+def _ci_local_analysis(scan_data: dict) -> dict:
+    """Local severity analysis for CI mode — no LLM calls."""
+    severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+
+    # Count nuclei findings
+    for f in scan_data.get("nuclei", {}).get("findings", []):
+        sev = f.get("info", {}).get("severity", "info").lower()
+        if sev in severity_counts:
+            severity_counts[sev] += 1
+
+    # Count ZAP alerts
+    for a in scan_data.get("zap", {}).get("alerts", []):
+        risk = a.get("risk", "Informational").lower()
+        mapping = {"high": "high", "medium": "medium", "low": "low", "informational": "info"}
+        sev = mapping.get(risk, "info")
+        severity_counts[sev] += 1
+
+    # Count testssl findings
+    for f in scan_data.get("testssl", {}).get("findings", []):
+        sev = f.get("severity", "info").lower()
+        if sev in severity_counts:
+            severity_counts[sev] += 1
+
+    # Count sqlmap
+    if scan_data.get("sqlmap", {}).get("vulnerable"):
+        severity_counts["critical"] += 1
+
+    # Count other module findings generically
+    for mod in ("whatweb", "gobuster", "nikto"):
+        for f in scan_data.get(mod, {}).get("findings", []):
+            sev = f.get("severity", "info").lower()
+            if sev in severity_counts:
+                severity_counts[sev] += 1
+
+    total = sum(severity_counts.values())
+    if severity_counts["critical"] > 0:
+        risk_level = "CRITICAL"
+    elif severity_counts["high"] > 2:
+        risk_level = "HIGH"
+    elif severity_counts["high"] > 0 or severity_counts["medium"] > 3:
+        risk_level = "MEDIUM"
+    elif total > 0:
+        risk_level = "LOW"
+    else:
+        risk_level = "NONE"
+
+    return {
+        "target": scan_data.get("target", "unknown"),
+        "summary": f"CI scan: {total} findings ({severity_counts['critical']}C/{severity_counts['high']}H/{severity_counts['medium']}M/{severity_counts['low']}L)",
+        "risk_level": risk_level,
+        "severity_counts": severity_counts,
+        "findings_count": total,
+        "top_issues": [],
+        "recommendations": "",
+    }
+
 @celery_app.task
 def full_scan_task(target: str, profile: str = "STRAZNIK"):
     task_id = full_scan_task.request.id
     run = lambda mod: should_run_module(mod, profile)
+    is_ci = profile.upper() == "CI"
     # Total = 42 scan modules + 8 post-processing = 50 steps
     total = 52
     completed = 0
@@ -324,7 +382,10 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
     }
     edb = exploitdb_scan(scan_data)
     nvd = nvd_scan(scan_data)
-    result = analyze_scan_results(scan_data)
+    if is_ci:
+        result = _ci_local_analysis(scan_data)
+    else:
+        result = analyze_scan_results(scan_data)
     result["profile"] = profile
     result["ports"] = nmap.get("ports", [])
     result["whatweb"] = whatweb
@@ -434,31 +495,54 @@ def full_scan_task(target: str, profile: str = "STRAZNIK"):
     result["fp_filter"] = nuclei_filtered.get("fp_filter", {}) if not nuclei_filtered.get("skipped") else {}
     completed += 1; pp("cwe_owasp", "done")
 
-    pp("exploit_chains", "started", "Generating exploit chains")
-    chains = generate_exploit_chains(result)
-    result["exploit_chains"] = chains.get("exploit_chains", {})
-    completed += 1; pp("exploit_chains", "done")
+    if is_ci:
+        # CI mode: skip AI-heavy steps, keep local mappings
+        pp("exploit_chains", "skipped", "Skipped in CI mode")
+        result["exploit_chains"] = {}
+        completed += 1
 
-    pp("hacker_narrative", "started", "Generating hacker narrative")
-    narrative = generate_hacker_narrative(result)
-    result["hacker_narrative"] = narrative
-    completed += 1; pp("hacker_narrative", "done")
+        pp("hacker_narrative", "skipped", "Skipped in CI mode")
+        result["hacker_narrative"] = {}
+        completed += 1
 
-    pp("mitre", "started", "MITRE ATT&CK mapping")
-    mitre = mitre_map(result)
-    result["mitre"] = mitre
-    completed += 1; pp("mitre", "done")
+        pp("mitre", "started", "MITRE ATT&CK mapping")
+        mitre = mitre_map(result)
+        result["mitre"] = mitre
+        completed += 1; pp("mitre", "done")
 
-    pp("ai_analysis", "started", "AI analysis — final report")
-    result["ai_analysis"] = ai_analyze(result)
-    completed += 1; pp("ai_analysis", "done")
+        pp("ai_analysis", "skipped", "Skipped in CI mode")
+        result["ai_analysis"] = {}
+        completed += 1
 
-    pp("reflection", "started", "Scan reflection")
-    try:
-        result["reflection"] = reflect_on_scan(result, profile)
-    except Exception:
+        pp("reflection", "skipped", "Skipped in CI mode")
         result["reflection"] = {}
-    completed += 1; pp("reflection", "done")
+        completed += 1
+    else:
+        pp("exploit_chains", "started", "Generating exploit chains")
+        chains = generate_exploit_chains(result)
+        result["exploit_chains"] = chains.get("exploit_chains", {})
+        completed += 1; pp("exploit_chains", "done")
+
+        pp("hacker_narrative", "started", "Generating hacker narrative")
+        narrative = generate_hacker_narrative(result)
+        result["hacker_narrative"] = narrative
+        completed += 1; pp("hacker_narrative", "done")
+
+        pp("mitre", "started", "MITRE ATT&CK mapping")
+        mitre = mitre_map(result)
+        result["mitre"] = mitre
+        completed += 1; pp("mitre", "done")
+
+        pp("ai_analysis", "started", "AI analysis — final report")
+        result["ai_analysis"] = ai_analyze(result)
+        completed += 1; pp("ai_analysis", "done")
+
+        pp("reflection", "started", "Scan reflection")
+        try:
+            result["reflection"] = reflect_on_scan(result, profile)
+        except Exception:
+            result["reflection"] = {}
+        completed += 1; pp("reflection", "done")
 
     pp("save", "started", "Saving results")
     save_scan(task_id, target, result, profile=profile)

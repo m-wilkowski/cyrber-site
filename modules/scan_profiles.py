@@ -34,6 +34,15 @@ PROFILES = {
             "responder", "ikescan", "nikto"
         ]
     },
+    "CI": {
+        "name": "CI",
+        "price": "—",
+        "description": "Fast CI/CD pipeline scan — no AI, ~3 min",
+        "time_estimate": "~3 min",
+        "modules": [
+            "nmap", "nuclei", "whatweb", "gobuster", "testssl", "zap"
+        ]
+    },
 }
 
 _HIERARCHY = ["SZCZENIAK", "STRAZNIK", "CERBER"]
@@ -47,6 +56,9 @@ def get_all_modules(profile_name: str) -> set:
     profile_name = profile_name.upper()
     if profile_name not in PROFILES:
         return set()
+    # CI is standalone — not part of the tier hierarchy
+    if profile_name == "CI":
+        return set(PROFILES["CI"]["modules"])
     idx = _HIERARCHY.index(profile_name)
     modules = set()
     for level in _HIERARCHY[:idx + 1]:

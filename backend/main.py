@@ -806,9 +806,10 @@ async def scan_start_post(request: Request, body: ScanStartRequest, user: dict =
     if not get_profile(body.profile):
         raise HTTPException(status_code=400, detail=f"Invalid profile: {body.profile}")
     is_admin = user.get("role") == "admin"
-    if not is_admin and not check_profile(body.profile.upper()):
+    is_ci_profile = body.profile.upper() == "CI"
+    if not is_admin and not is_ci_profile and not check_profile(body.profile.upper()):
         raise HTTPException(status_code=402, detail=f"Profile {body.profile.upper()} not available in your license tier")
-    if not is_admin and not check_scan_limit(get_scans_this_month()):
+    if not is_admin and not is_ci_profile and not check_scan_limit(get_scans_this_month()):
         raise HTTPException(status_code=402, detail="Monthly scan limit reached — upgrade your license")
     task = full_scan_task.delay(body.target, profile=body.profile.upper())
     increment_scan_count()
@@ -821,9 +822,10 @@ async def scan_start(request: Request, target: str = Query(...), profile: str = 
     if not get_profile(profile):
         profile = "STRAZNIK"
     is_admin = user.get("role") == "admin"
-    if not is_admin and not check_profile(profile.upper()):
+    is_ci_profile = profile.upper() == "CI"
+    if not is_admin and not is_ci_profile and not check_profile(profile.upper()):
         raise HTTPException(status_code=402, detail=f"Profile {profile.upper()} not available in your license tier")
-    if not is_admin and not check_scan_limit(get_scans_this_month()):
+    if not is_admin and not is_ci_profile and not check_scan_limit(get_scans_this_month()):
         raise HTTPException(status_code=402, detail="Monthly scan limit reached — upgrade your license")
     task = full_scan_task.delay(target, profile=profile.upper())
     increment_scan_count()

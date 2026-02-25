@@ -1,0 +1,254 @@
+name: CYRBER Security Scan (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: "Scan target URL"
+        required: true
+        type: string
+      profile:
+        description: "Scan profile"
+        required: false
+        type: string
+        default: "CI"
+      gate-critical:
+        description: "Max critical findings before gate failure"
+        required: false
+        type: number
+        default: 0
+      gate-high:
+        description: "Max high findings before gate failure"
+        required: false
+        type: number
+        default: 5
+      upload-sarif:
+        description: "Upload SARIF to GitHub Security tab"
+        required: false
+        type: boolean
+        default: true
+      compare-baseline:
+        description: "Compare with previous baseline"
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      CYRBER_PASSWORD:
+        required: false
+      DEFECTDOJO_URL:
+        required: false
+      DEFECTDOJO_TOKEN:
+        required: false
+      DEFECTDOJO_ENGAGEMENT:
+        required: false
+    outputs:
+      task_id:
+        description: "CYRBER scan task ID"
+        value: ${{ jobs.scan.outputs.task_id }}
+      gate_passed:
+        description: "Security gate result"
+        value: ${{ jobs.scan.outputs.gate_passed }}
+      findings_count:
+        description: "Total findings count"
+        value: ${{ jobs.scan.outputs.findings_count }}
+      risk_level:
+        description: "Overall risk level"
+        value: ${{ jobs.scan.outputs.risk_level }}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      task_id: ${{ steps.scan.outputs.task_id }}
+      gate_passed: ${{ steps.scan.outputs.gate_passed }}
+      findings_count: ${{ steps.scan.outputs.findings_count }}
+      risk_level: ${{ steps.scan.outputs.risk_level }}
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cyrber
+          POSTGRES_USER: cyrber
+          POSTGRES_PASSWORD: cyrber
+        options: >-
+          --health-cmd "pg_isready -U cyrber"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build CYRBER image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          tags: cyrber:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start ZAP
+        run: |
+          docker run -d --name zap --network host \
+            -e ZAP_API_KEY=ci-zap-key \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap.sh -daemon -host 0.0.0.0 -port 8090 \
+            -config api.key=ci-zap-key \
+            -config api.addrs.addr.name=.* \
+            -config api.addrs.addr.regex=true
+
+      - name: Start DVWA (if needed)
+        if: contains(inputs.target, 'dvwa') || contains(inputs.target, 'localhost:8888')
+        run: |
+          docker run -d --name dvwa --network host \
+            -e MYSQL_DATABASE=dvwa \
+            vulnerables/web-dvwa:latest
+          echo "Waiting for DVWA..."
+          for i in $(seq 1 30); do
+            curl -s http://localhost:8888/ > /dev/null 2>&1 && break
+            sleep 2
+          done
+
+      - name: Start CYRBER API + Worker
+        env:
+          DATABASE_URL: postgresql://cyrber:cyrber@localhost:5432/cyrber
+          REDIS_URL: redis://localhost:6379/0
+          ZAP_API_URL: http://localhost:8090
+          ZAP_API_KEY: ci-zap-key
+          JWT_SECRET: ci-jwt-secret
+          ADMIN_PASSWORD: ${{ secrets.CYRBER_PASSWORD || 'cyrber2024' }}
+        run: |
+          # Start API
+          docker run -d --name cyrber-api --network host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e REDIS_URL="$REDIS_URL" \
+            -e ZAP_API_URL="$ZAP_API_URL" \
+            -e ZAP_API_KEY="$ZAP_API_KEY" \
+            -e JWT_SECRET="$JWT_SECRET" \
+            -e ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+            cyrber:ci python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+
+          # Start Celery worker
+          docker run -d --name cyrber-worker --network host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e REDIS_URL="$REDIS_URL" \
+            -e ZAP_API_URL="$ZAP_API_URL" \
+            -e ZAP_API_KEY="$ZAP_API_KEY" \
+            cyrber:ci celery -A modules.tasks worker --loglevel=info --concurrency=2
+
+      - name: Wait for API health
+        run: |
+          echo "Waiting for CYRBER API..."
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8000/api/health > /dev/null 2>&1; then
+              echo "API is ready"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "API health check timed out"
+          docker logs cyrber-api
+          exit 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install scan script dependencies
+        run: pip install requests
+
+      - name: Run CYRBER scan
+        id: scan
+        env:
+          CYRBER_PASSWORD: ${{ secrets.CYRBER_PASSWORD || 'cyrber2024' }}
+          DEFECTDOJO_URL: ${{ secrets.DEFECTDOJO_URL }}
+          DEFECTDOJO_TOKEN: ${{ secrets.DEFECTDOJO_TOKEN }}
+          DEFECTDOJO_ENGAGEMENT: ${{ secrets.DEFECTDOJO_ENGAGEMENT }}
+        run: |
+          DOJO_ARGS=""
+          if [ -n "$DEFECTDOJO_URL" ]; then
+            DOJO_ARGS="--defectdojo-url $DEFECTDOJO_URL --defectdojo-token $DEFECTDOJO_TOKEN --defectdojo-engagement $DEFECTDOJO_ENGAGEMENT"
+          fi
+          python scripts/ci-scan.py \
+            --target "${{ inputs.target }}" \
+            --profile "${{ inputs.profile }}" \
+            --api-url http://localhost:8000 \
+            --username admin \
+            --password "$CYRBER_PASSWORD" \
+            --gate-critical ${{ inputs.gate-critical }} \
+            --gate-high ${{ inputs.gate-high }} \
+            --output-dir ci-results \
+            $DOJO_ARGS
+
+      - name: Upload SARIF to GitHub Security
+        if: always() && inputs.upload-sarif
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ci-results/cyrber.sarif
+          category: cyrber-scan
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyrber-scan-results
+          path: ci-results/
+          retention-days: 30
+
+      - name: Save baseline (master only)
+        if: github.ref == 'refs/heads/master' && always()
+        uses: actions/cache/save@v4
+        with:
+          path: ci-results/baseline.json
+          key: cyrber-baseline-${{ inputs.target }}-${{ github.sha }}
+
+      - name: Restore previous baseline
+        if: inputs.compare-baseline
+        id: baseline-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ci-results/previous-baseline.json
+          key: cyrber-baseline-${{ inputs.target }}-
+          restore-keys: |
+            cyrber-baseline-${{ inputs.target }}-
+
+      - name: Compare baselines
+        if: inputs.compare-baseline && steps.baseline-cache.outputs.cache-hit == 'true'
+        run: |
+          python scripts/compare_baselines.py \
+            ci-results/baseline.json \
+            ci-results/previous-baseline.json
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          echo "=== CYRBER API logs ==="
+          docker logs cyrber-api 2>&1 | tail -100 || true
+          echo "=== CYRBER Worker logs ==="
+          docker logs cyrber-worker 2>&1 | tail -100 || true
+          echo "=== ZAP logs ==="
+          docker logs zap 2>&1 | tail -50 || true
+
+      - name: Cleanup containers
+        if: always()
+        run: docker rm -f cyrber-api cyrber-worker zap dvwa 2>/dev/null || true

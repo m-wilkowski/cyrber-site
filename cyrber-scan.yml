@@ -1,0 +1,52 @@
+# CYRBER Pentest-as-Code — Example Scan Configuration
+#
+# This file documents the available CI/CD scan parameters.
+# Use it as a reference when configuring GitHub Actions workflows.
+#
+# Usage:
+#   1. Push/PR trigger (automatic):
+#      Configured in .github/workflows/ci-security.yml
+#      Scans DVWA on every push/PR to master
+#
+#   2. Manual dispatch:
+#      Go to Actions → CYRBER Pentest (Manual) → Run workflow
+#      Enter comma-separated targets and select profile
+#
+#   3. Local testing:
+#      python scripts/ci-scan.py \
+#        --target http://localhost:8888 \
+#        --profile CI \
+#        --api-url http://localhost:8000 \
+#        --username admin \
+#        --password cyrber2024
+
+# Scan parameters
+target: "http://localhost:8888"
+profile: "CI"                    # CI | SZCZENIAK | STRAZNIK | CERBER
+
+# Security gate thresholds
+gate:
+  critical: 0                    # Max critical findings (0 = any critical fails)
+  high: 5                        # Max high findings
+
+# CI profile modules (fast, ~3 min, no AI):
+#   - nmap:     Port scan
+#   - nuclei:   Vulnerability templates
+#   - whatweb:  Web fingerprinting
+#   - gobuster: Directory bruteforce
+#   - testssl:  SSL/TLS testing
+#   - zap:      OWASP ZAP active scan
+
+# DefectDojo integration (optional, enterprise)
+# defectdojo:
+#   url: "https://defectdojo.example.com"
+#   engagement: 1
+
+# GitHub Actions secrets required:
+#   CYRBER_PASSWORD          — API password (default: cyrber2024)
+#   DEFECTDOJO_URL           — DefectDojo base URL (optional)
+#   DEFECTDOJO_TOKEN         — DefectDojo API token (optional)
+#   DEFECTDOJO_ENGAGEMENT    — DefectDojo engagement ID (optional)
+#
+# NOT required:
+#   ANTHROPIC_API_KEY        — CI profile skips all AI analysis
