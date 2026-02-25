@@ -742,16 +742,20 @@ var _totalSteps = 52;
 /* ═══════════════════════════════════
    TARGET VALIDATION
    ═══════════════════════════════════ */
-var _domainRe = /^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
-var _ipRe = /^(\d{1,3}\.){3}\d{1,3}$/;
+var _domainRe = /^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(:\d{1,5})?$/;
+var _ipRe = /^(\d{1,3}\.){3}\d{1,3}(:\d{1,5})?$/;
 var _cidrRe = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
+var _hostPortRe = /^[a-zA-Z0-9\-]+(:\d{1,5})?$/;
 
 function validateTarget(val) {
   val = val.trim();
   if (!val) return false;
   if (_domainRe.test(val)) return true;
+  var base = val.split(':')[0];
+  var port = val.split(':')[1];
+  if (port && (parseInt(port) < 1 || parseInt(port) > 65535)) return false;
   if (_ipRe.test(val)) {
-    var parts = val.split('.');
+    var parts = base.split('.');
     return parts.every(function(p) { return parseInt(p) >= 0 && parseInt(p) <= 255; });
   }
   if (_cidrRe.test(val)) {
@@ -761,6 +765,7 @@ function validateTarget(val) {
     var parts2 = sp[0].split('.');
     return parts2.every(function(p) { return parseInt(p) >= 0 && parseInt(p) <= 255; });
   }
+  if (_hostPortRe.test(val)) return true;
   return false;
 }
 
