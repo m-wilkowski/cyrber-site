@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CYRBER — ADMIN</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+
+/* ── LAYOUT ── */
+.wrapper {
+  position: relative;
+  z-index: 1;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--sp-8) var(--content-padding) var(--sp-16);
+}
+
+.page-header {
+  margin-bottom: var(--sp-8);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.page-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-base);
+  letter-spacing: .3em;
+  color: var(--accent);
+  margin-bottom: var(--sp-1);
+}
+
+.page-title-main {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-2xl);
+  font-weight: 900;
+  letter-spacing: .1em;
+  color: var(--text-primary);
+}
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: var(--sp-6);
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-base);
+  letter-spacing: .2em;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--sp-3) var(--sp-6);
+  cursor: pointer;
+  transition: all .2s;
+}
+.tab-btn:hover { color: var(--text-secondary); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── BUTTONS ── */
+.btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-base);
+  letter-spacing: .15em;
+  padding: var(--sp-3) var(--sp-6);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn:hover {
+  background: rgba(74,143,212,.12);
+  color: var(--text-primary);
+}
+.btn-danger {
+  border-color: var(--red);
+  color: var(--red);
+}
+.btn-danger:hover {
+  background: rgba(255,68,68,.12);
+  color: #ff6666;
+}
+
+/* ── TABLE ── */
+.table-wrap {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(12px);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-md);
+}
+
+thead th {
+  text-align: left;
+  padding: var(--sp-4) var(--sp-5);
+  font-size: var(--text-sm);
+  letter-spacing: .2em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: var(--bg-raised);
+}
+
+tbody td {
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border2);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+tbody tr:hover { background: rgba(74,143,212,.04); }
+tbody tr:last-child td { border-bottom: none; }
+
+.td-actions { display: flex; gap: var(--sp-2); align-items: center; }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  letter-spacing: .15em;
+  padding: 4px var(--sp-3);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.badge-admin    { background: rgba(255,68,68,.15); color: var(--red); border: 1px solid rgba(255,68,68,.3); }
+.badge-operator { background: rgba(74,143,212,.15); color: var(--accent2); border: 1px solid rgba(74,143,212,.3); }
+.badge-viewer   { background: rgba(138,155,181,.1); color: var(--text-secondary); border: 1px solid rgba(138,155,181,.2); }
+
+.badge-active   { background: rgba(61,220,132,.12); color: var(--green); border: 1px solid rgba(61,220,132,.3); }
+.badge-inactive { background: rgba(138,155,181,.1); color: var(--text-secondary); border: 1px solid rgba(138,155,181,.2); }
+
+.badge-demo     { background: rgba(245,197,24,.12); color: var(--yellow); border: 1px solid rgba(245,197,24,.3); }
+.badge-expired  { background: rgba(255,68,68,.12); color: var(--red); border: 1px solid rgba(255,68,68,.3); }
+
+/* ── ACTION ICONS ── */
+.act-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: var(--text-md);
+  transition: all .2s;
+  border-radius: var(--radius-sm);
+}
+.act-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(74,143,212,.08); }
+.act-btn.act-danger:hover { color: var(--red); border-color: var(--red); background: rgba(255,68,68,.08); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(4,6,12,.85);
+  backdrop-filter: blur(6px);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 480px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 0;
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(12px);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-6) var(--sp-8) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-md);
+  font-weight: 700;
+  letter-spacing: .15em;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--text-xl);
+  cursor: pointer;
+  padding: var(--sp-1);
+  line-height: 1;
+}
+.modal-close:hover { color: var(--text-primary); }
+
+.modal-body { padding: var(--sp-8); }
+
+.modal-footer {
+  padding: var(--sp-5) var(--sp-8) var(--sp-6);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: flex-end;
+}
+
+/* ── FORM ── */
+.form-group { margin-bottom: var(--sp-4); }
+
+.form-label {
+  display: block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  letter-spacing: .2em;
+  color: var(--accent);
+  margin-bottom: var(--sp-1);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-md);
+  padding: var(--sp-2) var(--sp-3);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.form-select {
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234a8fd4' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--sp-3) center;
+  padding-right: var(--sp-8);
+}
+
+.form-select option { background: var(--bg-base); color: var(--text-primary); }
+
+.form-textarea { resize: vertical; min-height: 60px; }
+
+.form-error {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  color: var(--red);
+  margin-top: var(--sp-1);
+}
+
+/* ── TOAST ── */
+.toast-container {
+  position: fixed;
+  top: 72px;
+  right: var(--sp-6);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.toast {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-base);
+  letter-spacing: .1em;
+  padding: var(--sp-3) var(--sp-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(12px);
+  animation: toastIn .3s ease;
+}
+
+.toast-success { border-color: var(--green); color: var(--green); }
+.toast-error   { border-color: var(--red);   color: var(--red);   }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center;
+  padding: var(--sp-16) var(--sp-5);
+  color: var(--text-secondary);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-md);
+  letter-spacing: .1em;
+}
+
+/* ── STATS ROW ── */
+.stats-row {
+  display: flex;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--sp-7) var(--sp-8);
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(12px);
+}
+
+.stat-num {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-2xl);
+  font-weight: 900;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  letter-spacing: .2em;
+  color: var(--text-muted);
+}
+
+.stat-accent { color: var(--accent); }
+
+/* ── LICENSE PANEL ── */
+.lic-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-5);
+  margin-bottom: var(--sp-6);
+}
+
+.lic-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--sp-7) var(--sp-8);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(12px);
+}
+
+.lic-card-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  letter-spacing: .25em;
+  color: var(--accent);
+  margin-bottom: var(--sp-4);
+}
+
+.lic-row {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border2);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-md);
+}
+
+.lic-row:last-child { border-bottom: none; }
+
+.lic-row-label { color: var(--text-secondary); }
+.lic-row-value { color: var(--text-primary); font-weight: 600; }
+
+.lic-tier-badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-3xl);
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.lic-tier-demo       { color: var(--yellow); }
+.lic-tier-basic      { color: var(--text-secondary); }
+.lic-tier-pro        { color: var(--accent2); }
+.lic-tier-enterprise { color: var(--purple); }
+
+.usage-bar-wrap {
+  margin-top: var(--sp-2);
+  background: var(--input-bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  height: 8px;
+  position: relative;
+}
+
+.usage-bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width .3s;
+}
+
+.usage-bar.warn { background: var(--orange); }
+.usage-bar.full { background: var(--red); }
+
+.profiles-list {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-top: var(--sp-1);
+}
+
+.features-list {
+  display: flex;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+  margin-top: var(--sp-1);
+}
+
+.feat-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  letter-spacing: .1em;
+  padding: 4px var(--sp-3);
+  background: rgba(74,143,212,.08);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+/* ── FOOTER ── */
+.page-footer {
+  margin-top: var(--sp-12);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="/ui"><div class="nav-ring"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2L8 7H4L7 10.5L6 16L11 13L16 16L15 10.5L18 7H14L11 2Z" fill="#4a8fd4" opacity="0.9"/></svg></div>CYRBER<span>AUTONOMOUS RECON</span></a>
+  <div class="nav-links">
+    <a class="nav-link" href="/ui">SCAN</a>
+    <a class="nav-link" href="/dashboard">DASHBOARD</a>
+    <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="/scheduler">SCHEDULER</a>
+    <a class="nav-link" href="/osint">OSINT</a>
+    <a class="nav-link active" href="/admin">ADMIN</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
+  </div>
+</nav>
+
+<div class="wrapper">
+
+  <div class="page-header">
+    <div>
+      <div class="page-title">SYSTEM ADMINISTRATION</div>
+      <div class="page-title-main">ADMIN PANEL</div>
+    </div>
+    <div id="headerActions">
+      <button class="btn" onclick="openCreateModal()">+ ADD USER</button>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('users')">USERS</button>
+    <button class="tab-btn" onclick="switchTab('license')">LICENSE</button>
+    <button class="tab-btn" onclick="switchTab('intel')">INTEL SYNC</button>
+  </div>
+
+  <!-- ═══ USERS TAB ═══ -->
+  <div class="tab-panel active" id="tabUsers">
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card">
+        <div class="stat-num stat-accent" id="statTotal">-</div>
+        <div class="stat-label">TOTAL USERS</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statAdmins" style="color:var(--red)">-</div>
+        <div class="stat-label">ADMINS</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statOperators" style="color:var(--accent)">-</div>
+        <div class="stat-label">OPERATORS</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statViewers" style="color:var(--silver)">-</div>
+        <div class="stat-label">VIEWERS</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>USERNAME</th>
+            <th>EMAIL</th>
+            <th>ROLE</th>
+            <th>STATUS</th>
+            <th>CREATED</th>
+            <th>LAST LOGIN</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody">
+          <tr><td colspan="7" class="empty-state">LOADING...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ═══ LICENSE TAB ═══ -->
+  <div class="tab-panel" id="tabLicense">
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">LICENSE TIER</div>
+          <div class="lic-tier-badge" id="licTier">—</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">STATUS</div>
+          <div id="licStatus">—</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">CUSTOMER</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:var(--text-md)" id="licCustomer">—</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">EXPIRES</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:var(--text-md)" id="licExpires">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lic-grid">
+
+      <div class="lic-card">
+        <div class="lic-card-title">USAGE THIS MONTH</div>
+        <div class="lic-row">
+          <span class="lic-row-label">SCANS</span>
+          <span class="lic-row-value" id="licScansUsage">— / —</span>
+        </div>
+        <div class="usage-bar-wrap"><div class="usage-bar" id="licScansBar" style="width:0"></div></div>
+        <div class="lic-row" style="margin-top:var(--sp-3)">
+          <span class="lic-row-label">USERS</span>
+          <span class="lic-row-value" id="licUsersUsage">— / —</span>
+        </div>
+        <div class="usage-bar-wrap"><div class="usage-bar" id="licUsersBar" style="width:0"></div></div>
+      </div>
+
+      <div class="lic-card">
+        <div class="lic-card-title">LICENSE DETAILS</div>
+        <div class="lic-row">
+          <span class="lic-row-label">LICENSE ID</span>
+          <span class="lic-row-value" id="licId" style="font-size:var(--text-xs)">—</span>
+        </div>
+        <div class="lic-row">
+          <span class="lic-row-label">ISSUED</span>
+          <span class="lic-row-value" id="licIssued">—</span>
+        </div>
+        <div class="lic-row">
+          <span class="lic-row-label">PROFILES</span>
+          <span class="lic-row-value"><span class="profiles-list" id="licProfiles"></span></span>
+        </div>
+        <div class="lic-row">
+          <span class="lic-row-label">FEATURES</span>
+          <span class="lic-row-value"><span class="features-list" id="licFeatures"></span></span>
+        </div>
+      </div>
+
+    </div>
+
+    <button class="btn" onclick="openModal('activateModal')">ACTIVATE LICENSE</button>
+
+  </div>
+
+  <!-- ═══ INTEL SYNC TAB ═══ -->
+  <div class="tab-panel" id="tabIntel">
+
+    <div class="stats-row" id="intelStatsRow">
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">KEV CATALOG</div>
+          <div class="stat-num stat-accent" id="intelKevCount">—</div>
+          <div class="stat-label" style="margin-top:var(--sp-1)" id="intelKevLast">LAST SYNC: —</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">EPSS SCORES</div>
+          <div class="stat-num" id="intelEpssCount" style="color:var(--green)">—</div>
+          <div class="stat-label" style="margin-top:var(--sp-1)" id="intelEpssLast">LAST SYNC: —</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">NVD CVE CACHE</div>
+          <div class="stat-num" id="intelCveCount" style="color:var(--purple)">—</div>
+          <div class="stat-label" style="margin-top:var(--sp-1)" id="intelNvdLast">LAST SYNC: —</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">ATT&CK TECHNIQUES</div>
+          <div class="stat-num" id="intelAttackCount" style="color:var(--teal)">—</div>
+          <div class="stat-label" style="margin-top:var(--sp-1)" id="intelAttackLast">LAST SYNC: —</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">ENISA EUVD</div>
+          <div class="stat-num" id="intelEuvdCount" style="color:var(--amber)">—</div>
+          <div class="stat-label" style="margin-top:var(--sp-1)" id="intelEuvdLast">LAST SYNC: —</div>
+        </div>
+      </div>
+      <div class="stat-card" style="display:flex;align-items:center;justify-content:center">
+        <button class="btn" id="intelSyncBtn" onclick="triggerIntelSync()" style="font-size:var(--text-md);padding:var(--sp-4) var(--sp-7)">SYNC NOW</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>SOURCE</th>
+            <th>STATUS</th>
+            <th>RECORDS</th>
+            <th>DURATION</th>
+            <th>ERROR</th>
+            <th>SYNCED AT</th>
+          </tr>
+        </thead>
+        <tbody id="intelLogsBody">
+          <tr><td colspan="6" class="empty-state">LOADING...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Create/Edit User Modal -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="userModalTitle">CREATE USER</div>
+      <button class="modal-close" onclick="closeModal('userModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editUserId">
+      <div class="form-group">
+        <label class="form-label">USERNAME</label>
+        <input type="text" class="form-input" id="formUsername" placeholder="username" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">EMAIL</label>
+        <input type="email" class="form-input" id="formEmail" placeholder="user@domain.com">
+      </div>
+      <div class="form-group" id="passwordGroup">
+        <label class="form-label">PASSWORD</label>
+        <input type="password" class="form-input" id="formPassword" placeholder="min 8 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">ROLE</label>
+        <select class="form-select" id="formRole">
+          <option value="viewer">VIEWER</option>
+          <option value="operator">OPERATOR</option>
+          <option value="admin">ADMIN</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">NOTES</label>
+        <textarea class="form-textarea" id="formNotes" placeholder="optional notes"></textarea>
+      </div>
+      <div class="form-error" id="userFormError"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('userModal')" style="border-color:var(--silver);color:var(--silver)">CANCEL</button>
+      <button class="btn" id="userModalSubmit" onclick="submitUser()">CREATE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal" style="width:400px">
+    <div class="modal-header">
+      <div class="modal-title">RESET PASSWORD</div>
+      <button class="modal-close" onclick="closeModal('resetModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="resetUserId">
+      <p style="font-family:'Share Tech Mono',monospace;font-size:var(--text-sm);color:var(--silver);margin-bottom:var(--sp-5);letter-spacing:.1em">
+        Reset password for: <strong id="resetUsername" style="color:var(--white)"></strong>
+      </p>
+      <div class="form-group">
+        <label class="form-label">NEW PASSWORD</label>
+        <input type="password" class="form-input" id="resetNewPass" placeholder="min 8 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">CONFIRM PASSWORD</label>
+        <input type="password" class="form-input" id="resetConfirmPass" placeholder="repeat password" autocomplete="new-password">
+      </div>
+      <div class="form-error" id="resetFormError"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('resetModal')" style="border-color:var(--silver);color:var(--silver)">CANCEL</button>
+      <button class="btn" onclick="submitResetPassword()">RESET</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--red)">DELETE USER</div>
+      <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="deleteUserId">
+      <p style="font-family:'Share Tech Mono',monospace;font-size:var(--text-base);color:var(--silver);letter-spacing:.05em">
+        Are you sure you want to permanently delete user
+        <strong id="deleteUsername" style="color:var(--red)"></strong>?
+      </p>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:var(--text-xs);color:var(--silver);margin-top:var(--sp-3);letter-spacing:.05em;opacity:.7">
+        This action cannot be undone.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('deleteModal')" style="border-color:var(--silver);color:var(--silver)">CANCEL</button>
+      <button class="btn btn-danger" onclick="submitDelete()">DELETE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Activate License Modal -->
+<div class="modal-overlay" id="activateModal">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <div class="modal-title">ACTIVATE LICENSE</div>
+      <button class="modal-close" onclick="closeModal('activateModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-family:'Share Tech Mono',monospace;font-size:var(--text-sm);color:var(--silver);margin-bottom:var(--sp-5);letter-spacing:.05em">
+        Paste the license key provided by CYRBER. The key is a single base64-encoded string.
+      </p>
+      <div class="form-group">
+        <label class="form-label">LICENSE KEY</label>
+        <textarea class="form-textarea" id="activateKey" style="min-height:120px;font-size:var(--text-xs)" placeholder="paste license key here..."></textarea>
+      </div>
+      <div class="form-error" id="activateError"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('activateModal')" style="border-color:var(--silver);color:var(--silver)">CANCEL</button>
+      <button class="btn" onclick="submitActivate()">ACTIVATE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOKEN = localStorage.getItem('cyrber_token');
+if (!TOKEN) window.location.href = '/login';
+
+let usersCache = [];
+
+function authFetch(url, opts = {}) {
+  opts.headers = opts.headers || {};
+  opts.headers['Authorization'] = 'Bearer ' + TOKEN;
+  if (opts.body && !opts.headers['Content-Type']) {
+    opts.headers['Content-Type'] = 'application/json';
+  }
+  return fetch(url, opts);
+}
+
+function toast(msg, type = 'success') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US') + ' ' + d.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit'});
+}
+
+function fmtDateShort(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US');
+}
+
+function roleBadge(role) {
+  const cls = { admin: 'badge-admin', operator: 'badge-operator', viewer: 'badge-viewer' };
+  return '<span class="badge ' + (cls[role] || 'badge-viewer') + '">' + (role || 'viewer').toUpperCase() + '</span>';
+}
+
+function statusBadge(active) {
+  return active
+    ? '<span class="badge badge-active">ACTIVE</span>'
+    : '<span class="badge badge-inactive">INACTIVE</span>';
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ── TABS ── */
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('.tab-btn[onclick*="' + name + '"]').classList.add('active');
+  document.getElementById('tab' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+  // Toggle header actions
+  document.getElementById('headerActions').style.display = name === 'users' ? '' : 'none';
+  if (name === 'license') loadLicense();
+  if (name === 'intel') loadIntelStatus();
+}
+
+/* ── USERS ── */
+
+async function loadUsers() {
+  try {
+    const r = await authFetch('/admin/users');
+    if (r.status === 403) {
+      document.getElementById('usersBody').innerHTML =
+        '<tr><td colspan="7" class="empty-state">ACCESS DENIED</td></tr>';
+      return;
+    }
+    const users = await r.json();
+    usersCache = users;
+    updateStats(users);
+    renderTable(users);
+  } catch (e) {
+    document.getElementById('usersBody').innerHTML =
+      '<tr><td colspan="7" class="empty-state">FAILED TO LOAD USERS</td></tr>';
+  }
+}
+
+function updateStats(users) {
+  document.getElementById('statTotal').textContent = users.length;
+  document.getElementById('statAdmins').textContent = users.filter(u => u.role === 'admin').length;
+  document.getElementById('statOperators').textContent = users.filter(u => u.role === 'operator').length;
+  document.getElementById('statViewers').textContent = users.filter(u => u.role === 'viewer').length;
+}
+
+function renderTable(users) {
+  const tbody = document.getElementById('usersBody');
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">NO USERS FOUND</td></tr>';
+    return;
+  }
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td style="font-weight:600">${escHtml(u.username)}</td>
+      <td style="color:var(--silver)">${escHtml(u.email) || '—'}</td>
+      <td>${roleBadge(u.role)}</td>
+      <td>${statusBadge(u.is_active)}</td>
+      <td style="color:var(--silver);font-size:var(--text-sm)">${fmtDate(u.created_at)}</td>
+      <td style="color:var(--silver);font-size:var(--text-sm)">${fmtDate(u.last_login)}</td>
+      <td>
+        <div class="td-actions">
+          <button class="act-btn" onclick="openEditModal(${u.id})" title="Edit user">&#9998;</button>
+          <button class="act-btn" onclick="openResetModal(${u.id},'${escHtml(u.username)}')" title="Reset password">&#128273;</button>
+          <button class="act-btn act-danger" onclick="openDeleteModal(${u.id},'${escHtml(u.username)}')" title="Delete user">&#10005;</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+/* ── LICENSE ── */
+
+async function loadLicense() {
+  try {
+    const r = await authFetch('/license');
+    const lic = await r.json();
+
+    // Tier
+    const tierEl = document.getElementById('licTier');
+    tierEl.textContent = lic.tier.toUpperCase();
+    tierEl.className = 'lic-tier-badge lic-tier-' + lic.tier;
+
+    // Status badge
+    const statusMap = {
+      active:  '<span class="badge badge-active">ACTIVE</span>',
+      expired: '<span class="badge badge-expired">EXPIRED</span>',
+      demo:    '<span class="badge badge-demo">DEMO</span>',
+    };
+    document.getElementById('licStatus').innerHTML = statusMap[lic.status] || statusMap.demo;
+
+    // Info
+    document.getElementById('licCustomer').textContent = lic.customer || '—';
+    document.getElementById('licExpires').textContent = fmtDateShort(lic.expires_at);
+    document.getElementById('licId').textContent = lic.license_id || '—';
+    document.getElementById('licIssued').textContent = fmtDateShort(lic.issued_at);
+
+    // Scans usage
+    const scansUsed = lic.scans_this_month || 0;
+    const scansMax = lic.max_scans_per_month || 0;
+    const scansLabel = scansMax === 0 ? scansUsed + ' / UNLIMITED' : scansUsed + ' / ' + scansMax;
+    document.getElementById('licScansUsage').textContent = scansLabel;
+    const scansPct = scansMax === 0 ? 0 : Math.min(100, (scansUsed / scansMax) * 100);
+    const scansBar = document.getElementById('licScansBar');
+    scansBar.style.width = (scansMax === 0 ? 0 : scansPct) + '%';
+    scansBar.className = 'usage-bar' + (scansPct >= 100 ? ' full' : scansPct >= 80 ? ' warn' : '');
+
+    // Users usage
+    const usersUsed = lic.active_users || 0;
+    const usersMax = lic.max_users || 0;
+    const usersLabel = usersMax === 0 ? usersUsed + ' / UNLIMITED' : usersUsed + ' / ' + usersMax;
+    document.getElementById('licUsersUsage').textContent = usersLabel;
+    const usersPct = usersMax === 0 ? 0 : Math.min(100, (usersUsed / usersMax) * 100);
+    const usersBar = document.getElementById('licUsersBar');
+    usersBar.style.width = (usersMax === 0 ? 0 : usersPct) + '%';
+    usersBar.className = 'usage-bar' + (usersPct >= 100 ? ' full' : usersPct >= 80 ? ' warn' : '');
+
+    // Profiles
+    const profHtml = (lic.allowed_profiles || []).map(p =>
+      '<span class="badge badge-operator">' + escHtml(p) + '</span>').join(' ');
+    document.getElementById('licProfiles').innerHTML = profHtml;
+
+    // Features
+    const featHtml = (lic.features || []).map(f =>
+      '<span class="feat-tag">' + escHtml(f) + '</span>').join('');
+    document.getElementById('licFeatures').innerHTML = featHtml;
+
+  } catch (e) {
+    document.getElementById('licTier').textContent = 'ERROR';
+  }
+}
+
+async function submitActivate() {
+  const errEl = document.getElementById('activateError');
+  errEl.textContent = '';
+  const key = document.getElementById('activateKey').value.trim();
+  if (!key) { errEl.textContent = 'License key is required'; return; }
+  try {
+    const r = await authFetch('/license/activate', { method: 'POST', body: JSON.stringify({ key: key }) });
+    const data = await r.json();
+    if (!r.ok || data.ok === false) {
+      errEl.textContent = data.error || data.detail || 'Activation failed';
+      return;
+    }
+    toast('License activated: ' + (data.license?.tier || '').toUpperCase());
+    closeModal('activateModal');
+    document.getElementById('activateKey').value = '';
+    loadLicense();
+  } catch (e) { errEl.textContent = 'Network error'; }
+}
+
+/* ── USER MODALS ── */
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function openCreateModal() {
+  document.getElementById('userModalTitle').textContent = 'CREATE USER';
+  document.getElementById('userModalSubmit').textContent = 'CREATE';
+  document.getElementById('editUserId').value = '';
+  document.getElementById('formUsername').value = '';
+  document.getElementById('formUsername').disabled = false;
+  document.getElementById('formEmail').value = '';
+  document.getElementById('formPassword').value = '';
+  document.getElementById('formRole').value = 'viewer';
+  document.getElementById('formNotes').value = '';
+  document.getElementById('passwordGroup').style.display = '';
+  document.getElementById('userFormError').textContent = '';
+  openModal('userModal');
+}
+
+function openEditModal(id) {
+  const u = usersCache.find(x => x.id === id);
+  if (!u) return;
+  document.getElementById('userModalTitle').textContent = 'EDIT USER';
+  document.getElementById('userModalSubmit').textContent = 'SAVE';
+  document.getElementById('editUserId').value = id;
+  document.getElementById('formUsername').value = u.username;
+  document.getElementById('formUsername').disabled = true;
+  document.getElementById('formEmail').value = u.email || '';
+  document.getElementById('formPassword').value = '';
+  document.getElementById('formRole').value = u.role;
+  document.getElementById('formNotes').value = u.notes || '';
+  document.getElementById('passwordGroup').style.display = 'none';
+  document.getElementById('userFormError').textContent = '';
+  openModal('userModal');
+}
+
+function openResetModal(id, username) {
+  document.getElementById('resetUserId').value = id;
+  document.getElementById('resetUsername').textContent = username;
+  document.getElementById('resetNewPass').value = '';
+  document.getElementById('resetConfirmPass').value = '';
+  document.getElementById('resetFormError').textContent = '';
+  openModal('resetModal');
+}
+
+function openDeleteModal(id, username) {
+  document.getElementById('deleteUserId').value = id;
+  document.getElementById('deleteUsername').textContent = username;
+  openModal('deleteModal');
+}
+
+/* ── USER SUBMIT HANDLERS ── */
+
+async function submitUser() {
+  const errEl = document.getElementById('userFormError');
+  errEl.textContent = '';
+  const id = document.getElementById('editUserId').value;
+  const isEdit = !!id;
+
+  if (isEdit) {
+    const body = {
+      role: document.getElementById('formRole').value,
+      email: document.getElementById('formEmail').value || null,
+      notes: document.getElementById('formNotes').value || null,
+    };
+    try {
+      const r = await authFetch('/admin/users/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      const data = await r.json();
+      if (!r.ok) { errEl.textContent = data.detail || 'Error'; return; }
+      toast('User updated: ' + data.username);
+      closeModal('userModal');
+      loadUsers();
+    } catch (e) { errEl.textContent = 'Network error'; }
+  } else {
+    const username = document.getElementById('formUsername').value.trim();
+    const password = document.getElementById('formPassword').value;
+    if (!username) { errEl.textContent = 'Username is required'; return; }
+    if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters'; return; }
+    const body = {
+      username: username,
+      password: password,
+      role: document.getElementById('formRole').value,
+      email: document.getElementById('formEmail').value || null,
+      notes: document.getElementById('formNotes').value || null,
+    };
+    try {
+      const r = await authFetch('/admin/users', { method: 'POST', body: JSON.stringify(body) });
+      const data = await r.json();
+      if (!r.ok) { errEl.textContent = data.detail || 'Error'; return; }
+      toast('User created: ' + data.username);
+      closeModal('userModal');
+      loadUsers();
+    } catch (e) { errEl.textContent = 'Network error'; }
+  }
+}
+
+async function submitResetPassword() {
+  const errEl = document.getElementById('resetFormError');
+  errEl.textContent = '';
+  const id = document.getElementById('resetUserId').value;
+  const pass = document.getElementById('resetNewPass').value;
+  const confirm = document.getElementById('resetConfirmPass').value;
+  if (pass.length < 8) { errEl.textContent = 'Password must be at least 8 characters'; return; }
+  if (pass !== confirm) { errEl.textContent = 'Passwords do not match'; return; }
+  try {
+    const r = await authFetch('/admin/users/' + id + '/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ new_password: pass }),
+    });
+    const data = await r.json();
+    if (!r.ok) { errEl.textContent = data.detail || 'Error'; return; }
+    toast('Password reset for: ' + data.username);
+    closeModal('resetModal');
+  } catch (e) { errEl.textContent = 'Network error'; }
+}
+
+async function submitDelete() {
+  const id = document.getElementById('deleteUserId').value;
+  try {
+    const r = await authFetch('/admin/users/' + id, { method: 'DELETE' });
+    const data = await r.json();
+    if (!r.ok) { toast(data.detail || 'Error', 'error'); closeModal('deleteModal'); return; }
+    toast('User deleted');
+    closeModal('deleteModal');
+    loadUsers();
+  } catch (e) { toast('Network error', 'error'); closeModal('deleteModal'); }
+}
+
+/* ── INIT ── */
+
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+});
+
+/* ── INTEL SYNC ── */
+
+let _intelRefreshTimer = null;
+
+async function loadIntelStatus() {
+  try {
+    const r = await authFetch('/admin/intel-sync/status');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+
+    // Counts
+    document.getElementById('intelKevCount').textContent = data.counts.kev || 0;
+    document.getElementById('intelEpssCount').textContent = data.counts.epss || 0;
+    document.getElementById('intelCveCount').textContent = data.counts.cve || 0;
+    document.getElementById('intelAttackCount').textContent = data.counts.attack_techniques || 0;
+    document.getElementById('intelEuvdCount').textContent = data.counts.euvd || 0;
+
+    // Last sync per source
+    document.getElementById('intelKevLast').textContent = 'LAST SYNC: ' + (data.last_sync.KEV ? fmtDate(data.last_sync.KEV) : '—');
+    document.getElementById('intelEpssLast').textContent = 'LAST SYNC: ' + (data.last_sync.EPSS ? fmtDate(data.last_sync.EPSS) : '—');
+    document.getElementById('intelNvdLast').textContent = 'LAST SYNC: ' + (data.last_sync.NVD ? fmtDate(data.last_sync.NVD) : '—');
+    document.getElementById('intelAttackLast').textContent = 'LAST SYNC: ' + (data.last_sync['ATT&CK'] ? fmtDate(data.last_sync['ATT&CK']) : '—');
+    document.getElementById('intelEuvdLast').textContent = 'LAST SYNC: ' + (data.last_sync.EUVD ? fmtDate(data.last_sync.EUVD) : '—');
+
+    // Logs table
+    const tbody = document.getElementById('intelLogsBody');
+    if (!data.logs.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">NO SYNC HISTORY</td></tr>';
+    } else {
+      tbody.innerHTML = data.logs.map(l => {
+        const statusColor = l.status === 'success' ? 'var(--green)' : 'var(--red)';
+        const statusBadge = '<span class="badge" style="background:' +
+          (l.status === 'success' ? 'rgba(61,220,132,.12);color:var(--green);border:1px solid rgba(61,220,132,.3)' : 'rgba(255,68,68,.12);color:var(--red);border:1px solid rgba(255,68,68,.3)') +
+          '">' + (l.status || '').toUpperCase() + '</span>';
+        return '<tr>' +
+          '<td style="font-weight:600">' + escHtml(l.source) + '</td>' +
+          '<td>' + statusBadge + '</td>' +
+          '<td>' + (l.records_updated != null ? l.records_updated : '—') + '</td>' +
+          '<td>' + (l.duration_seconds != null ? l.duration_seconds + 's' : '—') + '</td>' +
+          '<td style="color:var(--red);font-size:var(--text-xs);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(l.error_message || '') + '">' + escHtml(l.error_message || '—') + '</td>' +
+          '<td style="color:var(--silver);font-size:var(--text-sm)">' + fmtDate(l.synced_at) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    // Check if sync is running (last entry within 30s and status is not yet set)
+    // Auto-refresh every 10s when panel is active
+    stopIntelRefresh();
+    const tabIntel = document.getElementById('tabIntel');
+    if (tabIntel && tabIntel.classList.contains('active')) {
+      _intelRefreshTimer = setTimeout(loadIntelStatus, 10000);
+    }
+  } catch (e) {
+    document.getElementById('intelLogsBody').innerHTML =
+      '<tr><td colspan="6" class="empty-state">FAILED TO LOAD: ' + escHtml(e.message) + '</td></tr>';
+  }
+}
+
+function stopIntelRefresh() {
+  if (_intelRefreshTimer) {
+    clearTimeout(_intelRefreshTimer);
+    _intelRefreshTimer = null;
+  }
+}
+
+async function triggerIntelSync() {
+  const btn = document.getElementById('intelSyncBtn');
+  btn.disabled = true;
+  btn.textContent = 'SYNCING...';
+  try {
+    const r = await authFetch('/admin/intel-sync/run', { method: 'POST' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    toast('Synchronizacja uruchomiona (task: ' + (data.task_id || '').substring(0, 8) + '...)');
+    btn.textContent = 'SYNC STARTED';
+    // Start auto-refresh
+    setTimeout(loadIntelStatus, 3000);
+    setTimeout(() => { btn.disabled = false; btn.textContent = 'SYNC NOW'; }, 5000);
+  } catch (e) {
+    toast('Sync failed: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'SYNC NOW';
+  }
+}
+
+authFetch('/auth/me').then(r => r.json()).then(me => {
+  if (me.role !== 'admin') {
+    document.querySelector('.wrapper').innerHTML =
+      '<div class="empty-state" style="padding:100px 20px">ACCESS DENIED<br><span style="font-size:var(--text-xs);opacity:.5">Admin role required</span></div>';
+    return;
+  }
+  loadUsers();
+}).catch(() => {
+  window.location.href = '/login';
+});
+</script>
+
+</body>
+</html>

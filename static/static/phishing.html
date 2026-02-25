@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYRBER — Phishing</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  /* ── LAYOUT ── */
+  .wrapper {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: var(--sp-8) var(--content-padding) var(--sp-16);
+    position: relative;
+    z-index: 1;
+  }
+
+  .page-header {
+    margin-bottom: var(--sp-8);
+  }
+
+  .page-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: var(--text-base);
+    letter-spacing: .3em;
+    color: var(--accent);
+    margin-bottom: var(--sp-2);
+  }
+
+  .page-title-main {
+    font-family: 'Orbitron', sans-serif;
+    font-size: var(--text-2xl);
+    font-weight: 900;
+    letter-spacing: .1em;
+    color: var(--text-primary);
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--card-bg);
+    border: var(--card-border);
+    border-radius: var(--radius-md);
+    padding: var(--sp-7) var(--sp-8);
+    margin-bottom: var(--sp-6);
+    box-shadow: var(--card-shadow);
+    backdrop-filter: blur(12px);
+  }
+  .card h2 {
+    font-size: var(--text-base);
+    letter-spacing: .2em;
+    color: var(--text-secondary);
+    margin-bottom: var(--sp-5);
+  }
+
+  .form-row { display: flex; gap: var(--sp-3); align-items: flex-end; flex-wrap: wrap; }
+  .form-group { display: flex; flex-direction: column; gap: var(--sp-2); flex: 1; min-width: 200px; }
+  label { font-size: var(--text-sm); letter-spacing: .15em; color: var(--text-secondary); }
+
+  input, textarea {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-md);
+    padding: var(--sp-3) var(--sp-4);
+    outline: none;
+    width: 100%;
+    resize: vertical;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted); }
+  textarea { min-height: 80px; }
+
+  .btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-base);
+    letter-spacing: .12em;
+    border-radius: var(--radius-sm);
+    padding: var(--sp-3) var(--sp-6);
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .2s;
+  }
+  .btn:hover { background: var(--accent-muted); }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--btn-primary-bg);
+    color: #fff; font-family: 'Orbitron', monospace;
+    font-weight: 700; letter-spacing: .22em; padding: var(--sp-3) var(--sp-8);
+    border: 1px solid rgba(74,143,212,.3);
+    position: relative; overflow: hidden;
+  }
+  .btn-primary::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(74,143,212,.25), transparent);
+    transform: translateX(-120%); transition: transform .45s;
+  }
+  .btn-primary:hover:not(:disabled)::after { transform: translateX(120%); }
+  .btn-primary:hover:not(:disabled) { background: var(--btn-primary-hover); box-shadow: 0 0 24px var(--glow); }
+  .btn-danger { border-color: var(--red); color: var(--red); }
+  .btn-danger:hover { background: rgba(255,68,68,.1); }
+  .btn-launch { border-color: var(--green); color: var(--green); }
+  .btn-launch:hover:not(:disabled) { background: rgba(61,220,132,.15); }
+
+  .msg { font-size: var(--text-base); padding: var(--sp-3) var(--sp-4); margin-top: var(--sp-3); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); background: var(--accent-muted); }
+  .msg.error { border-color: var(--red); background: rgba(255,68,68,.08); color: var(--red); }
+  .msg.warn { border-color: var(--orange); background: rgba(255,140,0,.08); color: var(--orange); }
+
+  /* ── CONSENT ── */
+  .consent {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    margin: var(--sp-4) 0 var(--sp-3);
+    padding: var(--sp-4);
+    border: 1px solid var(--orange);
+    border-radius: var(--radius-sm);
+    background: rgba(255,140,0,.06);
+  }
+  .consent input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: var(--orange);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .consent label {
+    color: var(--orange);
+    font-size: var(--text-base);
+    letter-spacing: .05em;
+    cursor: pointer;
+    line-height: 1.5;
+  }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; font-size: var(--text-base); }
+  th { text-align: left; font-size: var(--text-sm); letter-spacing: .15em; color: var(--text-muted); padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border); }
+  td { padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:hover td { background: var(--accent-muted); }
+
+  .badge { display: inline-block; font-size: var(--text-sm); letter-spacing: .08em; padding: 4px var(--sp-3); border-radius: var(--radius-sm); border: 1px solid; }
+  .badge-active { border-color: var(--green); color: var(--green); background: rgba(61,220,132,.08); }
+  .badge-completed { border-color: var(--accent); color: var(--accent); background: var(--accent-muted); }
+  .badge-draft { border-color: var(--text-muted); color: var(--text-muted); }
+
+  .empty { color: var(--text-secondary); font-size: var(--text-base); text-align: center; padding: var(--sp-8); }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-4);
+  }
+  .stat-box {
+    background: var(--card-bg);
+    border: var(--card-border);
+    border-radius: var(--radius-md);
+    padding: var(--sp-4);
+    text-align: center;
+    box-shadow: var(--card-shadow);
+    backdrop-filter: blur(12px);
+  }
+  .stat-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: var(--text-2xl);
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: var(--sp-1);
+  }
+  .stat-lbl {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-sm);
+    letter-spacing: .2em;
+    color: var(--text-muted);
+  }
+
+  /* ── RESULTS DETAIL ── */
+  .result-panel {
+    display: none;
+  }
+  .result-panel.on {
+    display: block;
+    animation: fadeup .35s ease;
+  }
+  @keyframes fadeup { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  .event-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+    border-bottom: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-base);
+  }
+  .event-row:hover { background: var(--accent-muted); }
+  .event-icon { font-size: var(--text-md); flex-shrink: 0; width: 20px; text-align: center; }
+  .event-email { color: var(--text-primary); flex: 1; }
+  .event-time { color: var(--text-secondary); font-size: var(--text-sm); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    margin-top: var(--sp-12);
+    padding-top: var(--sp-5);
+    border-top: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    letter-spacing: .22em;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .form-row { flex-direction: column; }
+    .form-group { min-width: 100%; }
+    .btn { width: 100%; text-align: center; }
+    .page-title-main { font-size: var(--text-xl); }
+  }
+
+  @media (max-width: 480px) {
+    .wrapper { padding: var(--sp-4) var(--sp-3) var(--sp-8); }
+    .card { padding: var(--sp-4); }
+    .page-title-main { font-size: var(--text-lg); }
+    footer { font-size: var(--text-xs); }
+    .stat-val { font-size: var(--text-xl); }
+  }
+
+  /* ── WIZARD ── */
+  .wiz-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: var(--sp-8);
+    flex-wrap: wrap;
+  }
+  .wiz-step {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    cursor: pointer;
+    opacity: .45;
+    transition: opacity .2s;
+  }
+  .wiz-step.active { opacity: 1; }
+  .wiz-step.done { opacity: .75; }
+  .wiz-step-dot {
+    width: 8px; height: 8px;
+    border-radius: var(--radius-full);
+    background: var(--text-secondary);
+    transition: all .2s;
+  }
+  .wiz-step.active .wiz-step-dot {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--glow);
+  }
+  .wiz-step.done .wiz-step-dot {
+    background: var(--green);
+  }
+  .wiz-step-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-sm);
+    letter-spacing: .12em;
+    color: var(--text-secondary);
+  }
+  .wiz-step.active .wiz-step-label { color: var(--accent); }
+  .wiz-step.done .wiz-step-label { color: var(--green); }
+  .wiz-step-line {
+    width: 20px; height: 1px;
+    background: var(--border);
+    margin: 0 var(--sp-2);
+  }
+
+  .wiz-panel { display: none; animation: fadeup .35s ease; }
+  .wiz-panel.on { display: block; }
+
+  .wiz-nav {
+    display: flex;
+    gap: var(--sp-3);
+    margin-top: var(--sp-5);
+    justify-content: flex-end;
+  }
+
+  .recon-intel { margin-top: var(--sp-4); }
+  .recon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--sp-3);
+  }
+  .recon-box {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--sp-3);
+  }
+  .recon-box-label {
+    font-size: var(--text-sm);
+    letter-spacing: .15em;
+    color: var(--text-muted);
+    margin-bottom: var(--sp-2);
+  }
+  .recon-box-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-base);
+    color: var(--text-primary);
+    word-break: break-all;
+  }
+
+  .vector-cards {
+    display: flex;
+    gap: var(--sp-4);
+    flex-wrap: wrap;
+  }
+  .vector-card {
+    flex: 1;
+    min-width: 220px;
+    background: var(--input-bg);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--sp-5);
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .vector-card:hover { border-color: var(--accent); }
+  .vector-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-muted);
+    box-shadow: 0 0 16px var(--glow);
+  }
+  .vector-card-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: var(--text-md);
+    font-weight: 700;
+    letter-spacing: .1em;
+    margin-bottom: var(--sp-2);
+  }
+  .vector-card-desc {
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .vector-card-status {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-top: var(--sp-3);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-sm);
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .status-dot.online { background: var(--green); box-shadow: 0 0 6px rgba(61,220,132,.5); }
+  .status-dot.offline { background: var(--red); }
+
+  .btn-ai {
+    border-color: var(--purple);
+    color: var(--purple);
+  }
+  .btn-ai:hover { background: rgba(155,89,182,.15); }
+  .btn-ai.loading {
+    pointer-events: none;
+    opacity: .7;
+  }
+  .btn-ai.loading::after {
+    content: '';
+    animation: aidots 1.2s infinite;
+  }
+  @keyframes aidots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+  }
+
+  .phishlet-select { display: none; margin-top: var(--sp-3); }
+  .phishlet-select.on { display: block; }
+
+  .review-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-base);
+  }
+  .review-table td {
+    padding: var(--sp-4) var(--sp-5);
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .review-table td:first-child {
+    font-size: var(--text-sm);
+    letter-spacing: .12em;
+    color: var(--text-muted);
+    width: 140px;
+    white-space: nowrap;
+  }
+  .review-table td:last-child {
+    color: var(--text-primary);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-base);
+    word-break: break-all;
+  }
+
+  select {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-md);
+    padding: var(--sp-3) var(--sp-4);
+    outline: none;
+    width: 100%;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted); }
+</style>
+</head>
+<body>
+<nav>
+  <a class="nav-brand" href="/ui"><div class="nav-ring"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2L8 7H4L7 10.5L6 16L11 13L16 16L15 10.5L18 7H14L11 2Z" fill="#4a8fd4" opacity="0.9"/></svg></div>CYRBER<span>AUTONOMOUS RECON</span></a>
+  <div class="nav-links">
+    <a class="nav-link" href="/ui">SCAN</a>
+    <a class="nav-link" href="/dashboard">DASHBOARD</a>
+    <a class="nav-link active" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="/scheduler">SCHEDULER</a>
+    <a class="nav-link" href="/osint">OSINT</a>
+    <a class="nav-link" href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
+  </div>
+</nav>
+
+<div class="wrapper">
+  <div class="page-header">
+    <div class="page-title">SOCIAL ENGINEERING</div>
+    <div class="page-title-main">PHISHING CAMPAIGNS</div>
+  </div>
+
+  <!-- NEW CAMPAIGN — WIZARD -->
+  <div class="card">
+    <h2>// NEW CAMPAIGN</h2>
+
+    <!-- Step indicators -->
+    <div class="wiz-steps">
+      <div class="wiz-step active" data-step="1" onclick="wizGotoStep(1)">
+        <div class="wiz-step-dot"></div>
+        <div class="wiz-step-label">RECON DATA</div>
+      </div>
+      <div class="wiz-step-line"></div>
+      <div class="wiz-step" data-step="2" onclick="wizGotoStep(2)">
+        <div class="wiz-step-dot"></div>
+        <div class="wiz-step-label">ATTACK VECTOR</div>
+      </div>
+      <div class="wiz-step-line"></div>
+      <div class="wiz-step" data-step="3" onclick="wizGotoStep(3)">
+        <div class="wiz-step-dot"></div>
+        <div class="wiz-step-label">CAMPAIGN</div>
+      </div>
+      <div class="wiz-step-line"></div>
+      <div class="wiz-step" data-step="4" onclick="wizGotoStep(4)">
+        <div class="wiz-step-dot"></div>
+        <div class="wiz-step-label">REVIEW &amp; LAUNCH</div>
+      </div>
+    </div>
+
+    <!-- Step 1: RECON DATA -->
+    <div class="wiz-panel on" id="wizStep1">
+      <div class="form-group" style="margin-bottom:12px">
+        <label>SELECT RECON SCAN</label>
+        <select id="wizScanSelect">
+          <option value="">-- None (skip recon) --</option>
+        </select>
+      </div>
+      <div class="recon-intel" id="wizReconIntel" style="display:none">
+        <div class="recon-grid" id="reconGrid"></div>
+      </div>
+      <div class="wiz-nav">
+        <button class="btn" onclick="wizNext(1)">NEXT &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 2: ATTACK VECTOR -->
+    <div class="wiz-panel" id="wizStep2">
+      <div class="vector-cards">
+        <div class="vector-card selected" id="vecGophish" onclick="wizSelectVector('gophish')">
+          <div class="vector-card-title">GOPHISH</div>
+          <div class="vector-card-desc">Classic email phishing with open, click, and submitted data tracking. Full REST API integration.</div>
+          <div class="vector-card-status">
+            <span class="status-dot offline" id="gophishDot"></span>
+            <span id="gophishStatus">CHECKING...</span>
+          </div>
+        </div>
+        <div class="vector-card" id="vecEvilginx" onclick="wizSelectVector('evilginx')">
+          <div class="vector-card-title">EVILGINX2</div>
+          <div class="vector-card-desc">Man-in-the-middle reverse proxy intercepting sessions and MFA tokens in real time.</div>
+          <div class="vector-card-status">
+            <span class="status-dot offline" id="evilginxDot"></span>
+            <span id="evilginxStatus">CHECKING...</span>
+          </div>
+        </div>
+      </div>
+      <div class="phishlet-select" id="phishletSection">
+        <div class="form-group" style="margin-top:12px">
+          <label>PHISHLET</label>
+          <select id="wizPhishletSelect">
+            <option value="">-- Select phishlet --</option>
+          </select>
+        </div>
+      </div>
+      <div class="wiz-nav">
+        <button class="btn" onclick="wizBack(2)">&larr; BACK</button>
+        <button class="btn" onclick="wizNext(2)">NEXT &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 3: CAMPAIGN -->
+    <div class="wiz-panel" id="wizStep3">
+      <!-- GoPhish fields -->
+      <div id="gophishFields">
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>CAMPAIGN NAME</label>
+            <input type="text" id="campName" placeholder="Q1 2026 Awareness Test">
+          </div>
+          <div class="form-group">
+            <label>SENDER DOMAIN</label>
+            <input type="text" id="campDomain" placeholder="security-test.example.com">
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-bottom:12px;align-items:flex-end">
+          <div class="form-group">
+            <label>EMAIL TEMPLATE (SUBJECT)</label>
+            <input type="text" id="campSubject" placeholder="Urgent: Reset your corporate account password">
+          </div>
+          <button class="btn btn-ai" id="aiGenBtn" onclick="wizAiGenerate()">AI GENERATE</button>
+        </div>
+
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>EMAIL BODY (HTML)</label>
+            <textarea id="campBody" placeholder="<p>Dear employee,</p><p>We detected suspicious activity on your account. Click <a href='{{.URL}}'>here</a> to verify your identity.</p>"></textarea>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>LANDING PAGE URL</label>
+            <input type="text" id="campLanding" placeholder="https://security-test.example.com/verify">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:12px">
+          <label>RECIPIENTS (one email per line)</label>
+          <textarea id="campTargets" placeholder="john.doe@company.com&#10;jane.smith@company.com&#10;bob.wilson@company.com" style="min-height:100px"></textarea>
+        </div>
+
+        <div id="wizAiMsg"></div>
+      </div>
+
+      <!-- Evilginx fields -->
+      <div id="evilginxFields" style="display:none">
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>CAMPAIGN NAME</label>
+            <input type="text" id="evilCampName" placeholder="Evilginx MFA Bypass Test">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>PHISHLET</label>
+            <input type="text" id="evilPhishlet" readonly placeholder="Select in Step 2">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>LURE URL</label>
+            <input type="text" id="evilLureUrl" placeholder="https://login.example-corp.com">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>REDIRECT URL (after capture)</label>
+            <input type="text" id="evilRedirectUrl" placeholder="https://real-login.example.com">
+          </div>
+        </div>
+        <div class="msg warn">Evilginx2 does not have a full REST API — configuration requires CLI access. Settings here serve as a template.</div>
+      </div>
+
+      <div class="wiz-nav">
+        <button class="btn" onclick="wizBack(3)">&larr; BACK</button>
+        <button class="btn" onclick="wizNext(3)">NEXT &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 4: REVIEW & LAUNCH -->
+    <div class="wiz-panel" id="wizStep4">
+      <table class="review-table" id="reviewTable"></table>
+
+      <div class="consent">
+        <input type="checkbox" id="consentCheck">
+        <label for="consentCheck">I confirm that I have written authorization to conduct social engineering testing against the listed recipients. This campaign is conducted solely for educational / audit purposes on behalf of an authorized organization.</label>
+      </div>
+
+      <div class="wiz-nav">
+        <button class="btn" onclick="wizBack(4)">&larr; BACK</button>
+        <button class="btn btn-primary" id="launchBtn" onclick="launchCampaign()" disabled>LAUNCH CAMPAIGN</button>
+      </div>
+
+      <div id="msg"></div>
+    </div>
+  </div>
+
+  <!-- ACTIVE CAMPAIGNS -->
+  <div class="card">
+    <h2>// CAMPAIGNS</h2>
+    <div id="campaigns-list"><div class="empty">Loading...</div></div>
+  </div>
+
+  <!-- CAMPAIGN RESULTS (shown on click) -->
+  <div class="card result-panel" id="resultPanel">
+    <h2 id="resultTitle">// CAMPAIGN RESULTS</h2>
+    <div class="stats-row" id="resultStats"></div>
+    <div id="resultEvents"><div class="empty">No events</div></div>
+  </div>
+
+  <footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.1.0</footer>
+</div>
+
+<script>
+var API = '';
+
+// ── JWT Auth ──
+function getToken() { return localStorage.getItem('cyrber_token'); }
+if (!getToken()) window.location.href = '/login';
+
+function authHeaders(extra) {
+  var token = getToken();
+  if (!token) { window.location.href = '/login'; return {}; }
+  var h = {'Authorization': 'Bearer ' + token};
+  if (extra) Object.keys(extra).forEach(function(k){ h[k] = extra[k]; });
+  return h;
+}
+
+async function authFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = authHeaders(opts.headers || {});
+  var r = await fetch(url, opts);
+  if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
+  return r;
+}
+
+// ── load campaigns ──
+async function fetchCampaigns() {
+  try {
+    var r = await authFetch('/phishing/campaigns');
+    var data = await r.json();
+    renderCampaigns(data);
+  } catch(e) {
+    document.getElementById('campaigns-list').innerHTML = '<div class="empty">Error loading campaigns</div>';
+  }
+}
+
+function renderCampaigns(campaigns) {
+  var el = document.getElementById('campaigns-list');
+  if (!campaigns || !campaigns.length) {
+    el.innerHTML = '<div class="empty">No campaigns</div>';
+    return;
+  }
+  var html = '<table><thead><tr><th>NAME</th><th>STATUS</th><th>SENT</th><th>OPENED</th><th>CLICKED</th><th>CREDENTIALS</th><th>DATE</th><th></th></tr></thead><tbody>';
+  campaigns.forEach(function(c) {
+    var st = (c.status || 'unknown').toLowerCase();
+    var badgeCls = st === 'completed' ? 'badge-completed' : (st === 'sending' || st === 'in progress' ? 'badge-active' : 'badge-draft');
+    var stats = c.stats || {};
+    var date = c.created_date ? c.created_date.replace('T',' ').slice(0,16) : '—';
+    html += '<tr>';
+    html += '<td style="color:var(--white)">' + (c.name || '—') + '</td>';
+    html += '<td><span class="badge ' + badgeCls + '">' + (c.status || 'N/A').toUpperCase() + '</span></td>';
+    html += '<td>' + (stats.sent || 0) + '</td>';
+    html += '<td>' + (stats.opened || 0) + '</td>';
+    html += '<td>' + (stats.clicked || 0) + '</td>';
+    html += '<td style="color:' + ((stats.submitted_data||0) > 0 ? 'var(--red)' : 'var(--silver)') + '">' + (stats.submitted_data || 0) + '</td>';
+    html += '<td>' + date + '</td>';
+    html += '<td style="white-space:nowrap"><button class="btn" onclick="viewResults(' + c.id + ')" style="margin-right:6px">RESULTS</button><button class="btn btn-danger" onclick="deleteCampaign(' + c.id + ')">DELETE</button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+// ── launch campaign ──
+async function launchCampaign() {
+  var consent = document.getElementById('consentCheck').checked;
+  if (!consent) { showMsg('Authorization consent is required', true); return; }
+
+  var isEvilginx = wizState.vector === 'evilginx';
+
+  if (isEvilginx) {
+    // Evilginx campaign launch
+    var eName = document.getElementById('evilCampName').value.trim();
+    var ePhishlet = document.getElementById('evilPhishlet').value.trim();
+    var eLure = document.getElementById('evilLureUrl').value.trim();
+    var eRedirect = document.getElementById('evilRedirectUrl').value.trim();
+
+    if (!eName) { showMsg('Campaign name is required', true); return; }
+    if (!ePhishlet) { showMsg('Phishlet selection is required', true); return; }
+    if (!eLure) { showMsg('Lure URL is required', true); return; }
+
+    document.getElementById('launchBtn').disabled = true;
+
+    try {
+      var r = await authFetch('/evilginx/lures', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          name: eName,
+          phishlet: ePhishlet,
+          lure_url: eLure,
+          redirect_url: eRedirect
+        })
+      });
+      if (r.ok) {
+        showMsg('Evilginx campaign "' + eName + '" configured — deploy via Evilginx CLI');
+        document.getElementById('consentCheck').checked = false;
+        document.getElementById('launchBtn').disabled = true;
+      } else {
+        var err = await r.json().catch(function(){ return {}; });
+        showMsg(err.detail || 'Error configuring Evilginx campaign', true);
+        document.getElementById('launchBtn').disabled = !document.getElementById('consentCheck').checked;
+      }
+    } catch(e) {
+      showMsg('Connection error: ' + e.message, true);
+      document.getElementById('launchBtn').disabled = !document.getElementById('consentCheck').checked;
+    }
+    return;
+  }
+
+  // GoPhish campaign launch
+  var name = document.getElementById('campName').value.trim();
+  var domain = document.getElementById('campDomain').value.trim();
+  var subject = document.getElementById('campSubject').value.trim();
+  var body = document.getElementById('campBody').value.trim();
+  var landing = document.getElementById('campLanding').value.trim();
+  var rawTargets = document.getElementById('campTargets').value.trim();
+
+  if (!name) { showMsg('Campaign name is required', true); return; }
+  if (!domain) { showMsg('Sender domain is required', true); return; }
+  if (!subject) { showMsg('Email subject is required', true); return; }
+  if (!body) { showMsg('Email body is required', true); return; }
+  if (!rawTargets) { showMsg('Recipient list is required', true); return; }
+
+  var targets = rawTargets.split('\n').map(function(e){ return e.trim(); }).filter(function(e){ return e.length > 0 && e.includes('@'); });
+  if (!targets.length) { showMsg('No valid email addresses found', true); return; }
+
+  document.getElementById('launchBtn').disabled = true;
+
+  try {
+    var r = await authFetch('/phishing/campaigns', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name: name,
+        domain: domain,
+        subject: subject,
+        email_body: body,
+        landing_url: landing,
+        targets: targets
+      })
+    });
+    if (r.ok) {
+      var data = await r.json();
+      showMsg('Campaign "' + name + '" launched (' + targets.length + ' recipients)');
+      document.getElementById('campName').value = '';
+      document.getElementById('campTargets').value = '';
+      document.getElementById('consentCheck').checked = false;
+      document.getElementById('launchBtn').disabled = true;
+      fetchCampaigns();
+    } else {
+      var err = await r.json();
+      showMsg(err.detail || 'Error creating campaign', true);
+      document.getElementById('launchBtn').disabled = !document.getElementById('consentCheck').checked;
+    }
+  } catch(e) {
+    showMsg('Connection error: ' + e.message, true);
+    document.getElementById('launchBtn').disabled = !document.getElementById('consentCheck').checked;
+  }
+}
+
+// ── delete campaign ──
+async function deleteCampaign(id) {
+  if (!confirm('Delete campaign #' + id + '?')) return;
+  try {
+    var r = await authFetch('/phishing/campaigns/' + id, {
+      method: 'DELETE'
+    });
+    if (r.ok) {
+      fetchCampaigns();
+      document.getElementById('resultPanel').classList.remove('on');
+    }
+  } catch(e) {}
+}
+
+// ── view results ──
+async function viewResults(id) {
+  try {
+    var r = await authFetch('/phishing/campaigns/' + id + '/results');
+    var data = await r.json();
+    renderResults(data, id);
+  } catch(e) {
+    showMsg('Error loading results', true);
+  }
+}
+
+function renderResults(data, id) {
+  var panel = document.getElementById('resultPanel');
+  document.getElementById('resultTitle').textContent = '// CAMPAIGN RESULTS #' + id;
+
+  var stats = data.stats || {};
+  var statsHtml = '';
+  var items = [
+    {val: stats.total || 0, lbl: 'SENT', color: 'var(--accent)'},
+    {val: stats.opened || 0, lbl: 'OPENED', color: 'var(--yellow)'},
+    {val: stats.clicked || 0, lbl: 'CLICKED', color: 'var(--orange)'},
+    {val: stats.submitted_data || 0, lbl: 'CREDENTIALS', color: 'var(--red)'},
+    {val: stats.error || 0, lbl: 'ERRORS', color: 'var(--silver)'}
+  ];
+  items.forEach(function(it) {
+    statsHtml += '<div class="stat-box"><div class="stat-val" style="color:' + it.color + '">' + it.val + '</div><div class="stat-lbl">' + it.lbl + '</div></div>';
+  });
+  document.getElementById('resultStats').innerHTML = statsHtml;
+
+  var events = data.events || data.timeline || [];
+  var evHtml = '';
+  if (events.length) {
+    var icons = {sent: '📨', opened: '👁', clicked: '🖱', submitted_data: '🔑', error: '⚠'};
+    events.forEach(function(ev) {
+      var icon = icons[ev.message] || icons[ev.status] || '·';
+      var time = ev.time ? ev.time.replace('T',' ').slice(0,19) : '—';
+      evHtml += '<div class="event-row"><div class="event-icon">' + icon + '</div><div class="event-email">' + (ev.email || '—') + '</div><div style="flex:1;color:var(--silver);font-size:10px">' + (ev.message || ev.status || '') + '</div><div class="event-time">' + time + '</div></div>';
+    });
+  } else {
+    evHtml = '<div class="empty">No events</div>';
+  }
+  document.getElementById('resultEvents').innerHTML = evHtml;
+
+  panel.classList.add('on');
+  panel.scrollIntoView({behavior: 'smooth'});
+}
+
+function showMsg(text, isError) {
+  var el = document.getElementById('msg');
+  el.className = 'msg' + (isError ? ' error' : '');
+  el.textContent = text;
+  setTimeout(function(){ el.textContent = ''; el.className = ''; }, 5000);
+}
+
+// ══════════════════════════════════════════
+// ── WIZARD STATE & LOGIC ──
+// ══════════════════════════════════════════
+
+var wizState = {
+  currentStep: 1,
+  selectedScan: null,   // full scan data object
+  vector: 'gophish',
+  gophishAvailable: false,
+  evilginxAvailable: false,
+  phishlets: []
+};
+
+function wizGotoStep(n) {
+  // Only allow going to steps <= max completed + 1
+  if (n < 1 || n > 4) return;
+  wizState.currentStep = n;
+
+  // Update step indicators
+  document.querySelectorAll('.wiz-step').forEach(function(el) {
+    var s = parseInt(el.getAttribute('data-step'));
+    el.classList.remove('active', 'done');
+    if (s === n) el.classList.add('active');
+    else if (s < n) el.classList.add('done');
+  });
+
+  // Show/hide panels
+  for (var i = 1; i <= 4; i++) {
+    var panel = document.getElementById('wizStep' + i);
+    if (panel) panel.classList.toggle('on', i === n);
+  }
+
+  // Step-specific init
+  if (n === 2) wizCheckAvailability();
+  if (n === 3) wizInitStep3();
+  if (n === 4) wizBuildReview();
+}
+
+function wizNext(fromStep) { wizGotoStep(fromStep + 1); }
+function wizBack(fromStep) { wizGotoStep(fromStep - 1); }
+
+// ── Step 1: Load scans ──
+async function wizLoadScans() {
+  try {
+    var r = await authFetch('/scans?limit=50');
+    var data = await r.json();
+    var sel = document.getElementById('wizScanSelect');
+    var scans = (data.scans || data || []);
+    scans.forEach(function(s) {
+      if (s.status !== 'completed') return;
+      var opt = document.createElement('option');
+      opt.value = s.task_id;
+      opt.textContent = s.target + ' (' + (s.created_at || s.timestamp || '').slice(0, 16) + ')';
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    console.error('wizLoadScans:', e);
+  }
+}
+
+async function wizOnScanSelect() {
+  var sel = document.getElementById('wizScanSelect');
+  var taskId = sel.value;
+  var intel = document.getElementById('wizReconIntel');
+  var grid = document.getElementById('reconGrid');
+
+  if (!taskId) {
+    intel.style.display = 'none';
+    wizState.selectedScan = null;
+    return;
+  }
+
+  try {
+    var r = await authFetch('/scans/' + taskId);
+    var data = await r.json();
+    wizState.selectedScan = data;
+
+    var target = data.target || '—';
+    var analysis = data.analysis || {};
+    var riskLevel = analysis.risk_level || data.risk_level || '—';
+    var riskScore = analysis.risk_score || data.risk_score || 0;
+
+    // Technologies from whatweb — can be dicts {name, version}
+    var techs = [];
+    var ww = data.whatweb || {};
+    var rawTechs = ww.technologies || analysis.technologies || [];
+    rawTechs.forEach(function(t) {
+      if (typeof t === 'string') techs.push(t);
+      else if (t && t.name) techs.push(t.name + (t.version ? '/' + t.version : ''));
+    });
+
+    // Emails from harvester
+    var emails = [];
+    var harv = data.harvester || {};
+    emails = harv.emails || analysis.emails || [];
+
+    // Top vulnerabilities
+    var vulns = [];
+    var nuclei = data.nuclei || {};
+    var nucleiFindings = nuclei.findings || nuclei.vulnerabilities || [];
+    nucleiFindings.slice(0, 5).forEach(function(v) {
+      vulns.push((v.severity || '?').toUpperCase() + ': ' + (v.name || v.template_id || v.info || ''));
+    });
+
+    // Build grid
+    var html = '';
+    html += '<div class="recon-box"><div class="recon-box-label">TARGET</div><div class="recon-box-value">' + escHtml(target) + '</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">RISK</div><div class="recon-box-value" style="color:' + riskColor(riskLevel) + '">' + escHtml(riskLevel) + ' (' + riskScore + '/100)</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">TECHNOLOGIES</div><div class="recon-box-value">' + (techs.length ? escHtml(techs.join(', ')) : '—') + '</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">EMAILS</div><div class="recon-box-value">' + (emails.length ? escHtml(emails.join(', ')) : '—') + '</div></div>';
+    html += '<div class="recon-box"><div class="recon-box-label">TOP VULNERABILITIES</div><div class="recon-box-value">' + (vulns.length ? escHtml(vulns.join('; ')) : '—') + '</div></div>';
+
+    grid.innerHTML = html;
+    intel.style.display = 'block';
+
+    // Auto-fill campaign name and targets
+    document.getElementById('campName').value = 'Phishing Test — ' + target;
+    if (emails.length) {
+      document.getElementById('campTargets').value = emails.join('\n');
+    }
+  } catch(e) {
+    console.error('wizOnScanSelect:', e);
+    intel.style.display = 'none';
+    wizState.selectedScan = null;
+  }
+}
+
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function riskColor(level) {
+  var l = (level || '').toUpperCase();
+  if (l === 'CRITICAL' || l === 'HIGH') return 'var(--red)';
+  if (l === 'MEDIUM') return 'var(--orange)';
+  if (l === 'LOW') return 'var(--yellow)';
+  return 'var(--silver)';
+}
+
+// ── Step 2: Check availability ──
+async function wizCheckAvailability() {
+  // GoPhish
+  try {
+    var r = await authFetch('/phishing/campaigns');
+    if (r.ok) {
+      wizState.gophishAvailable = true;
+      document.getElementById('gophishDot').className = 'status-dot online';
+      document.getElementById('gophishStatus').textContent = 'ONLINE';
+    } else {
+      throw new Error();
+    }
+  } catch(e) {
+    wizState.gophishAvailable = false;
+    document.getElementById('gophishDot').className = 'status-dot offline';
+    document.getElementById('gophishStatus').textContent = 'OFFLINE';
+  }
+
+  // Evilginx
+  try {
+    var r2 = await authFetch('/evilginx/stats');
+    if (r2.ok) {
+      wizState.evilginxAvailable = true;
+      document.getElementById('evilginxDot').className = 'status-dot online';
+      document.getElementById('evilginxStatus').textContent = 'ONLINE';
+
+      // Load phishlets
+      var r3 = await authFetch('/evilginx/phishlets');
+      var phishletsData = await r3.json();
+      wizState.phishlets = Array.isArray(phishletsData) ? phishletsData : (phishletsData.phishlets || []);
+      var pSel = document.getElementById('wizPhishletSelect');
+      pSel.innerHTML = '<option value="">-- Select phishlet --</option>';
+      wizState.phishlets.forEach(function(p) {
+        var name = typeof p === 'string' ? p : (p.name || p.hostname || '');
+        if (!name) return;
+        var opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name + (p.author ? ' [' + p.author + ']' : '');
+        pSel.appendChild(opt);
+      });
+    } else {
+      throw new Error();
+    }
+  } catch(e) {
+    wizState.evilginxAvailable = false;
+    document.getElementById('evilginxDot').className = 'status-dot offline';
+    document.getElementById('evilginxStatus').textContent = 'OFFLINE';
+  }
+}
+
+function wizSelectVector(vec) {
+  wizState.vector = vec;
+  document.getElementById('vecGophish').classList.toggle('selected', vec === 'gophish');
+  document.getElementById('vecEvilginx').classList.toggle('selected', vec === 'evilginx');
+  document.getElementById('phishletSection').classList.toggle('on', vec === 'evilginx');
+}
+
+// ── Step 3: Init fields ──
+function wizInitStep3() {
+  var isGophish = wizState.vector === 'gophish';
+  document.getElementById('gophishFields').style.display = isGophish ? 'block' : 'none';
+  document.getElementById('evilginxFields').style.display = isGophish ? 'none' : 'block';
+
+  if (!isGophish) {
+    var phishlet = document.getElementById('wizPhishletSelect').value;
+    document.getElementById('evilPhishlet').value = phishlet || '';
+    if (wizState.selectedScan) {
+      document.getElementById('evilCampName').value = 'Evilginx — ' + (wizState.selectedScan.target || '');
+    }
+  }
+}
+
+// ── Step 3: AI Generate ──
+async function wizAiGenerate() {
+  var btn = document.getElementById('aiGenBtn');
+  var msgEl = document.getElementById('wizAiMsg');
+  btn.classList.add('loading');
+  btn.textContent = 'GENERATING';
+  msgEl.innerHTML = '';
+
+  var scan = wizState.selectedScan || {};
+  var analysis = scan.analysis || {};
+  var ww = scan.whatweb || {};
+  var rawTechs = ww.technologies || analysis.technologies || [];
+  var techs = rawTechs.map(function(t) {
+    return typeof t === 'string' ? t : (t.name + (t.version ? '/' + t.version : ''));
+  });
+
+  var harv = scan.harvester || {};
+  var emails = harv.emails || analysis.emails || [];
+
+  var nuclei = scan.nuclei || {};
+  var nucleiFindings = nuclei.findings || nuclei.vulnerabilities || [];
+  var vulns = nucleiFindings.slice(0, 10).map(function(v) {
+    return (v.name || v.template_id || '');
+  });
+
+  var payload = {
+    target: scan.target || '',
+    risk_level: analysis.risk_level || scan.risk_level || '',
+    risk_score: analysis.risk_score || scan.risk_score || 0,
+    technologies: techs.slice(0, 15),
+    emails: emails.slice(0, 10),
+    vulnerabilities: vulns,
+    executive_summary: analysis.executive_summary || analysis.summary || '',
+    language: 'en'
+  };
+
+  try {
+    var r = await authFetch('/phishing/generate-email', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    var data = await r.json();
+    if (r.ok && data.subject) {
+      document.getElementById('campSubject').value = data.subject;
+      document.getElementById('campBody').value = data.body || '';
+      msgEl.innerHTML = '<div class="msg">Email generated by AI (' + (data.provider || 'LLM') + '). Pretext: ' + escHtml(data.pretext || '') + '</div>';
+    } else {
+      msgEl.innerHTML = '<div class="msg error">' + escHtml(data.detail || 'Generation error') + '</div>';
+    }
+  } catch(e) {
+    msgEl.innerHTML = '<div class="msg error">Connection error: ' + escHtml(e.message) + '</div>';
+  }
+
+  btn.classList.remove('loading');
+  btn.textContent = 'AI GENERATE';
+}
+
+// ── Step 4: Build review table ──
+function wizBuildReview() {
+  var tbl = document.getElementById('reviewTable');
+  var rows = [];
+
+  rows.push(['VECTOR', wizState.vector === 'gophish' ? 'GoPhish (Email)' : 'Evilginx2 (MITM)']);
+
+  if (wizState.vector === 'gophish') {
+    rows.push(['NAME', document.getElementById('campName').value || '—']);
+    rows.push(['DOMAIN', document.getElementById('campDomain').value || '—']);
+    rows.push(['SUBJECT', document.getElementById('campSubject').value || '—']);
+    rows.push(['BODY', '<pre style="white-space:pre-wrap;font-size:11px;max-height:150px;overflow:auto;margin:0">' + escHtml(document.getElementById('campBody').value || '—') + '</pre>']);
+    rows.push(['LANDING', document.getElementById('campLanding').value || '—']);
+    var targets = document.getElementById('campTargets').value.trim().split('\n').filter(function(e){ return e.trim(); });
+    rows.push(['RECIPIENTS', targets.length + ' addresses']);
+  } else {
+    rows.push(['NAME', document.getElementById('evilCampName').value || '—']);
+    rows.push(['PHISHLET', document.getElementById('evilPhishlet').value || '—']);
+    rows.push(['LURE URL', document.getElementById('evilLureUrl').value || '—']);
+    rows.push(['REDIRECT', document.getElementById('evilRedirectUrl').value || '—']);
+  }
+
+  if (wizState.selectedScan) {
+    rows.push(['RECON', wizState.selectedScan.target || '—']);
+  }
+
+  var html = '';
+  rows.forEach(function(r) {
+    html += '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>';
+  });
+  tbl.innerHTML = html;
+}
+
+// ── Event listeners ──
+document.getElementById('consentCheck').addEventListener('change', function() {
+  document.getElementById('launchBtn').disabled = !this.checked;
+});
+
+document.getElementById('wizScanSelect').addEventListener('change', wizOnScanSelect);
+
+// ── Init ──
+wizLoadScans();
+fetchCampaigns();
+setInterval(fetchCampaigns, 30000);
+</script>
+<script>
+(function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(r=>r.json()).then(u=>{if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}}).catch(function(){});})();
+</script>
+</body>
+</html>

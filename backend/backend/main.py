@@ -12,7 +12,7 @@ from slowapi.errors import RateLimitExceeded
 from pydantic import BaseModel
 from jose import jwt, JWTError
 from passlib.hash import sha256_crypt
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import sys
 import os
 import secrets
@@ -62,8 +62,8 @@ def create_token(username: str, role: str) -> str:
     payload = {
         "sub": username,
         "role": role,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS),
-        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(datetime.UTC) + timedelta(hours=JWT_EXPIRE_HOURS),
+        "iat": datetime.now(datetime.UTC),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -191,7 +191,7 @@ async def auth_login(request: Request, body: LoginRequest):
     user = get_user_by_username_raw(body.username)
     if user and user["is_active"] and sha256_crypt.verify(body.password, user["password_hash"]):
         token = create_token(user["username"], user["role"])
-        update_user(user["id"], last_login=datetime.now(timezone.utc))
+        update_user(user["id"], last_login=datetime.now(datetime.UTC))
         save_audit_log(user=user["username"], action="login", ip_address=ip)
         return {
             "token": token, "token_type": "bearer",
@@ -280,7 +280,7 @@ async def compliance_pdf(task_id: str, token: str = Query(None),
     completed_at = scan.get("completed_at", "")[:10] if scan.get("completed_at") else "N/A"
     profile = _html.escape(scan.get("profile", "STRAZNIK"))
     safe_task_id = _html.escape(task_id)
-    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    now_str = datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M UTC")
     doc_hash = hashlib.sha256(f"{task_id}:{now_str}".encode()).hexdigest()
 
     # Collect findings from scan data (already flattened by get_scan_by_task_id)
@@ -2442,7 +2442,7 @@ async def trigger_retest(rem_id: int, request: Request,
     _update_rem(rem_id,
                 retest_task_id=celery_result.id,
                 retest_status="pending",
-                retest_at=datetime.now(timezone.utc))
+                retest_at=datetime.now(datetime.UTC))
     audit(request, current_user, "retest_trigger", f"rem={rem_id} celery={celery_result.id}")
     return {"message": "Retest started", "task_id": celery_result.id}
 

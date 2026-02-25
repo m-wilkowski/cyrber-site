@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CYRBER — DASHBOARD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --navy:   #080c18;
+  --panel:  #0a1020;
+  --border: rgba(74,143,212,.18);
+  --accent: #4a8fd4;
+  --accent2:#7ab3e8;
+  --purple: #9b59b6;
+  --silver: #8a9bb5;
+  --white:  #e8eef8;
+  --low:    #2ecc71;
+  --medium: #f1c40f;
+  --high:   #e67e22;
+  --crit:   #e74c3c;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--navy);
+  color: var(--white);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(74,143,212,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74,143,212,.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  height: 56px;
+  background: rgba(8,12,24,.92);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: .15em;
+  color: var(--white);
+  text-decoration: none;
+}
+
+.nav-brand span {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--accent);
+  letter-spacing: .3em;
+  display: block;
+  margin-top: -2px;
+}
+
+.nav-links { display: flex; gap: 4px; }
+
+.nav-link {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .15em;
+  color: var(--silver);
+  text-decoration: none;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  transition: all .2s;
+}
+
+.nav-link:hover { color: var(--accent); border-color: var(--border); }
+.nav-link.active { color: var(--accent); border-color: var(--accent); }
+
+/* ── LAYOUT ── */
+.wrapper {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.page-header {
+  margin-bottom: 32px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.page-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  letter-spacing: .3em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.page-title-main {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  color: var(--white);
+}
+
+.last-update {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--silver);
+  letter-spacing: .15em;
+}
+
+/* ── KPI CARDS ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent-color, var(--accent));
+}
+
+.kpi-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .25em;
+  color: var(--silver);
+  margin-bottom: 10px;
+}
+
+.kpi-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--accent-color, var(--accent));
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.kpi-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--silver);
+}
+
+/* ── CHART GRID ── */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.chart-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+}
+
+.panel-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .3em;
+  color: var(--accent);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chart-wrap {
+  position: relative;
+  height: 220px;
+}
+
+.chart-wrap-sm {
+  position: relative;
+  height: 180px;
+}
+
+/* ── RISK DISTRIBUTION ── */
+.risk-bars { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+
+.risk-bar-row { display: flex; align-items: center; gap: 12px; }
+
+.risk-bar-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.risk-bar-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.06);
+}
+
+.risk-bar-fill {
+  height: 100%;
+  transition: width 1s cubic-bezier(.4,0,.2,1);
+  width: 0;
+}
+
+.risk-bar-count {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--silver);
+  width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── RECENT SCANS TABLE ── */
+.scan-table { width: 100%; border-collapse: collapse; }
+
+.scan-table th {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: .2em;
+  color: var(--silver);
+  text-align: left;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.scan-table td {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(74,143,212,.06);
+  color: var(--silver);
+}
+
+.scan-table td.target { color: var(--white); font-size: 12px; }
+
+.risk-badge {
+  display: inline-block;
+  font-size: 8px;
+  letter-spacing: .15em;
+  padding: 2px 7px;
+  border: 1px solid;
+}
+
+.risk-NISKIE   { color: var(--low);    border-color: var(--low);    }
+.risk-ŚREDNIE  { color: var(--medium); border-color: var(--medium); }
+.risk-WYSOKIE  { color: var(--high);   border-color: var(--high);   }
+.risk-KRYTYCZNE{ color: var(--crit);   border-color: var(--crit);   }
+
+/* ── SPARKLINE / TIMELINE ── */
+.timeline-wrap { height: 140px; position: relative; }
+
+/* ── LOADING ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .2em;
+  color: var(--silver);
+}
+
+.pulse { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+
+/* ── REFRESH BTN ── */
+.btn-refresh {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .2em;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-refresh:hover { border-color: var(--accent); box-shadow: 0 0 10px rgba(74,143,212,.2); }
+
+/* ── EMPTY STATE ── */
+.empty {
+  text-align: center;
+  padding: 40px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--silver);
+  letter-spacing: .15em;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="/ui">
+    CYRBER
+    <span>AUTONOMOUS RECON</span>
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" href="/ui">SCAN</a>
+    <a class="nav-link active" href="/dashboard">DASHBOARD</a>
+  </div>
+</nav>
+
+<div class="wrapper">
+
+  <div class="page-header">
+    <div>
+      <div class="page-title">ANALYTICS &amp; METRICS</div>
+      <div class="page-title-main">DASHBOARD</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="last-update" id="lastUpdate">LOADING...</div>
+      <button class="btn-refresh" onclick="loadDashboard()">↻ REFRESH</button>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi" style="--accent-color: var(--accent)">
+      <div class="kpi-label">TOTAL SCANS</div>
+      <div class="kpi-value" id="kpiTotal">—</div>
+      <div class="kpi-sub" id="kpiTotalSub">loading...</div>
+    </div>
+    <div class="kpi" style="--accent-color: var(--crit)">
+      <div class="kpi-label">CRITICAL / HIGH</div>
+      <div class="kpi-value" id="kpiHigh">—</div>
+      <div class="kpi-sub" id="kpiHighSub">loading...</div>
+    </div>
+    <div class="kpi" style="--accent-color: var(--medium)">
+      <div class="kpi-label">TOTAL FINDINGS</div>
+      <div class="kpi-value" id="kpiFindings">—</div>
+      <div class="kpi-sub" id="kpiFindingsSub">loading...</div>
+    </div>
+    <div class="kpi" style="--accent-color: var(--purple)">
+      <div class="kpi-label">AVG FINDINGS / SCAN</div>
+      <div class="kpi-value" id="kpiAvg">—</div>
+      <div class="kpi-sub" id="kpiAvgSub">loading...</div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 1 -->
+  <div class="chart-grid">
+    <div class="panel">
+      <div class="panel-label">FINDINGS OVER TIME</div>
+      <div class="chart-wrap">
+        <canvas id="chartTimeline"></canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">RISK DISTRIBUTION</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center;height:220px;">
+        <div class="chart-wrap-sm">
+          <canvas id="chartRisk"></canvas>
+        </div>
+        <div class="risk-bars" id="riskBars">
+          <div class="loading pulse">LOADING</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 2 -->
+  <div class="chart-grid-3">
+    <div class="panel">
+      <div class="panel-label">SCANS PER DAY (LAST 14 DAYS)</div>
+      <div class="chart-wrap-sm">
+        <canvas id="chartDaily"></canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">TOP TARGETS BY FINDINGS</div>
+      <div class="chart-wrap-sm">
+        <canvas id="chartTargets"></canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">RISK TREND</div>
+      <div class="chart-wrap-sm">
+        <canvas id="chartTrend"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECENT SCANS TABLE -->
+  <div class="panel">
+    <div class="panel-label" style="display:flex;justify-content:space-between;">
+      <span>RECENT SCANS</span>
+      <span id="tableCount" style="color:var(--silver)"></span>
+    </div>
+    <div id="tableBody">
+      <div class="loading pulse">LOADING DATA...</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var API = 'http://127.0.0.1:8000';
+var charts = {};
+
+var RISK_COLORS = {
+  'NISKIE':    '#2ecc71',
+  'ŚREDNIE':   '#f1c40f',
+  'WYSOKIE':   '#e67e22',
+  'KRYTYCZNE': '#e74c3c',
+  'NIEZNANE':  '#4a8fd4'
+};
+
+Chart.defaults.color = '#4a8fd4';
+Chart.defaults.borderColor = 'rgba(74,143,212,.1)';
+Chart.defaults.font.family = "'Share Tech Mono', monospace";
+Chart.defaults.font.size = 10;
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function loadDashboard() {
+  fetch(API + '/scans?limit=100')
+    .then(function(r) { return r.json(); })
+    .then(function(scans) {
+      renderKPIs(scans);
+      renderTimeline(scans);
+      renderRiskDonut(scans);
+      renderRiskBars(scans);
+      renderDaily(scans);
+      renderTopTargets(scans);
+      renderTrend(scans);
+      renderTable(scans);
+      document.getElementById('lastUpdate').textContent =
+        'UPDATED: ' + new Date().toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    })
+    .catch(function(e) {
+      console.error(e);
+    });
+}
+
+function renderKPIs(scans) {
+  var total = scans.length;
+  var highCrit = scans.filter(function(s) {
+    return s.risk_level === 'WYSOKIE' || s.risk_level === 'KRYTYCZNE';
+  }).length;
+  var totalFindings = scans.reduce(function(acc, s) { return acc + (s.findings_count || 0); }, 0);
+  var avg = total > 0 ? (totalFindings / total).toFixed(1) : 0;
+
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiTotalSub').textContent = 'completed scans';
+  document.getElementById('kpiHigh').textContent = highCrit;
+  document.getElementById('kpiHighSub').textContent = Math.round(highCrit/Math.max(total,1)*100) + '% of all scans';
+  document.getElementById('kpiFindings').textContent = totalFindings;
+  document.getElementById('kpiFindingsSub').textContent = 'vulnerabilities detected';
+  document.getElementById('kpiAvg').textContent = avg;
+  document.getElementById('kpiAvgSub').textContent = 'findings per scan';
+}
+
+function renderTimeline(scans) {
+  destroyChart('timeline');
+  var sorted = scans.slice().sort(function(a,b) {
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+  var labels = sorted.map(function(s) {
+    return new Date(s.created_at).toLocaleDateString('pl-PL', {month:'numeric',day:'numeric'}) +
+           ' ' + new Date(s.created_at).toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit'});
+  });
+  var data = sorted.map(function(s) { return s.findings_count || 0; });
+
+  var ctx = document.getElementById('chartTimeline').getContext('2d');
+  var gradient = ctx.createLinearGradient(0, 0, 0, 220);
+  gradient.addColorStop(0, 'rgba(74,143,212,.3)');
+  gradient.addColorStop(1, 'rgba(74,143,212,0)');
+
+  charts['timeline'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Findings',
+        data: data,
+        borderColor: '#4a8fd4',
+        backgroundColor: gradient,
+        borderWidth: 2,
+        pointBackgroundColor: '#4a8fd4',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        fill: true,
+        tension: .3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(74,143,212,.06)' }, ticks: { maxRotation: 45, maxTicksLimit: 8 } },
+        y: { grid: { color: 'rgba(74,143,212,.06)' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderRiskDonut(scans) {
+  destroyChart('risk');
+  var counts = {};
+  scans.forEach(function(s) {
+    var r = s.risk_level || 'NIEZNANE';
+    counts[r] = (counts[r] || 0) + 1;
+  });
+
+  var order = ['KRYTYCZNE','WYSOKIE','ŚREDNIE','NISKIE','NIEZNANE'];
+  var labels = [], data = [], colors = [];
+  order.forEach(function(r) {
+    if (counts[r]) {
+      labels.push(r);
+      data.push(counts[r]);
+      colors.push(RISK_COLORS[r]);
+    }
+  });
+
+  if (!data.length) return;
+
+  var ctx = document.getElementById('chartRisk').getContext('2d');
+  charts['risk'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: colors.map(function(c) { return c + 'cc'; }),
+        borderColor: colors,
+        borderWidth: 1,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return ' ' + ctx.label + ': ' + ctx.raw;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderRiskBars(scans) {
+  var counts = { NISKIE: 0, ŚREDNIE: 0, WYSOKIE: 0, KRYTYCZNE: 0 };
+  scans.forEach(function(s) {
+    if (counts[s.risk_level] !== undefined) counts[s.risk_level]++;
+  });
+  var total = scans.length || 1;
+  var order = ['KRYTYCZNE','WYSOKIE','ŚREDNIE','NISKIE'];
+  var html = '';
+  order.forEach(function(r) {
+    var pct = Math.round(counts[r] / total * 100);
+    var col = RISK_COLORS[r];
+    html += '<div class="risk-bar-row">' +
+      '<div class="risk-bar-label" style="color:' + col + '">' + r + '</div>' +
+      '<div class="risk-bar-track"><div class="risk-bar-fill" style="background:' + col + ';width:' + pct + '%"></div></div>' +
+      '<div class="risk-bar-count" style="color:' + col + '">' + counts[r] + '</div>' +
+    '</div>';
+  });
+  document.getElementById('riskBars').innerHTML = html || '<div class="empty">NO DATA</div>';
+}
+
+function renderDaily(scans) {
+  destroyChart('daily');
+  var days = {};
+  for (var i = 13; i >= 0; i--) {
+    var d = new Date();
+    d.setDate(d.getDate() - i);
+    var key = d.toISOString().slice(0,10);
+    days[key] = 0;
+  }
+  scans.forEach(function(s) {
+    if (!s.created_at) return;
+    var key = s.created_at.slice(0,10);
+    if (days[key] !== undefined) days[key]++;
+  });
+  var labels = Object.keys(days).map(function(k) {
+    var d = new Date(k);
+    return d.toLocaleDateString('pl-PL', {month:'numeric',day:'numeric'});
+  });
+  var data = Object.values(days);
+
+  var ctx = document.getElementById('chartDaily').getContext('2d');
+  charts['daily'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: 'rgba(74,143,212,.35)',
+        borderColor: '#4a8fd4',
+        borderWidth: 1,
+        borderRadius: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxRotation: 45, maxTicksLimit: 7 } },
+        y: { grid: { color: 'rgba(74,143,212,.06)' }, beginAtZero: true, ticks: { stepSize: 1 } }
+      }
+    }
+  });
+}
+
+function renderTopTargets(scans) {
+  destroyChart('targets');
+  var byTarget = {};
+  scans.forEach(function(s) {
+    if (!byTarget[s.target]) byTarget[s.target] = 0;
+    byTarget[s.target] += (s.findings_count || 0);
+  });
+  var sorted = Object.entries(byTarget).sort(function(a,b) { return b[1]-a[1]; }).slice(0,6);
+  if (!sorted.length) return;
+
+  var ctx = document.getElementById('chartTargets').getContext('2d');
+  charts['targets'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(function(x) {
+        return x[0].length > 14 ? x[0].slice(0,12) + '..' : x[0];
+      }),
+      datasets: [{
+        data: sorted.map(function(x) { return x[1]; }),
+        backgroundColor: 'rgba(155,89,182,.35)',
+        borderColor: '#9b59b6',
+        borderWidth: 1,
+        borderRadius: 2
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(74,143,212,.06)' }, beginAtZero: true },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderTrend(scans) {
+  destroyChart('trend');
+  var sorted = scans.slice().sort(function(a,b) {
+    return new Date(a.created_at) - new Date(b.created_at);
+  }).slice(-20);
+
+  var riskVal = { NISKIE: 1, ŚREDNIE: 2, WYSOKIE: 3, KRYTYCZNE: 4, NIEZNANE: 0 };
+  var data = sorted.map(function(s) { return riskVal[s.risk_level] || 0; });
+  var labels = sorted.map(function(s) {
+    return new Date(s.created_at).toLocaleDateString('pl-PL', {month:'numeric',day:'numeric'});
+  });
+  var colors = sorted.map(function(s) { return RISK_COLORS[s.risk_level] || '#4a8fd4'; });
+
+  var ctx = document.getElementById('chartTrend').getContext('2d');
+  charts['trend'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: colors.map(function(c) { return c + '99'; }),
+        borderColor: colors,
+        borderWidth: 1,
+        borderRadius: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxRotation: 45, maxTicksLimit: 7 } },
+        y: {
+          grid: { color: 'rgba(74,143,212,.06)' },
+          beginAtZero: true, max: 4,
+          ticks: {
+            stepSize: 1,
+            callback: function(v) {
+              return ['','NISKIE','ŚREDNIE','WYSOKIE','KRYT.'][v] || '';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderTable(scans) {
+  var recent = scans.slice().sort(function(a,b) {
+    return new Date(b.created_at) - new Date(a.created_at);
+  }).slice(0,15);
+
+  document.getElementById('tableCount').textContent = 'SHOWING ' + recent.length + ' OF ' + scans.length;
+
+  if (!recent.length) {
+    document.getElementById('tableBody').innerHTML = '<div class="empty">NO SCANS YET — RUN FIRST SCAN FROM THE SCAN PAGE</div>';
+    return;
+  }
+
+  var html = '<table class="scan-table"><thead><tr>' +
+    '<th>TARGET</th><th>DATE</th><th>FINDINGS</th><th>RISK</th><th>DURATION</th>' +
+    '</tr></thead><tbody>';
+
+  recent.forEach(function(s) {
+    var date = s.created_at ? new Date(s.created_at).toLocaleString('pl-PL', {
+      day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'
+    }) : '—';
+    var dur = '—';
+    if (s.created_at && s.completed_at) {
+      var ms = new Date(s.completed_at) - new Date(s.created_at);
+      dur = Math.round(ms/1000) + 's';
+    }
+    var risk = s.risk_level || 'N/A';
+    html += '<tr>' +
+      '<td class="target">' + s.target + '</td>' +
+      '<td>' + date + '</td>' +
+      '<td>' + (s.findings_count || 0) + '</td>' +
+      '<td><span class="risk-badge risk-' + risk + '">' + risk + '</span></td>' +
+      '<td>' + dur + '</td>' +
+    '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('tableBody').innerHTML = html;
+}
+
+// Add /dashboard endpoint nav link to scan page
+document.addEventListener('DOMContentLoaded', function() {
+  loadDashboard();
+});
+</script>
+</body>
+</html>

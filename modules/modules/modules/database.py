@@ -244,7 +244,6 @@ def save_scan(task_id: str, target: str, result: dict, scan_type: str = "full", 
     db = SessionLocal()
     try:
         analysis = result.get("analysis", {})
-        ai_analysis = result.get("ai_analysis", {})
         scan = db.query(Scan).filter(Scan.task_id == task_id).first()
         if not scan:
             scan = Scan(task_id=task_id, target=target)
@@ -252,10 +251,9 @@ def save_scan(task_id: str, target: str, result: dict, scan_type: str = "full", 
         scan.status = "completed"
         scan.scan_type = scan_type
         scan.profile = profile
-        scan.risk_level = analysis.get("risk_level") or ai_analysis.get("risk_level")
-        fc = result.get("findings_count", 0) or ai_analysis.get("findings_count", 0)
-        scan.findings_count = fc
-        scan.summary = analysis.get("summary") or ai_analysis.get("executive_summary")
+        scan.risk_level = analysis.get("risk_level")
+        scan.findings_count = result.get("findings_count", 0)
+        scan.summary = analysis.get("summary")
         scan.recommendations = analysis.get("recommendations")
         scan.top_issues = json.dumps(analysis.get("top_issues", []), ensure_ascii=False)
         scan.raw_data = json.dumps(result, ensure_ascii=False)
@@ -699,9 +697,9 @@ def bulk_create_remediation_tasks(scan_id: str, findings: list[dict]) -> list[di
         }
         created = []
         for f in findings:
-            name = f.get("name") or f.get("finding_name", "")
-            sev = f.get("severity") or f.get("finding_severity", "info")
-            mod = f.get("module") or f.get("finding_module") or f.get("_module")
+            name = f.get("name", "")
+            sev = f.get("severity", "info")
+            mod = f.get("module", f.get("_module"))
             if not name:
                 continue
             key = (name, sev, mod)
