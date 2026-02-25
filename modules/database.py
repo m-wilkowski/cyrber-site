@@ -124,12 +124,77 @@ class EpssCache(Base):
 class IntelSyncLog(Base):
     __tablename__ = "intel_sync_log"
     id               = Column(Integer, primary_key=True)
-    source           = Column(String)   # KEV/NVD/EPSS
+    source           = Column(String)   # KEV/NVD/EPSS/ATT&CK/CAPEC-CWE-MAP/EUVD
     status           = Column(String)   # success/error
     records_updated  = Column(Integer)
     duration_seconds = Column(Float)
     error_message    = Column(Text, nullable=True)
     synced_at        = Column(DateTime, default=datetime.utcnow)
+
+# ── ATT&CK Models ────────────────────────────────────────
+
+class AttackTechnique(Base):
+    __tablename__ = "attack_techniques"
+    technique_id    = Column(String, primary_key=True)   # T1059.001
+    name            = Column(String, nullable=False)
+    description     = Column(Text)
+    url             = Column(String)
+    platforms       = Column(JSON)       # ["Windows", "Linux", ...]
+    tactics         = Column(JSON)       # ["execution", "persistence"]
+    data_sources    = Column(JSON)
+    detection       = Column(Text)
+    is_subtechnique = Column(Boolean, default=False)
+    parent_id       = Column(String, nullable=True)      # T1059 for T1059.001
+    deprecated      = Column(Boolean, default=False)
+    updated_at      = Column(DateTime, default=datetime.utcnow)
+
+class AttackTactic(Base):
+    __tablename__ = "attack_tactics"
+    tactic_id   = Column(String, primary_key=True)  # TA0001
+    short_name  = Column(String)                     # initial-access
+    name        = Column(String, nullable=False)     # Initial Access
+    description = Column(Text)
+    url         = Column(String)
+    updated_at  = Column(DateTime, default=datetime.utcnow)
+
+class AttackMitigation(Base):
+    __tablename__ = "attack_mitigations"
+    mitigation_id = Column(String, primary_key=True)  # M1036
+    name          = Column(String, nullable=False)
+    description   = Column(Text)
+    url           = Column(String)
+    updated_at    = Column(DateTime, default=datetime.utcnow)
+
+class AttackMitigationLink(Base):
+    __tablename__ = "attack_mitigation_links"
+    id            = Column(Integer, primary_key=True)
+    technique_id  = Column(String, index=True)
+    mitigation_id = Column(String, index=True)
+    description   = Column(Text)
+
+class CweAttackMap(Base):
+    __tablename__ = "cwe_attack_map"
+    id           = Column(Integer, primary_key=True)
+    cwe_id       = Column(String, index=True)   # CWE-89
+    capec_id     = Column(String)                # CAPEC-66
+    technique_id = Column(String, index=True)    # T1190
+    updated_at   = Column(DateTime, default=datetime.utcnow)
+
+class EuvdCache(Base):
+    __tablename__ = "euvd_cache"
+    euvd_id            = Column(String, primary_key=True)  # EUVD-2024-xxxxx
+    description        = Column(Text)
+    date_published     = Column(String)
+    date_updated       = Column(String)
+    base_score         = Column(Float)
+    base_score_version = Column(String)
+    base_score_vector  = Column(String)
+    aliases            = Column(JSON)     # ["CVE-2024-3400", ...]
+    epss               = Column(Float)
+    vendor             = Column(String)
+    product            = Column(String)
+    references         = Column(JSON)
+    updated_at         = Column(DateTime, default=datetime.utcnow)
 
 def init_db(retries=10, delay=3):
     for i in range(retries):
@@ -809,6 +874,10 @@ def get_intel_cache_counts() -> dict:
             "kev": db.query(KevCache).count(),
             "cve": db.query(CveCache).count(),
             "epss": db.query(EpssCache).count(),
+            "attack_techniques": db.query(AttackTechnique).count(),
+            "attack_tactics": db.query(AttackTactic).count(),
+            "attack_mitigations": db.query(AttackMitigation).count(),
+            "euvd": db.query(EuvdCache).count(),
         }
     finally:
         db.close()
@@ -855,6 +924,259 @@ def get_scans_by_target(target: str) -> list[dict]:
                 "raw": raw,
             })
         return results
+    finally:
+        db.close()
+
+# ── ATT&CK CRUD ──────────────────────────────────────────
+
+def upsert_attack_techniques(entries: list[dict]) -> int:
+    db = SessionLocal()
+    try:
+        count = 0
+        for e in entries:
+            tid = e.get("technique_id")
+            if not tid:
+                continue
+            row = db.query(AttackTechnique).filter(AttackTechnique.technique_id == tid).first()
+            if row:
+                for k, v in e.items():
+                    if hasattr(row, k) and k != "technique_id":
+                        setattr(row, k, v)
+                row.updated_at = datetime.utcnow()
+            else:
+                row = AttackTechnique(**e)
+                db.add(row)
+            count += 1
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+def upsert_attack_tactics(entries: list[dict]) -> int:
+    db = SessionLocal()
+    try:
+        count = 0
+        for e in entries:
+            tid = e.get("tactic_id")
+            if not tid:
+                continue
+            row = db.query(AttackTactic).filter(AttackTactic.tactic_id == tid).first()
+            if row:
+                for k, v in e.items():
+                    if hasattr(row, k) and k != "tactic_id":
+                        setattr(row, k, v)
+                row.updated_at = datetime.utcnow()
+            else:
+                row = AttackTactic(**e)
+                db.add(row)
+            count += 1
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+def upsert_attack_mitigations(entries: list[dict]) -> int:
+    db = SessionLocal()
+    try:
+        count = 0
+        for e in entries:
+            mid = e.get("mitigation_id")
+            if not mid:
+                continue
+            row = db.query(AttackMitigation).filter(AttackMitigation.mitigation_id == mid).first()
+            if row:
+                for k, v in e.items():
+                    if hasattr(row, k) and k != "mitigation_id":
+                        setattr(row, k, v)
+                row.updated_at = datetime.utcnow()
+            else:
+                row = AttackMitigation(**e)
+                db.add(row)
+            count += 1
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+def upsert_attack_mitigation_links(entries: list[dict]) -> int:
+    """Upsert mitigation→technique links. Deletes old links and inserts fresh."""
+    db = SessionLocal()
+    try:
+        db.query(AttackMitigationLink).delete()
+        for e in entries:
+            row = AttackMitigationLink(
+                technique_id=e.get("technique_id"),
+                mitigation_id=e.get("mitigation_id"),
+                description=e.get("description"),
+            )
+            db.add(row)
+        db.commit()
+        return len(entries)
+    finally:
+        db.close()
+
+def upsert_cwe_attack_map(entries: list[dict]) -> int:
+    """Upsert CWE→technique mappings. Replaces all."""
+    db = SessionLocal()
+    try:
+        db.query(CweAttackMap).delete()
+        for e in entries:
+            row = CweAttackMap(
+                cwe_id=e.get("cwe_id"),
+                capec_id=e.get("capec_id"),
+                technique_id=e.get("technique_id"),
+            )
+            db.add(row)
+        db.commit()
+        return len(entries)
+    finally:
+        db.close()
+
+def upsert_euvd_entries(entries: list[dict]) -> int:
+    db = SessionLocal()
+    try:
+        count = 0
+        for e in entries:
+            eid = e.get("euvd_id")
+            if not eid:
+                continue
+            row = db.query(EuvdCache).filter(EuvdCache.euvd_id == eid).first()
+            if row:
+                for k, v in e.items():
+                    if hasattr(row, k) and k != "euvd_id":
+                        setattr(row, k, v)
+                row.updated_at = datetime.utcnow()
+            else:
+                row = EuvdCache(**e)
+                db.add(row)
+            count += 1
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+def get_attack_technique(technique_id: str) -> dict | None:
+    db = SessionLocal()
+    try:
+        t = db.query(AttackTechnique).filter(AttackTechnique.technique_id == technique_id).first()
+        if not t:
+            return None
+        return {
+            "technique_id": t.technique_id, "name": t.name,
+            "description": t.description, "url": t.url,
+            "platforms": t.platforms, "tactics": t.tactics,
+            "data_sources": t.data_sources, "detection": t.detection,
+            "is_subtechnique": t.is_subtechnique, "parent_id": t.parent_id,
+            "deprecated": t.deprecated,
+        }
+    finally:
+        db.close()
+
+def search_attack_techniques(query: str = "", tactic: str = "", limit: int = 50) -> list[dict]:
+    db = SessionLocal()
+    try:
+        q = db.query(AttackTechnique).filter(AttackTechnique.deprecated == False)
+        if query:
+            pattern = f"%{query}%"
+            q = q.filter(
+                (AttackTechnique.technique_id.ilike(pattern)) |
+                (AttackTechnique.name.ilike(pattern))
+            )
+        if tactic:
+            # tactics is JSON array, use text-based filter
+            q = q.filter(AttackTechnique.tactics.cast(String).ilike(f"%{tactic}%"))
+        rows = q.order_by(AttackTechnique.technique_id).limit(limit).all()
+        return [
+            {
+                "technique_id": t.technique_id, "name": t.name,
+                "url": t.url, "tactics": t.tactics,
+                "is_subtechnique": t.is_subtechnique,
+            }
+            for t in rows
+        ]
+    finally:
+        db.close()
+
+def get_attack_tactics() -> list[dict]:
+    db = SessionLocal()
+    try:
+        rows = db.query(AttackTactic).order_by(AttackTactic.tactic_id).all()
+        return [
+            {
+                "tactic_id": t.tactic_id, "short_name": t.short_name,
+                "name": t.name, "description": t.description, "url": t.url,
+            }
+            for t in rows
+        ]
+    finally:
+        db.close()
+
+def get_mitigations_for_technique(technique_id: str) -> list[dict]:
+    db = SessionLocal()
+    try:
+        links = db.query(AttackMitigationLink).filter(
+            AttackMitigationLink.technique_id == technique_id
+        ).all()
+        results = []
+        for link in links:
+            mit = db.query(AttackMitigation).filter(
+                AttackMitigation.mitigation_id == link.mitigation_id
+            ).first()
+            if mit:
+                results.append({
+                    "mitigation_id": mit.mitigation_id, "name": mit.name,
+                    "description": mit.description, "url": mit.url,
+                    "link_description": link.description,
+                })
+        return results
+    finally:
+        db.close()
+
+def get_techniques_for_cwe(cwe_id: str) -> list[dict]:
+    """Get ATT&CK techniques mapped to a CWE via CAPEC."""
+    db = SessionLocal()
+    try:
+        maps = db.query(CweAttackMap).filter(CweAttackMap.cwe_id == cwe_id).all()
+        results = []
+        seen = set()
+        for m in maps:
+            if m.technique_id in seen:
+                continue
+            seen.add(m.technique_id)
+            t = db.query(AttackTechnique).filter(
+                AttackTechnique.technique_id == m.technique_id
+            ).first()
+            if t:
+                results.append({
+                    "technique_id": t.technique_id, "name": t.name,
+                    "url": t.url, "tactics": t.tactics,
+                    "capec_id": m.capec_id,
+                })
+        return results
+    finally:
+        db.close()
+
+def get_euvd_by_cve(cve_id: str) -> dict | None:
+    """Lookup EUVD entry by CVE alias."""
+    db = SessionLocal()
+    try:
+        # aliases is JSON array, search with text match
+        rows = db.query(EuvdCache).filter(
+            EuvdCache.aliases.cast(String).ilike(f"%{cve_id}%")
+        ).all()
+        for row in rows:
+            aliases = row.aliases or []
+            if cve_id in aliases:
+                return {
+                    "euvd_id": row.euvd_id, "description": row.description,
+                    "date_published": row.date_published,
+                    "base_score": row.base_score,
+                    "base_score_vector": row.base_score_vector,
+                    "aliases": row.aliases, "vendor": row.vendor,
+                    "product": row.product, "epss": row.epss,
+                    "url": f"https://euvd.enisa.europa.eu/detail/{row.euvd_id}",
+                }
+        return None
     finally:
         db.close()
 

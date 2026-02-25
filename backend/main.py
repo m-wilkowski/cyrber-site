@@ -120,6 +120,8 @@ from modules.database import (
 )
 from modules.database import (
     get_intel_sync_logs, get_intel_cache_counts,
+    search_attack_techniques, get_attack_technique, get_attack_tactics,
+    get_mitigations_for_technique, get_techniques_for_cwe, get_euvd_by_cve,
 )
 from modules.database import (
     get_scans_by_target, get_remediation_counts_for_scan,
@@ -2312,6 +2314,55 @@ async def intel_sync_run(request: Request,
     result = run_intel_sync.delay()
     audit(request, current_user, "intel_sync_trigger", f"celery_task={result.id}")
     return {"ok": True, "task_id": result.id}
+
+@app.post("/admin/intel-sync/attack")
+async def intel_sync_attack(request: Request,
+                            current_user: dict = Depends(require_role("admin"))):
+    from modules.tasks import run_attack_sync
+    result = run_attack_sync.delay()
+    audit(request, current_user, "attack_sync_trigger", f"celery_task={result.id}")
+    return {"ok": True, "task_id": result.id}
+
+@app.post("/admin/intel-sync/euvd")
+async def intel_sync_euvd(request: Request,
+                          current_user: dict = Depends(require_role("admin"))):
+    from modules.tasks import run_euvd_sync
+    result = run_euvd_sync.delay()
+    audit(request, current_user, "euvd_sync_trigger", f"celery_task={result.id}")
+    return {"ok": True, "task_id": result.id}
+
+# ── ATT&CK API ───────────────────────────────────────────
+
+@app.get("/api/attack/techniques")
+async def api_attack_techniques(q: str = "", tactic: str = "", limit: int = Query(50, le=200),
+                                current_user: dict = Depends(get_current_user)):
+    return search_attack_techniques(query=q, tactic=tactic, limit=limit)
+
+@app.get("/api/attack/technique/{technique_id}")
+async def api_attack_technique_detail(technique_id: str,
+                                      current_user: dict = Depends(get_current_user)):
+    t = get_attack_technique(technique_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="Technique not found")
+    t["mitigations"] = get_mitigations_for_technique(technique_id)
+    return t
+
+@app.get("/api/attack/tactics")
+async def api_attack_tactics(current_user: dict = Depends(get_current_user)):
+    return get_attack_tactics()
+
+@app.get("/api/attack/cwe/{cwe_id}")
+async def api_attack_cwe(cwe_id: str, current_user: dict = Depends(get_current_user)):
+    return get_techniques_for_cwe(cwe_id)
+
+@app.get("/api/euvd/lookup")
+async def api_euvd_lookup(cve_id: str = Query(..., pattern=r"^CVE-\d{4}-\d{4,7}$"),
+                           current_user: dict = Depends(get_current_user)):
+    result = get_euvd_by_cve(cve_id)
+    if not result:
+        return {"cve_id": cve_id, "found": False}
+    result["found"] = True
+    return result
 
 @app.get("/api/finding/enrich")
 async def finding_enrich(cve_id: str = Query(..., pattern=r"^CVE-\d{4}-\d{4,7}$"),

@@ -733,6 +733,20 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="stat-label" style="margin-top:4px" id="intelNvdLast">LAST SYNC: —</div>
         </div>
       </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:8px">ATT&CK TECHNIQUES</div>
+          <div class="stat-num" id="intelAttackCount" style="color:#5eead4">—</div>
+          <div class="stat-label" style="margin-top:4px" id="intelAttackLast">LAST SYNC: —</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:8px">ENISA EUVD</div>
+          <div class="stat-num" id="intelEuvdCount" style="color:#f59e0b">—</div>
+          <div class="stat-label" style="margin-top:4px" id="intelEuvdLast">LAST SYNC: —</div>
+        </div>
+      </div>
       <div class="stat-card" style="display:flex;align-items:center;justify-content:center">
         <button class="btn" id="intelSyncBtn" onclick="triggerIntelSync()" style="font-size:14px;padding:14px 28px">SYNC NOW</button>
       </div>
@@ -1232,11 +1246,15 @@ async function loadIntelStatus() {
     document.getElementById('intelKevCount').textContent = data.counts.kev || 0;
     document.getElementById('intelEpssCount').textContent = data.counts.epss || 0;
     document.getElementById('intelCveCount').textContent = data.counts.cve || 0;
+    document.getElementById('intelAttackCount').textContent = data.counts.attack_techniques || 0;
+    document.getElementById('intelEuvdCount').textContent = data.counts.euvd || 0;
 
     // Last sync per source
     document.getElementById('intelKevLast').textContent = 'LAST SYNC: ' + (data.last_sync.KEV ? fmtDate(data.last_sync.KEV) : '—');
     document.getElementById('intelEpssLast').textContent = 'LAST SYNC: ' + (data.last_sync.EPSS ? fmtDate(data.last_sync.EPSS) : '—');
     document.getElementById('intelNvdLast').textContent = 'LAST SYNC: ' + (data.last_sync.NVD ? fmtDate(data.last_sync.NVD) : '—');
+    document.getElementById('intelAttackLast').textContent = 'LAST SYNC: ' + (data.last_sync['ATT&CK'] ? fmtDate(data.last_sync['ATT&CK']) : '—');
+    document.getElementById('intelEuvdLast').textContent = 'LAST SYNC: ' + (data.last_sync.EUVD ? fmtDate(data.last_sync.EUVD) : '—');
 
     // Logs table
     const tbody = document.getElementById('intelLogsBody');

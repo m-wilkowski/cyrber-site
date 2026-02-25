@@ -103,6 +103,14 @@ celery_app.conf.beat_schedule = {
         "task": "modules.tasks.run_intel_sync",
         "schedule": crontab(hour=3, minute=0),
     },
+    "attack-sync-weekly": {
+        "task": "modules.tasks.run_attack_sync",
+        "schedule": crontab(hour=4, minute=0, day_of_week=0),  # Sunday 04:00
+    },
+    "euvd-sync-daily": {
+        "task": "modules.tasks.run_euvd_sync",
+        "schedule": crontab(hour=3, minute=30),
+    },
 }
 
 _SKIPPED = {"skipped": True, "reason": "not in profile", "findings": []}
@@ -489,8 +497,8 @@ def run_due_schedules():
 
 @celery_app.task
 def run_intel_sync():
-    """Sync KEV + EPSS intelligence feeds. Runs daily at 03:00 via Beat."""
-    from modules.intelligence_sync import sync_kev, sync_epss
+    """Sync all intelligence feeds: KEV + EPSS + ATT&CK + CAPEC + EUVD."""
+    from modules.intelligence_sync import sync_kev, sync_epss, sync_attack, sync_capec_cwe_map, sync_euvd
     results = {}
     try:
         results["kev"] = sync_kev()
@@ -502,7 +510,40 @@ def run_intel_sync():
         results["cve_ids_found"] = len(cve_ids)
     except Exception as e:
         results["epss_error"] = str(e)
+    try:
+        results["attack"] = sync_attack()
+    except Exception as e:
+        results["attack_error"] = str(e)
+    try:
+        results["capec_cwe_map"] = sync_capec_cwe_map()
+    except Exception as e:
+        results["capec_cwe_map_error"] = str(e)
+    try:
+        results["euvd"] = sync_euvd(days_back=7)
+    except Exception as e:
+        results["euvd_error"] = str(e)
     return results
+
+@celery_app.task
+def run_attack_sync():
+    """Sync ATT&CK + CAPEC-CWE mapping. Runs weekly (Sunday 04:00)."""
+    from modules.intelligence_sync import sync_attack, sync_capec_cwe_map
+    results = {}
+    try:
+        results["attack"] = sync_attack()
+    except Exception as e:
+        results["attack_error"] = str(e)
+    try:
+        results["capec_cwe_map"] = sync_capec_cwe_map()
+    except Exception as e:
+        results["capec_cwe_map_error"] = str(e)
+    return results
+
+@celery_app.task
+def run_euvd_sync():
+    """Sync ENISA EUVD. Runs daily at 03:30."""
+    from modules.intelligence_sync import sync_euvd
+    return {"euvd": sync_euvd(days_back=7)}
 
 @celery_app.task(bind=True, max_retries=1)
 def retest_finding(self, remediation_id: int, finding_name: str,

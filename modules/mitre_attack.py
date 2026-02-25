@@ -58,11 +58,29 @@ _mitre_descriptions = {}
 
 
 def _load_mitre_descriptions():
-    """Load technique descriptions from cached MITRE ATT&CK JSON."""
+    """Load technique descriptions — DB first, file cache fallback."""
     global _mitre_descriptions
     if _mitre_descriptions:
         return
 
+    # Try DB first
+    try:
+        from modules.database import search_attack_techniques
+        db_techniques = search_attack_techniques(query="", tactic="", limit=5000)
+        if db_techniques:
+            for t in db_techniques:
+                tid = t.get("technique_id", "")
+                _mitre_descriptions[tid] = {
+                    "name": t.get("name", ""),
+                    "description": "",  # summary only in search results
+                    "url": t.get("url", f"https://attack.mitre.org/techniques/{tid.replace('.', '/')}/"),
+                }
+            print(f"[mitre] Loaded {len(_mitre_descriptions)} techniques from DB")
+            return
+    except Exception as e:
+        print(f"[mitre] DB load failed, falling back to file cache: {e}")
+
+    # Fallback: file cache
     if not os.path.exists(CACHE_PATH):
         _download_mitre_data()
 
@@ -85,7 +103,7 @@ def _load_mitre_descriptions():
                         }
                         break
     except Exception as e:
-        print(f"[mitre] Failed to load cache: {e}")
+        print(f"[mitre] Failed to load file cache: {e}")
 
 
 def _download_mitre_data():
@@ -137,6 +155,27 @@ def _add(techniques: dict, tid: str, name: str, tactic: str, confidence: str, tr
         "confidence": confidence,
         "triggered_by": triggered_by,
     }
+
+
+def get_technique_detail(technique_id: str) -> dict | None:
+    """Get full technique detail + mitigations from DB."""
+    try:
+        from modules.database import get_attack_technique, get_mitigations_for_technique
+        t = get_attack_technique(technique_id)
+        if t:
+            t["mitigations"] = get_mitigations_for_technique(technique_id)
+            return t
+    except Exception:
+        pass
+    # Fallback to file cache
+    _load_mitre_descriptions()
+    if technique_id in _mitre_descriptions:
+        return {
+            "technique_id": technique_id,
+            **_mitre_descriptions[technique_id],
+            "mitigations": [],
+        }
+    return None
 
 
 def mitre_map(scan_results: dict) -> dict:

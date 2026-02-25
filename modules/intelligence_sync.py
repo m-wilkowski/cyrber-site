@@ -1,14 +1,19 @@
 """
-CYRBER Intelligence Sync — KEV / EPSS / NVD enrichment.
+CYRBER Intelligence Sync — KEV / EPSS / NVD / ATT&CK / CAPEC / EUVD enrichment.
 Pobiera dane z publicznych baz podatności i zapisuje do cache w PostgreSQL.
 """
 import time
 import logging
 import requests
+from datetime import datetime, timedelta
 
 from modules.database import (
     upsert_kev_entries, upsert_epss_entries, upsert_cve_entry,
     get_intel_enrichment, save_intel_sync_log,
+    upsert_attack_techniques, upsert_attack_tactics,
+    upsert_attack_mitigations, upsert_attack_mitigation_links,
+    upsert_cwe_attack_map, upsert_euvd_entries,
+    get_techniques_for_cwe, get_euvd_by_cve,
 )
 
 log = logging.getLogger("cyrber.intel")
@@ -16,8 +21,12 @@ log = logging.getLogger("cyrber.intel")
 KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 EPSS_URL = "https://api.first.org/data/v1/epss"
 NVD_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+ATTACK_URL = "https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json"
+CAPEC_URL = "https://raw.githubusercontent.com/mitre/cti/master/capec/2.1/stix-capec.json"
+EUVD_URL = "https://euvdservices.enisa.europa.eu/api/search"
 
 REQUEST_TIMEOUT = 60
+ATTACK_TIMEOUT = 120  # enterprise-attack.json is ~30MB
 
 
 def sync_kev() -> int:
@@ -139,8 +148,276 @@ def sync_nvd_cve(cve_id: str) -> dict | None:
         raise
 
 
+## ── ATT&CK Sync ──────────────────────────────────────────
+
+def _extract_external_id(obj: dict, source_name: str) -> str | None:
+    """Extract external_id from STIX external_references for a given source."""
+    for ref in obj.get("external_references", []):
+        if ref.get("source_name") == source_name:
+            return ref.get("external_id")
+    return None
+
+def _extract_url(obj: dict, source_name: str) -> str | None:
+    for ref in obj.get("external_references", []):
+        if ref.get("source_name") == source_name:
+            return ref.get("url")
+    return None
+
+
+def sync_attack() -> dict:
+    """Download MITRE ATT&CK Enterprise STIX bundle, parse and upsert techniques/tactics/mitigations."""
+    t0 = time.time()
+    try:
+        log.info("ATT&CK sync: downloading enterprise-attack.json...")
+        resp = requests.get(ATTACK_URL, timeout=ATTACK_TIMEOUT)
+        resp.raise_for_status()
+        bundle = resp.json()
+        objects = bundle.get("objects", [])
+        log.info(f"ATT&CK sync: {len(objects)} STIX objects downloaded")
+
+        # Build ID→object map for relationship resolution
+        id_map = {obj.get("id"): obj for obj in objects}
+
+        techniques = []
+        tactics = []
+        mitigations = []
+        mitigation_links = []
+
+        for obj in objects:
+            obj_type = obj.get("type")
+            revoked = obj.get("revoked", False)
+            deprecated = obj.get("x_mitre_deprecated", False)
+
+            if obj_type == "attack-pattern":
+                tid = _extract_external_id(obj, "mitre-attack")
+                if not tid:
+                    continue
+                url = _extract_url(obj, "mitre-attack") or f"https://attack.mitre.org/techniques/{tid.replace('.', '/')}/"
+                # Extract tactics from kill_chain_phases
+                obj_tactics = []
+                for phase in obj.get("kill_chain_phases", []):
+                    if phase.get("kill_chain_name") == "mitre-attack":
+                        obj_tactics.append(phase.get("phase_name"))
+                # Determine parent
+                parent_id = None
+                is_sub = obj.get("x_mitre_is_subtechnique", False)
+                if is_sub and "." in tid:
+                    parent_id = tid.rsplit(".", 1)[0]
+
+                techniques.append({
+                    "technique_id": tid,
+                    "name": obj.get("name", ""),
+                    "description": (obj.get("description", "") or "")[:5000],
+                    "url": url,
+                    "platforms": obj.get("x_mitre_platforms", []),
+                    "tactics": obj_tactics,
+                    "data_sources": obj.get("x_mitre_data_sources", []),
+                    "detection": (obj.get("x_mitre_detection", "") or "")[:3000],
+                    "is_subtechnique": is_sub,
+                    "parent_id": parent_id,
+                    "deprecated": revoked or deprecated,
+                })
+
+            elif obj_type == "x-mitre-tactic":
+                tac_id = _extract_external_id(obj, "mitre-attack")
+                if not tac_id:
+                    continue
+                short_name = obj.get("x_mitre_shortname", "")
+                url = _extract_url(obj, "mitre-attack") or f"https://attack.mitre.org/tactics/{tac_id}/"
+                tactics.append({
+                    "tactic_id": tac_id,
+                    "short_name": short_name,
+                    "name": obj.get("name", ""),
+                    "description": (obj.get("description", "") or "")[:3000],
+                    "url": url,
+                })
+
+            elif obj_type == "course-of-action":
+                mit_id = _extract_external_id(obj, "mitre-attack")
+                if not mit_id:
+                    continue
+                url = _extract_url(obj, "mitre-attack") or f"https://attack.mitre.org/mitigations/{mit_id}/"
+                mitigations.append({
+                    "mitigation_id": mit_id,
+                    "name": obj.get("name", ""),
+                    "description": (obj.get("description", "") or "")[:3000],
+                    "url": url,
+                })
+
+            elif obj_type == "relationship" and obj.get("relationship_type") == "mitigates":
+                src_ref = obj.get("source_ref", "")
+                tgt_ref = obj.get("target_ref", "")
+                src_obj = id_map.get(src_ref, {})
+                tgt_obj = id_map.get(tgt_ref, {})
+                mit_id = _extract_external_id(src_obj, "mitre-attack")
+                tech_id = _extract_external_id(tgt_obj, "mitre-attack")
+                if mit_id and tech_id and not obj.get("revoked"):
+                    mitigation_links.append({
+                        "mitigation_id": mit_id,
+                        "technique_id": tech_id,
+                        "description": (obj.get("description", "") or "")[:2000],
+                    })
+
+        # Upsert to DB
+        t_count = upsert_attack_techniques(techniques)
+        tac_count = upsert_attack_tactics(tactics)
+        m_count = upsert_attack_mitigations(mitigations)
+        ml_count = upsert_attack_mitigation_links(mitigation_links)
+
+        total = t_count + tac_count + m_count + ml_count
+        duration = time.time() - t0
+        save_intel_sync_log("ATT&CK", "success", total, duration)
+        log.info(f"ATT&CK sync complete: {t_count} techniques, {tac_count} tactics, "
+                 f"{m_count} mitigations, {ml_count} links in {duration:.1f}s")
+        return {
+            "techniques": t_count, "tactics": tac_count,
+            "mitigations": m_count, "mitigation_links": ml_count,
+        }
+    except Exception as e:
+        duration = time.time() - t0
+        save_intel_sync_log("ATT&CK", "error", 0, duration, str(e))
+        log.error(f"ATT&CK sync failed: {e}")
+        raise
+
+
+def sync_capec_cwe_map() -> int:
+    """Download CAPEC STIX bundle, extract CWE→CAPEC→ATT&CK technique mappings."""
+    t0 = time.time()
+    try:
+        log.info("CAPEC-CWE-MAP sync: downloading stix-capec.json...")
+        resp = requests.get(CAPEC_URL, timeout=ATTACK_TIMEOUT)
+        resp.raise_for_status()
+        bundle = resp.json()
+        objects = bundle.get("objects", [])
+
+        mappings = []
+        for obj in objects:
+            if obj.get("type") != "attack-pattern":
+                continue
+            if obj.get("revoked") or obj.get("x_capec_status") == "Deprecated":
+                continue
+
+            refs = obj.get("external_references", [])
+            capec_id = None
+            cwe_ids = []
+            technique_ids = []
+
+            for ref in refs:
+                src = ref.get("source_name", "")
+                ext_id = ref.get("external_id", "")
+                if src == "capec" and ext_id:
+                    capec_id = ext_id  # CAPEC-66
+                elif src == "cwe" and ext_id:
+                    cwe_ids.append(ext_id)  # CWE-89
+                elif src == "ATTACK" and ext_id:
+                    technique_ids.append(ext_id)  # T1190
+
+            if not capec_id or not cwe_ids or not technique_ids:
+                continue
+
+            # Cross-product CWE × technique
+            for cwe_id in cwe_ids:
+                for tech_id in technique_ids:
+                    mappings.append({
+                        "cwe_id": cwe_id,
+                        "capec_id": capec_id,
+                        "technique_id": tech_id,
+                    })
+
+        count = upsert_cwe_attack_map(mappings)
+        duration = time.time() - t0
+        save_intel_sync_log("CAPEC-CWE-MAP", "success", count, duration)
+        log.info(f"CAPEC-CWE-MAP sync complete: {count} mappings in {duration:.1f}s")
+        return count
+    except Exception as e:
+        duration = time.time() - t0
+        save_intel_sync_log("CAPEC-CWE-MAP", "error", 0, duration, str(e))
+        log.error(f"CAPEC-CWE-MAP sync failed: {e}")
+        raise
+
+
+def sync_euvd(days_back: int = 30) -> int:
+    """Sync ENISA EU Vulnerability Database entries."""
+    t0 = time.time()
+    try:
+        to_date = datetime.utcnow().strftime("%Y-%m-%d")
+        from_date = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+        log.info(f"EUVD sync: fetching {from_date} to {to_date}...")
+
+        total = 0
+        page = 0
+        page_size = 100
+
+        while True:
+            params = {
+                "fromDate": from_date,
+                "toDate": to_date,
+                "page": page,
+                "size": page_size,
+            }
+            resp = requests.get(EUVD_URL, params=params, timeout=REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            data = resp.json()
+            items = data.get("items", [])
+
+            if not items:
+                break
+
+            entries = []
+            for item in items:
+                euvd_id = item.get("id")
+                if not euvd_id:
+                    continue
+                # Parse aliases — sometimes newline-separated string
+                raw_aliases = item.get("aliases", "")
+                if isinstance(raw_aliases, str):
+                    aliases = [a.strip() for a in raw_aliases.split("\n") if a.strip()]
+                elif isinstance(raw_aliases, list):
+                    aliases = raw_aliases
+                else:
+                    aliases = []
+
+                entries.append({
+                    "euvd_id": euvd_id,
+                    "description": (item.get("description", "") or "")[:5000],
+                    "date_published": item.get("datePublished"),
+                    "date_updated": item.get("dateUpdated"),
+                    "base_score": item.get("baseScore"),
+                    "base_score_version": item.get("baseScoreVersion"),
+                    "base_score_vector": item.get("baseScoreVector"),
+                    "aliases": aliases,
+                    "epss": item.get("epss"),
+                    "vendor": item.get("enisaIdVendor"),
+                    "product": item.get("enisaIdProduct"),
+                    "references": item.get("references"),
+                })
+
+            count = upsert_euvd_entries(entries)
+            total += count
+
+            # Check if more pages
+            api_total = data.get("total", 0)
+            fetched = (page + 1) * page_size
+            if fetched >= api_total or len(items) < page_size:
+                break
+
+            page += 1
+            time.sleep(0.5)  # Rate limit
+
+        duration = time.time() - t0
+        save_intel_sync_log("EUVD", "success", total, duration)
+        log.info(f"EUVD sync complete: {total} entries in {duration:.1f}s")
+        return total
+    except Exception as e:
+        duration = time.time() - t0
+        save_intel_sync_log("EUVD", "error", 0, duration, str(e))
+        log.error(f"EUVD sync failed: {e}")
+        raise
+
+
 def enrich_finding(cve_id: str) -> dict:
-    """Get enrichment data for a CVE. Uses cache, falls back to NVD on-demand."""
+    """Get enrichment data for a CVE. Uses cache, falls back to NVD on-demand.
+    Includes ATT&CK techniques (via CWE) and EUVD lookup."""
     result = get_intel_enrichment(cve_id)
 
     # If no CVE data in cache, fetch on-demand from NVD
@@ -156,6 +433,29 @@ def enrich_finding(cve_id: str) -> dict:
     epss = result.get("epss_score") or 0
     kev = result.get("in_kev", False)
     result["priority"] = calculate_priority(cvss, epss, kev)
+
+    # ATT&CK techniques via CWE→CAPEC→technique mapping
+    cwe_id = result.get("cwe_id")
+    if cwe_id:
+        try:
+            techniques = get_techniques_for_cwe(cwe_id)
+            result["attack_techniques"] = techniques[:5]
+        except Exception:
+            result["attack_techniques"] = []
+    else:
+        result["attack_techniques"] = []
+
+    # EUVD lookup
+    try:
+        euvd = get_euvd_by_cve(cve_id)
+        if euvd:
+            result["in_euvd"] = True
+            result["euvd_id"] = euvd["euvd_id"]
+            result["euvd_url"] = euvd["url"]
+        else:
+            result["in_euvd"] = False
+    except Exception:
+        result["in_euvd"] = False
 
     return result
 
