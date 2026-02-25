@@ -1,0 +1,15 @@
+.git
+.github
+venv
+__pycache__
+*.pyc
+.env
+.env.*
+knowledge_base
+ci-results
+tests
+*.md
+!requirements.txt
+.pytest_cache
+.claude
+docker/garak

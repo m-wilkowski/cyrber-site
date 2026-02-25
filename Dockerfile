@@ -1,5 +1,7 @@
-FROM python:3.11-slim
-RUN apt-get update && apt-get install -y \
+FROM python:3.12-slim
+
+# ── All apt packages in one layer ──
+RUN apt-get update && apt-get install -y --no-install-recommends \
     nmap \
     masscan \
     curl \
@@ -17,13 +19,35 @@ RUN apt-get update && apt-get install -y \
     unzip \
     smbclient \
     samba-common \
+    netdiscover \
+    arp-scan \
+    fping \
+    traceroute \
+    nbtscan \
+    snmp \
+    onesixtyone \
+    ike-scan \
+    libimage-exiftool-perl \
+    libwww-perl \
     && rm -rf /var/lib/apt/lists/*
+
+# ── Pinned tool versions (avoid GitHub API rate limits in CI) ──
+ARG NUCLEI_VERSION=3.7.0
+ARG SUBFINDER_VERSION=2.12.0
+ARG HTTPX_VERSION=1.8.1
+ARG NAABU_VERSION=2.4.0
+ARG KATANA_VERSION=1.4.0
+ARG DNSX_VERSION=1.2.3
+ARG GOBUSTER_VERSION=3.8.2
+ARG AMASS_VERSION=5.0.1
+ARG PHONEINFOGA_VERSION=2.11.0
+
 # nikto (git clone)
 RUN git clone --depth 1 https://github.com/sullo/nikto /opt/nikto && \
     ln -s /opt/nikto/program/nikto.pl /usr/local/bin/nikto && \
     chmod +x /opt/nikto/program/nikto.pl
-# gobuster (binary from GitHub releases)
-RUN curl -L "https://github.com/OJ/gobuster/releases/latest/download/gobuster_Linux_x86_64.tar.gz" -o /tmp/gobuster.tar.gz && \
+# gobuster
+RUN curl -L "https://github.com/OJ/gobuster/releases/download/v${GOBUSTER_VERSION}/gobuster_Linux_x86_64.tar.gz" -o /tmp/gobuster.tar.gz && \
     tar xzf /tmp/gobuster.tar.gz -C /tmp && \
     mv /tmp/gobuster /usr/local/bin/gobuster && \
     chmod +x /usr/local/bin/gobuster && \
@@ -32,14 +56,13 @@ RUN curl -L "https://github.com/OJ/gobuster/releases/latest/download/gobuster_Li
 RUN git clone --depth 1 https://github.com/urbanadventurer/WhatWeb.git /opt/whatweb && \
     ln -s /opt/whatweb/whatweb /usr/local/bin/whatweb && \
     chmod +x /opt/whatweb/whatweb
-# theHarvester (4.6.0 supports Python 3.11; latest requires 3.12+)
+# theHarvester (4.6.0 supports Python 3.11+; latest requires 3.12+)
 RUN pip install --no-cache-dir git+https://github.com/laramies/theHarvester.git@4.6.0
 # testssl
 RUN git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl
 ENV TESTSSL_PATH=/opt/testssl/testssl.sh
 # nuclei
-RUN NUCLEI_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/nuclei/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
-    curl -L "https://github.com/projectdiscovery/nuclei/releases/latest/download/nuclei_${NUCLEI_VERSION}_linux_amd64.zip" -o /tmp/nuclei.zip && \
+RUN curl -L "https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip" -o /tmp/nuclei.zip && \
     unzip /tmp/nuclei.zip nuclei -d /usr/local/bin/ && \
     rm /tmp/nuclei.zip
 # sqlmap
@@ -53,7 +76,7 @@ RUN git clone --depth 1 https://github.com/cddmp/enum4linux-ng.git /opt/enum4lin
 # dnsrecon
 RUN pip install dnsrecon
 # amass
-RUN curl -L "https://github.com/owasp-amass/amass/releases/latest/download/amass_linux_amd64.tar.gz" \
+RUN curl -L "https://github.com/owasp-amass/amass/releases/download/v${AMASS_VERSION}/amass_linux_amd64.tar.gz" \
     -o /tmp/amass.tar.gz && \
     tar xzf /tmp/amass.tar.gz -C /tmp && \
     mv /tmp/amass_linux_amd64/amass /usr/local/bin/amass && \
@@ -73,7 +96,7 @@ RUN git clone --depth 1 https://github.com/opsdisk/metagoofil.git /opt/metagoofi
     ln -s /opt/metagoofil/metagoofil.py /usr/local/bin/metagoofil && \
     chmod +x /opt/metagoofil/metagoofil.py
 # phoneinfoga
-RUN curl -L "https://github.com/sundowndev/phoneinfoga/releases/latest/download/phoneinfoga_Linux_x86_64.tar.gz" -o /tmp/phoneinfoga.tar.gz && \
+RUN curl -L "https://github.com/sundowndev/phoneinfoga/releases/download/v${PHONEINFOGA_VERSION}/phoneinfoga_Linux_x86_64.tar.gz" -o /tmp/phoneinfoga.tar.gz && \
     tar xzf /tmp/phoneinfoga.tar.gz -C /tmp && \
     mv /tmp/phoneinfoga /usr/local/bin/phoneinfoga && \
     chmod +x /usr/local/bin/phoneinfoga && \
@@ -83,7 +106,6 @@ RUN pip install wapiti3 --break-system-packages
 # joomscan (Joomla vulnerability scanner)
 RUN git clone --depth 1 https://github.com/OWASP/joomscan.git /opt/joomscan && \
     chmod +x /opt/joomscan/joomscan.pl && \
-    apt-get update && apt-get install -y libwww-perl && rm -rf /var/lib/apt/lists/* && \
     ln -s /opt/joomscan/joomscan.pl /usr/local/bin/joomscan
 # cmsmap (multi-CMS vulnerability scanner)
 RUN git clone --depth 1 https://github.com/Dionach/CMSmap.git /opt/cmsmap && \
@@ -93,47 +115,30 @@ RUN git clone --depth 1 https://github.com/Dionach/CMSmap.git /opt/cmsmap && \
 # droopescan (Drupal/Joomla/WordPress/SilverStripe/Moodle scanner)
 RUN pip install droopescan --break-system-packages
 # subfinder (passive subdomain enumeration by ProjectDiscovery)
-RUN SUBFINDER_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/subfinder/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
-    curl -L "https://github.com/projectdiscovery/subfinder/releases/latest/download/subfinder_${SUBFINDER_VERSION}_linux_amd64.zip" -o /tmp/subfinder.zip && \
+RUN curl -L "https://github.com/projectdiscovery/subfinder/releases/download/v${SUBFINDER_VERSION}/subfinder_${SUBFINDER_VERSION}_linux_amd64.zip" -o /tmp/subfinder.zip && \
     unzip /tmp/subfinder.zip subfinder -d /usr/local/bin/ && \
     chmod +x /usr/local/bin/subfinder && \
     rm /tmp/subfinder.zip
 # httpx (HTTP probing and technology detection by ProjectDiscovery)
-RUN HTTPX_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/httpx/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
-    curl -L "https://github.com/projectdiscovery/httpx/releases/latest/download/httpx_${HTTPX_VERSION}_linux_amd64.zip" -o /tmp/httpx.zip && \
+RUN curl -L "https://github.com/projectdiscovery/httpx/releases/download/v${HTTPX_VERSION}/httpx_${HTTPX_VERSION}_linux_amd64.zip" -o /tmp/httpx.zip && \
     unzip -o /tmp/httpx.zip httpx -d /usr/local/bin/ && \
     chmod +x /usr/local/bin/httpx && \
     rm /tmp/httpx.zip
 # naabu (fast port scanner by ProjectDiscovery)
-RUN NAABU_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/naabu/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
-    curl -L "https://github.com/projectdiscovery/naabu/releases/latest/download/naabu_${NAABU_VERSION}_linux_amd64.zip" -o /tmp/naabu.zip && \
+RUN curl -L "https://github.com/projectdiscovery/naabu/releases/download/v${NAABU_VERSION}/naabu_${NAABU_VERSION}_linux_amd64.zip" -o /tmp/naabu.zip && \
     unzip /tmp/naabu.zip naabu -d /usr/local/bin/ && \
     chmod +x /usr/local/bin/naabu && \
     rm /tmp/naabu.zip
 # katana (web crawler by ProjectDiscovery)
-RUN KATANA_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/katana/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
-    curl -L "https://github.com/projectdiscovery/katana/releases/latest/download/katana_${KATANA_VERSION}_linux_amd64.zip" -o /tmp/katana.zip && \
+RUN curl -L "https://github.com/projectdiscovery/katana/releases/download/v${KATANA_VERSION}/katana_${KATANA_VERSION}_linux_amd64.zip" -o /tmp/katana.zip && \
     unzip /tmp/katana.zip katana -d /usr/local/bin/ && \
     chmod +x /usr/local/bin/katana && \
     rm /tmp/katana.zip
 # dnsx (DNS toolkit by ProjectDiscovery)
-RUN DNSX_VERSION=$(curl -s https://api.github.com/repos/projectdiscovery/dnsx/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v') && \
-    curl -L "https://github.com/projectdiscovery/dnsx/releases/latest/download/dnsx_${DNSX_VERSION}_linux_amd64.zip" -o /tmp/dnsx.zip && \
+RUN curl -L "https://github.com/projectdiscovery/dnsx/releases/download/v${DNSX_VERSION}/dnsx_${DNSX_VERSION}_linux_amd64.zip" -o /tmp/dnsx.zip && \
     unzip /tmp/dnsx.zip dnsx -d /usr/local/bin/ && \
     chmod +x /usr/local/bin/dnsx && \
     rm /tmp/dnsx.zip
-# netdiscover (ARP network discovery)
-RUN apt-get update && apt-get install -y netdiscover && rm -rf /var/lib/apt/lists/*
-# arp-scan (ARP host discovery)
-RUN apt-get update && apt-get install -y arp-scan && rm -rf /var/lib/apt/lists/*
-# fping (fast ICMP ping sweep)
-RUN apt-get update && apt-get install -y fping && rm -rf /var/lib/apt/lists/*
-# traceroute (network path analysis)
-RUN apt-get update && apt-get install -y traceroute && rm -rf /var/lib/apt/lists/*
-# nbtscan (NetBIOS name scanner)
-RUN apt-get update && apt-get install -y nbtscan && rm -rf /var/lib/apt/lists/*
-# snmp (SNMP enumeration tools: snmpwalk, snmpget, snmpbulkwalk)
-RUN apt-get update && apt-get install -y snmp && rm -rf /var/lib/apt/lists/*
 # netexec (SMB/WinRM/LDAP/MSSQL network enumeration)
 RUN pip install netexec --break-system-packages || \
     (git clone --depth 1 https://github.com/Pennyw0rth/NetExec.git /opt/netexec && \
@@ -146,17 +151,11 @@ RUN git clone --depth 1 https://github.com/lgandx/Responder.git /opt/responder
 RUN pip install fierce --break-system-packages
 # smbmap (SMB share enumeration and access checking)
 RUN pip install smbmap --break-system-packages
-# onesixtyone (fast SNMP community string brute-forcer)
-RUN apt-get update && apt-get install -y onesixtyone && rm -rf /var/lib/apt/lists/*
-# ike-scan (IKE/IPsec VPN gateway discovery and fingerprinting)
-RUN apt-get update && apt-get install -y ike-scan && rm -rf /var/lib/apt/lists/*
 # sslyze (SSL/TLS configuration analysis and vulnerability scanning)
 RUN pip install sslyze --break-system-packages
 # searchsploit (exploit-db CLI search tool)
 RUN git clone --depth 1 https://gitlab.com/exploit-database/exploitdb.git /opt/exploitdb && \
     ln -sf /opt/exploitdb/searchsploit /usr/local/bin/searchsploit
-# exiftool (EXIF metadata extraction from images — GPS, device, author)
-RUN apt-get update && apt-get install -y libimage-exiftool-perl && rm -rf /var/lib/apt/lists/*
 # impacket (Active Directory attack toolkit — Kerberoasting, AS-REP, secretsdump, lookupsid)
 RUN pip install impacket --break-system-packages
 # retire.js (vulnerable JavaScript library detection)
