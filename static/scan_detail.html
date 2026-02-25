@@ -738,7 +738,7 @@ var MODULE_KEYS=['nuclei','whatweb','gobuster','testssl','sqlmap','nikto','massc
 function renderModules(){
   var el=document.getElementById('tab-modules');
   var detail=_detail;
-  var reflection=detail.ai_analysis||{};
+  var reflection=detail.reflection||{};
   var modsOk=reflection.modules_ok||[];
   var modsEmpty=reflection.modules_empty||[];
   var modsError=reflection.modules_error||[];

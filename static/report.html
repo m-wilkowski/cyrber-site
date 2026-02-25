@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CYRBER — Security Report</title>
@@ -585,9 +586,15 @@ if (!taskId) {
 }
 
 if (taskId) {
-  fetch('/api/report/' + taskId)
+  var _token = localStorage.getItem('cyrber_token');
+  var _shareToken = new URLSearchParams(window.location.search).get('token');
+  var _reportUrl = '/api/report/' + taskId;
+  if (_shareToken) _reportUrl += '?token=' + encodeURIComponent(_shareToken);
+  var _headers = {};
+  if (_token) _headers['Authorization'] = 'Bearer ' + _token;
+  fetch(_reportUrl, {headers: _headers})
     .then(function(r) {
-      if (!r.ok) throw new Error(r.status === 404 ? 'Scan not found.' : 'Server error (' + r.status + ')');
+      if (!r.ok) throw new Error(r.status === 404 ? 'Scan not found.' : r.status === 401 ? 'Authentication required.' : 'Server error (' + r.status + ')');
       return r.json();
     })
     .then(function(d) { renderReport(d); })

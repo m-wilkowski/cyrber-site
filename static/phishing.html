@@ -703,15 +703,59 @@ function renderCampaigns(campaigns) {
 
 // ── launch campaign ──
 async function launchCampaign() {
+  var consent = document.getElementById('consentCheck').checked;
+  if (!consent) { showMsg('Authorization consent is required', true); return; }
+
+  var isEvilginx = wizState.vector === 'evilginx';
+
+  if (isEvilginx) {
+    // Evilginx campaign launch
+    var eName = document.getElementById('evilCampName').value.trim();
+    var ePhishlet = document.getElementById('evilPhishlet').value.trim();
+    var eLure = document.getElementById('evilLureUrl').value.trim();
+    var eRedirect = document.getElementById('evilRedirectUrl').value.trim();
+
+    if (!eName) { showMsg('Campaign name is required', true); return; }
+    if (!ePhishlet) { showMsg('Phishlet selection is required', true); return; }
+    if (!eLure) { showMsg('Lure URL is required', true); return; }
+
+    document.getElementById('launchBtn').disabled = true;
+
+    try {
+      var r = await authFetch('/evilginx/lures', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          name: eName,
+          phishlet: ePhishlet,
+          lure_url: eLure,
+          redirect_url: eRedirect
+        })
+      });
+      if (r.ok) {
+        showMsg('Evilginx campaign "' + eName + '" configured — deploy via Evilginx CLI');
+        document.getElementById('consentCheck').checked = false;
+        document.getElementById('launchBtn').disabled = true;
+      } else {
+        var err = await r.json().catch(function(){ return {}; });
+        showMsg(err.detail || 'Error configuring Evilginx campaign', true);
+        document.getElementById('launchBtn').disabled = !document.getElementById('consentCheck').checked;
+      }
+    } catch(e) {
+      showMsg('Connection error: ' + e.message, true);
+      document.getElementById('launchBtn').disabled = !document.getElementById('consentCheck').checked;
+    }
+    return;
+  }
+
+  // GoPhish campaign launch
   var name = document.getElementById('campName').value.trim();
   var domain = document.getElementById('campDomain').value.trim();
   var subject = document.getElementById('campSubject').value.trim();
   var body = document.getElementById('campBody').value.trim();
   var landing = document.getElementById('campLanding').value.trim();
   var rawTargets = document.getElementById('campTargets').value.trim();
-  var consent = document.getElementById('consentCheck').checked;
 
-  if (!consent) { showMsg('Authorization consent is required', true); return; }
   if (!name) { showMsg('Campaign name is required', true); return; }
   if (!domain) { showMsg('Sender domain is required', true); return; }
   if (!subject) { showMsg('Email subject is required', true); return; }
