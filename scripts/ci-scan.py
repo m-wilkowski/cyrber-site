@@ -35,12 +35,12 @@ def parse_args():
 def login(api_url: str, username: str, password: str) -> str:
     """Authenticate and return JWT token."""
     r = requests.post(
-        f"{api_url}/api/login",
+        f"{api_url}/auth/login",
         json={"username": username, "password": password},
         timeout=30,
     )
     r.raise_for_status()
-    token = r.json().get("access_token") or r.json().get("token")
+    token = r.json().get("token") or r.json().get("access_token")
     if not token:
         raise RuntimeError(f"Login failed: {r.json()}")
     return token
