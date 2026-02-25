@@ -343,6 +343,7 @@ body {
 .finding-tag.tag-misp{color:#e11d48;border-color:#e11d48;background:rgba(225,29,72,.06)}
 .finding-tag.tag-epss{color:#ea580c;border-color:#ea580c;background:rgba(234,88,12,.06)}
 .finding-tag.tag-attack{color:#0d9488;border-color:#0d9488;background:rgba(13,148,136,.06)}
+.finding-tag.tag-exploit{color:#ef4444;border-color:#ef4444;background:rgba(239,68,68,.06);font-weight:700}
 
 /* ── RECOMMENDATIONS ── */
 .rec-item {
@@ -692,6 +693,7 @@ function renderReport(d) {
     if(f.in_misp)tags.push('<span class="finding-tag tag-misp">MISP ('+(f.misp_event_count||0)+' events)</span>');
     if(f.epss_score)tags.push('<span class="finding-tag tag-epss">EPSS: '+(f.epss_score*100).toFixed(1)+'%</span>');
     if(f.attack_techniques&&f.attack_techniques.length)tags.push('<span class="finding-tag tag-attack">ATT&amp;CK: '+f.attack_techniques.length+'</span>');
+    if(f.exploitdb_count)tags.push('<span class="finding-tag tag-exploit">EXPLOIT ('+f.exploitdb_count+')</span>');
     flHtml += '<div class="finding-item">' +
       '<span class="finding-severity ' + sevCls + '">' + sevLabel + '</span>' +
       '<div><div class="finding-name">' + (f.name || 'Security issue') + '</div>' +

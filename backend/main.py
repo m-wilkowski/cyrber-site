@@ -2469,6 +2469,30 @@ async def api_target_enrich(target: str = Query(..., min_length=2),
     from modules.intelligence_sync import enrich_target
     return enrich_target(target)
 
+# ── ExploitDB API ────────────────────────────────────────
+
+@app.get("/api/intel/exploitdb/lookup")
+async def api_exploitdb_lookup(cve_id: str = Query(..., pattern=r"^CVE-\d{4}-\d{4,7}$"),
+                               current_user: dict = Depends(get_current_user)):
+    from modules.database import get_exploitdb_by_cve
+    results = get_exploitdb_by_cve(cve_id)
+    return {"cve_id": cve_id, "count": len(results), "exploits": results}
+
+@app.get("/api/intel/exploitdb/search")
+async def api_exploitdb_search(q: str = Query(..., min_length=2),
+                               limit: int = Query(20, le=100),
+                               current_user: dict = Depends(get_current_user)):
+    from modules.database import search_exploitdb
+    return search_exploitdb(query=q, limit=limit)
+
+@app.post("/admin/intel-sync/exploitdb")
+async def intel_sync_exploitdb(request: Request,
+                               current_user: dict = Depends(require_role("admin"))):
+    from modules.tasks import run_exploitdb_sync
+    result = run_exploitdb_sync.delay()
+    audit(request, current_user, "exploitdb_sync_trigger", f"celery_task={result.id}")
+    return {"ok": True, "task_id": result.id}
+
 # ── ATT&CK API ───────────────────────────────────────────
 
 @app.get("/api/attack/techniques")

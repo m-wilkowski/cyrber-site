@@ -2,6 +2,7 @@
 CYRBER Intelligence Sync — KEV / EPSS / NVD / ATT&CK / CAPEC / EUVD / Shodan / URLhaus / GreyNoise enrichment.
 Pobiera dane z publicznych baz podatności i zapisuje do cache w PostgreSQL.
 """
+import os
 import time
 import logging
 import requests
@@ -17,6 +18,7 @@ from modules.database import (
     upsert_shodan_cache, get_shodan_cache,
     upsert_urlhaus_cache, get_urlhaus_cache,
     upsert_greynoise_cache, get_greynoise_cache,
+    upsert_exploitdb_entries, get_exploitdb_by_cve,
 )
 
 log = logging.getLogger("cyrber.intel")
@@ -30,6 +32,8 @@ EUVD_URL = "https://euvdservices.enisa.europa.eu/api/search"
 SHODAN_INTERNETDB_URL = "https://internetdb.shodan.io"
 URLHAUS_API_URL = "https://urlhaus-api.abuse.ch/v1"
 GREYNOISE_API_URL = "https://api.greynoise.io/v3/community"
+EXPLOITDB_REPO = "https://github.com/offensive-security/exploitdb.git"
+EXPLOITDB_PATH = "/opt/exploitdb"
 
 REQUEST_TIMEOUT = 60
 ATTACK_TIMEOUT = 120  # enterprise-attack.json is ~30MB
@@ -383,6 +387,35 @@ def sync_euvd(days_back: int = 30) -> int:
                 else:
                     aliases = []
 
+                # Extract vendor/product names as strings
+                raw_vendor = item.get("enisaIdVendor")
+                if isinstance(raw_vendor, list):
+                    vendor = ", ".join(v.get("vendor", {}).get("name", "") for v in raw_vendor if isinstance(v, dict))
+                else:
+                    vendor = str(raw_vendor) if raw_vendor else ""
+
+                raw_product = item.get("enisaIdProduct")
+                if isinstance(raw_product, list):
+                    parts = []
+                    for p in raw_product:
+                        if not isinstance(p, dict):
+                            continue
+                        name = p.get("product", {}).get("name", "")
+                        ver = p.get("product_version", "")
+                        parts.append(f"{name} {ver}".strip() if ver else name)
+                    product = ", ".join(parts)
+                else:
+                    product = str(raw_product) if raw_product else ""
+
+                # References: ensure string for JSON column
+                raw_refs = item.get("references")
+                if isinstance(raw_refs, str):
+                    refs = [r.strip() for r in raw_refs.split("\n") if r.strip()]
+                elif isinstance(raw_refs, list):
+                    refs = raw_refs
+                else:
+                    refs = []
+
                 entries.append({
                     "euvd_id": euvd_id,
                     "description": (item.get("description", "") or "")[:5000],
@@ -393,9 +426,9 @@ def sync_euvd(days_back: int = 30) -> int:
                     "base_score_vector": item.get("baseScoreVector"),
                     "aliases": aliases,
                     "epss": item.get("epss"),
-                    "vendor": item.get("enisaIdVendor"),
-                    "product": item.get("enisaIdProduct"),
-                    "references": item.get("references"),
+                    "vendor": vendor,
+                    "product": product,
+                    "references": refs,
                 })
 
             count = upsert_euvd_entries(entries)
@@ -486,6 +519,19 @@ def enrich_finding(cve_id: str) -> dict:
         result["in_urlhaus"] = bool(urlhaus and urlhaus.get("urls_count", 0) > 0)
     except Exception:
         result["in_urlhaus"] = False
+
+    # ExploitDB lookup
+    try:
+        exploits = get_exploitdb_by_cve(cve_id)
+        if exploits:
+            result["exploitdb_count"] = len(exploits)
+            result["exploitdb_ids"] = [e["url"] for e in exploits[:5]]
+        else:
+            result["exploitdb_count"] = 0
+            result["exploitdb_ids"] = []
+    except Exception:
+        result["exploitdb_count"] = 0
+        result["exploitdb_ids"] = []
 
     return result
 
@@ -795,3 +841,85 @@ def sync_greynoise(ip: str) -> dict | None:
     except Exception as exc:
         log.warning(f"GreyNoise lookup failed for {ip}: {exc}")
         return None
+
+
+# ── ExploitDB ─────────────────────────────────────────────
+
+def sync_exploitdb() -> int:
+    """Git clone/pull ExploitDB repo and parse files_exploits.csv into DB cache."""
+    import subprocess
+    import csv
+    import re
+
+    t0 = time.time()
+    try:
+        # Clone or pull
+        if os.path.isdir(os.path.join(EXPLOITDB_PATH, ".git")):
+            log.info("ExploitDB: git pull...")
+            subprocess.run(["git", "-C", EXPLOITDB_PATH, "pull", "--ff-only"],
+                           capture_output=True, timeout=300, check=True)
+        else:
+            log.info("ExploitDB: git clone (first run)...")
+            os.makedirs(EXPLOITDB_PATH, exist_ok=True)
+            subprocess.run(["git", "clone", "--depth=1", EXPLOITDB_REPO, EXPLOITDB_PATH],
+                           capture_output=True, timeout=600, check=True)
+
+        csv_path = os.path.join(EXPLOITDB_PATH, "files_exploits.csv")
+        if not os.path.isfile(csv_path):
+            raise FileNotFoundError(f"files_exploits.csv not found in {EXPLOITDB_PATH}")
+
+        entries = _parse_exploitdb_csv(csv_path)
+        count = upsert_exploitdb_entries(entries)
+
+        duration = time.time() - t0
+        save_intel_sync_log("ExploitDB", "success", count, duration)
+        log.info(f"ExploitDB sync complete: {count} exploits in {duration:.1f}s")
+        return count
+
+    except Exception as exc:
+        duration = time.time() - t0
+        save_intel_sync_log("ExploitDB", "error", 0, duration, str(exc))
+        log.error(f"ExploitDB sync failed: {exc}")
+        raise
+
+
+def _parse_exploitdb_csv(csv_path: str) -> list[dict]:
+    """Parse files_exploits.csv into list of dicts for upsert."""
+    import csv
+    import re
+
+    entries = []
+    with open(csv_path, "r", encoding="utf-8", errors="replace") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                eid = int(row.get("id", 0))
+            except (ValueError, TypeError):
+                continue
+            if not eid:
+                continue
+
+            # Extract CVE(s) — codes column contains semicolon-separated CVE IDs
+            codes = row.get("codes", "")
+            cve_match = re.findall(r"CVE-\d{4}-\d{4,7}", codes) if codes else []
+            cve = cve_match[0] if cve_match else ""
+
+            port_raw = row.get("port", "")
+            try:
+                port = int(port_raw) if port_raw else None
+            except (ValueError, TypeError):
+                port = None
+
+            entries.append({
+                "exploit_id": eid,
+                "description": row.get("description", ""),
+                "cve": cve,
+                "type": row.get("type", ""),
+                "platform": row.get("platform", ""),
+                "port": port,
+                "date": row.get("date_published", ""),
+                "author": row.get("author", ""),
+                "url": f"https://www.exploit-db.com/exploits/{eid}",
+            })
+
+    return entries

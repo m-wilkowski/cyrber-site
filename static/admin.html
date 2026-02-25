@@ -696,6 +696,13 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="stat-label" style="margin-top:var(--sp-1)">ON-DEMAND</div>
         </div>
       </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label" style="margin-bottom:var(--sp-2)">EXPLOITDB</div>
+          <div class="stat-num" id="intelExploitdbCount" style="color:#f97316">—</div>
+          <div class="stat-label" style="margin-top:var(--sp-1)" id="intelExploitdbLast">LAST SYNC: —</div>
+        </div>
+      </div>
       <div class="stat-card" style="display:flex;align-items:center;justify-content:center">
         <button class="btn" id="intelSyncBtn" onclick="triggerIntelSync()" style="font-size:var(--text-md);padding:var(--sp-4) var(--sp-7)">SYNC NOW</button>
       </div>
@@ -1201,6 +1208,7 @@ async function loadIntelStatus() {
     document.getElementById('intelShodanCount').textContent = data.counts.shodan || 0;
     document.getElementById('intelUrlhausCount').textContent = data.counts.urlhaus || 0;
     document.getElementById('intelGreynoiseCount').textContent = data.counts.greynoise || 0;
+    document.getElementById('intelExploitdbCount').textContent = data.counts.exploitdb || 0;
 
     // Last sync per source
     document.getElementById('intelKevLast').textContent = 'LAST SYNC: ' + (data.last_sync.KEV ? fmtDate(data.last_sync.KEV) : '—');
@@ -1210,6 +1218,7 @@ async function loadIntelStatus() {
     document.getElementById('intelEuvdLast').textContent = 'LAST SYNC: ' + (data.last_sync.EUVD ? fmtDate(data.last_sync.EUVD) : '—');
     document.getElementById('intelMispLast').textContent = 'LAST SYNC: ' + (data.last_sync.MISP ? fmtDate(data.last_sync.MISP) : '—');
     document.getElementById('intelUrlhausLast').textContent = 'LAST SYNC: ' + (data.last_sync.URLhaus ? fmtDate(data.last_sync.URLhaus) : '—');
+    document.getElementById('intelExploitdbLast').textContent = 'LAST SYNC: ' + (data.last_sync.ExploitDB ? fmtDate(data.last_sync.ExploitDB) : '—');
 
     // Logs table
     const tbody = document.getElementById('intelLogsBody');

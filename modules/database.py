@@ -250,6 +250,19 @@ class GreynoiseCache(Base):
     link           = Column(String)
     fetched_at     = Column(DateTime, default=datetime.utcnow)
 
+class ExploitdbCache(Base):
+    __tablename__ = "exploitdb_cache"
+    exploit_id     = Column(Integer, primary_key=True)
+    description    = Column(Text)
+    cve            = Column(String, index=True)
+    type           = Column(String)        # local / remote / webapps / dos / shellcode
+    platform       = Column(String)
+    port           = Column(Integer)
+    date           = Column(String)
+    author         = Column(String)
+    url            = Column(String)
+    updated_at     = Column(DateTime, default=datetime.utcnow)
+
 def init_db(retries=10, delay=3):
     for i in range(retries):
         try:
@@ -939,6 +952,7 @@ def get_intel_cache_counts() -> dict:
             "shodan": db.query(ShodanCache).count(),
             "urlhaus": db.query(UrlhausCache).count(),
             "greynoise": db.query(GreynoiseCache).count(),
+            "exploitdb": db.query(ExploitdbCache).count(),
         }
     finally:
         db.close()
@@ -1437,6 +1451,64 @@ def get_greynoise_cache(ip: str) -> dict | None:
         return {"ip": row.ip, "noise": row.noise, "riot": row.riot,
                 "classification": row.classification, "name": row.name,
                 "link": row.link, "fetched_at": str(row.fetched_at)}
+    finally:
+        db.close()
+
+def upsert_exploitdb_entries(entries: list[dict]) -> int:
+    db = SessionLocal()
+    try:
+        count = 0
+        for e in entries:
+            eid = e.get("exploit_id")
+            if not eid:
+                continue
+            row = db.query(ExploitdbCache).filter(ExploitdbCache.exploit_id == eid).first()
+            if row:
+                for k, v in e.items():
+                    if hasattr(row, k) and k != "exploit_id":
+                        setattr(row, k, v)
+                row.updated_at = datetime.utcnow()
+            else:
+                row = ExploitdbCache(**e)
+                db.add(row)
+            count += 1
+        db.commit()
+        return count
+    finally:
+        db.close()
+
+def get_exploitdb_by_cve(cve_id: str) -> list[dict]:
+    """Find ExploitDB entries matching a CVE ID."""
+    db = SessionLocal()
+    try:
+        rows = db.query(ExploitdbCache).filter(
+            ExploitdbCache.cve == cve_id
+        ).all()
+        return [
+            {"exploit_id": r.exploit_id, "description": r.description,
+             "type": r.type, "platform": r.platform, "port": r.port,
+             "date": r.date, "author": r.author,
+             "url": r.url or f"https://www.exploit-db.com/exploits/{r.exploit_id}"}
+            for r in rows
+        ]
+    finally:
+        db.close()
+
+def search_exploitdb(query: str, limit: int = 20) -> list[dict]:
+    """Search ExploitDB cache by description or CVE."""
+    db = SessionLocal()
+    try:
+        rows = db.query(ExploitdbCache).filter(
+            (ExploitdbCache.description.ilike(f"%{query}%")) |
+            (ExploitdbCache.cve.ilike(f"%{query}%"))
+        ).order_by(ExploitdbCache.date.desc()).limit(limit).all()
+        return [
+            {"exploit_id": r.exploit_id, "description": r.description,
+             "cve": r.cve, "type": r.type, "platform": r.platform,
+             "date": r.date, "author": r.author,
+             "url": r.url or f"https://www.exploit-db.com/exploits/{r.exploit_id}"}
+            for r in rows
+        ]
     finally:
         db.close()
 
