@@ -634,6 +634,10 @@ async def compliance_pdf(task_id: str, token: str = Query(None),
 async def scan_detail_page(task_id: str):
     return FileResponse("static/scan_detail.html", headers=_NO_CACHE)
 
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
+
 @app.get("/")
 async def root():
     from fastapi.responses import RedirectResponse
