@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
+<script src="/static/theme.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CYRBER — Login</title>
@@ -27,6 +28,11 @@
     --green:   #3ddc84;
     --orange:  #ff8c00;
   }
+  html[data-theme="light"]{--navy:#f0f4f8;--navy2:#e2e8f0;--navy3:#cbd5e1;--panel:#ffffff;--accent:#2563eb;--accent2:#1d4ed8;--purple:#7c3aed;--silver:#64748b;--white:#1e293b;--border:rgba(37,99,235,.18);--border2:rgba(37,99,235,.10);--red:#dc2626;--yellow:#ca8a04;--green:#16a34a;--orange:#ea580c}
+  html[data-theme="light"] body::before{background:radial-gradient(ellipse 80% 50% at 15% 60%,rgba(37,99,235,.03) 0%,transparent 70%),radial-gradient(ellipse 60% 40% at 85% 15%,rgba(37,99,235,.02) 0%,transparent 60%),radial-gradient(ellipse 100% 30% at 50% 100%,rgba(37,99,235,.02) 0%,transparent 60%)}
+  html[data-theme="light"] body::after{background-image:linear-gradient(rgba(37,99,235,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.05) 1px,transparent 1px)}
+  .theme-toggle{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px;color:var(--silver);transition:all .2s;position:fixed;top:16px;right:16px;z-index:100}
+  .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -217,6 +223,8 @@
 </style>
 </head>
 <body>
+
+<button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
 
 <div class="login-brand">
   <h1>CYRBER</h1>
