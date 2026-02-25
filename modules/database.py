@@ -827,3 +827,86 @@ def get_all_cve_ids_from_findings() -> list[str]:
         return sorted(cve_ids)
     finally:
         db.close()
+
+# ── Timeline / Security Scores ──────────────────────────
+
+def get_scans_by_target(target: str) -> list[dict]:
+    """Return all completed scans for a target, chronological order."""
+    db = SessionLocal()
+    try:
+        scans = db.query(Scan).filter(
+            Scan.target == target,
+            Scan.status == "completed",
+        ).order_by(Scan.created_at.asc()).all()
+        results = []
+        for s in scans:
+            raw = {}
+            if s.raw_data:
+                try:
+                    raw = json.loads(s.raw_data)
+                except Exception:
+                    pass
+            results.append({
+                "task_id": s.task_id,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "risk_level": s.risk_level,
+                "findings_count": s.findings_count or 0,
+                "profile": s.profile or "STRAZNIK",
+                "raw": raw,
+            })
+        return results
+    finally:
+        db.close()
+
+def get_remediation_counts_for_scan(scan_id: str) -> dict:
+    """Return remediation task counts for a single scan."""
+    db = SessionLocal()
+    try:
+        tasks = db.query(RemediationTask).filter(
+            RemediationTask.scan_id == scan_id
+        ).all()
+        total = len(tasks)
+        verified = sum(1 for t in tasks if t.status == "verified")
+        fixed = sum(1 for t in tasks if t.status in ("fixed", "verified"))
+        return {"total": total, "remediated": fixed, "verified": verified}
+    finally:
+        db.close()
+
+def get_unique_targets_with_stats() -> list[dict]:
+    """Return unique targets with scan count + last scan info, top 10 by scan count."""
+    db = SessionLocal()
+    try:
+        from sqlalchemy import func, desc
+        # Subquery: count + max date per target
+        rows = db.query(
+            Scan.target,
+            func.count(Scan.id).label("scan_count"),
+            func.max(Scan.created_at).label("last_scan_at"),
+        ).filter(
+            Scan.status == "completed",
+        ).group_by(Scan.target).order_by(desc("scan_count")).limit(10).all()
+
+        results = []
+        for target, scan_count, last_scan_at in rows:
+            # Get last 2 scans for trend
+            last_two = db.query(Scan).filter(
+                Scan.target == target, Scan.status == "completed"
+            ).order_by(Scan.created_at.desc()).limit(2).all()
+
+            last_risk = last_two[0].risk_level if last_two else None
+            prev_risk = last_two[1].risk_level if len(last_two) > 1 else None
+            last_task_id = last_two[0].task_id if last_two else None
+            last_findings = last_two[0].findings_count or 0 if last_two else 0
+
+            results.append({
+                "target": target,
+                "scan_count": scan_count,
+                "last_scan_at": last_scan_at.isoformat() if last_scan_at else None,
+                "last_task_id": last_task_id,
+                "last_risk_level": last_risk,
+                "prev_risk_level": prev_risk,
+                "last_findings_count": last_findings,
+            })
+        return results
+    finally:
+        db.close()
