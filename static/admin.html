@@ -867,13 +867,15 @@ if (!TOKEN) window.location.href = '/login';
 
 let usersCache = [];
 
-function authFetch(url, opts = {}) {
+async function authFetch(url, opts = {}) {
   opts.headers = opts.headers || {};
   opts.headers['Authorization'] = 'Bearer ' + TOKEN;
   if (opts.body && !opts.headers['Content-Type']) {
     opts.headers['Content-Type'] = 'application/json';
   }
-  return fetch(url, opts);
+  var r = await fetch(url, opts);
+  if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
+  return r;
 }
 
 function toast(msg, type = 'success') {
@@ -1040,10 +1042,13 @@ async function loadLicense() {
 }
 
 async function submitActivate() {
+  var submitBtn = document.querySelector('#activateModal .modal-footer .btn:last-child');
+  if (submitBtn.disabled) return;
+  submitBtn.disabled = true;
   const errEl = document.getElementById('activateError');
   errEl.textContent = '';
   const key = document.getElementById('activateKey').value.trim();
-  if (!key) { errEl.textContent = 'License key is required'; return; }
+  if (!key) { errEl.textContent = 'License key is required'; submitBtn.disabled = false; return; }
   try {
     const r = await authFetch('/license/activate', { method: 'POST', body: JSON.stringify({ key: key }) });
     const data = await r.json();
@@ -1056,6 +1061,7 @@ async function submitActivate() {
     document.getElementById('activateKey').value = '';
     loadLicense();
   } catch (e) { errEl.textContent = 'Network error'; }
+  submitBtn.disabled = false;
 }
 
 /* ── USER MODALS ── */
@@ -1113,6 +1119,9 @@ function openDeleteModal(id, username) {
 /* ── USER SUBMIT HANDLERS ── */
 
 async function submitUser() {
+  var submitBtn = document.getElementById('userModalSubmit');
+  if (submitBtn.disabled) return;
+  submitBtn.disabled = true;
   const errEl = document.getElementById('userFormError');
   errEl.textContent = '';
   const id = document.getElementById('editUserId').value;
@@ -1127,7 +1136,7 @@ async function submitUser() {
     try {
       const r = await authFetch('/admin/users/' + id, { method: 'PUT', body: JSON.stringify(body) });
       const data = await r.json();
-      if (!r.ok) { errEl.textContent = data.detail || 'Error'; return; }
+      if (!r.ok) { errEl.textContent = data.detail || 'Error'; submitBtn.disabled = false; return; }
       toast('User updated: ' + data.username);
       closeModal('userModal');
       loadUsers();
@@ -1135,8 +1144,8 @@ async function submitUser() {
   } else {
     const username = document.getElementById('formUsername').value.trim();
     const password = document.getElementById('formPassword').value;
-    if (!username) { errEl.textContent = 'Username is required'; return; }
-    if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters'; return; }
+    if (!username) { errEl.textContent = 'Username is required'; submitBtn.disabled = false; return; }
+    if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters'; submitBtn.disabled = false; return; }
     const body = {
       username: username,
       password: password,
@@ -1147,44 +1156,53 @@ async function submitUser() {
     try {
       const r = await authFetch('/admin/users', { method: 'POST', body: JSON.stringify(body) });
       const data = await r.json();
-      if (!r.ok) { errEl.textContent = data.detail || 'Error'; return; }
+      if (!r.ok) { errEl.textContent = data.detail || 'Error'; submitBtn.disabled = false; return; }
       toast('User created: ' + data.username);
       closeModal('userModal');
       loadUsers();
     } catch (e) { errEl.textContent = 'Network error'; }
   }
+  submitBtn.disabled = false;
 }
 
 async function submitResetPassword() {
+  var resetBtn = document.querySelector('#resetModal .modal-footer .btn:last-child');
+  if (resetBtn.disabled) return;
+  resetBtn.disabled = true;
   const errEl = document.getElementById('resetFormError');
   errEl.textContent = '';
   const id = document.getElementById('resetUserId').value;
   const pass = document.getElementById('resetNewPass').value;
   const confirm = document.getElementById('resetConfirmPass').value;
-  if (pass.length < 8) { errEl.textContent = 'Password must be at least 8 characters'; return; }
-  if (pass !== confirm) { errEl.textContent = 'Passwords do not match'; return; }
+  if (pass.length < 8) { errEl.textContent = 'Password must be at least 8 characters'; resetBtn.disabled = false; return; }
+  if (pass !== confirm) { errEl.textContent = 'Passwords do not match'; resetBtn.disabled = false; return; }
   try {
     const r = await authFetch('/admin/users/' + id + '/reset-password', {
       method: 'POST',
       body: JSON.stringify({ new_password: pass }),
     });
     const data = await r.json();
-    if (!r.ok) { errEl.textContent = data.detail || 'Error'; return; }
+    if (!r.ok) { errEl.textContent = data.detail || 'Error'; resetBtn.disabled = false; return; }
     toast('Password reset for: ' + data.username);
     closeModal('resetModal');
   } catch (e) { errEl.textContent = 'Network error'; }
+  resetBtn.disabled = false;
 }
 
 async function submitDelete() {
+  var deleteBtn = document.querySelector('#deleteModal .btn-danger');
+  if (deleteBtn.disabled) return;
+  deleteBtn.disabled = true;
   const id = document.getElementById('deleteUserId').value;
   try {
     const r = await authFetch('/admin/users/' + id, { method: 'DELETE' });
     const data = await r.json();
-    if (!r.ok) { toast(data.detail || 'Error', 'error'); closeModal('deleteModal'); return; }
+    if (!r.ok) { toast(data.detail || 'Error', 'error'); closeModal('deleteModal'); deleteBtn.disabled = false; return; }
     toast('User deleted');
     closeModal('deleteModal');
     loadUsers();
   } catch (e) { toast('Network error', 'error'); closeModal('deleteModal'); }
+  deleteBtn.disabled = false;
 }
 
 /* ── INIT ── */
