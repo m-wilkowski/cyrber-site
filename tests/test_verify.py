@@ -28,6 +28,11 @@ from modules.verify import (
     _generate_immediate_actions,
     _generate_if_paid_already,
     _generate_report_to,
+    _krs_lookup,
+    _ceidg_lookup,
+    _biala_lista_lookup,
+    _companies_house_lookup,
+    _opencorporates_lookup,
     _urlhaus_lookup,
     _whois_lookup,
     _wayback_first,
@@ -112,28 +117,34 @@ class TestCalculateRisk:
         assert score == 20
 
     def test_company_not_found_no_registries(self):
-        """Company not found, no registries searched → +5 (was +60)."""
+        """Company not found, no registries searched → +5."""
         signals = {"company": {"found": False}}
         score = calculate_risk(signals)
         assert score == 5
 
-    def test_company_not_found_two_registries(self):
-        """Company not found in PL (KRS+CEIDG) → +30."""
-        signals = {"company": {"found": False, "registries_searched": ["KRS", "CEIDG"], "search_country": "PL"}}
+    def test_company_not_found_nip_two_registries(self):
+        """NIP not found in PL (KRS+CEIDG+BL) → +30."""
+        signals = {"company": {"found": False, "registries_searched": ["KRS", "CEIDG", "Biała Lista VAT"], "query_type": "nip"}}
         score = calculate_risk(signals)
         assert score == 30
 
     def test_company_not_found_one_registry(self):
-        """Company not found in UK (Companies House only) → +20."""
-        signals = {"company": {"found": False, "registries_searched": ["Companies House"], "search_country": "UK"}}
+        """NIP not found in one registry → +20."""
+        signals = {"company": {"found": False, "registries_searched": ["KRS"]}}
         score = calculate_risk(signals)
         assert score == 20
 
-    def test_company_not_found_auto_three_registries(self):
-        """Company not found in AUTO (KRS+CEIDG+CH) → +30."""
-        signals = {"company": {"found": False, "registries_searched": ["KRS", "CEIDG", "Companies House"], "search_country": "AUTO"}}
+    def test_company_name_search_limited(self):
+        """Name search limited → only +5 (not penalized heavily)."""
+        signals = {"company": {"found": False, "name_search_limited": True, "registries_searched": ["Biała Lista VAT", "Companies House"]}}
         score = calculate_risk(signals)
-        assert score == 30
+        assert score == 5
+
+    def test_company_name_search_limited_with_candidates(self):
+        """Name search limited + candidates → +5-5=0."""
+        signals = {"company": {"found": False, "name_search_limited": True, "registries_searched": ["Biała Lista VAT"], "candidates": [{"name": "X"}]}}
+        score = calculate_risk(signals)
+        assert score == 0
 
     def test_company_found_reduces(self):
         """Company confirmed in registry reduces score."""
@@ -491,98 +502,139 @@ class TestVerifyEmail:
 
 class TestVerifyCompany:
 
+    @patch("modules.verify._biala_lista_lookup")
     @patch("modules.verify._krs_lookup")
     @patch("modules.verify._ceidg_lookup")
-    def test_company_found_krs(self, mock_ceidg, mock_krs):
-        mock_krs.return_value = {
-            "found": True, "registry": "KRS",
-            "name": "Test Sp. z o.o.", "status": "active",
+    def test_nip_found_biala_lista(self, mock_ceidg, mock_krs, mock_bl):
+        """NIP → Biała Lista found first → BEZPIECZNE."""
+        mock_bl.return_value = {
+            "found": True, "registry": "Biała Lista VAT",
+            "name": "FIRMA TESTOWA", "nip": "5272720862", "status_vat": "Czynny", "krs": "",
         }
-        mock_ceidg.return_value = {"found": False, "registry": "CEIDG"}
-
-        v = CyrberVerify()
-        result = v.verify_company("Test Sp. z o.o.", country="PL")
-
-        assert result["type"] == "company"
-        # company found → -40, floor 0
-        assert result["risk_score"] == 0
-        assert result["verdict"] == "BEZPIECZNE"
-
-    @patch("modules.verify._krs_lookup")
-    @patch("modules.verify._ceidg_lookup")
-    def test_company_not_found_pl(self, mock_ceidg, mock_krs):
-        """Company not found in PL (KRS+CEIDG = 2 registries) → +30, PODEJRZANE."""
         mock_krs.return_value = {"found": False, "registry": "KRS"}
         mock_ceidg.return_value = {"found": False, "registry": "CEIDG"}
 
         v = CyrberVerify()
-        result = v.verify_company("Fake Company", country="PL")
+        result = v.verify_company("5272720862", country="PL")
+
+        assert result["type"] == "company"
+        assert result["risk_score"] == 0
+        assert result["signals"]["company"]["registry"] == "Biała Lista VAT"
+
+    @patch("modules.verify._biala_lista_lookup")
+    @patch("modules.verify._krs_lookup")
+    @patch("modules.verify._ceidg_lookup")
+    def test_nip_bl_miss_krs_found(self, mock_ceidg, mock_krs, mock_bl):
+        """NIP → BL miss → KRS fallback found → BEZPIECZNE."""
+        mock_bl.return_value = {"found": False, "registry": "Biała Lista VAT"}
+        mock_krs.return_value = {
+            "found": True, "registry": "KRS",
+            "name": "Test Sp. z o.o.", "nip": "5272720862", "status": "active",
+        }
+        mock_ceidg.return_value = {"found": False, "registry": "CEIDG"}
+
+        v = CyrberVerify()
+        result = v.verify_company("5272720862", country="PL")
+
+        assert result["risk_score"] == 0
+        assert result["signals"]["company"]["registry"] == "KRS"
+
+    @patch("modules.verify._biala_lista_lookup")
+    @patch("modules.verify._krs_lookup")
+    @patch("modules.verify._ceidg_lookup")
+    def test_nip_not_found(self, mock_ceidg, mock_krs, mock_bl):
+        """NIP not found in all 3 PL registries → +30, PODEJRZANE."""
+        mock_bl.return_value = {"found": False, "registry": "Biała Lista VAT"}
+        mock_krs.return_value = {"found": False, "registry": "KRS"}
+        mock_ceidg.return_value = {"found": False, "registry": "CEIDG"}
+
+        v = CyrberVerify()
+        result = v.verify_company("9999999999", country="PL")
 
         assert result["risk_score"] == 30
         assert result["verdict"] == "PODEJRZANE"
-        assert result["signals"]["company"]["registries_searched"] == ["KRS", "CEIDG"]
+        assert "Biała Lista VAT" in result["signals"]["company"]["registries_searched"]
+        assert "KRS" in result["signals"]["company"]["registries_searched"]
 
+    @patch("modules.verify._biala_lista_lookup")
     @patch("modules.verify._krs_lookup")
-    @patch("modules.verify._ceidg_lookup")
-    def test_company_not_found_pl_with_candidates(self, mock_ceidg, mock_krs):
-        """Company not found but KRS returns candidates → +30-10=20, candidates propagated."""
+    def test_krs_number_found(self, mock_krs, mock_bl):
+        """KRS number (0000XXXXXX) → KRS found, enriched with BL status_vat."""
         mock_krs.return_value = {
-            "found": False, "registry": "KRS",
-            "candidates": [
-                {"name": "FAKE COMPANY SP. Z O.O.", "krs": "0001234", "nip": "1234567890", "status": "active"},
-            ],
+            "found": True, "registry": "KRS",
+            "name": "FIRMA SP. Z O.O.", "krs": "0000537910", "nip": "6770065406", "status": "active",
         }
-        mock_ceidg.return_value = {"found": False, "registry": "CEIDG"}
+        mock_bl.return_value = {
+            "found": True, "registry": "Biała Lista VAT",
+            "status_vat": "Czynny", "account_numbers": ["PL111"],
+        }
 
         v = CyrberVerify()
-        result = v.verify_company("Fake Company", country="PL")
+        result = v.verify_company("0000537910", country="PL")
 
-        assert result["risk_score"] == 20  # 30 - 10 for candidates
-        assert result["verdict"] == "PODEJRZANE"
-        company = result["signals"]["company"]
-        assert company["candidates"]
-        assert company["candidates"][0]["source"] == "KRS"
+        assert result["risk_score"] == 0
+        assert result["signals"]["company"]["registry"] == "KRS"
+        assert result["signals"]["company"]["status_vat"] == "Czynny"
 
-    @patch("modules.verify._companies_house_lookup")
     @patch("modules.verify._krs_lookup")
-    @patch("modules.verify._ceidg_lookup")
-    def test_company_not_found_auto(self, mock_ceidg, mock_krs, mock_ch):
-        """AUTO searches PL + UK registries (3 total) → +30, PODEJRZANE."""
+    def test_krs_number_not_found(self, mock_krs):
+        """KRS number not found → PODEJRZANE."""
         mock_krs.return_value = {"found": False, "registry": "KRS"}
-        mock_ceidg.return_value = {"found": False, "registry": "CEIDG"}
+
+        v = CyrberVerify()
+        result = v.verify_company("0000000001", country="PL")
+
+        assert result["signals"]["company"]["query_type"] == "krs"
+        assert result["risk_score"] == 20  # 1 registry
+
+    @patch("modules.verify.COMPANIES_HOUSE_KEY", "test-key")
+    @patch("modules.verify._companies_house_lookup")
+    def test_name_search_not_found_limited(self, mock_ch):
+        """Name search not found → name_search_limited, manual_check_urls."""
         mock_ch.return_value = {"found": False, "registry": "Companies House"}
 
         v = CyrberVerify()
-        result = v.verify_company("Unknown Corp", country="AUTO")
+        result = v.verify_company("Jakas Firma", country="AUTO")
 
-        assert result["risk_score"] == 30
-        assert result["verdict"] == "PODEJRZANE"
-        assert "KRS" in result["signals"]["company"]["registries_searched"]
-        assert "Companies House" in result["signals"]["company"]["registries_searched"]
+        company = result["signals"]["company"]
+        assert company["name_search_limited"] is True
+        assert company["manual_check_urls"]
+        assert any(u["name"] == "KRS" for u in company["manual_check_urls"])
+        assert result["risk_score"] == 5
+        assert result["verdict"] == "BEZPIECZNE"
 
+    @patch("modules.verify.COMPANIES_HOUSE_KEY", "test-key")
     @patch("modules.verify._companies_house_lookup")
-    @patch("modules.verify._krs_lookup")
-    @patch("modules.verify._ceidg_lookup")
-    def test_company_not_found_auto_with_candidates(self, mock_ceidg, mock_krs, mock_ch):
-        """AUTO with candidates from multiple registries → collected."""
-        mock_krs.return_value = {
-            "found": False, "registry": "KRS",
-            "candidates": [{"name": "KRS CORP SP. Z O.O.", "krs": "001", "nip": "", "status": "active"}],
-        }
-        mock_ceidg.return_value = {"found": False, "registry": "CEIDG"}
+    def test_name_search_found_companies_house(self, mock_ch):
+        """Name search → CH found → BEZPIECZNE."""
         mock_ch.return_value = {
-            "found": False, "registry": "Companies House",
-            "candidates": [{"name": "UK CORP LTD", "company_number": "12345", "status": "active"}],
+            "found": True, "registry": "Companies House",
+            "name": "ACME LTD", "company_number": "12345", "status": "active",
         }
 
         v = CyrberVerify()
-        result = v.verify_company("Some Corp", country="AUTO")
+        result = v.verify_company("ACME", country="AUTO")
 
-        candidates = result["signals"]["company"]["candidates"]
-        assert len(candidates) == 2
-        sources = [c["source"] for c in candidates]
-        assert "KRS" in sources
-        assert "Companies House" in sources
+        assert result["risk_score"] == 0
+        assert result["signals"]["company"]["registry"] == "Companies House"
+
+    @patch("modules.verify.COMPANIES_HOUSE_KEY", "test-key")
+    @patch("modules.verify._companies_house_lookup")
+    def test_name_search_ch_candidates(self, mock_ch):
+        """Name search → CH candidates → name_search_limited + candidates propagated."""
+        mock_ch.return_value = {
+            "found": False, "registry": "Companies House",
+            "candidates": [{"name": "SIMILAR LTD", "company_number": "99"}],
+        }
+
+        v = CyrberVerify()
+        result = v.verify_company("Something", country="AUTO")
+
+        company = result["signals"]["company"]
+        assert company["name_search_limited"] is True
+        assert company["candidates"]
+        assert company["candidates"][0]["source"] == "Companies House"
+        assert result["risk_score"] == 0  # 5 - 5
 
     def test_known_company_google(self):
         """Known company (Google) → BEZPIECZNE, score 0."""
@@ -612,7 +664,6 @@ class TestKrsLookup:
     @patch("modules.verify.requests.get")
     def test_krs_nip_lookup(self, mock_get):
         """NIP (10 digits) → OdpisAktualny endpoint."""
-        from modules.verify import _krs_lookup
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
@@ -635,124 +686,66 @@ class TestKrsLookup:
         assert result["nip"] == "5272720862"
         assert "OdpisAktualny" in mock_get.call_args[0][0]
 
-    @patch("modules.verify.requests.get")
-    def test_krs_name_search_found(self, mock_get):
-        """Name search → OdpisPelny endpoint, exact match → found=True."""
-        from modules.verify import _krs_lookup
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = {
-            "odpisy": [
-                {"odpis": {"dane": {"nazwa": "EMCA SOFTWARE SP. Z O.O.", "numerKRS": "001", "nip": "527", "dataRejestracjiWKRS": "2010-01-15"}}},
-                {"odpis": {"dane": {"nazwa": "EMCA TRADING SP. Z O.O.", "numerKRS": "002", "nip": "999"}}},
-            ]
-        }
-        mock_resp.raise_for_status = MagicMock()
-        mock_get.return_value = mock_resp
-
+    def test_krs_name_returns_not_a_number(self):
+        """Name string → not_a_number, no HTTP call."""
         result = _krs_lookup("EMCA Software")
-
-        assert result["found"] is True
-        assert "EMCA SOFTWARE" in result["name"]
-        assert "OdpisPelny" in mock_get.call_args[0][0]
+        assert result["found"] is False
+        assert result.get("reason") == "not_a_number"
 
     @patch("modules.verify.requests.get")
-    def test_krs_name_search_candidates(self, mock_get):
-        """Name search returns similar but no exact match → found=False + candidates."""
-        from modules.verify import _krs_lookup
+    def test_krs_404(self, mock_get):
+        """NIP not in KRS → found=False."""
         mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = {
-            "odpisy": [
-                {"odpis": {"dane": {"nazwa": "ABC SYSTEMS SP. Z O.O.", "numerKRS": "001", "nip": "111"}}},
-                {"odpis": {"dane": {"nazwa": "XYZ SOLUTIONS S.A.", "numerKRS": "002", "nip": "222"}}},
-            ]
-        }
-        mock_resp.raise_for_status = MagicMock()
+        mock_resp.status_code = 404
         mock_get.return_value = mock_resp
 
-        result = _krs_lookup("EMCA Software")
-
+        result = _krs_lookup("9999999999")
         assert result["found"] is False
-        assert len(result["candidates"]) == 2
-        assert result["candidates"][0]["name"] == "ABC SYSTEMS SP. Z O.O."
-
-    @patch("modules.verify.requests.get")
-    def test_krs_name_search_empty(self, mock_get):
-        """Name search returns no results → found=False, no candidates."""
-        from modules.verify import _krs_lookup
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = {"odpisy": []}
-        mock_resp.raise_for_status = MagicMock()
-        mock_get.return_value = mock_resp
-
-        result = _krs_lookup("NonexistentCompany12345")
-
-        assert result["found"] is False
-        assert "candidates" not in result
 
 
 class TestCeidgLookup:
 
     @patch("modules.verify.requests.get")
-    def test_ceidg_name_search(self, mock_get):
-        """Name search uses firmy endpoint (plural)."""
-        from modules.verify import _ceidg_lookup
+    def test_ceidg_nip_lookup(self, mock_get):
+        """NIP → firmy?nip= endpoint."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
             "firmy": [
-                {"nazwa": "EMCA USŁUGI IT", "wlasciciel": {"nip": "111"}, "status": "AKTYWNY", "dataRozpoczeciaDzialalnosci": "2015-03-01"},
+                {"nazwa": "JAN KOWALSKI USŁUGI IT", "wlasciciel": {"nip": "1234567890"}, "status": "AKTYWNY", "dataRozpoczeciaDzialalnosci": "2015-03-01"},
             ]
         }
         mock_resp.raise_for_status = MagicMock()
         mock_get.return_value = mock_resp
 
-        result = _ceidg_lookup("EMCA")
+        result = _ceidg_lookup("1234567890")
 
         assert result["found"] is True
         assert result["registry"] == "CEIDG"
-        # Verify URL uses firmy (plural)
         call_url = mock_get.call_args[0][0]
         assert "/firmy?" in call_url
+        assert "nip=1234567890" in call_url
+
+    def test_ceidg_name_returns_not_a_number(self):
+        """Name string → not_a_number, no HTTP call."""
+        result = _ceidg_lookup("EMCA Software")
+        assert result["found"] is False
+        assert result.get("reason") == "not_a_number"
 
     @patch("modules.verify.CEIDG_AUTH_KEY", "test-key-123")
     @patch("modules.verify.requests.get")
     def test_ceidg_auth_header(self, mock_get):
         """CEIDG_AUTH_KEY is sent as Bearer token."""
-        from modules.verify import _ceidg_lookup
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {"firmy": []}
         mock_resp.raise_for_status = MagicMock()
         mock_get.return_value = mock_resp
 
-        _ceidg_lookup("TestFirma")
+        _ceidg_lookup("1234567890")
 
         headers = mock_get.call_args[1].get("headers", {})
         assert headers.get("Authorization") == "Bearer test-key-123"
-
-    @patch("modules.verify.requests.get")
-    def test_ceidg_candidates(self, mock_get):
-        """Multiple results, no exact match → candidates."""
-        from modules.verify import _ceidg_lookup
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = {
-            "firmy": [
-                {"nazwa": "ABC SERWIS", "wlasciciel": {"nip": "111"}, "status": "AKTYWNY"},
-                {"nazwa": "DEF SERWIS", "wlasciciel": {"nip": "222"}, "status": "AKTYWNY"},
-                {"nazwa": "GHI HANDEL", "wlasciciel": {"nip": "333"}, "status": "AKTYWNY"},
-            ]
-        }
-        mock_resp.raise_for_status = MagicMock()
-        mock_get.return_value = mock_resp
-
-        result = _ceidg_lookup("XYZ COMPANY")
-
-        assert result["found"] is False
-        assert len(result["candidates"]) == 3
 
 
 class TestCompaniesHouseLookup:
@@ -800,49 +793,176 @@ class TestCompaniesHouseLookup:
         assert result["name"] == "EMCA SOFTWARE LTD"
 
 
+class TestBialaListaLookup:
+
+    @patch("modules.verify.requests.get")
+    def test_bl_nip_found(self, mock_get):
+        """NIP → Biała Lista found."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "result": {
+                "subject": {
+                    "name": "EMCA SOFTWARE SP. Z O.O.",
+                    "nip": "5272907526",
+                    "regon": "123456789",
+                    "statusVat": "Czynny",
+                    "krs": "0000654321",
+                    "residenceAddress": "ul. Testowa 1, 00-001 Warszawa",
+                    "accountNumbers": ["PL12345678901234567890123456"],
+                }
+            }
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        result = _biala_lista_lookup("5272907526")
+
+        assert result["found"] is True
+        assert result["registry"] == "Biała Lista VAT"
+        assert result["nip"] == "5272907526"
+        assert result["status_vat"] == "Czynny"
+
+    def test_bl_name_not_supported(self):
+        """Name search → not supported, returns immediately without HTTP call."""
+        result = _biala_lista_lookup("EMCA Software")
+
+        assert result["found"] is False
+        assert result["registry"] == "Biała Lista VAT"
+        assert result["reason"] == "name_search_not_supported"
+
+    @patch("modules.verify.requests.get")
+    def test_bl_regon_found(self, mock_get):
+        """REGON (9 digits) → found."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "result": {
+                "subject": {
+                    "name": "FIRMA REGON SP. Z O.O.",
+                    "nip": "1234567890",
+                    "regon": "123456789",
+                    "statusVat": "Czynny",
+                    "krs": "",
+                    "residenceAddress": "ul. Testowa 5, 00-002 Kraków",
+                    "accountNumbers": [],
+                }
+            }
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        result = _biala_lista_lookup("123456789")
+
+        assert result["found"] is True
+        assert result["registry"] == "Biała Lista VAT"
+        assert result["regon"] == "123456789"
+        call_url = mock_get.call_args[0][0]
+        assert "/regon/" in call_url
+
+    @patch("modules.verify.requests.get")
+    def test_bl_not_found(self, mock_get):
+        """404 → not found."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_get.return_value = mock_resp
+
+        result = _biala_lista_lookup("9999999999")
+
+        assert result["found"] is False
+
+    @patch("modules.verify.requests.get")
+    def test_bl_error_graceful(self, mock_get):
+        """Network error → graceful failure."""
+        mock_get.side_effect = Exception("timeout")
+        result = _biala_lista_lookup("1234567890")  # NIP to reach HTTP call
+        assert result["found"] is False
+        assert "error" in result
+
+
+class TestOpenCorporatesLookup:
+
+    @patch("modules.verify.OPENCORPORATES_KEY", "test-key")
+    @patch("modules.verify.requests.get")
+    def test_oc_found(self, mock_get):
+        """Exact match → found=True."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "results": {"companies": [
+                {"company": {"name": "EMCA SOFTWARE SP. Z O.O.", "company_number": "KRS001", "jurisdiction_code": "pl", "current_status": "Active"}},
+            ]}
+        }
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        result = _opencorporates_lookup("EMCA Software")
+        assert result["found"] is True
+        assert result["jurisdiction"] == "pl"
+
+    def test_oc_no_key(self):
+        """No API key → skip."""
+        result = _opencorporates_lookup("test")
+        assert result["found"] is False
+        assert result.get("reason") == "no_api_key"
+
+
 class TestCalculateRiskCandidates:
 
-    def test_candidates_reduce_penalty(self):
-        """Candidates reduce not-found penalty by 10."""
+    def test_nip_candidates_reduce_penalty(self):
+        """NIP search: candidates reduce penalty by 5."""
         signals = {
             "company": {
                 "found": False,
-                "registries_searched": ["KRS", "CEIDG"],
-                "candidates": [{"name": "Similar Corp", "source": "KRS"}],
+                "registries_searched": ["KRS", "CEIDG", "Biała Lista VAT"],
+                "candidates": [{"name": "Similar Corp"}],
             }
         }
         score = calculate_risk(signals)
-        # 30 (2 registries) - 10 (candidates) = 20
-        assert score == 20
+        # 30 (3 registries) - 5 (candidates) = 25
+        assert score == 25
 
-    def test_no_candidates_full_penalty(self):
-        """No candidates → full penalty."""
+    def test_nip_no_candidates_full_penalty(self):
+        """NIP search: no candidates → full penalty."""
         signals = {
             "company": {
                 "found": False,
-                "registries_searched": ["KRS", "CEIDG"],
+                "registries_searched": ["KRS", "CEIDG", "Biała Lista VAT"],
             }
         }
         score = calculate_risk(signals)
         assert score == 30
 
-    def test_candidates_one_registry(self):
-        """One registry + candidates → 20 - 10 = 10."""
+    def test_name_search_limited_low_penalty(self):
+        """Name search limited → +5 only."""
         signals = {
             "company": {
                 "found": False,
+                "name_search_limited": True,
                 "registries_searched": ["Companies House"],
-                "candidates": [{"name": "Something LTD"}],
             }
         }
         score = calculate_risk(signals)
-        assert score == 10
+        assert score == 5
+
+    def test_name_search_limited_candidates_zero(self):
+        """Name search limited + candidates → 5-5=0."""
+        signals = {
+            "company": {
+                "found": False,
+                "name_search_limited": True,
+                "registries_searched": ["Companies House"],
+                "candidates": [{"name": "X"}],
+            }
+        }
+        score = calculate_risk(signals)
+        assert score == 0
 
 
 class TestExtractProblemsCandidates:
 
-    def test_problems_with_candidates(self):
-        """When candidates exist, problem title mentions similar results."""
+    def test_problems_nip_with_candidates(self):
+        """NIP search: candidates → 'podobne wyniki' message."""
         signals = {
             "company": {
                 "found": False,
@@ -854,10 +974,9 @@ class TestExtractProblemsCandidates:
         company_problems = [p for p in problems if "Firma" in p["title"] or "podobne" in p["title"]]
         assert len(company_problems) == 1
         assert "podobne" in company_problems[0]["title"]
-        assert "EMCA SP. Z O.O." in company_problems[0]["what_found"]
 
-    def test_problems_without_candidates(self):
-        """No candidates → standard not-found message."""
+    def test_problems_nip_without_candidates(self):
+        """NIP search: no candidates → standard not-found."""
         signals = {
             "company": {
                 "found": False,
@@ -865,9 +984,46 @@ class TestExtractProblemsCandidates:
             }
         }
         problems = _extract_problems(signals)
-        company_problems = [p for p in problems if "Firma" in p["title"]]
+        company_problems = [p for p in problems if "Firma" in p["title"] or "nie znalezion" in p.get("title", "").lower()]
         assert len(company_problems) == 1
-        assert "nie znaleziona w rejestrach" in company_problems[0]["title"].lower()
+        assert "nie znaleziona" in company_problems[0]["title"].lower()
+
+    def test_problems_name_search_limited(self):
+        """Name search limited → mentions NIP hint and manual check links."""
+        signals = {
+            "company": {
+                "found": False,
+                "name_search_limited": True,
+                "registries_searched": [],
+                "manual_check_urls": [
+                    {"name": "KRS", "url": "https://wyszukiwarka-krs.ms.gov.pl/"},
+                    {"name": "CEIDG", "url": "https://www.biznes.gov.pl/pl/wyszukiwarka-ceidg"},
+                ],
+            }
+        }
+        problems = _extract_problems(signals)
+        company_problems = [p for p in problems if "zweryfikować" in p.get("title", "").lower() or "nazwie" in p.get("title", "").lower()]
+        assert len(company_problems) == 1
+        assert "NIP" in company_problems[0]["what_means"]
+        assert "KRS" in company_problems[0]["real_risk"]
+
+    def test_problems_name_search_limited_with_candidates(self):
+        """Name search limited + candidates → mentions candidates and manual links."""
+        signals = {
+            "company": {
+                "found": False,
+                "name_search_limited": True,
+                "registries_searched": ["Companies House"],
+                "candidates": [{"name": "SIMILAR FIRMA"}],
+                "manual_check_urls": [
+                    {"name": "KRS", "url": "https://wyszukiwarka-krs.ms.gov.pl/"},
+                ],
+            }
+        }
+        problems = _extract_problems(signals)
+        company_problems = [p for p in problems if "zweryfikować" in p.get("title", "").lower()]
+        assert len(company_problems) == 1
+        assert "SIMILAR FIRMA" in company_problems[0]["what_found"]
 
 
 # ═══════════════════════════════════════════════════════════════

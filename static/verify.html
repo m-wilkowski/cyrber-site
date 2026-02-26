@@ -640,6 +640,9 @@
       </select>
     </div>
     <div id="searchMsg"></div>
+    <div id="nipHint" style="display:none;margin-top:6px;font-size:var(--text-sm);color:var(--text-muted);font-family:'Rajdhani',sans-serif">
+      Podaj NIP (10 cyfr) lub numer KRS dla polskich firm. Wyszukiwanie po nazwie wymaga integracji z platnym API.
+    </div>
   </div>
 
   <!-- LOADING -->
@@ -728,9 +731,14 @@ queryInput.addEventListener('input', function() {
   } else if (q.length > 0) {
     badge.textContent = 'FIRMA';
     badge.className = 'type-badge company';
+    document.getElementById('nipHint').style.display = '';
   } else {
     badge.textContent = 'AUTO';
     badge.className = 'type-badge';
+    document.getElementById('nipHint').style.display = 'none';
+  }
+  if (!q.length || q.includes('@') || q.includes('.')) {
+    document.getElementById('nipHint').style.display = 'none';
   }
 });
 
@@ -1082,13 +1090,35 @@ function renderDetails(data) {
 
   if (signals.company) {
     var c = signals.company;
-    g += buildSignalCard('REJESTR ' + (c.registry || ''), {
+    var cardData = {
       'Znaleziono': c.found ? 'TAK' : 'NIE',
       'Nazwa': c.name,
-      'Status': c.status,
+      'Status': c.status_vat || c.status,
       'Data rejestracji': c.registration_date || c.start_date || c.date_of_creation,
       'Adres': c.address
-    });
+    };
+    if (c.nip) cardData['NIP'] = c.nip;
+    if (c.krs) cardData['KRS'] = c.krs;
+    if (c.regon) cardData['REGON'] = c.regon;
+    if (c.account_numbers && c.account_numbers.length) cardData['Konta bankowe'] = c.account_numbers.length + ' zweryfikowanych';
+    g += buildSignalCard('REJESTR ' + (c.registry || ''), cardData);
+
+    if (c.name_search_limited) {
+      var manualHtml = '<div class="signal-card" style="border-left:3px solid var(--accent-gold)">'
+        + '<h4>Nie mozemy automatycznie zweryfikowac firmy po nazwie</h4>'
+        + '<p style="margin:8px 0;font-size:var(--text-sm);color:var(--text-muted)">'
+        + 'Polskie rejestry wymagaja NIP lub REGON do wyszukiwania.</p>';
+      if (c.manual_check_urls && c.manual_check_urls.length) {
+        manualHtml += '<p style="margin:4px 0;font-size:var(--text-sm)"><strong>Sprawdz samodzielnie:</strong></p><ul style="margin:4px 0 8px 16px;font-size:var(--text-sm)">';
+        c.manual_check_urls.forEach(function(u) {
+          manualHtml += '<li><a href="' + u.url + '" target="_blank" rel="noopener" style="color:var(--accent-primary)">' + u.name + '</a></li>';
+        });
+        manualHtml += '</ul>';
+      }
+      manualHtml += '<p style="margin:4px 0;font-size:var(--text-sm);color:var(--text-primary)">'
+        + '<strong>Jesli znasz NIP firmy, wpisz go tutaj dla automatycznej weryfikacji.</strong></p></div>';
+      g += manualHtml;
+    }
 
     if (c.candidates && c.candidates.length > 0) {
       var chtml = '<div class="signal-card"><h4>Podobne firmy w rejestrach</h4><div style="margin-top:8px;">';
@@ -1100,7 +1130,7 @@ function renderDetails(data) {
         if (cand.krs) chtml += '<br>KRS: ' + cand.krs;
         if (cand.nip) chtml += ' | NIP: ' + cand.nip;
         if (cand.company_number) chtml += '<br>Nr: ' + cand.company_number;
-        if (cand.status) chtml += ' | Status: ' + cand.status;
+        if (cand.status || cand.status_vat) chtml += ' | Status: ' + (cand.status_vat || cand.status);
         chtml += '</div>';
       });
       chtml += '</div></div>';

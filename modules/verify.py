@@ -28,6 +28,7 @@ IPINFO_TOKEN = os.getenv("IPINFO_TOKEN", "")
 ABUSEIPDB_API_KEY = os.getenv("ABUSEIPDB_API_KEY", "")
 OTX_API_KEY = os.getenv("OTX_API_KEY", "")
 CEIDG_AUTH_KEY = os.getenv("CEIDG_AUTH_KEY", "")
+OPENCORPORATES_KEY = os.getenv("OPENCORPORATES_KEY", "")
 
 # ── Disposable email cache ──
 _DISPOSABLE_DOMAINS: set[str] | None = None
@@ -473,94 +474,61 @@ def _tranco_lookup(domain: str) -> dict:
 #  COMPANY REGISTRIES
 # ═══════════════════════════════════════════════════════════════
 
-def _krs_lookup(nip_or_name: str) -> dict:
-    """Check Polish KRS registry — NIP (10 digits) → exact lookup, name → search."""
-    clean = re.sub(r"[\s-]", "", nip_or_name)
-    if re.match(r"^\d{10}$", clean):
-        # NIP lookup — exact match via OdpisAktualny
-        url = f"https://api-krs.ms.gov.pl/api/krs/OdpisAktualny/{clean}?rejestr=P&format=json"
-        try:
-            resp = requests.get(url, timeout=REQUEST_TIMEOUT)
-            if resp.status_code == 404:
-                return {"found": False, "registry": "KRS"}
-            resp.raise_for_status()
-            data = resp.json()
-            dane = data.get("odpis", {}).get("dane", {})
-            return {
-                "found": True, "registry": "KRS",
-                "name": dane.get("nazwa", ""),
-                "krs": dane.get("numerKRS", ""),
-                "nip": dane.get("nip", ""),
-                "regon": dane.get("regon", ""),
-                "address": dane.get("adres", ""),
-                "registration_date": dane.get("dataRejestracjiWKRS", ""),
-                "status": "active",
-            }
-        except Exception as exc:
-            log.warning(f"KRS NIP lookup failed: {exc}")
-            return {"found": False, "registry": "KRS", "error": str(exc)}
-    else:
-        # Name search via OdpisPelny
-        url = "https://api-krs.ms.gov.pl/api/krs/OdpisPelny"
-        params = {"nazwa": nip_or_name, "rejestr": "P", "format": "json", "maxWynikow": 5}
-        try:
-            resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
-            if resp.status_code == 404:
-                return {"found": False, "registry": "KRS"}
-            resp.raise_for_status()
-            data = resp.json()
-            items = data if isinstance(data, list) else data.get("odpisy", [])
-            if not items:
-                return {"found": False, "registry": "KRS"}
+def _krs_lookup(nip_or_krs: str) -> dict:
+    """Check Polish KRS registry — NIP (10 digits) or KRS number (0000XXXXXX).
 
-            candidates = []
-            query_lower = nip_or_name.strip().lower()
-            best_match = None
+    KRS API does not support free-text name search.
+    Accepts NIP or KRS number; extracts full data from odpis including NIP.
+    """
+    clean = re.sub(r"[\s-]", "", nip_or_krs)
+    if not re.match(r"^\d{10}$", clean):
+        return {"found": False, "registry": "KRS", "reason": "not_a_number"}
 
-            for item in items[:5]:
-                dane = item.get("odpis", item).get("dane", item.get("dane", item))
-                name = dane.get("nazwa", "")
-                candidate = {
-                    "name": name,
-                    "krs": dane.get("numerKRS", ""),
-                    "nip": dane.get("nip", ""),
-                    "status": "active",
-                    "registration_date": dane.get("dataRejestracjiWKRS", ""),
-                }
-                candidates.append(candidate)
-                if query_lower in name.lower() or name.lower() in query_lower:
-                    best_match = candidate
-
-            if best_match:
-                return {
-                    "found": True, "registry": "KRS",
-                    **best_match,
-                    "address": "",
-                    "regon": "",
-                }
-
-            return {
-                "found": False, "registry": "KRS",
-                "candidates": candidates[:3],
-                "message": f"Znaleziono {len(candidates)} podobnych firm w KRS",
-            }
-        except Exception as exc:
-            log.warning(f"KRS name search failed: {exc}")
-            return {"found": False, "registry": "KRS", "error": str(exc)}
+    url = f"https://api-krs.ms.gov.pl/api/krs/OdpisAktualny/{clean}?rejestr=P&format=json"
+    try:
+        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+        if resp.status_code == 404:
+            return {"found": False, "registry": "KRS"}
+        resp.raise_for_status()
+        data = resp.json()
+        dane = data.get("odpis", {}).get("dane", {})
+        dzial1 = dane.get("dzial1", {})
+        # siedzibaIAdres may be nested under dzial1
+        adres_data = dzial1.get("siedzibaIAdres", {}).get("adres", {})
+        adres_str = dane.get("adres", "")
+        if not adres_str and adres_data:
+            parts = [adres_data.get("ulica", ""), adres_data.get("nrDomu", ""),
+                     adres_data.get("miejscowosc", ""), adres_data.get("kodPocztowy", "")]
+            adres_str = " ".join(p for p in parts if p)
+        return {
+            "found": True, "registry": "KRS",
+            "name": dane.get("nazwa", "") or dzial1.get("danePodmiotu", {}).get("nazwa", ""),
+            "krs": dane.get("numerKRS", ""),
+            "nip": dane.get("nip", "") or dzial1.get("danePodmiotu", {}).get("identyfikatory", {}).get("nip", ""),
+            "regon": dane.get("regon", "") or dzial1.get("danePodmiotu", {}).get("identyfikatory", {}).get("regon", ""),
+            "address": adres_str,
+            "registration_date": dane.get("dataRejestracjiWKRS", ""),
+            "status": "active",
+        }
+    except Exception as exc:
+        log.warning(f"KRS lookup failed: {exc}")
+        return {"found": False, "registry": "KRS", "error": str(exc)}
 
 
-def _ceidg_lookup(nip_or_name: str) -> dict:
-    """Check Polish CEIDG registry (sole proprietors) — firmy endpoint."""
-    clean = re.sub(r"[\s-]", "", nip_or_name)
+def _ceidg_lookup(nip: str) -> dict:
+    """Check Polish CEIDG registry (sole proprietors) — NIP only.
+
+    CEIDG v2 API requires auth token for name search; NIP lookup is reliable.
+    """
+    clean = re.sub(r"[\s-]", "", nip)
+    if not re.match(r"^\d{10}$", clean):
+        return {"found": False, "registry": "CEIDG", "reason": "not_a_number"}
+
     headers = {}
     if CEIDG_AUTH_KEY:
         headers["Authorization"] = f"Bearer {CEIDG_AUTH_KEY}"
 
-    if re.match(r"^\d{10}$", clean):
-        url = f"https://dane.biznes.gov.pl/api/ceidg/v2/firmy?nip={clean}"
-    else:
-        url = f"https://dane.biznes.gov.pl/api/ceidg/v2/firmy?nazwa={nip_or_name}&limit=5"
-
+    url = f"https://dane.biznes.gov.pl/api/ceidg/v2/firmy?nip={clean}"
     try:
         resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         if resp.status_code in (404, 204):
@@ -573,41 +541,14 @@ def _ceidg_lookup(nip_or_name: str) -> dict:
         if not firmy:
             return {"found": False, "registry": "CEIDG"}
 
-        query_lower = nip_or_name.strip().lower()
-        candidates = []
-        best_match = None
-
-        for f in firmy[:5]:
-            name = f.get("nazwa", "")
-            candidate = {
-                "name": name,
-                "nip": f.get("wlasciciel", {}).get("nip", "") or f.get("nip", ""),
-                "status": f.get("status", ""),
-                "start_date": f.get("dataRozpoczeciaDzialalnosci", ""),
-            }
-            candidates.append(candidate)
-            if query_lower in name.lower() or name.lower() in query_lower:
-                best_match = candidate
-
-        if best_match or len(firmy) == 1:
-            match = best_match or candidates[0]
-            f_data = firmy[0] if not best_match else next(
-                (f for f in firmy if query_lower in f.get("nazwa", "").lower() or f.get("nazwa", "").lower() in query_lower),
-                firmy[0],
-            )
-            return {
-                "found": True, "registry": "CEIDG",
-                "name": match["name"],
-                "nip": match["nip"],
-                "status": match["status"],
-                "start_date": match["start_date"],
-                "address": f_data.get("adresDzialalnosci", {}).get("adres", ""),
-            }
-
+        f = firmy[0]
         return {
-            "found": False, "registry": "CEIDG",
-            "candidates": candidates[:3],
-            "message": f"Znaleziono {len(candidates)} podobnych firm w CEIDG",
+            "found": True, "registry": "CEIDG",
+            "name": f.get("nazwa", ""),
+            "nip": f.get("wlasciciel", {}).get("nip", "") or f.get("nip", ""),
+            "status": f.get("status", ""),
+            "start_date": f.get("dataRozpoczeciaDzialalnosci", ""),
+            "address": f.get("adresDzialalnosci", {}).get("adres", ""),
         }
     except Exception as exc:
         log.warning(f"CEIDG lookup failed: {exc}")
@@ -659,6 +600,99 @@ def _companies_house_lookup(query: str) -> dict:
     except Exception as exc:
         log.warning(f"Companies House lookup failed: {exc}")
         return {"found": False, "registry": "Companies House", "error": str(exc)}
+
+
+def _biala_lista_lookup(query: str) -> dict:
+    """Check Polish Biała Lista VAT (MF) — NIP or REGON only.
+
+    API MF does NOT support name search — only NIP (10 digits) and REGON (9 digits).
+    """
+    clean = re.sub(r"[\s-]", "", query)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    if re.match(r"^\d{10}$", clean):
+        url = f"https://wl-api.mf.gov.pl/api/search/nip/{clean}?date={today}"
+    elif re.match(r"^\d{9}$", clean):
+        url = f"https://wl-api.mf.gov.pl/api/search/regon/{clean}?date={today}"
+    else:
+        return {"found": False, "registry": "Biała Lista VAT", "reason": "name_search_not_supported"}
+
+    try:
+        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+        if resp.status_code == 404:
+            return {"found": False, "registry": "Biała Lista VAT"}
+        resp.raise_for_status()
+        data = resp.json()
+        result_data = data.get("result", {})
+        subject = result_data.get("subject")
+        if not subject:
+            subjects = result_data.get("subjects", []) or []
+            subject = subjects[0] if subjects else None
+        if not subject:
+            return {"found": False, "registry": "Biała Lista VAT"}
+
+        return {
+            "found": True, "registry": "Biała Lista VAT",
+            "name": subject.get("name", ""),
+            "nip": subject.get("nip", ""),
+            "regon": subject.get("regon", ""),
+            "status_vat": subject.get("statusVat", ""),
+            "krs": subject.get("krs", ""),
+            "address": subject.get("residenceAddress") or subject.get("workingAddress") or "",
+            "account_numbers": subject.get("accountNumbers", []),
+        }
+    except Exception as exc:
+        log.warning(f"Biała Lista VAT lookup failed: {exc}")
+        return {"found": False, "registry": "Biała Lista VAT", "error": str(exc)}
+
+
+def _opencorporates_lookup(query: str) -> dict:
+    """Check OpenCorporates — global company name search (requires API key)."""
+    if not OPENCORPORATES_KEY:
+        return {"found": False, "registry": "OpenCorporates", "reason": "no_api_key"}
+    try:
+        resp = requests.get(
+            "https://api.opencorporates.com/v0.4/companies/search",
+            params={"q": query, "api_token": OPENCORPORATES_KEY},
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        companies = data.get("results", {}).get("companies", [])
+        if not companies:
+            return {"found": False, "registry": "OpenCorporates"}
+
+        query_lower = query.strip().lower()
+        candidates = []
+        best_match = None
+
+        for item in companies[:5]:
+            c = item.get("company", {})
+            name = c.get("name", "")
+            candidate = {
+                "name": name,
+                "company_number": c.get("company_number", ""),
+                "jurisdiction": c.get("jurisdiction_code", ""),
+                "status": c.get("current_status", ""),
+                "incorporation_date": c.get("incorporation_date", ""),
+                "address": c.get("registered_address_in_full", ""),
+                "opencorporates_url": c.get("opencorporates_url", ""),
+            }
+            candidates.append(candidate)
+            if query_lower in name.lower() or name.lower().startswith(query_lower):
+                best_match = candidate
+
+        if best_match:
+            return {"found": True, "registry": "OpenCorporates", **best_match}
+
+        return {
+            "found": False, "registry": "OpenCorporates",
+            "candidates": candidates[:3],
+            "message": f"Znaleziono {len(candidates)} podobnych firm w OpenCorporates",
+        }
+    except Exception as exc:
+        log.warning(f"OpenCorporates lookup failed: {exc}")
+        return {"found": False, "registry": "OpenCorporates", "error": str(exc)}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -731,19 +765,24 @@ def calculate_risk(signals: dict) -> int:
     if gn.get("classification") == "malicious":
         score += 30
 
-    # Company registry — not found (nuanced by registries searched)
+    # Company registry — not found (nuanced by search type)
     company = signals.get("company", {})
     if company and not company.get("found", True):
-        registries_searched = company.get("registries_searched", [])
-        if len(registries_searched) >= 2:
-            score += 30   # searched multiple registries, not found
-        elif len(registries_searched) == 1:
-            score += 20   # searched one registry
+        if company.get("name_search_limited"):
+            # Name search is inherently limited — low penalty
+            score += 5
         else:
-            score += 5    # no registries available / unknown country
-        # Candidates reduce penalty — close match means probably legit
+            # NIP search — not found is more significant
+            registries_searched = company.get("registries_searched", [])
+            if len(registries_searched) >= 2:
+                score += 30
+            elif len(registries_searched) == 1:
+                score += 20
+            else:
+                score += 5
+        # Candidates reduce penalty
         if company.get("candidates"):
-            score -= 10
+            score -= 5
 
     # Disposable email
     if signals.get("disposable_email"):
@@ -920,7 +959,26 @@ def _extract_problems(signals: dict) -> list[dict]:
         registries = company.get("registries_searched", [])
         candidates = company.get("candidates", [])
         reg_str = ", ".join(registries) if registries else "rejestr"
-        if candidates:
+        if company.get("name_search_limited"):
+            # Name search — can't verify automatically, provide manual links
+            manual_urls = company.get("manual_check_urls", [])
+            links_str = ", ".join(f"{u['name']} ({u['url']})" for u in manual_urls) if manual_urls else ""
+            if candidates:
+                names = ", ".join(c.get("name", "?") for c in candidates[:3])
+                problems.append({
+                    "title": "Nie możemy automatycznie zweryfikować firmy po nazwie",
+                    "what_found": f"Polskie rejestry wymagają NIP. Znaleźliśmy podobne firmy w: {reg_str}: {names}.",
+                    "what_means": "Podaj NIP firmy (10 cyfr) dla automatycznej weryfikacji lub sprawdź ręcznie.",
+                    "real_risk": "Sprawdź samodzielnie: " + links_str if links_str else "Podaj NIP.",
+                })
+            else:
+                problems.append({
+                    "title": "Nie możemy automatycznie zweryfikować firmy po nazwie",
+                    "what_found": "Polskie rejestry (KRS, CEIDG, Biała Lista VAT) wymagają NIP lub REGON do wyszukiwania.",
+                    "what_means": "Jeśli znasz NIP firmy, wpisz go tutaj dla automatycznej weryfikacji.",
+                    "real_risk": "Sprawdź samodzielnie: " + links_str if links_str else "Podaj NIP.",
+                })
+        elif candidates:
             names = ", ".join(c.get("name", "?") for c in candidates[:3])
             problems.append({
                 "title": "Firma nie znaleziona — ale są podobne wyniki",
@@ -1052,11 +1110,18 @@ def _extract_positives(signals: dict) -> list[dict]:
                 "what_found": "Firma rozpoznana jako znana marka.",
                 "what_means": "To powszechnie znana firma z ugruntowaną pozycją na rynku.",
             })
+        elif registry == "Biała Lista VAT":
+            vat_status = company.get("status_vat", "")
+            positives.append({
+                "title": "Firma zarejestrowana jako podatnik VAT",
+                "what_found": f"Firma potwierdzona w Białej Liście VAT Ministerstwa Finansów. Status VAT: {vat_status or 'aktywny'}.",
+                "what_means": "Firma jest zarejestrowana w oficjalnym rejestrze podatników VAT — to silny sygnał legalności.",
+            })
         else:
             positives.append({
                 "title": "Firma w oficjalnym rejestrze",
                 "what_found": f"Firma potwierdzona w {registry}.",
-                "what_means": "Firma jest oficjalnie zarejestrowana, co oznacza że podlega polskiemu prawu i można ją pociągnąć do odpowiedzialności.",
+                "what_means": "Firma jest oficjalnie zarejestrowana, co oznacza że podlega prawu i można ją pociągnąć do odpowiedzialności.",
             })
 
     crtsh = signals.get("crtsh", {})
@@ -1618,7 +1683,10 @@ def _extract_signal_explanations(signals: dict) -> list[dict]:
         elif not company.get("found", True):
             registries = company.get("registries_searched", [])
             reg_str = ", ".join(registries) if registries else "brak"
-            _add("Firma", f"Nie znaleziono ({reg_str})", "Firma nie została znaleziona w przeszukanych rejestrach — może być z innego kraju", "amber", "🟡")
+            if company.get("name_search_limited"):
+                _add("Firma", "Wymaga NIP", "Polskie rejestry nie obsługują wyszukiwania po nazwie — podaj NIP lub numer KRS", "gray", "⚪")
+            else:
+                _add("Firma", f"Nie znaleziono ({reg_str})", "Firma nie została znaleziona w przeszukanych rejestrach", "amber", "🟡")
 
     return explanations
 
@@ -1684,39 +1752,107 @@ class CyrberVerify:
         }
 
     def verify_company(self, query: str, country: str = "PL") -> dict:
-        """Verify a company in public registries."""
+        """Verify a company in public registries.
+
+        Flow depends on query type:
+        - NIP (10 digits): Biała Lista VAT → KRS (if BL returns KRS number) → CEIDG fallback
+        - KRS number (0000XXXXXX): KRS → then Biała Lista by extracted NIP
+        - Company name (text): Companies House (UK) / OpenCorporates → helpful message with manual links
+        """
         signals = {}
         country = country.upper()
         query_lower = query.strip().lower()
+        clean = re.sub(r"[\s-]", "", query)
+        is_number = bool(re.match(r"^\d{9,10}$", clean))
+        is_krs_number = bool(re.match(r"^0\d{9}$", clean))
 
         # Known company whitelist — short-circuit
         if any(query_lower == k or query_lower.startswith(k + " ") for k in KNOWN_COMPANIES):
             signals["company"] = {"found": True, "registry": "known_company", "name": query}
-        else:
+        elif is_krs_number:
+            # ── KRS number (0000XXXXXX) → KRS direct, then BL by NIP ──
+            registries_searched = ["KRS"]
+            krs = _krs_lookup(query)
+            if krs.get("found"):
+                signals["company"] = krs
+                # Enrich with Biała Lista if KRS returned a NIP
+                extracted_nip = krs.get("nip", "")
+                if extracted_nip and re.match(r"^\d{10}$", extracted_nip):
+                    bl = _biala_lista_lookup(extracted_nip)
+                    registries_searched.append("Biała Lista VAT")
+                    if bl.get("found"):
+                        signals["company"]["status_vat"] = bl.get("status_vat", "")
+                        signals["company"]["account_numbers"] = bl.get("account_numbers", [])
+            else:
+                signals["company"] = {
+                    "found": False,
+                    "registry": "+".join(registries_searched),
+                    "registries_searched": registries_searched,
+                    "search_country": "PL",
+                    "query_type": "krs",
+                    "message": f"Numer KRS {clean} nie znaleziony",
+                }
+        elif is_number:
+            # ── NIP (10 digits) or REGON (9 digits) → BL first, then KRS/CEIDG ──
             registries_searched = []
-            krs = None
-            ceidg = None
-            ch = None
+            bl = _biala_lista_lookup(query)
+            registries_searched.append("Biała Lista VAT")
 
-            if country in ("PL", "AUTO"):
-                krs = _krs_lookup(query)
-                ceidg = _ceidg_lookup(query)
-                registries_searched.extend(["KRS", "CEIDG"])
-                if krs.get("found"):
-                    signals["company"] = krs
-                elif ceidg.get("found"):
-                    signals["company"] = ceidg
+            if bl.get("found"):
+                signals["company"] = bl
+                # Enrich with KRS if BL returned a KRS number
+                bl_krs = bl.get("krs", "")
+                if bl_krs and re.match(r"^\d{10}$", bl_krs):
+                    krs = _krs_lookup(bl_krs)
+                    registries_searched.append("KRS")
+                    if krs.get("found"):
+                        signals["company"]["address"] = krs.get("address") or signals["company"].get("address", "")
+                        signals["company"]["registration_date"] = krs.get("registration_date", "")
+            else:
+                # BL miss → try KRS + CEIDG by NIP
+                if re.match(r"^\d{10}$", clean):
+                    krs = _krs_lookup(query)
+                    ceidg = _ceidg_lookup(query)
+                    registries_searched.extend(["KRS", "CEIDG"])
+                    if krs.get("found"):
+                        signals["company"] = krs
+                    elif ceidg.get("found"):
+                        signals["company"] = ceidg
 
-            if not signals.get("company", {}).get("found") and country in ("UK", "AUTO"):
+            if not signals.get("company", {}).get("found"):
+                signals["company"] = {
+                    "found": False,
+                    "registry": "+".join(registries_searched),
+                    "registries_searched": registries_searched,
+                    "search_country": "PL",
+                    "query_type": "nip",
+                    "message": f"NIP/REGON {clean} nie znaleziony w: {', '.join(registries_searched)}",
+                }
+        else:
+            # ── Name search → only registries that support it ──
+            registries_searched = []
+            all_lookups = []
+
+            # Companies House (UK) — supports name search
+            if country in ("UK", "AUTO") and COMPANIES_HOUSE_KEY:
                 ch = _companies_house_lookup(query)
                 registries_searched.append("Companies House")
+                all_lookups.append(ch)
                 if ch.get("found"):
                     signals["company"] = ch
 
+            # OpenCorporates (global) — supports name search
+            if not signals.get("company", {}).get("found") and OPENCORPORATES_KEY:
+                oc = _opencorporates_lookup(query)
+                registries_searched.append("OpenCorporates")
+                all_lookups.append(oc)
+                if oc.get("found"):
+                    signals["company"] = oc
+
             if not signals.get("company", {}).get("found"):
-                # Collect candidates from all lookups
+                # Collect candidates from paid APIs
                 all_candidates = []
-                for result in [krs, ceidg, ch]:
+                for result in all_lookups:
                     if result and result.get("candidates"):
                         for c in result["candidates"]:
                             c["source"] = result.get("registry", "?")
@@ -1727,10 +1863,15 @@ class CyrberVerify:
                     "registry": "+".join(registries_searched) if registries_searched else "none",
                     "registries_searched": registries_searched,
                     "search_country": country,
+                    "query_type": "name",
+                    "name_search_limited": True,
                     "candidates": all_candidates[:5],
-                    "message": f"Znaleziono {len(all_candidates)} podobnych firm" if all_candidates
-                               else f"Nie znaleziono w: {', '.join(registries_searched)}" if registries_searched
-                               else "Brak rejestrów do przeszukania",
+                    "manual_check_urls": [
+                        {"name": "KRS", "url": "https://wyszukiwarka-krs.ms.gov.pl/"},
+                        {"name": "CEIDG", "url": "https://www.biznes.gov.pl/pl/wyszukiwarka-ceidg"},
+                        {"name": "Biała Lista VAT", "url": "https://www.podatki.gov.pl/wykaz-podatnikow-vat-wyszukiwarka"},
+                    ],
+                    "message": "Wyszukiwanie po nazwie wymaga NIP. Sprawdź ręcznie w linkach poniżej.",
                 }
 
         risk_score = calculate_risk(signals)
