@@ -24,6 +24,9 @@ REQUEST_TIMEOUT = 15
 GOOGLE_SAFE_BROWSING_KEY = os.getenv("GOOGLE_SAFE_BROWSING_KEY", "")
 VIRUSTOTAL_KEY = os.getenv("VIRUSTOTAL_API_KEY", "") or os.getenv("VIRUSTOTAL_KEY", "")
 COMPANIES_HOUSE_KEY = os.getenv("COMPANIES_HOUSE_KEY", "")
+IPINFO_TOKEN = os.getenv("IPINFO_TOKEN", "")
+ABUSEIPDB_API_KEY = os.getenv("ABUSEIPDB_API_KEY", "")
+OTX_API_KEY = os.getenv("OTX_API_KEY", "")
 
 # ── Disposable email cache ──
 _DISPOSABLE_DOMAINS: set[str] | None = None
@@ -240,6 +243,221 @@ def _check_mx(domain: str) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════
+#  RDAP (Registration Data Access Protocol)
+# ═══════════════════════════════════════════════════════════════
+
+def _rdap_lookup(domain: str) -> dict:
+    """Perform RDAP lookup for domain registration data."""
+    try:
+        resp = requests.get(f"https://rdap.org/domain/{domain}", timeout=REQUEST_TIMEOUT)
+        if resp.status_code == 404:
+            return {"available": False, "error": "not_found"}
+        resp.raise_for_status()
+        data = resp.json()
+
+        registrar = ""
+        registration = None
+        expiry = None
+        status = []
+
+        # Extract registrar from entities
+        for entity in data.get("entities", []):
+            if "registrar" in entity.get("roles", []):
+                vcard = entity.get("vcardArray", [None, []])[1] if entity.get("vcardArray") else []
+                for item in vcard:
+                    if isinstance(item, list) and len(item) >= 4 and item[0] == "fn":
+                        registrar = item[3]
+
+        # Extract dates from events
+        for event in data.get("events", []):
+            action = event.get("eventAction", "")
+            date = event.get("eventDate", "")
+            if action == "registration":
+                registration = date
+            elif action == "expiration":
+                expiry = date
+
+        status = data.get("status", [])
+
+        return {
+            "available": True,
+            "registration": registration,
+            "expiry": expiry,
+            "registrar": registrar,
+            "status": status,
+        }
+    except Exception as exc:
+        log.warning(f"RDAP lookup failed for {domain}: {exc}")
+        return {"available": False, "error": str(exc)}
+
+
+# ═══════════════════════════════════════════════════════════════
+#  CRT.SH (Certificate Transparency)
+# ═══════════════════════════════════════════════════════════════
+
+def _crtsh_lookup(domain: str) -> dict:
+    """Check oldest certificate via crt.sh."""
+    try:
+        resp = requests.get(
+            f"https://crt.sh/?q={domain}&output=json&limit=1",
+            timeout=REQUEST_TIMEOUT,
+            headers={"Accept": "application/json"},
+        )
+        if resp.status_code == 404 or not resp.text.strip():
+            return {"available": True, "cert_age_days": None}
+        resp.raise_for_status()
+        data = resp.json()
+        if not data:
+            return {"available": True, "cert_age_days": None}
+        oldest = data[-1] if isinstance(data, list) else data
+        not_before = oldest.get("not_before") or oldest.get("entry_timestamp", "")
+        if not_before:
+            cert_date = datetime.strptime(not_before[:10], "%Y-%m-%d")
+            cert_age_days = (datetime.now() - cert_date).days
+            return {"available": True, "cert_age_days": cert_age_days, "issuer": oldest.get("issuer_name", "")}
+        return {"available": True, "cert_age_days": None}
+    except Exception as exc:
+        log.warning(f"crt.sh lookup failed for {domain}: {exc}")
+        return {"available": False, "error": str(exc)}
+
+
+# ═══════════════════════════════════════════════════════════════
+#  SPF / DMARC DNS check
+# ═══════════════════════════════════════════════════════════════
+
+def _check_spf_dmarc(domain: str) -> dict:
+    """Check SPF and DMARC DNS TXT records."""
+    result = {"has_spf": False, "has_dmarc": False}
+    try:
+        import dns.resolver
+        try:
+            answers = dns.resolver.resolve(domain, "TXT")
+            for rdata in answers:
+                txt = str(rdata).strip('"')
+                if txt.startswith("v=spf1"):
+                    result["has_spf"] = True
+        except Exception:
+            pass
+        try:
+            answers = dns.resolver.resolve(f"_dmarc.{domain}", "TXT")
+            for rdata in answers:
+                txt = str(rdata).strip('"')
+                if txt.startswith("v=DMARC1"):
+                    result["has_dmarc"] = True
+        except Exception:
+            pass
+    except Exception as exc:
+        log.warning(f"SPF/DMARC check failed for {domain}: {exc}")
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════
+#  IPINFO
+# ═══════════════════════════════════════════════════════════════
+
+def _ipinfo_lookup(ip: str) -> dict:
+    """Lookup IP info via ipinfo.io."""
+    try:
+        headers = {}
+        url = f"https://ipinfo.io/{ip}/json"
+        if IPINFO_TOKEN:
+            headers["Authorization"] = f"Bearer {IPINFO_TOKEN}"
+        resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        data = resp.json()
+        return {
+            "available": True,
+            "org": data.get("org", ""),
+            "country": data.get("country", ""),
+            "city": data.get("city", ""),
+            "hosting": data.get("hosting", False),
+        }
+    except Exception as exc:
+        log.warning(f"IPinfo lookup failed for {ip}: {exc}")
+        return {"available": False, "error": str(exc)}
+
+
+# ═══════════════════════════════════════════════════════════════
+#  ABUSEIPDB
+# ═══════════════════════════════════════════════════════════════
+
+def _abuseipdb_lookup(ip: str) -> dict:
+    """Check IP against AbuseIPDB."""
+    if not ABUSEIPDB_API_KEY:
+        return {"available": False, "reason": "no_api_key"}
+    try:
+        resp = requests.get(
+            "https://api.abuseipdb.com/api/v2/check",
+            headers={"Key": ABUSEIPDB_API_KEY, "Accept": "application/json"},
+            params={"ipAddress": ip, "maxAgeInDays": 90},
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        d = resp.json().get("data", {})
+        return {
+            "available": True,
+            "abuseConfidenceScore": d.get("abuseConfidenceScore", 0),
+            "totalReports": d.get("totalReports", 0),
+            "isWhitelisted": d.get("isWhitelisted", False),
+            "countryCode": d.get("countryCode", ""),
+        }
+    except Exception as exc:
+        log.warning(f"AbuseIPDB lookup failed for {ip}: {exc}")
+        return {"available": False, "error": str(exc)}
+
+
+# ═══════════════════════════════════════════════════════════════
+#  OTX (AlienVault Open Threat Exchange)
+# ═══════════════════════════════════════════════════════════════
+
+def _otx_lookup(domain: str) -> dict:
+    """Check domain in AlienVault OTX."""
+    try:
+        headers = {"Accept": "application/json"}
+        if OTX_API_KEY:
+            headers["X-OTX-API-KEY"] = OTX_API_KEY
+        resp = requests.get(
+            f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/general",
+            headers=headers,
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        pulse_count = data.get("pulse_info", {}).get("count", 0)
+        validation = data.get("validation", [])
+        return {
+            "available": True,
+            "pulse_count": pulse_count,
+            "validation": validation,
+        }
+    except Exception as exc:
+        log.warning(f"OTX lookup failed for {domain}: {exc}")
+        return {"available": False, "error": str(exc)}
+
+
+# ═══════════════════════════════════════════════════════════════
+#  TRANCO (Top Sites Ranking)
+# ═══════════════════════════════════════════════════════════════
+
+def _tranco_lookup(domain: str) -> dict:
+    """Check domain ranking in Tranco top list."""
+    try:
+        resp = requests.get(
+            f"https://tranco-list.eu/api/ranks/domain/{domain}",
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        # Tranco returns ranks array
+        ranks = data.get("ranks", [])
+        rank = ranks[0].get("rank") if ranks else None
+        return {"available": True, "rank": rank}
+    except Exception as exc:
+        log.warning(f"Tranco lookup failed for {domain}: {exc}")
+        return {"available": False, "rank": None}
+
+
+# ═══════════════════════════════════════════════════════════════
 #  COMPANY REGISTRIES
 # ═══════════════════════════════════════════════════════════════
 
@@ -343,8 +561,15 @@ def _companies_house_lookup(query: str) -> dict:
 # ═══════════════════════════════════════════════════════════════
 
 def calculate_risk(signals: dict) -> int:
-    """Calculate risk score (0-100) from aggregated signals."""
+    """Calculate risk score (0-100) from aggregated signals — bidirectional scoring.
+
+    Positive factors increase risk, negative factors (trust signals) decrease it.
+    Floor: 0, Cap: 100.
+    Thresholds: <20 BEZPIECZNE, 20-50 PODEJRZANE, >50 OSZUSTWO.
+    """
     score = 0
+
+    # ── INCREASING FACTORS ──
 
     # WHOIS age
     whois_data = signals.get("whois", {})
@@ -366,24 +591,22 @@ def calculate_risk(signals: dict) -> int:
 
     # VirusTotal
     vt = signals.get("virustotal", {})
-    if vt.get("positives", 0) >= 3:
+    if vt.get("positives", 0) >= 5:
         score += 60
-    elif vt.get("positives", 0) >= 1:
+    elif vt.get("positives", 0) >= 2:
         score += 30
 
     # URLhaus
     urlhaus = signals.get("urlhaus", {})
     if urlhaus.get("blacklisted"):
         score += 50
-    elif urlhaus.get("urls_count", 0) > 0:
-        score += 25
 
     # GreyNoise
     gn = signals.get("greynoise", {})
     if gn.get("classification") == "malicious":
         score += 30
 
-    # Company registry
+    # Company registry — not found
     company = signals.get("company", {})
     if company and not company.get("found", True):
         score += 60
@@ -403,7 +626,84 @@ def calculate_risk(signals: dict) -> int:
     if archive_age is not None and archive_age < 180:
         score += 25
 
-    return min(100, score)
+    # AbuseIPDB high score
+    abuse = signals.get("abuseipdb", {})
+    abuse_score = abuse.get("abuseConfidenceScore", 0)
+    if abuse_score > 50:
+        score += 40
+    elif abuse_score > 20:
+        score += 20
+
+    # OTX pulses
+    otx = signals.get("otx", {})
+    otx_pulses = otx.get("pulse_count", 0)
+    if otx_pulses > 5:
+        score += 40
+    elif otx_pulses > 0:
+        score += 20
+
+    # IPinfo — high-risk countries
+    ipinfo = signals.get("ipinfo", {})
+    ipinfo_country = (ipinfo.get("country") or "").upper()
+    if ipinfo_country in ("UA", "RU", "KP", "IR", "CN"):
+        score += 25
+
+    # SPF/DMARC — both missing
+    spf_dmarc = signals.get("spf_dmarc", {})
+    if spf_dmarc and not spf_dmarc.get("has_spf") and not spf_dmarc.get("has_dmarc"):
+        score += 15
+
+    # crt.sh — very new cert
+    crtsh = signals.get("crtsh", {})
+    cert_age = crtsh.get("cert_age_days")
+    if cert_age is not None and cert_age < 30:
+        score += 25
+
+    # No Tranco rank (not in top 1M)
+    tranco = signals.get("tranco", {})
+    if tranco.get("available") and tranco.get("rank") is None:
+        score += 10
+
+    # ── DECREASING FACTORS (trust signals) ──
+
+    # Tranco ranking
+    tranco_rank = tranco.get("rank")
+    if tranco_rank is not None:
+        if tranco_rank <= 10000:
+            score -= 50
+        elif tranco_rank <= 100000:
+            score -= 30
+        elif tranco_rank <= 1000000:
+            score -= 15
+
+    # AbuseIPDB whitelisted
+    if abuse.get("isWhitelisted"):
+        score -= 30
+
+    # OTX validation non-empty (domain validated / analyzed)
+    if otx.get("validation") and len(otx["validation"]) > 0:
+        score -= 20
+
+    # Domain age — long-standing
+    if age is not None:
+        if age > 3650:  # >10 years
+            score -= 30
+        elif age > 1825:  # >5 years
+            score -= 20
+
+    # crt.sh — old cert (>2 years)
+    if cert_age is not None and cert_age > 730:
+        score -= 20
+
+    # SPF + DMARC both present
+    if spf_dmarc.get("has_spf") and spf_dmarc.get("has_dmarc"):
+        score -= 10
+
+    # Company confirmed in registry
+    if company and company.get("found"):
+        score -= 40
+
+    return max(0, min(100, score))
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -411,11 +711,11 @@ def calculate_risk(signals: dict) -> int:
 # ═══════════════════════════════════════════════════════════════
 
 def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
-    """Generate AI verdict using Claude Haiku."""
-    # Determine base verdict from score
-    if risk_score < 30:
+    """Generate AI verdict using Claude Haiku — educational mode."""
+    # Determine base verdict from score (new thresholds)
+    if risk_score < 20:
         base_verdict = "BEZPIECZNE"
-    elif risk_score <= 60:
+    elif risk_score <= 50:
         base_verdict = "PODEJRZANE"
     else:
         base_verdict = "OSZUSTWO"
@@ -430,18 +730,21 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
             signals_summary = signals_summary[:3000] + "..."
 
         prompt = (
-            f"Jesteś ekspertem ds. cyberbezpieczeństwa i wykrywania oszustw. "
-            f"Przeanalizuj poniższe sygnały dla zapytania: {query}\n\n"
-            f"Risk score: {risk_score}/100\n"
+            f"Jesteś ekspertem ds. cyberbezpieczeństwa i edukacji cyfrowej. "
+            f"Przeanalizuj poniższe sygnały OSINT dla zapytania: {query}\n\n"
+            f"Risk score: {risk_score}/100 (progi: <20 bezpieczne, 20-50 podejrzane, >50 oszustwo)\n"
             f"Sygnały:\n{signals_summary}\n\n"
             f"Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown):\n"
             f'{{"verdict": "{base_verdict}", '
-            f'"summary": "Krótkie podsumowanie po polsku (2-3 zdania)", '
-            f'"red_flags": ["lista konkretnych czerwonych flag po polsku"], '
+            f'"summary": "Podsumowanie po polsku (2-3 zdania) — wyjaśnij CO zbadałeś i DLACZEGO wynik jest taki a nie inny", '
+            f'"red_flags": ["lista czerwonych flag po polsku — każda zaczyna się od nazwy źródła np. VirusTotal: ..."], '
+            f'"trust_factors": ["lista czynników zaufania po polsku — np. Tranco: domena w top 10K popularnych stron"], '
+            f'"signal_explanations": [{{"signal": "nazwa_techniczna", "value": "wartość", "meaning": "co to znaczy dla laika po polsku", "risk": "green|gray|amber|red", "icon": "emoji"}}], '
+            f'"educational_tips": ["3 praktyczne porady po polsku — czego użytkownik może się nauczyć z tej analizy"], '
             f'"recommendation": "Rekomendacja działania po polsku (1-2 zdania)"}}'
         )
 
-        response_text = provider.chat(prompt, max_tokens=800)
+        response_text = provider.chat(prompt, max_tokens=1200)
         clean = response_text.strip()
         if clean.startswith("```"):
             clean = clean.split("```")[1]
@@ -459,6 +762,10 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
 
         # Ensure verdict matches score-based threshold
         result["verdict"] = base_verdict
+        # Ensure new fields present
+        result.setdefault("trust_factors", _extract_trust_factors(signals))
+        result.setdefault("signal_explanations", _extract_signal_explanations(signals))
+        result.setdefault("educational_tips", [])
         return result
 
     except Exception as exc:
@@ -467,7 +774,10 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
             "verdict": base_verdict,
             "summary": f"Analiza automatyczna wykazała risk score {risk_score}/100.",
             "red_flags": _extract_red_flags(signals),
-            "recommendation": "Zalecamy ostrożność." if risk_score >= 30 else "Brak podejrzanych sygnałów.",
+            "trust_factors": _extract_trust_factors(signals),
+            "signal_explanations": _extract_signal_explanations(signals),
+            "educational_tips": [],
+            "recommendation": "Zalecamy ostrożność." if risk_score >= 20 else "Brak podejrzanych sygnałów.",
         }
 
 
@@ -477,11 +787,11 @@ def _extract_red_flags(signals: dict) -> list[str]:
     whois = signals.get("whois", {})
     age = whois.get("age_days")
     if age is not None and age < 90:
-        flags.append(f"Domena zarejestrowana {age} dni temu (bardzo nowa)")
+        flags.append(f"WHOIS: domena zarejestrowana {age} dni temu (bardzo nowa)")
     elif age is not None and age < 365:
-        flags.append(f"Domena zarejestrowana {age} dni temu (stosunkowo nowa)")
+        flags.append(f"WHOIS: domena zarejestrowana {age} dni temu (stosunkowo nowa)")
     if whois.get("available"):
-        flags.append("Domena wygląda na niezarejestrowaną")
+        flags.append("WHOIS: domena wygląda na niezarejestrowaną")
 
     gsb = signals.get("google_safe_browsing", {})
     if gsb.get("flagged"):
@@ -494,8 +804,6 @@ def _extract_red_flags(signals: dict) -> list[str]:
     urlhaus = signals.get("urlhaus", {})
     if urlhaus.get("blacklisted"):
         flags.append("URLhaus: domena na czarnej liście")
-    elif urlhaus.get("urls_count", 0) > 0:
-        flags.append(f"URLhaus: {urlhaus['urls_count']} podejrzanych URL-i")
 
     gn = signals.get("greynoise", {})
     if gn.get("classification") == "malicious":
@@ -503,20 +811,203 @@ def _extract_red_flags(signals: dict) -> list[str]:
 
     company = signals.get("company", {})
     if company and not company.get("found", True):
-        flags.append("Firma nie znaleziona w rejestrze")
+        flags.append("Rejestr: firma nie znaleziona w rejestrze")
 
     if signals.get("disposable_email"):
-        flags.append("Domena email jednorazowego użytku (disposable)")
+        flags.append("Email: domena jednorazowego użytku (disposable)")
 
     mx = signals.get("mx", {})
     if mx and not mx.get("has_mx", True):
-        flags.append("Brak rekordów MX (domena nie obsługuje poczty)")
+        flags.append("MX: brak rekordów (domena nie obsługuje poczty)")
 
     wb = signals.get("wayback", {})
     if wb.get("archive_age_days") is not None and wb["archive_age_days"] < 180:
-        flags.append(f"Strona w archiwum internetowym od {wb['archive_age_days']} dni")
+        flags.append(f"Wayback: strona w archiwum od {wb['archive_age_days']} dni")
+
+    # New sources
+    abuse = signals.get("abuseipdb", {})
+    if abuse.get("abuseConfidenceScore", 0) > 20:
+        flags.append(f"AbuseIPDB: wynik zaufania {abuse['abuseConfidenceScore']}% ({abuse.get('totalReports', 0)} zgłoszeń)")
+
+    otx = signals.get("otx", {})
+    if otx.get("pulse_count", 0) > 0:
+        flags.append(f"OTX: {otx['pulse_count']} pulsów threat intelligence")
+
+    ipinfo = signals.get("ipinfo", {})
+    if (ipinfo.get("country") or "").upper() in ("UA", "RU", "KP", "IR", "CN"):
+        flags.append(f"IPinfo: hosting w kraju podwyższonego ryzyka ({ipinfo['country']})")
+
+    spf_dmarc = signals.get("spf_dmarc", {})
+    if spf_dmarc and not spf_dmarc.get("has_spf") and not spf_dmarc.get("has_dmarc"):
+        flags.append("DNS: brak SPF i DMARC (brak ochrony przed spoofingiem)")
+
+    crtsh = signals.get("crtsh", {})
+    if crtsh.get("cert_age_days") is not None and crtsh["cert_age_days"] < 30:
+        flags.append(f"crt.sh: certyfikat SSL wystawiony {crtsh['cert_age_days']} dni temu")
 
     return flags
+
+
+def _extract_trust_factors(signals: dict) -> list[str]:
+    """Extract trust-positive factors from signals."""
+    factors = []
+
+    tranco = signals.get("tranco", {})
+    rank = tranco.get("rank")
+    if rank is not None:
+        if rank <= 10000:
+            factors.append(f"Tranco: domena w top 10K najpopularniejszych stron (pozycja {rank})")
+        elif rank <= 100000:
+            factors.append(f"Tranco: domena w top 100K popularnych stron (pozycja {rank})")
+        elif rank <= 1000000:
+            factors.append(f"Tranco: domena w top 1M stron (pozycja {rank})")
+
+    whois = signals.get("whois", {})
+    age = whois.get("age_days")
+    if age is not None:
+        if age > 3650:
+            factors.append(f"WHOIS: domena zarejestrowana od {age // 365} lat (stabilna)")
+        elif age > 1825:
+            factors.append(f"WHOIS: domena zarejestrowana od {age // 365} lat")
+
+    abuse = signals.get("abuseipdb", {})
+    if abuse.get("isWhitelisted"):
+        factors.append("AbuseIPDB: IP na białej liście (zaufane)")
+
+    spf_dmarc = signals.get("spf_dmarc", {})
+    if spf_dmarc.get("has_spf") and spf_dmarc.get("has_dmarc"):
+        factors.append("DNS: SPF + DMARC skonfigurowane (ochrona przed spoofingiem)")
+
+    company = signals.get("company", {})
+    if company and company.get("found"):
+        registry = company.get("registry", "rejestr")
+        factors.append(f"Rejestr: firma potwierdzona w {registry}")
+
+    crtsh = signals.get("crtsh", {})
+    cert_age = crtsh.get("cert_age_days")
+    if cert_age is not None and cert_age > 730:
+        factors.append(f"crt.sh: certyfikat SSL od {cert_age // 365} lat (długotrwały)")
+
+    otx = signals.get("otx", {})
+    if otx.get("validation") and len(otx["validation"]) > 0:
+        factors.append("OTX: domena poddana walidacji threat intelligence")
+
+    return factors
+
+
+def _extract_signal_explanations(signals: dict) -> list[dict]:
+    """Generate per-signal explanations for educational purposes."""
+    explanations = []
+
+    def _add(signal: str, value: str, meaning: str, risk: str, icon: str):
+        explanations.append({"signal": signal, "value": value, "meaning": meaning, "risk": risk, "icon": icon})
+
+    # WHOIS
+    whois = signals.get("whois", {})
+    age = whois.get("age_days")
+    if age is not None:
+        if age < 90:
+            _add("WHOIS wiek", f"{age} dni", "Bardzo nowa domena — oszuści często rejestrują domeny tuż przed atakiem", "red", "🔴")
+        elif age < 365:
+            _add("WHOIS wiek", f"{age} dni", "Stosunkowo nowa domena — warto zachować czujność", "amber", "🟡")
+        elif age > 3650:
+            _add("WHOIS wiek", f"{age // 365} lat", "Długo działająca domena — to dobry znak zaufania", "green", "🟢")
+        else:
+            _add("WHOIS wiek", f"{age} dni", "Domena o umiarkowanym stażu", "gray", "⚪")
+
+    # GSB
+    gsb = signals.get("google_safe_browsing", {})
+    if gsb.get("available"):
+        if gsb.get("flagged"):
+            _add("Google Safe Browsing", "OZNACZONE", "Google aktywnie ostrzega przed tą stroną", "red", "🔴")
+        else:
+            _add("Google Safe Browsing", "Czyste", "Google nie znalazł zagrożeń na tej stronie", "green", "🟢")
+
+    # VT
+    vt = signals.get("virustotal", {})
+    if vt.get("available"):
+        pos = vt.get("positives", 0)
+        total = vt.get("total", 0)
+        if pos >= 5:
+            _add("VirusTotal", f"{pos}/{total}", "Wiele silników antywirusowych oznaczyło ten URL jako niebezpieczny", "red", "🔴")
+        elif pos >= 2:
+            _add("VirusTotal", f"{pos}/{total}", "Kilka silników antywirusowych ma zastrzeżenia", "amber", "🟡")
+        elif pos > 0:
+            _add("VirusTotal", f"{pos}/{total}", "Pojedyncze oznaczenie — może być fałszywy alarm", "gray", "⚪")
+        else:
+            _add("VirusTotal", f"0/{total}", "Żaden silnik antywirusowy nie znalazł zagrożeń", "green", "🟢")
+
+    # Tranco
+    tranco = signals.get("tranco", {})
+    rank = tranco.get("rank")
+    if tranco.get("available"):
+        if rank is not None:
+            _add("Tranco Ranking", f"#{rank}", f"Domena jest w top {rank} najpopularniejszych stron — to wskazuje na legitymalność", "green", "🟢")
+        else:
+            _add("Tranco Ranking", "Brak w rankingu", "Domena nie jest w top 1M popularnych stron", "gray", "⚪")
+
+    # AbuseIPDB
+    abuse = signals.get("abuseipdb", {})
+    if abuse.get("available"):
+        ascore = abuse.get("abuseConfidenceScore", 0)
+        if ascore > 50:
+            _add("AbuseIPDB", f"{ascore}%", "Wysokie prawdopodobieństwo nadużyć z tego IP", "red", "🔴")
+        elif ascore > 20:
+            _add("AbuseIPDB", f"{ascore}%", "Umiarkowana liczba zgłoszeń nadużyć z tego IP", "amber", "🟡")
+        elif abuse.get("isWhitelisted"):
+            _add("AbuseIPDB", "Whitelisted", "IP jest na białej liście — zaufane źródło", "green", "🟢")
+        else:
+            _add("AbuseIPDB", f"{ascore}%", "Brak znaczących zgłoszeń nadużyć", "green", "🟢")
+
+    # OTX
+    otx = signals.get("otx", {})
+    if otx.get("available"):
+        pulses = otx.get("pulse_count", 0)
+        if pulses > 5:
+            _add("OTX AlienVault", f"{pulses} pulsów", "Domena pojawia się w wielu raportach o zagrożeniach", "red", "🔴")
+        elif pulses > 0:
+            _add("OTX AlienVault", f"{pulses} pulsów", "Domena pojawiła się w raportach threat intelligence", "amber", "🟡")
+        else:
+            _add("OTX AlienVault", "0 pulsów", "Brak raportów o zagrożeniach związanych z tą domeną", "green", "🟢")
+
+    # SPF/DMARC
+    spf_dmarc = signals.get("spf_dmarc", {})
+    if spf_dmarc:
+        has_spf = spf_dmarc.get("has_spf", False)
+        has_dmarc = spf_dmarc.get("has_dmarc", False)
+        if has_spf and has_dmarc:
+            _add("SPF + DMARC", "Oba skonfigurowane", "Domena chroni przed podszywaniem się (spoofingiem)", "green", "🟢")
+        elif has_spf or has_dmarc:
+            parts = []
+            if has_spf:
+                parts.append("SPF")
+            if has_dmarc:
+                parts.append("DMARC")
+            _add("SPF/DMARC", " + ".join(parts), "Częściowa ochrona przed spoofingiem", "gray", "⚪")
+        else:
+            _add("SPF/DMARC", "Brak", "Domena nie chroni przed podszywaniem się pod nadawcę", "amber", "🟡")
+
+    # crt.sh
+    crtsh = signals.get("crtsh", {})
+    cert_age = crtsh.get("cert_age_days")
+    if cert_age is not None:
+        if cert_age < 30:
+            _add("Certyfikat SSL", f"{cert_age} dni", "Bardzo nowy certyfikat — oszuści często uzyskują SSL tuż przed atakiem", "red", "🔴")
+        elif cert_age > 730:
+            _add("Certyfikat SSL", f"{cert_age // 365} lat", "Długotrwały certyfikat — dobry znak", "green", "🟢")
+        else:
+            _add("Certyfikat SSL", f"{cert_age} dni", "Certyfikat o standardowym wieku", "gray", "⚪")
+
+    # IPinfo
+    ipinfo = signals.get("ipinfo", {})
+    if ipinfo.get("available"):
+        country = (ipinfo.get("country") or "").upper()
+        if country in ("UA", "RU", "KP", "IR", "CN"):
+            _add("IPinfo", f"{ipinfo.get('org', '')} ({country})", "Hosting w kraju podwyższonego ryzyka cybernetycznego", "amber", "🟡")
+        else:
+            _add("IPinfo", f"{ipinfo.get('org', '')} ({country})", "Lokalizacja serwera", "gray", "⚪")
+
+    return explanations
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -555,6 +1046,16 @@ class CyrberVerify:
 
         # Wayback Machine
         signals["wayback"] = _wayback_first(domain)
+
+        # ── New v2 sources ──
+        signals["rdap"] = _rdap_lookup(domain)
+        signals["crtsh"] = _crtsh_lookup(domain)
+        signals["spf_dmarc"] = _check_spf_dmarc(domain)
+        signals["tranco"] = _tranco_lookup(domain)
+        if ip:
+            signals["ipinfo"] = _ipinfo_lookup(ip)
+            signals["abuseipdb"] = _abuseipdb_lookup(ip)
+        signals["otx"] = _otx_lookup(domain)
 
         risk_score = calculate_risk(signals)
         verdict = generate_verdict(risk_score, signals, url)
@@ -617,6 +1118,7 @@ class CyrberVerify:
                 "query": email, "type": "email", "risk_score": 80,
                 "verdict": "OSZUSTWO", "summary": "Nieprawidłowy format adresu email.",
                 "red_flags": ["Nieprawidłowy format email"],
+                "trust_factors": [], "signal_explanations": [], "educational_tips": [],
                 "recommendation": "Podaj poprawny adres email.",
                 "signals": {}, "timestamp": datetime.now(timezone.utc).isoformat(),
             }
@@ -635,6 +1137,9 @@ class CyrberVerify:
 
         # URLhaus for domain
         signals["urlhaus"] = _urlhaus_lookup(domain)
+
+        # SPF/DMARC for email domain
+        signals["spf_dmarc"] = _check_spf_dmarc(domain)
 
         risk_score = calculate_risk(signals)
         verdict = generate_verdict(risk_score, signals, email)

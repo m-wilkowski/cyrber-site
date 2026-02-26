@@ -257,6 +257,80 @@
     word-break: break-all;
   }
 
+  /* ── TRUST FACTORS ── */
+  .trust-list { list-style: none; padding: 0; margin: 0; }
+  .trust-list li {
+    display: flex;
+    gap: var(--sp-3);
+    align-items: flex-start;
+    padding: var(--sp-3) 0;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+  }
+  .trust-list li::before {
+    content: '\2713';
+    color: #2ecc71;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ── SIGNAL EXPLANATIONS ── */
+  .signal-expl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--sp-4);
+  }
+  .signal-expl {
+    border-radius: var(--radius-sm);
+    padding: var(--sp-4) var(--sp-5);
+    border-left: 3px solid var(--border);
+  }
+  .signal-expl.risk-green { border-left-color: #2ecc71; background: rgba(46,204,113,.06); }
+  .signal-expl.risk-gray { border-left-color: var(--text-muted); background: var(--surface-elevated); }
+  .signal-expl.risk-amber { border-left-color: #f1c40f; background: rgba(241,196,15,.06); }
+  .signal-expl.risk-red { border-left-color: #e74c3c; background: rgba(231,76,60,.06); }
+  .signal-expl-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--sp-2);
+  }
+  .signal-expl-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: var(--text-sm);
+    letter-spacing: .1em;
+    color: var(--text-primary);
+  }
+  .signal-expl-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+  .signal-expl-meaning {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* ── EDUCATIONAL TIPS ── */
+  .tips-list { list-style: none; padding: 0; margin: 0; }
+  .tips-list li {
+    display: flex;
+    gap: var(--sp-3);
+    align-items: flex-start;
+    padding: var(--sp-3) 0;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .tips-list li::before {
+    content: '\1F4A1';
+    flex-shrink: 0;
+  }
+
   /* ── AI VERDICT ── */
   .ai-verdict {
     border-left: 3px solid var(--accent);
@@ -393,6 +467,24 @@
       <ul class="flags-list" id="flagsList"></ul>
     </div>
 
+    <!-- Trust Factors -->
+    <div class="card" id="trustCard" style="display:none">
+      <h2>// CZYNNIKI ZAUFANIA</h2>
+      <ul class="trust-list" id="trustList"></ul>
+    </div>
+
+    <!-- Signal Explanations -->
+    <div class="card" id="signalExplCard" style="display:none">
+      <h2>// ANALIZA SYGNALOW</h2>
+      <div class="signal-expl-grid" id="signalExplGrid"></div>
+    </div>
+
+    <!-- Educational Tips -->
+    <div class="card" id="tipsCard" style="display:none">
+      <h2>// CZEGO SIE NAUCZYLES</h2>
+      <ul class="tips-list" id="tipsList"></ul>
+    </div>
+
     <!-- Signal Details -->
     <div class="card">
       <h2>// SZCZEGOLY</h2>
@@ -468,10 +560,10 @@ queryInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') runVerify();
 });
 
-// ── Score color ──
+// ── Score color (new thresholds: <20 green, 20-50 amber, >50 red) ──
 function scoreColor(score) {
-  if (score >= 60) return '#e74c3c';
-  if (score >= 30) return '#f1c40f';
+  if (score > 50) return '#e74c3c';
+  if (score >= 20) return '#f1c40f';
   return '#2ecc71';
 }
 
@@ -641,7 +733,107 @@ function renderResult(data) {
     });
   }
 
+  // ── New v2 signal cards ──
+  if (signals.rdap && signals.rdap.available) {
+    g += buildSignalCard('RDAP', {
+      'Rejestracja': signals.rdap.registration || '—',
+      'Wygasa': signals.rdap.expiry || '—',
+      'Registrar': signals.rdap.registrar || '—',
+      'Status': (signals.rdap.status || []).join(', ') || '—'
+    });
+  }
+
+  if (signals.crtsh) {
+    g += buildSignalCard('CRT.SH', {
+      'Wiek certyfikatu (dni)': signals.crtsh.cert_age_days,
+      'Wystawca': signals.crtsh.issuer || '—'
+    });
+  }
+
+  if (signals.spf_dmarc) {
+    g += buildSignalCard('SPF / DMARC', {
+      'SPF': signals.spf_dmarc.has_spf ? 'TAK' : 'NIE',
+      'DMARC': signals.spf_dmarc.has_dmarc ? 'TAK' : 'NIE'
+    });
+  }
+
+  if (signals.ipinfo && signals.ipinfo.available) {
+    g += buildSignalCard('IPINFO', {
+      'Organizacja': signals.ipinfo.org || '—',
+      'Kraj': signals.ipinfo.country || '—',
+      'Miasto': signals.ipinfo.city || '—',
+      'Hosting': signals.ipinfo.hosting ? 'TAK' : 'NIE'
+    });
+  }
+
+  if (signals.abuseipdb && signals.abuseipdb.available) {
+    g += buildSignalCard('ABUSEIPDB', {
+      'Confidence Score': signals.abuseipdb.abuseConfidenceScore + '%',
+      'Zgloszenia': signals.abuseipdb.totalReports || 0,
+      'Whitelisted': signals.abuseipdb.isWhitelisted ? 'TAK' : 'NIE'
+    });
+  }
+
+  if (signals.otx && signals.otx.available) {
+    g += buildSignalCard('OTX ALIENVAULT', {
+      'Pulsy': signals.otx.pulse_count || 0,
+      'Walidacja': (signals.otx.validation || []).length > 0 ? 'TAK' : 'NIE'
+    });
+  }
+
+  if (signals.tranco) {
+    g += buildSignalCard('TRANCO RANKING', {
+      'Pozycja': signals.tranco.rank ? '#' + signals.tranco.rank : 'Brak w top 1M'
+    });
+  }
+
   grid.innerHTML = g;
+
+  // Trust Factors
+  var trustFactors = data.trust_factors || [];
+  var trustCard = document.getElementById('trustCard');
+  var trustList = document.getElementById('trustList');
+  if (trustFactors.length) {
+    var tfl = '';
+    trustFactors.forEach(function(f) { tfl += '<li>' + escHtml(f) + '</li>'; });
+    trustList.innerHTML = tfl;
+    trustCard.style.display = '';
+  } else {
+    trustCard.style.display = 'none';
+  }
+
+  // Signal Explanations
+  var signalExpls = data.signal_explanations || [];
+  var signalExplCard = document.getElementById('signalExplCard');
+  var signalExplGrid = document.getElementById('signalExplGrid');
+  if (signalExpls.length) {
+    var seg = '';
+    signalExpls.forEach(function(e) {
+      var riskClass = 'risk-' + (e.risk || 'gray');
+      seg += '<div class="signal-expl ' + riskClass + '">';
+      seg += '<div class="signal-expl-header"><span class="signal-expl-name">' + (e.icon || '') + ' ' + escHtml(e.signal || '') + '</span>';
+      seg += '<span class="signal-expl-val">' + escHtml(e.value || '') + '</span></div>';
+      seg += '<div class="signal-expl-meaning">' + escHtml(e.meaning || '') + '</div>';
+      seg += '</div>';
+    });
+    signalExplGrid.innerHTML = seg;
+    signalExplCard.style.display = '';
+  } else {
+    signalExplCard.style.display = 'none';
+  }
+
+  // Educational Tips
+  var tips = data.educational_tips || [];
+  var tipsCard = document.getElementById('tipsCard');
+  var tipsList = document.getElementById('tipsList');
+  if (tips.length) {
+    var tl = '';
+    tips.forEach(function(t) { tl += '<li>' + escHtml(t) + '</li>'; });
+    tipsList.innerHTML = tl;
+    tipsCard.style.display = '';
+  } else {
+    tipsCard.style.display = 'none';
+  }
 
   // AI Verdict
   var aiCard = document.getElementById('aiCard');

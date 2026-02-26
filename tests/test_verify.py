@@ -11,6 +11,8 @@ from modules.verify import (
     calculate_risk,
     detect_query_type,
     _extract_red_flags,
+    _extract_trust_factors,
+    _extract_signal_explanations,
     _whois_lookup,
     _wayback_first,
     _check_mx,
@@ -43,13 +45,15 @@ class TestDetectQueryType:
 
 
 # ═══════════════════════════════════════════════════════════════
-#  calculate_risk
+#  calculate_risk — bidirectional scoring
+#  Thresholds: <20 BEZPIECZNE, 20-50 PODEJRZANE, >50 OSZUSTWO
 # ═══════════════════════════════════════════════════════════════
 
 
 class TestCalculateRisk:
 
     def test_clean_signals(self):
+        """Clean signals with old domain should score 0 (negative factors floor to 0)."""
         signals = {
             "whois": {"age_days": 3650, "available": False},
             "google_safe_browsing": {"flagged": False},
@@ -57,6 +61,7 @@ class TestCalculateRisk:
             "urlhaus": {"blacklisted": False, "urls_count": 0},
         }
         score = calculate_risk(signals)
+        # age 3650 = exactly 10 years → -30, floor to 0
         assert score == 0
 
     def test_new_domain_high_risk(self):
@@ -66,7 +71,7 @@ class TestCalculateRisk:
             "virustotal": {"positives": 5, "total": 70},
         }
         score = calculate_risk(signals)
-        # 40 (age<90) + 70 (gsb) + 60 (vt>=3) = 170 → capped 100
+        # 40 (age<90) + 70 (gsb) + 60 (vt>=5) = 170 → capped 100
         assert score == 100
 
     def test_moderate_risk(self):
@@ -75,13 +80,23 @@ class TestCalculateRisk:
             "urlhaus": {"blacklisted": False, "urls_count": 3},
         }
         score = calculate_risk(signals)
-        # 20 (age<365) + 25 (urlhaus urls>0) = 45
-        assert score == 45
+        # 20 (age<365) = 20 (urlhaus urls_count no longer scores without blacklisted)
+        assert score == 20
 
     def test_company_not_found(self):
         signals = {"company": {"found": False}}
         score = calculate_risk(signals)
         assert score == 60
+
+    def test_company_found_reduces(self):
+        """Company confirmed in registry reduces score."""
+        signals = {
+            "whois": {"age_days": 200, "available": False},
+            "company": {"found": True, "registry": "KRS"},
+        }
+        score = calculate_risk(signals)
+        # 20 (age<365) - 40 (company found) = -20 → floor 0
+        assert score == 0
 
     def test_disposable_email(self):
         signals = {
@@ -112,6 +127,108 @@ class TestCalculateRisk:
         score = calculate_risk(signals)
         assert score == 100
 
+    def test_floor_at_zero(self):
+        """Trust signals should not produce negative scores."""
+        signals = {
+            "whois": {"age_days": 5000, "available": False},
+            "tranco": {"available": True, "rank": 500},
+            "spf_dmarc": {"has_spf": True, "has_dmarc": True},
+            "company": {"found": True, "registry": "KRS"},
+            "crtsh": {"cert_age_days": 1000},
+        }
+        score = calculate_risk(signals)
+        assert score == 0
+
+    # ── NEW bidirectional tests ──
+
+    def test_tranco_top_10k_reduces_risk(self):
+        """Tranco rank 5000 → -50."""
+        signals = {
+            "whois": {"age_days": 200, "available": False},
+            "tranco": {"available": True, "rank": 5000},
+            "urlhaus": {"blacklisted": True},  # +50
+        }
+        score = calculate_risk(signals)
+        # 20 (age<365) + 50 (urlhaus) - 50 (tranco top10K) = 20
+        assert score == 20
+
+    def test_old_domain_reduces_risk(self):
+        """Domain age >10 years → -30."""
+        signals = {
+            "whois": {"age_days": 4000, "available": False},
+            "urlhaus": {"blacklisted": True},  # +50
+        }
+        score = calculate_risk(signals)
+        # 50 (urlhaus) - 30 (age>3650) = 20
+        assert score == 20
+
+    def test_abuseipdb_high_score(self):
+        """AbuseIPDB score 80 → +40."""
+        signals = {
+            "abuseipdb": {"available": True, "abuseConfidenceScore": 80, "totalReports": 15, "isWhitelisted": False},
+        }
+        score = calculate_risk(signals)
+        assert score == 40
+
+    def test_abuseipdb_whitelisted_reduces(self):
+        """AbuseIPDB whitelisted → -30."""
+        signals = {
+            "whois": {"age_days": 200, "available": False},
+            "abuseipdb": {"available": True, "abuseConfidenceScore": 0, "isWhitelisted": True},
+            "urlhaus": {"blacklisted": True},  # +50
+        }
+        score = calculate_risk(signals)
+        # 20 (age<365) + 50 (urlhaus) - 30 (whitelisted) = 40
+        assert score == 40
+
+    def test_spf_dmarc_bonus(self):
+        """Both SPF + DMARC present → -10."""
+        signals = {
+            "whois": {"age_days": 200, "available": False},
+            "spf_dmarc": {"has_spf": True, "has_dmarc": True},
+        }
+        score = calculate_risk(signals)
+        # 20 (age<365) - 10 (spf+dmarc) = 10
+        assert score == 10
+
+    def test_known_safe_domain_pattern(self):
+        """Tranco 5K + age 4000 + SPF+DMARC → score ≤ 0 (floored)."""
+        signals = {
+            "whois": {"age_days": 4000, "available": False},
+            "tranco": {"available": True, "rank": 5000},
+            "spf_dmarc": {"has_spf": True, "has_dmarc": True},
+            "google_safe_browsing": {"flagged": False},
+            "virustotal": {"positives": 0, "total": 70},
+        }
+        score = calculate_risk(signals)
+        # -30 (age>3650) - 50 (tranco top10K) - 10 (spf+dmarc) = -90 → floor 0
+        assert score == 0
+
+    def test_new_thresholds(self):
+        """Verify new threshold boundaries: <20 BEZPIECZNE, 25 PODEJRZANE, 55 OSZUSTWO."""
+        from modules.verify import generate_verdict
+        with patch("modules.verify.generate_verdict", wraps=generate_verdict):
+            # Score 15 → BEZPIECZNE
+            r1 = generate_verdict(15, {}, "test")
+            assert r1["verdict"] == "BEZPIECZNE"
+            # Score 25 → PODEJRZANE
+            r2 = generate_verdict(25, {}, "test")
+            assert r2["verdict"] == "PODEJRZANE"
+            # Score 55 → OSZUSTWO
+            r3 = generate_verdict(55, {}, "test")
+            assert r3["verdict"] == "OSZUSTWO"
+
+    def test_crtsh_old_cert_reduces(self):
+        """cert_age_days 1000 → -20."""
+        signals = {
+            "whois": {"age_days": 200, "available": False},
+            "crtsh": {"cert_age_days": 1000},
+            "urlhaus": {"blacklisted": True},  # +50
+        }
+        score = calculate_risk(signals)
+        # 20 (age<365) + 50 (urlhaus) - 20 (cert>730) = 50
+        assert score == 50
+
 
 # ═══════════════════════════════════════════════════════════════
 #  extract_red_flags
@@ -139,6 +256,71 @@ class TestExtractRedFlags:
         })
         assert len(flags) == 3
 
+    def test_new_sources_flags(self):
+        """Red flags include AbuseIPDB, OTX, IPinfo, SPF/DMARC, crt.sh."""
+        flags = _extract_red_flags({
+            "abuseipdb": {"abuseConfidenceScore": 80, "totalReports": 10},
+            "otx": {"pulse_count": 3},
+            "ipinfo": {"country": "RU"},
+            "spf_dmarc": {"has_spf": False, "has_dmarc": False},
+            "crtsh": {"cert_age_days": 5},
+        })
+        assert any("AbuseIPDB" in f for f in flags)
+        assert any("OTX" in f for f in flags)
+        assert any("IPinfo" in f or "hosting" in f for f in flags)
+        assert any("SPF" in f for f in flags)
+        assert any("crt.sh" in f or "certyfikat" in f for f in flags)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  extract_trust_factors
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestExtractTrustFactors:
+
+    def test_tranco_trust(self):
+        factors = _extract_trust_factors({"tranco": {"available": True, "rank": 500}})
+        assert any("Tranco" in f for f in factors)
+        assert any("top 10K" in f for f in factors)
+
+    def test_old_domain_trust(self):
+        factors = _extract_trust_factors({"whois": {"age_days": 5000}})
+        assert any("lat" in f for f in factors)
+
+    def test_spf_dmarc_trust(self):
+        factors = _extract_trust_factors({"spf_dmarc": {"has_spf": True, "has_dmarc": True}})
+        assert any("SPF" in f and "DMARC" in f for f in factors)
+
+    def test_company_confirmed_trust(self):
+        factors = _extract_trust_factors({"company": {"found": True, "registry": "KRS"}})
+        assert any("potwierdzona" in f for f in factors)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  extract_signal_explanations
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestExtractSignalExplanations:
+
+    def test_returns_list_of_dicts(self):
+        expls = _extract_signal_explanations({
+            "whois": {"age_days": 50},
+            "google_safe_browsing": {"available": True, "flagged": False},
+        })
+        assert isinstance(expls, list)
+        assert len(expls) >= 2
+        for e in expls:
+            assert "signal" in e
+            assert "risk" in e
+            assert e["risk"] in ("green", "gray", "amber", "red")
+
+    def test_new_domain_red(self):
+        expls = _extract_signal_explanations({"whois": {"age_days": 10}})
+        whois_expl = [e for e in expls if "WHOIS" in e["signal"]]
+        assert whois_expl[0]["risk"] == "red"
+
 
 # ═══════════════════════════════════════════════════════════════
 #  verify methods (mocked)
@@ -147,17 +329,28 @@ class TestExtractRedFlags:
 
 class TestVerifyUrl:
 
+    @patch("modules.verify._otx_lookup")
+    @patch("modules.verify._tranco_lookup")
+    @patch("modules.verify._check_spf_dmarc")
+    @patch("modules.verify._crtsh_lookup")
+    @patch("modules.verify._rdap_lookup")
     @patch("modules.verify._whois_lookup")
     @patch("modules.verify._google_safe_browsing")
     @patch("modules.verify._virustotal_url")
     @patch("modules.verify._wayback_first")
     @patch("modules.verify._resolve_domain_ip")
-    def test_verify_url_clean(self, mock_ip, mock_wb, mock_vt, mock_gsb, mock_whois):
+    def test_verify_url_clean(self, mock_ip, mock_wb, mock_vt, mock_gsb, mock_whois,
+                               mock_rdap, mock_crtsh, mock_spf, mock_tranco, mock_otx):
         mock_whois.return_value = {"age_days": 3650, "domain": "example.com", "available": False}
         mock_gsb.return_value = {"available": True, "flagged": False}
         mock_vt.return_value = {"available": True, "positives": 0, "total": 70}
         mock_wb.return_value = {"available": True, "first_archive": "2015-01-01", "archive_age_days": 4000}
         mock_ip.return_value = None
+        mock_rdap.return_value = {"available": True, "registration": "2015-01-01"}
+        mock_crtsh.return_value = {"available": True, "cert_age_days": 2000}
+        mock_spf.return_value = {"has_spf": True, "has_dmarc": True}
+        mock_tranco.return_value = {"available": True, "rank": 5000}
+        mock_otx.return_value = {"available": True, "pulse_count": 0, "validation": []}
 
         with patch("modules.verify._urlhaus_lookup", return_value={"urls_count": 0, "blacklisted": False}):
             v = CyrberVerify()
@@ -168,37 +361,52 @@ class TestVerifyUrl:
         assert result["verdict"] == "BEZPIECZNE"
         assert "signals" in result
         assert "timestamp" in result
+        assert "trust_factors" in result
+        assert "signal_explanations" in result
 
+    @patch("modules.verify._otx_lookup")
+    @patch("modules.verify._tranco_lookup")
+    @patch("modules.verify._check_spf_dmarc")
+    @patch("modules.verify._crtsh_lookup")
+    @patch("modules.verify._rdap_lookup")
     @patch("modules.verify._whois_lookup")
     @patch("modules.verify._google_safe_browsing")
     @patch("modules.verify._virustotal_url")
     @patch("modules.verify._wayback_first")
     @patch("modules.verify._resolve_domain_ip")
-    def test_verify_url_suspicious(self, mock_ip, mock_wb, mock_vt, mock_gsb, mock_whois):
+    def test_verify_url_suspicious(self, mock_ip, mock_wb, mock_vt, mock_gsb, mock_whois,
+                                    mock_rdap, mock_crtsh, mock_spf, mock_tranco, mock_otx):
         mock_whois.return_value = {"age_days": 200, "domain": "shady.com", "available": False}
         mock_gsb.return_value = {"available": True, "flagged": False}
         mock_vt.return_value = {"available": True, "positives": 2, "total": 70}
         mock_wb.return_value = {"available": True, "archive_age_days": 100, "first_archive": "2025-10-01"}
         mock_ip.return_value = None
+        mock_rdap.return_value = {"available": False}
+        mock_crtsh.return_value = {"available": True, "cert_age_days": None}
+        mock_spf.return_value = {"has_spf": False, "has_dmarc": False}
+        mock_tranco.return_value = {"available": True, "rank": None}
+        mock_otx.return_value = {"available": True, "pulse_count": 0, "validation": []}
 
         with patch("modules.verify._urlhaus_lookup", return_value={"urls_count": 0, "blacklisted": False}):
             v = CyrberVerify()
             result = v.verify_url("https://shady.com")
 
-        # 20 (age<365) + 30 (vt 1-2) + 25 (wb<180) = 75
-        assert result["risk_score"] == 75
+        # 20 (age<365) + 30 (vt>=2) + 25 (wb<180) + 15 (no spf+dmarc) + 10 (no tranco) = 100
+        assert result["risk_score"] == 100
         assert result["verdict"] == "OSZUSTWO"
 
 
 class TestVerifyEmail:
 
+    @patch("modules.verify._check_spf_dmarc")
     @patch("modules.verify._whois_lookup")
     @patch("modules.verify._check_mx")
     @patch("modules.verify._load_disposable_domains")
-    def test_verify_email_clean(self, mock_disp, mock_mx, mock_whois):
+    def test_verify_email_clean(self, mock_disp, mock_mx, mock_whois, mock_spf):
         mock_disp.return_value = set()
         mock_mx.return_value = {"has_mx": True, "records": [{"host": "mx.example.com", "priority": 10}]}
         mock_whois.return_value = {"age_days": 5000, "domain": "example.com", "available": False}
+        mock_spf.return_value = {"has_spf": True, "has_dmarc": True}
 
         with patch("modules.verify._urlhaus_lookup", return_value={"urls_count": 0, "blacklisted": False}):
             v = CyrberVerify()
@@ -208,13 +416,15 @@ class TestVerifyEmail:
         assert result["risk_score"] == 0
         assert result["verdict"] == "BEZPIECZNE"
 
+    @patch("modules.verify._check_spf_dmarc")
     @patch("modules.verify._whois_lookup")
     @patch("modules.verify._check_mx")
     @patch("modules.verify._load_disposable_domains")
-    def test_verify_email_disposable(self, mock_disp, mock_mx, mock_whois):
+    def test_verify_email_disposable(self, mock_disp, mock_mx, mock_whois, mock_spf):
         mock_disp.return_value = {"tempmail.com", "guerrillamail.com"}
         mock_mx.return_value = {"has_mx": True, "records": []}
         mock_whois.return_value = {"age_days": 100, "domain": "tempmail.com", "available": False}
+        mock_spf.return_value = {"has_spf": False, "has_dmarc": False}
 
         with patch("modules.verify._urlhaus_lookup", return_value={"urls_count": 0, "blacklisted": False}):
             v = CyrberVerify()
@@ -228,6 +438,8 @@ class TestVerifyEmail:
         result = v.verify_email("notanemail")
         assert result["risk_score"] == 80
         assert result["verdict"] == "OSZUSTWO"
+        assert "trust_factors" in result
+        assert "signal_explanations" in result
 
 
 class TestVerifyCompany:
@@ -245,6 +457,7 @@ class TestVerifyCompany:
         result = v.verify_company("Test Sp. z o.o.", country="PL")
 
         assert result["type"] == "company"
+        # company found → -40, floor 0
         assert result["risk_score"] == 0
         assert result["verdict"] == "BEZPIECZNE"
 
@@ -258,7 +471,7 @@ class TestVerifyCompany:
         result = v.verify_company("Fake Company", country="PL")
 
         assert result["risk_score"] == 60
-        assert result["verdict"] == "PODEJRZANE"
+        assert result["verdict"] == "OSZUSTWO"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -275,6 +488,9 @@ class TestGenerateVerdict:
             result = generate_verdict(10, {}, "test.com")
         assert result["verdict"] == "BEZPIECZNE"
         assert "summary" in result
+        assert "trust_factors" in result
+        assert "signal_explanations" in result
+        assert "educational_tips" in result
 
     def test_verdict_fraud_fallback(self):
         from modules.verify import generate_verdict
@@ -282,3 +498,14 @@ class TestGenerateVerdict:
             result = generate_verdict(80, {"urlhaus": {"blacklisted": True}}, "evil.com")
         assert result["verdict"] == "OSZUSTWO"
         assert len(result["red_flags"]) > 0
+
+    def test_verdict_thresholds(self):
+        """New thresholds: <20 BEZPIECZNE, 20-50 PODEJRZANE, >50 OSZUSTWO."""
+        from modules.verify import generate_verdict
+        with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
+            assert generate_verdict(0, {}, "t")["verdict"] == "BEZPIECZNE"
+            assert generate_verdict(19, {}, "t")["verdict"] == "BEZPIECZNE"
+            assert generate_verdict(20, {}, "t")["verdict"] == "PODEJRZANE"
+            assert generate_verdict(50, {}, "t")["verdict"] == "PODEJRZANE"
+            assert generate_verdict(51, {}, "t")["verdict"] == "OSZUSTWO"
+            assert generate_verdict(100, {}, "t")["verdict"] == "OSZUSTWO"
