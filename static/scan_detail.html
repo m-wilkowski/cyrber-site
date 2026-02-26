@@ -957,6 +957,8 @@ function restoreAiChat(){
 }
 
 function sendAiMessage(){
+  var sendBtn=document.getElementById('aiSend');
+  if(sendBtn.disabled)return;
   var input=document.getElementById('aiInput');
   var text=input.value.trim();
   if(!text)return;
@@ -972,7 +974,6 @@ function sendAiMessage(){
   _aiHistory.push({role:'user',content:text});
 
   // Disable send
-  var sendBtn=document.getElementById('aiSend');
   sendBtn.disabled=true;sendBtn.textContent='...';
 
   // Add loading
