@@ -879,7 +879,7 @@ async function launchCampaign() {
     document.getElementById('launchBtn').disabled = true;
 
     try {
-      var r = await authFetch('/evilginx/lures', {
+      var r = await authFetch('/api/evilginx/lures', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
