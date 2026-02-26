@@ -45,6 +45,12 @@ services:
     ports:
       - "8090:8090"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8090/JSON/core/view/version/?apikey=${ZAP_API_KEY:-cyrber-zap-key}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   gophish:
     image: gophish/gophish:latest
