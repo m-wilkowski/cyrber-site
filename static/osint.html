@@ -634,6 +634,9 @@ function hideProgress() {
 
 // ── LAUNCH ──
 async function launchOsint() {
+  var anyDisabled = false;
+  document.querySelectorAll('.btn-primary').forEach(function(b) { if (b.disabled) anyDisabled = true; });
+  if (anyDisabled) return;
   var target = getTarget();
   if (!target) { setStatus('Enter target first', true); return; }
 
@@ -696,13 +699,14 @@ function renderResults(data) {
     pb.onclick = function(e) {
       e.preventDefault();
       authFetch(API + '/osint/' + _currentTaskId + '/pdf')
-        .then(function(r) { return r.blob(); })
+        .then(function(r) { if (!r.ok) throw new Error('PDF generation failed'); return r.blob(); })
         .then(function(blob) {
           var u = URL.createObjectURL(blob);
           var a = document.createElement('a');
           a.href = u; a.download = 'cyrber_osint_' + (data.target||'scan') + '.pdf';
           a.click(); URL.revokeObjectURL(u);
-        });
+        })
+        .catch(function(err) { setStatus(err.message || 'PDF download failed', true); });
     };
   }
 
@@ -935,7 +939,7 @@ function _renderEmail(d) {
     var bc = '<table><thead><tr><th>BREACH</th><th>DOMAIN</th><th>DATE</th><th>RECORDS</th><th>DATA TYPES</th></tr></thead><tbody>';
     breaches.forEach(function(b) {
       var v = b.is_verified ? ' <span style="color:var(--red);font-size:10px">VERIFIED</span>' : '';
-      bc += '<tr><td style="color:var(--red);font-weight:600">'+esc(b.name)+v+'</td><td>'+esc(b.domain||'')+'</td><td>'+esc(b.breach_date||'')+'</td><td style="font-family:Share Tech Mono,monospace">'+(b.pwn_count||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--silver)">'+(b.data_classes||[]).slice(0,4).join(', ')+'</td></tr>';
+      bc += '<tr><td style="color:var(--red);font-weight:600">'+esc(b.name)+v+'</td><td>'+esc(b.domain||'')+'</td><td>'+esc(b.breach_date||'')+'</td><td style="font-family:Share Tech Mono,monospace">'+(b.pwn_count||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--silver)">'+esc((b.data_classes||[]).slice(0,4).join(', '))+'</td></tr>';
     });
     bc += '</tbody></table>';
     h += _sec('DATA BREACHES (' + breaches.length + ')', bc, true);
@@ -967,7 +971,7 @@ function _renderEmail(d) {
   if (er.reputation || er.email) {
     var det = er.details || {};
     var ec = '<div class="whois-grid">';
-    [['REPUTATION',er.reputation],['SUSPICIOUS',er.suspicious?'YES':'NO'],['REFERENCES',er.references],['BLACKLISTED',det.blacklisted?'YES':'NO'],['CREDENTIALS LEAKED',det.credentials_leaked?'YES':'NO'],['DATA BREACH',det.data_breach?'YES':'NO'],['DELIVERABLE',det.deliverable===true?'YES':det.deliverable===false?'NO':'?'],['FREE PROVIDER',det.free_provider?'YES':'NO'],['SPOOFABLE',det.spoofable?'YES':'NO']].forEach(function(f) { if(f[1]!=null) ec += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv"'+(f[0]==='SUSPICIOUS'&&er.suspicious?' style="color:var(--red)"':'')+(f[0]==='BLACKLISTED'&&det.blacklisted?' style="color:var(--red)"':'')+(f[0]==='CREDENTIALS LEAKED'&&det.credentials_leaked?' style="color:var(--red)"':'')+(f[0]==='SPOOFABLE'&&det.spoofable?' style="color:var(--orange)"':'')+'>'+f[1]+'</div></div>'; });
+    [['REPUTATION',er.reputation],['SUSPICIOUS',er.suspicious?'YES':'NO'],['REFERENCES',er.references],['BLACKLISTED',det.blacklisted?'YES':'NO'],['CREDENTIALS LEAKED',det.credentials_leaked?'YES':'NO'],['DATA BREACH',det.data_breach?'YES':'NO'],['DELIVERABLE',det.deliverable===true?'YES':det.deliverable===false?'NO':'?'],['FREE PROVIDER',det.free_provider?'YES':'NO'],['SPOOFABLE',det.spoofable?'YES':'NO']].forEach(function(f) { if(f[1]!=null) ec += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv"'+(f[0]==='SUSPICIOUS'&&er.suspicious?' style="color:var(--red)"':'')+(f[0]==='BLACKLISTED'&&det.blacklisted?' style="color:var(--red)"':'')+(f[0]==='CREDENTIALS LEAKED'&&det.credentials_leaked?' style="color:var(--red)"':'')+(f[0]==='SPOOFABLE'&&det.spoofable?' style="color:var(--orange)"':'')+'>'+esc(String(f[1]))+'</div></div>'; });
     ec += '</div>';
     var pr = det.profiles || er.profiles || [];
     if (pr.length) { ec += '<div style="margin-top:12px;font-family:Share Tech Mono,monospace;font-size:10px;letter-spacing:.15em;color:var(--silver);margin-bottom:6px">KNOWN PROFILES</div>'; pr.forEach(function(p) { ec += '<span class="tag" style="border-color:var(--purple);color:var(--purple)">'+esc(p)+'</span>'; }); ec += '</div>'; }
@@ -977,7 +981,7 @@ function _renderEmail(d) {
   var hu = d.hunter || {};
   if (hu.result || hu.score) {
     var huc = '<div class="whois-grid">';
-    [['RESULT',hu.result],['SCORE',hu.score],['SMTP SERVER',hu.smtp_server?'YES':'NO'],['SMTP CHECK',hu.smtp_check?'YES':'NO'],['MX RECORDS',hu.mx_records?'YES':'NO']].forEach(function(f) { if(f[1]!=null) huc += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv">'+f[1]+'</div></div>'; });
+    [['RESULT',hu.result],['SCORE',hu.score],['SMTP SERVER',hu.smtp_server?'YES':'NO'],['SMTP CHECK',hu.smtp_check?'YES':'NO'],['MX RECORDS',hu.mx_records?'YES':'NO']].forEach(function(f) { if(f[1]!=null) huc += '<div class="whois-item"><div class="wl">'+f[0]+'</div><div class="wv">'+esc(String(f[1]))+'</div></div>'; });
     huc += '</div>';
     h += _sec('HUNTER.IO VERIFICATION', huc, false);
   }
@@ -1216,12 +1220,13 @@ function _histSummary(type, sm) {
 
 function downloadPdf(taskId, target) {
   authFetch(API + '/osint/' + taskId + '/pdf')
-    .then(function(r) { return r.blob(); })
+    .then(function(r) { if (!r.ok) throw new Error('PDF generation failed'); return r.blob(); })
     .then(function(blob) {
       var u = URL.createObjectURL(blob);
       var a = document.createElement('a'); a.href = u; a.download = 'cyrber_osint_' + target + '.pdf';
       a.click(); URL.revokeObjectURL(u);
-    });
+    })
+    .catch(function(err) { setStatus(err.message || 'PDF download failed', true); });
 }
 
 async function loadOsintDetail(taskId, searchType) {
