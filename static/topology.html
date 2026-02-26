@@ -172,7 +172,7 @@ if (!TOKEN) window.location.href = '/login';
 // ── Load admin nav ──
 (async function(){
   try {
-    const r = await fetch('/api/me', {headers: HEADERS});
+    const r = await fetch('/auth/me', {headers: HEADERS});
     if (!r.ok) { window.location.href = '/login'; return; }
     const u = await r.json();
     if (u.role === 'admin') document.getElementById('adminNavLink').style.display = '';
