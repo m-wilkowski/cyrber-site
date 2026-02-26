@@ -771,10 +771,10 @@ function switchTab(name) {
 
 // ── Run verify ──
 async function runVerify() {
+  var btn = document.getElementById('verifyBtn');
+  if (btn.disabled) return;
   var query = queryInput.value.trim();
   if (!query) return;
-
-  var btn = document.getElementById('verifyBtn');
   var spinner = document.getElementById('loadingSpinner');
   var resultSec = document.getElementById('resultSection');
   var msgEl = document.getElementById('searchMsg');
@@ -1112,7 +1112,7 @@ function renderDetails(data) {
       if (c.manual_check_urls && c.manual_check_urls.length) {
         manualHtml += '<p style="margin:4px 0;font-size:var(--text-sm)"><strong>Sprawdz samodzielnie:</strong></p><ul style="margin:4px 0 8px 16px;font-size:var(--text-sm)">';
         c.manual_check_urls.forEach(function(u) {
-          manualHtml += '<li><a href="' + u.url + '" target="_blank" rel="noopener" style="color:var(--accent-primary)">' + u.name + '</a></li>';
+          manualHtml += '<li><a href="' + escHtml(u.url) + '" target="_blank" rel="noopener" style="color:var(--accent-primary)">' + escHtml(u.name) + '</a></li>';
         });
         manualHtml += '</ul>';
       }
@@ -1126,12 +1126,12 @@ function renderDetails(data) {
       c.candidates.forEach(function(cand) {
         var source = cand.source || c.registry || '';
         chtml += '<div style="padding:8px 0;border-bottom:1px solid var(--border-primary);">'
-          + '<strong>' + (cand.name || '?') + '</strong>'
-          + ' <span class="type-badge company" style="font-size:11px;">' + source + '</span>';
-        if (cand.krs) chtml += '<br>KRS: ' + cand.krs;
-        if (cand.nip) chtml += ' | NIP: ' + cand.nip;
-        if (cand.company_number) chtml += '<br>Nr: ' + cand.company_number;
-        if (cand.status || cand.status_vat) chtml += ' | Status: ' + (cand.status_vat || cand.status);
+          + '<strong>' + escHtml(cand.name || '?') + '</strong>'
+          + ' <span class="type-badge company" style="font-size:11px;">' + escHtml(source) + '</span>';
+        if (cand.krs) chtml += '<br>KRS: ' + escHtml(cand.krs);
+        if (cand.nip) chtml += ' | NIP: ' + escHtml(cand.nip);
+        if (cand.company_number) chtml += '<br>Nr: ' + escHtml(cand.company_number);
+        if (cand.status || cand.status_vat) chtml += ' | Status: ' + escHtml(cand.status_vat || cand.status);
         chtml += '</div>';
       });
       chtml += '</div></div>';
