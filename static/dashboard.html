@@ -1531,7 +1531,7 @@ function renderTable() {
     html += '<td><span class="prof-badge" style="color:' + profColor + ';border-color:' + profColor + '">' + prof + '</span></td>';
     html += '<td>' + formatDate(s.created_at) + '</td>';
     html += '<td>' + (s.findings_count || 0) + '</td>';
-    html += '<td><span class="risk-badge risk-' + risk + '">' + risk + '</span></td>';
+    html += '<td><span class="risk-badge risk-' + risk + '">' + escH(risk) + '</span></td>';
     html += '<td><span class="mini-risk" style="color:' + miniColor + ';border-color:' + miniColor + '">' + miniScore + '</span></td>';
     html += '<td>' + formatDuration(s.created_at, s.completed_at) + '</td>';
     html += '<td>';
@@ -1758,7 +1758,7 @@ function enrichBadges(f){
   if(f.epss_score){b+='<span class="enrich-badge epss">EPSS: '+(f.epss_score*100).toFixed(1)+'%</span>';any=true}
   if(f.attack_techniques&&f.attack_techniques.length){b+='<span class="enrich-badge attack">ATT&amp;CK: '+f.attack_techniques.length+'</span>';any=true}
   if(f.exploitdb_count){b+='<span class="enrich-badge exploit">EXPLOIT ('+f.exploitdb_count+')</span>';any=true}
-  if(f.in_malwarebazaar){b+='<span class="enrich-badge malware" title="'+(f.malware_signature||'malware')+'">MALWARE</span>';any=true}
+  if(f.in_malwarebazaar){b+='<span class="enrich-badge malware" title="'+escH(f.malware_signature||'malware')+'">MALWARE</span>';any=true}
   b+='</div>';return any?b:'';
 }
 function collectFindings(detail) {
@@ -1871,7 +1871,7 @@ function buildFindingCard(f, idx, sev) {
   h += '<div class="fd-body">';
   h += '<div class="fd-name">' + escH(f.name) + '</div>';
   if (f.description) h += '<div class="fd-desc">' + escH(String(f.description).substring(0, 200)) + '</div>';
-  if (f._module) h += '<div class="fd-meta">MODULE: ' + f._module.toUpperCase() + '</div>';
+  if (f._module) h += '<div class="fd-meta">MODULE: ' + escH(f._module.toUpperCase()) + '</div>';
   h += enrichBadges(f);
   h += '<button class="fd-explain-btn" onclick="explainFinding(' + idx + ',this)">&#x1F916; WYJA\u015aNIJ</button>';
   h += '<div id="explain-' + idx + '"></div>';
