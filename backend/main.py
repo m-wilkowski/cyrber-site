@@ -233,6 +233,10 @@ async def phishing_page():
 async def osint_page():
     return FileResponse("static/osint.html", media_type="text/html", headers=_NO_CACHE)
 
+@app.get("/verify")
+async def verify_page():
+    return FileResponse("static/verify.html", headers=_NO_CACHE)
+
 @app.get("/admin")
 async def admin_page():
     return FileResponse("static/admin.html", headers=_NO_CACHE)
@@ -2073,6 +2077,79 @@ async def evilginx_delete_lure_api(request: Request, lure_id: int, user: dict = 
         raise HTTPException(status_code=404, detail="Lure not found")
     audit(request, user, "evilginx_lure_delete", str(lure_id))
     return {"status": "deleted", "lure_id": lure_id}
+
+# ── CYRBER VERIFY ──
+
+class VerifyRequest(BaseModel):
+    query: str
+    type: str = "AUTO"     # url / email / company / AUTO
+    country: str = "AUTO"  # PL / UK / AUTO
+
+@app.post("/api/verify")
+@limiter.limit("10/minute")
+async def api_verify(request: Request, body: VerifyRequest, user: dict = Depends(require_role("admin", "operator"))):
+    import redis.asyncio as aioredis
+
+    query = body.query.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Query is required")
+
+    # Auto-detect type
+    from modules.verify import CyrberVerify, detect_query_type
+    qtype = body.type.lower()
+    if qtype == "auto":
+        qtype = detect_query_type(query)
+
+    # Auto-detect country
+    country = body.country.upper()
+    if country == "AUTO":
+        country = "PL"
+
+    # Redis cache (1h)
+    cache_key = f"verify:{qtype}:{query}".replace(" ", "_").lower()
+    try:
+        async with aioredis.from_url(REDIS_URL) as r:
+            cached = await r.get(cache_key)
+            if cached:
+                return json.loads(cached)
+    except Exception:
+        pass
+
+    # Run verification
+    v = CyrberVerify()
+    try:
+        if qtype == "url":
+            result = v.verify_url(query)
+        elif qtype == "email":
+            result = v.verify_email(query)
+        elif qtype == "company":
+            result = v.verify_company(query, country=country)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown type: {qtype}")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Verification failed: {str(exc)}")
+
+    # Save to DB
+    try:
+        from modules.database import save_verify_result
+        result["id"] = save_verify_result(result, created_by=user.get("username", "unknown"))
+    except Exception as exc:
+        log.warning(f"Failed to save verify result: {exc}")
+
+    # Cache in Redis (1h)
+    try:
+        async with aioredis.from_url(REDIS_URL) as r:
+            await r.setex(cache_key, 3600, json.dumps(result, ensure_ascii=False, default=str))
+    except Exception:
+        pass
+
+    audit(request, user, "verify", f"{qtype}:{query}")
+    return result
+
+@app.get("/api/verify/history")
+async def api_verify_history(user: dict = Depends(require_role("admin", "operator"))):
+    from modules.database import get_verify_history
+    return get_verify_history(limit=50)
 
 # ── Multi-target scan ──
 

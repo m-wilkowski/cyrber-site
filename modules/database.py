@@ -276,6 +276,20 @@ class MalwarebazaarCache(Base):
     reporter       = Column(String)
     fetched_at     = Column(DateTime, default=datetime.utcnow)
 
+class VerifyResult(Base):
+    __tablename__ = "verify_results"
+    id             = Column(Integer, primary_key=True, autoincrement=True)
+    query          = Column(String, index=True)
+    query_type     = Column(String)            # url / email / company
+    risk_score     = Column(Integer, default=0)
+    verdict        = Column(String)            # BEZPIECZNE / PODEJRZANE / OSZUSTWO
+    signals        = Column(JSON)
+    red_flags      = Column(JSON)
+    summary        = Column(Text)
+    recommendation = Column(Text)
+    created_at     = Column(DateTime, default=datetime.utcnow)
+    created_by     = Column(String)
+
 def init_db(retries=10, delay=3):
     for i in range(retries):
         try:
@@ -968,6 +982,49 @@ def get_intel_cache_counts() -> dict:
             "exploitdb": db.query(ExploitdbCache).count(),
             "malwarebazaar": db.query(MalwarebazaarCache).count(),
         }
+    finally:
+        db.close()
+
+def save_verify_result(data: dict, created_by: str = "system") -> int:
+    db = SessionLocal()
+    try:
+        row = VerifyResult(
+            query=data.get("query", ""),
+            query_type=data.get("type", ""),
+            risk_score=data.get("risk_score", 0),
+            verdict=data.get("verdict", ""),
+            signals=data.get("signals"),
+            red_flags=data.get("red_flags"),
+            summary=data.get("summary", ""),
+            recommendation=data.get("recommendation", ""),
+            created_by=created_by,
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row.id
+    finally:
+        db.close()
+
+def get_verify_history(limit: int = 50) -> list[dict]:
+    db = SessionLocal()
+    try:
+        rows = db.query(VerifyResult).order_by(VerifyResult.created_at.desc()).limit(limit).all()
+        return [
+            {
+                "id": r.id,
+                "query": r.query,
+                "query_type": r.query_type,
+                "risk_score": r.risk_score,
+                "verdict": r.verdict,
+                "red_flags": r.red_flags,
+                "summary": r.summary,
+                "recommendation": r.recommendation,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "created_by": r.created_by,
+            }
+            for r in rows
+        ]
     finally:
         db.close()
 

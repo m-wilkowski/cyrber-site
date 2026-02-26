@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYRBER — Verify</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  .wrapper {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: var(--sp-8) var(--content-padding) var(--sp-16);
+    position: relative;
+    z-index: 1;
+  }
+
+  .page-header { margin-bottom: var(--sp-8); }
+  .page-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: var(--text-base);
+    letter-spacing: .3em;
+    color: var(--accent);
+    margin-bottom: var(--sp-2);
+  }
+  .page-title-main {
+    font-family: 'Orbitron', sans-serif;
+    font-size: var(--text-2xl);
+    font-weight: 900;
+    letter-spacing: .1em;
+    color: var(--text-primary);
+  }
+
+  .card {
+    background: var(--card-bg);
+    border: var(--card-border);
+    border-radius: var(--radius-md);
+    padding: var(--sp-7) var(--sp-8);
+    margin-bottom: var(--sp-6);
+    box-shadow: var(--card-shadow);
+    backdrop-filter: blur(12px);
+  }
+  .card h2 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: .15em;
+    color: var(--text-secondary);
+    margin: 0 0 var(--sp-5) 0;
+  }
+
+  /* ── SEARCH BOX ── */
+  .search-card {
+    text-align: center;
+    padding: var(--sp-10) var(--sp-8);
+  }
+  .search-row {
+    display: flex;
+    gap: var(--sp-3);
+    max-width: 700px;
+    margin: 0 auto var(--sp-5);
+    align-items: stretch;
+  }
+  .search-input {
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-lg);
+    padding: var(--sp-4) var(--sp-5);
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted); }
+  .search-input::placeholder { color: var(--text-muted); }
+
+  .search-opts {
+    display: flex;
+    gap: var(--sp-4);
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-1) var(--sp-4);
+    border-radius: var(--radius-sm);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: .1em;
+    background: var(--accent-muted);
+    color: var(--accent);
+  }
+  .type-badge.url { background: rgba(74,143,212,.15); color: #4a8fd4; }
+  .type-badge.email { background: rgba(155,89,182,.15); color: #9b59b6; }
+  .type-badge.company { background: rgba(240,180,41,.15); color: #f0b429; }
+
+  select {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-sm);
+    padding: var(--sp-2) var(--sp-3);
+    outline: none;
+  }
+
+  .btn {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: var(--text-md);
+    letter-spacing: .12em;
+    padding: var(--sp-3) var(--sp-6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface-hover); color: var(--text-primary); }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: .9; }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── RESULT ── */
+  .result-section { display: none; }
+  .result-section.on { display: block; }
+
+  .result-hero {
+    display: flex;
+    gap: var(--sp-8);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .risk-ring {
+    width: 160px; height: 160px; border-radius: 50%;
+    background: conic-gradient(var(--ring-color, var(--accent)) 0% calc(var(--ring-pct,0) * 1%), rgba(255,255,255,.05) calc(var(--ring-pct,0) * 1%) 100%);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .risk-ring-inner {
+    width: 124px; height: 124px; border-radius: 50%;
+    background: var(--bg-root);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .risk-ring-num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: var(--text-2xl); font-weight: 900; line-height: 1;
+  }
+  .risk-ring-lbl {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-xs); letter-spacing: .2em; color: var(--text-secondary);
+  }
+
+  .verdict-badge {
+    font-family: 'Orbitron', sans-serif;
+    font-size: var(--text-xl);
+    font-weight: 900;
+    letter-spacing: .15em;
+    padding: var(--sp-3) var(--sp-6);
+    border-radius: var(--radius-sm);
+    display: inline-block;
+    margin-bottom: var(--sp-3);
+  }
+  .verdict-badge.safe { background: rgba(46,204,113,.15); color: #2ecc71; }
+  .verdict-badge.suspect { background: rgba(241,196,15,.15); color: #f1c40f; }
+  .verdict-badge.fraud { background: rgba(231,76,60,.15); color: #e74c3c; }
+
+  .result-meta {
+    flex: 1;
+    min-width: 250px;
+  }
+  .result-query {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-lg);
+    color: var(--text-primary);
+    word-break: break-all;
+    margin-bottom: var(--sp-2);
+  }
+  .result-summary {
+    color: var(--text-secondary);
+    font-size: var(--text-base);
+    line-height: 1.6;
+  }
+
+  /* ── RED FLAGS ── */
+  .flags-list { list-style: none; padding: 0; margin: 0; }
+  .flags-list li {
+    display: flex;
+    gap: var(--sp-3);
+    align-items: flex-start;
+    padding: var(--sp-3) 0;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+  }
+  .flags-list li::before {
+    content: '\26A0';
+    color: var(--red, #e74c3c);
+    flex-shrink: 0;
+  }
+  .flags-list .safe-flag::before {
+    content: '\2713';
+    color: #2ecc71;
+  }
+
+  /* ── SIGNAL CARDS ── */
+  .signal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--sp-4);
+  }
+  .signal-card {
+    background: var(--surface-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--sp-4) var(--sp-5);
+  }
+  .signal-card h3 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: .12em;
+    color: var(--text-muted);
+    margin: 0 0 var(--sp-3) 0;
+  }
+  .signal-row {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--sp-1) 0;
+    font-size: var(--text-sm);
+  }
+  .signal-key { color: var(--text-muted); }
+  .signal-val {
+    color: var(--text-primary);
+    font-family: 'Share Tech Mono', monospace;
+    text-align: right;
+    max-width: 60%;
+    word-break: break-all;
+  }
+
+  /* ── AI VERDICT ── */
+  .ai-verdict {
+    border-left: 3px solid var(--accent);
+    padding: var(--sp-4) var(--sp-6);
+    background: var(--surface-elevated);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--text-secondary);
+    font-size: var(--text-base);
+    line-height: 1.6;
+  }
+
+  /* ── HISTORY TABLE ── */
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  .history-table th {
+    text-align: left;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 11px;
+    letter-spacing: .12em;
+    color: var(--text-muted);
+    padding: var(--sp-3) var(--sp-4);
+    border-bottom: 1px solid var(--border);
+  }
+  .history-table td {
+    padding: var(--sp-3) var(--sp-4);
+    border-bottom: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-secondary);
+  }
+  .history-table tr { cursor: pointer; }
+  .history-table tr:hover td { background: var(--surface-hover); }
+
+  .verdict-sm {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: .1em;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    display: inline-block;
+  }
+  .verdict-sm.safe { background: rgba(46,204,113,.15); color: #2ecc71; }
+  .verdict-sm.suspect { background: rgba(241,196,15,.15); color: #f1c40f; }
+  .verdict-sm.fraud { background: rgba(231,76,60,.15); color: #e74c3c; }
+
+  .loading-spinner {
+    display: none;
+    text-align: center;
+    padding: var(--sp-8);
+    color: var(--text-muted);
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .loading-spinner.on { display: block; }
+  .loading-spinner::after {
+    content: '';
+    animation: ldots 1.5s infinite;
+  }
+  @keyframes ldots {
+    0% { content: 'Weryfikacja'; }
+    25% { content: 'Weryfikacja.'; }
+    50% { content: 'Weryfikacja..'; }
+    75% { content: 'Weryfikacja...'; }
+  }
+
+  .msg { padding: var(--sp-3) var(--sp-4); margin-top: var(--sp-3); border-radius: var(--radius-sm); font-size: var(--text-sm); font-family: 'Share Tech Mono', monospace; }
+  .msg.error { background: rgba(231,76,60,.1); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+
+  footer {
+    text-align: center;
+    padding: var(--sp-8) 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: .2em;
+  }
+</style>
+</head>
+<body>
+<nav>
+  <a class="nav-brand" href="/ui"><div class="nav-ring"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2L8 7H4L7 10.5L6 16L11 13L16 16L15 10.5L18 7H14L11 2Z" fill="#4a8fd4" opacity="0.9"/></svg></div>CYRBER<span>AUTONOMOUS RECON</span></a>
+  <div class="nav-links">
+    <a class="nav-link" href="/ui">SCAN</a>
+    <a class="nav-link" href="/dashboard">DASHBOARD</a>
+    <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="/scheduler">SCHEDULER</a>
+    <a class="nav-link" href="/osint">OSINT</a>
+    <a class="nav-link active" href="/verify">VERIFY</a>
+    <a class="nav-link" href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
+  </div>
+</nav>
+
+<div class="wrapper">
+  <div class="page-header">
+    <div class="page-title">FRAUD DETECTION</div>
+    <div class="page-title-main">CYRBER VERIFY</div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="card search-card">
+    <div class="search-row">
+      <input type="text" class="search-input" id="queryInput" placeholder="Wpisz URL, email lub nazwe firmy..." autocomplete="off">
+      <button class="btn btn-primary" id="verifyBtn" onclick="runVerify()">WERYFIKUJ</button>
+    </div>
+    <div class="search-opts">
+      <span class="type-badge" id="typeBadge">AUTO</span>
+      <label style="font-size:var(--text-sm);color:var(--text-muted);font-family:'Rajdhani',sans-serif">KRAJ:</label>
+      <select id="countrySelect">
+        <option value="AUTO">AUTO</option>
+        <option value="PL">PL</option>
+        <option value="UK">UK</option>
+      </select>
+    </div>
+    <div id="searchMsg"></div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="loading-spinner" id="loadingSpinner"></div>
+
+  <!-- RESULT -->
+  <div class="result-section" id="resultSection">
+    <!-- Hero -->
+    <div class="card">
+      <div class="result-hero" id="resultHero"></div>
+    </div>
+
+    <!-- Red Flags -->
+    <div class="card" id="flagsCard" style="display:none">
+      <h2>// RED FLAGS</h2>
+      <ul class="flags-list" id="flagsList"></ul>
+    </div>
+
+    <!-- Signal Details -->
+    <div class="card">
+      <h2>// SZCZEGOLY</h2>
+      <div class="signal-grid" id="signalGrid"></div>
+    </div>
+
+    <!-- AI Verdict -->
+    <div class="card" id="aiCard" style="display:none">
+      <h2>// AI WERDYKT</h2>
+      <div class="ai-verdict" id="aiVerdict"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="card">
+    <h2>// HISTORIA WERYFIKACJI</h2>
+    <div id="historyTable"><div style="color:var(--text-muted);font-size:var(--text-sm)">Ladowanie...</div></div>
+  </div>
+
+  <footer>CYRBER &middot; AUTONOMOUS RECON &middot; AUTHORIZED TARGETS ONLY &middot; v0.3.0</footer>
+</div>
+
+<script>
+var API = '';
+
+// ── Auth ──
+function getToken() { return localStorage.getItem('cyrber_token'); }
+if (!getToken()) window.location.href = '/login';
+
+function authHeaders(extra) {
+  var token = getToken();
+  if (!token) { window.location.href = '/login'; return {}; }
+  var h = {'Authorization': 'Bearer ' + token};
+  if (extra) Object.keys(extra).forEach(function(k){ h[k] = extra[k]; });
+  return h;
+}
+
+async function authFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = authHeaders(opts.headers || {});
+  var r = await fetch(url, opts);
+  if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
+  return r;
+}
+
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+// ── Auto-detect type ──
+var queryInput = document.getElementById('queryInput');
+queryInput.addEventListener('input', function() {
+  var q = this.value.trim();
+  var badge = document.getElementById('typeBadge');
+  if (q.includes('@')) {
+    badge.textContent = 'EMAIL';
+    badge.className = 'type-badge email';
+  } else if (q.startsWith('http://') || q.startsWith('https://') || (q.includes('.') && !q.includes(' '))) {
+    badge.textContent = 'URL';
+    badge.className = 'type-badge url';
+  } else if (q.length > 0) {
+    badge.textContent = 'FIRMA';
+    badge.className = 'type-badge company';
+  } else {
+    badge.textContent = 'AUTO';
+    badge.className = 'type-badge';
+  }
+});
+
+queryInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') runVerify();
+});
+
+// ── Score color ──
+function scoreColor(score) {
+  if (score >= 60) return '#e74c3c';
+  if (score >= 30) return '#f1c40f';
+  return '#2ecc71';
+}
+
+function verdictClass(verdict) {
+  var v = (verdict || '').toUpperCase();
+  if (v === 'OSZUSTWO') return 'fraud';
+  if (v === 'PODEJRZANE') return 'suspect';
+  return 'safe';
+}
+
+// ── Run verify ──
+async function runVerify() {
+  var query = queryInput.value.trim();
+  if (!query) return;
+
+  var btn = document.getElementById('verifyBtn');
+  var spinner = document.getElementById('loadingSpinner');
+  var resultSec = document.getElementById('resultSection');
+  var msgEl = document.getElementById('searchMsg');
+
+  btn.disabled = true;
+  spinner.classList.add('on');
+  resultSec.classList.remove('on');
+  msgEl.innerHTML = '';
+
+  var country = document.getElementById('countrySelect').value;
+
+  try {
+    var r = await authFetch('/api/verify', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({query: query, type: 'AUTO', country: country})
+    });
+
+    if (!r.ok) {
+      var err = await r.json().catch(function(){ return {}; });
+      throw new Error(err.detail || 'Blad weryfikacji (HTTP ' + r.status + ')');
+    }
+
+    var data = await r.json();
+    renderResult(data);
+    loadHistory();
+  } catch(e) {
+    msgEl.innerHTML = '<div class="msg error">' + escHtml(e.message) + '</div>';
+  }
+
+  btn.disabled = false;
+  spinner.classList.remove('on');
+}
+
+// ── Render result ──
+function renderResult(data) {
+  var sec = document.getElementById('resultSection');
+  var score = data.risk_score || 0;
+  var sc = scoreColor(score);
+  var ringPct = Math.min(100, Math.round(score));
+  var vc = verdictClass(data.verdict);
+
+  // Hero
+  var h = '';
+  h += '<div>';
+  h += '<div class="risk-ring" style="--ring-pct:' + ringPct + ';--ring-color:' + sc + '">';
+  h += '<div class="risk-ring-inner"><div class="risk-ring-num" style="color:' + sc + '">' + score + '</div>';
+  h += '<div class="risk-ring-lbl">RISK SCORE</div></div></div></div>';
+  h += '<div class="result-meta">';
+  h += '<div class="verdict-badge ' + vc + '">' + escHtml(data.verdict || '?') + '</div>';
+  h += '<div class="result-query">' + escHtml(data.query) + '</div>';
+  h += '<div class="result-summary">' + escHtml(data.summary || '') + '</div>';
+  h += '</div>';
+  document.getElementById('resultHero').innerHTML = h;
+
+  // Red flags
+  var flags = data.red_flags || [];
+  var flagsCard = document.getElementById('flagsCard');
+  var flagsList = document.getElementById('flagsList');
+  if (flags.length) {
+    var fl = '';
+    flags.forEach(function(f) { fl += '<li>' + escHtml(f) + '</li>'; });
+    flagsList.innerHTML = fl;
+    flagsCard.style.display = '';
+  } else {
+    flagsList.innerHTML = '<li class="safe-flag">Brak podejrzanych sygnalow</li>';
+    flagsCard.style.display = '';
+  }
+
+  // Signal cards
+  var signals = data.signals || {};
+  var grid = document.getElementById('signalGrid');
+  var g = '';
+
+  if (signals.whois) {
+    g += buildSignalCard('WHOIS', {
+      'Domena': signals.whois.domain,
+      'Rejestracja': signals.whois.creation_date,
+      'Wiek (dni)': signals.whois.age_days,
+      'Registrar': signals.whois.registrar,
+      'Wygasa': signals.whois.expiration_date,
+      'Kraj': signals.whois.country
+    });
+  }
+
+  if (signals.google_safe_browsing && signals.google_safe_browsing.available) {
+    g += buildSignalCard('GOOGLE SAFE BROWSING', {
+      'Oznaczono': signals.google_safe_browsing.flagged ? 'TAK' : 'NIE',
+      'Zagrozenia': (signals.google_safe_browsing.threats || []).join(', ') || 'brak'
+    });
+  }
+
+  if (signals.virustotal && signals.virustotal.available) {
+    g += buildSignalCard('VIRUSTOTAL', {
+      'Pozytywne': signals.virustotal.positives + '/' + (signals.virustotal.total || 0),
+      'Reputacja': signals.virustotal.reputation
+    });
+  }
+
+  if (signals.urlhaus) {
+    g += buildSignalCard('URLHAUS', {
+      'Blacklisted': signals.urlhaus.blacklisted ? 'TAK' : 'NIE',
+      'URLs': signals.urlhaus.urls_count || 0,
+      'Tagi': (signals.urlhaus.tags || []).join(', ') || 'brak'
+    });
+  }
+
+  if (signals.greynoise) {
+    g += buildSignalCard('GREYNOISE', {
+      'Klasyfikacja': signals.greynoise.classification || 'unknown',
+      'Noise': signals.greynoise.noise ? 'TAK' : 'NIE',
+      'RIOT': signals.greynoise.riot ? 'TAK' : 'NIE'
+    });
+  }
+
+  if (signals.wayback) {
+    g += buildSignalCard('WAYBACK MACHINE', {
+      'Pierwsza archiwizacja': signals.wayback.first_archive || 'brak',
+      'Wiek archiwum (dni)': signals.wayback.archive_age_days
+    });
+  }
+
+  if (signals.company) {
+    var c = signals.company;
+    g += buildSignalCard('REJESTR ' + (c.registry || ''), {
+      'Znaleziono': c.found ? 'TAK' : 'NIE',
+      'Nazwa': c.name,
+      'Status': c.status,
+      'Data rejestracji': c.registration_date || c.start_date || c.date_of_creation,
+      'Adres': c.address
+    });
+  }
+
+  if (signals.mx) {
+    var mxRecords = (signals.mx.records || []).map(function(r){ return r.host; }).join(', ');
+    g += buildSignalCard('MX RECORDS', {
+      'Ma MX': signals.mx.has_mx ? 'TAK' : 'NIE',
+      'Serwery': mxRecords || 'brak'
+    });
+  }
+
+  if (signals.disposable_email !== undefined) {
+    g += buildSignalCard('DISPOSABLE EMAIL', {
+      'Jednorazowy': signals.disposable_email ? 'TAK' : 'NIE'
+    });
+  }
+
+  if (signals.resolved_ip) {
+    g += buildSignalCard('DNS', {
+      'IP': signals.resolved_ip
+    });
+  }
+
+  grid.innerHTML = g;
+
+  // AI Verdict
+  var aiCard = document.getElementById('aiCard');
+  var aiDiv = document.getElementById('aiVerdict');
+  if (data.recommendation) {
+    aiDiv.innerHTML = '<p>' + escHtml(data.summary || '') + '</p><p style="margin-top:var(--sp-3);color:var(--text-primary)"><strong>Rekomendacja:</strong> ' + escHtml(data.recommendation) + '</p>';
+    aiCard.style.display = '';
+  } else {
+    aiCard.style.display = 'none';
+  }
+
+  sec.classList.add('on');
+  sec.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+function buildSignalCard(title, pairs) {
+  var h = '<div class="signal-card"><h3>' + escHtml(title) + '</h3>';
+  for (var k in pairs) {
+    var v = pairs[k];
+    if (v === undefined || v === null) v = '—';
+    h += '<div class="signal-row"><span class="signal-key">' + escHtml(k) + '</span><span class="signal-val">' + escHtml(String(v)) + '</span></div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+// ── History ──
+async function loadHistory() {
+  try {
+    var r = await authFetch('/api/verify/history');
+    var data = await r.json();
+    renderHistory(data);
+  } catch(e) {
+    document.getElementById('historyTable').innerHTML = '<div style="color:var(--text-muted)">Blad ladowania historii</div>';
+  }
+}
+
+function renderHistory(items) {
+  var el = document.getElementById('historyTable');
+  if (!items || !items.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:var(--text-sm)">Brak weryfikacji</div>';
+    return;
+  }
+  var h = '<table class="history-table"><thead><tr><th>ZAPYTANIE</th><th>TYP</th><th>WERDYKT</th><th>RISK</th><th>DATA</th></tr></thead><tbody>';
+  items.forEach(function(item) {
+    var vc = verdictClass(item.verdict);
+    var date = item.created_at ? item.created_at.replace('T', ' ').slice(0, 16) : '—';
+    h += '<tr onclick="reVerify(\'' + escHtml(item.query).replace(/'/g, "\\'") + '\')">';
+    h += '<td style="color:var(--text-primary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(item.query) + '</td>';
+    h += '<td>' + escHtml(item.query_type || '—') + '</td>';
+    h += '<td><span class="verdict-sm ' + vc + '">' + escHtml(item.verdict || '?') + '</span></td>';
+    h += '<td style="color:' + scoreColor(item.risk_score) + '">' + (item.risk_score || 0) + '</td>';
+    h += '<td>' + date + '</td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+function reVerify(query) {
+  queryInput.value = query;
+  queryInput.dispatchEvent(new Event('input'));
+  runVerify();
+}
+
+// ── URL params ──
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var q = params.get('q') || params.get('query');
+  if (q) {
+    queryInput.value = q;
+    queryInput.dispatchEvent(new Event('input'));
+    runVerify();
+  }
+})();
+
+// ── Init ──
+loadHistory();
+</script>
+<script>
+(function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(r=>r.json()).then(u=>{if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}}).catch(function(){});})();
+</script>
+</body>
+</html>

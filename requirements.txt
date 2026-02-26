@@ -62,6 +62,7 @@ requests
 python-jose[cryptography]
 passlib
 python-whois
+dnspython
 ipwhois
 faiss-cpu
 fastembed>=0.6.0
