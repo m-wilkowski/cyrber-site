@@ -421,7 +421,7 @@ function renderHero(){
   h+='<span class="hero-badge">TIME: <b>'+formatDuration(s.created_at,s.completed_at)+'</b></span>';
   h+='<span class="hero-badge">FINDINGS: <b>'+(s.findings_count||0)+'</b></span>';
   var risk=s.risk_level||'N/A';
-  h+='<span class="risk-badge risk-'+risk+'">'+risk+'</span>';
+  h+='<span class="risk-badge risk-'+risk+'">'+escH(risk)+'</span>';
   h+='</div>';
   h+='<div class="hero-actions">';
   h+='<a class="hero-btn hero-btn-primary" href="'+API+'/scans/'+_taskId+'/pdf" target="_blank">POBIERZ PDF</a>';
@@ -618,7 +618,7 @@ function enrichBadges(f){
   if(f.epss_score){b+='<span class="enrich-badge epss">EPSS: '+(f.epss_score*100).toFixed(1)+'%</span>';any=true}
   if(f.attack_techniques&&f.attack_techniques.length){b+='<span class="enrich-badge attack">ATT&amp;CK: '+f.attack_techniques.length+'</span>';any=true}
   if(f.exploitdb_count){b+='<span class="enrich-badge exploit">EXPLOIT ('+f.exploitdb_count+')</span>';any=true}
-  if(f.in_malwarebazaar){b+='<span class="enrich-badge malware" title="'+(f.malware_signature||'malware')+'">MALWARE</span>';any=true}
+  if(f.in_malwarebazaar){b+='<span class="enrich-badge malware" title="'+escH(f.malware_signature||'malware')+'">MALWARE</span>';any=true}
   b+='</div>';return any?b:'';
 }
 function _enrich(f){return{in_kev:f.in_kev,in_euvd:f.in_euvd,in_misp:f.in_misp,misp_event_count:f.misp_event_count,epss_score:f.epss_score,attack_techniques:f.attack_techniques,exploitdb_count:f.exploitdb_count,exploitdb_ids:f.exploitdb_ids,in_malwarebazaar:f.in_malwarebazaar,malware_signature:f.malware_signature}}
@@ -1027,12 +1027,15 @@ var _remSevFilter='';
 var _remStatusFilter='';
 var _userRole='viewer';
 
-// Detect user role for RBAC
+// Detect user role for RBAC + admin nav
 (function(){
   var t=getToken();if(!t)return;
   fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}})
     .then(function(r){return r.json()})
-    .then(function(u){_userRole=u.role||'viewer'})
+    .then(function(u){
+      _userRole=u.role||'viewer';
+      if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}
+    })
     .catch(function(){});
 })();
 
@@ -1107,7 +1110,7 @@ function renderRemCard(t,canEdit,canDelete){
   h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
   h+='<span class="fd-sev '+sev+'">'+sev.toUpperCase()+'</span>';
   h+='<span class="rem-card-name">'+escH(t.finding_name)+'</span>';
-  if(t.finding_module)h+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver)">'+t.finding_module.toUpperCase()+'</span>';
+  if(t.finding_module)h+='<span style="font-family:Share Tech Mono,monospace;font-size:9px;color:var(--silver)">'+escH(t.finding_module.toUpperCase())+'</span>';
   if(t.in_kev)h+='<span class="enrich-badge kev">KEV</span>';
   if(t.in_misp)h+='<span class="enrich-badge misp">MISP</span>';
   // Retest badge
@@ -1222,6 +1225,7 @@ function remSave(id){
 
 function remDelete(id){
   if(!confirm('Delete this remediation task?'))return;
+  var delBtn=event.target;if(delBtn.disabled)return;delBtn.disabled=true;
   authFetch(API+'/api/remediation/'+id,{method:'DELETE'})
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
     .then(function(){
@@ -1232,7 +1236,7 @@ function remDelete(id){
       var cnt=document.getElementById('remCount');
       if(cnt)cnt.textContent=_remTasks.length+' tasks';
     })
-    .catch(function(e){alert('Delete failed: '+e.message)});
+    .catch(function(e){alert('Delete failed: '+e.message);delBtn.disabled=false});
 }
 
 function remTrackAll(){
@@ -1358,9 +1362,6 @@ function exportToMisp(){
     .catch(function(e){alert('MISP export failed: '+e.message)})
     .finally(function(){btn.disabled=false;btn.textContent='EXPORT TO MISP'});
 }
-</script>
-<script>
-(function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}}).catch(function(){});})();
 </script>
 </body>
 </html>
