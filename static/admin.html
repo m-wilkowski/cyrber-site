@@ -900,7 +900,7 @@ function fmtDateShort(iso) {
 
 function roleBadge(role) {
   const cls = { admin: 'badge-admin', operator: 'badge-operator', viewer: 'badge-viewer' };
-  return '<span class="badge ' + (cls[role] || 'badge-viewer') + '">' + (role || 'viewer').toUpperCase() + '</span>';
+  return '<span class="badge ' + (cls[role] || 'badge-viewer') + '">' + escHtml((role || 'viewer').toUpperCase()) + '</span>';
 }
 
 function statusBadge(active) {
@@ -972,12 +972,19 @@ function renderTable(users) {
       <td>
         <div class="td-actions">
           <button class="act-btn" onclick="openEditModal(${u.id})" title="Edit user">&#9998;</button>
-          <button class="act-btn" onclick="openResetModal(${u.id},'${escHtml(u.username)}')" title="Reset password">&#128273;</button>
-          <button class="act-btn act-danger" onclick="openDeleteModal(${u.id},'${escHtml(u.username)}')" title="Delete user">&#10005;</button>
+          <button class="act-btn act-reset" data-uid="${u.id}" data-uname="${escHtml(u.username)}" title="Reset password">&#128273;</button>
+          <button class="act-btn act-danger act-delete" data-uid="${u.id}" data-uname="${escHtml(u.username)}" title="Delete user">&#10005;</button>
         </div>
       </td>
     </tr>
   `).join('');
+
+  tbody.querySelectorAll('.act-reset').forEach(btn => {
+    btn.addEventListener('click', () => openResetModal(Number(btn.dataset.uid), btn.dataset.uname));
+  });
+  tbody.querySelectorAll('.act-delete').forEach(btn => {
+    btn.addEventListener('click', () => openDeleteModal(Number(btn.dataset.uid), btn.dataset.uname));
+  });
 }
 
 /* ── LICENSE ── */
@@ -1258,7 +1265,7 @@ async function loadIntelStatus() {
         const statusColor = l.status === 'success' ? 'var(--green)' : 'var(--red)';
         const statusBadge = '<span class="badge" style="background:' +
           (l.status === 'success' ? 'rgba(61,220,132,.12);color:var(--green);border:1px solid rgba(61,220,132,.3)' : 'rgba(255,68,68,.12);color:var(--red);border:1px solid rgba(255,68,68,.3)') +
-          '">' + (l.status || '').toUpperCase() + '</span>';
+          '">' + escHtml((l.status || '').toUpperCase()) + '</span>';
         return '<tr>' +
           '<td style="font-weight:600">' + escHtml(l.source) + '</td>' +
           '<td>' + statusBadge + '</td>' +
