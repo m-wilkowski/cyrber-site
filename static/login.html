@@ -217,11 +217,14 @@ if (localStorage.getItem('cyrber_token')) {
 
 async function doLogin(e) {
   e.preventDefault();
+  var btn = document.querySelector('.btn');
+  if (btn.disabled) return;
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
   const msg = document.getElementById('msg');
 
   msg.classList.remove('visible');
+  btn.disabled = true;
 
   try {
     const r = await fetch('/auth/login', {
@@ -236,6 +239,7 @@ async function doLogin(e) {
       // Remove old Basic Auth credentials
       localStorage.removeItem('cyrber_creds');
       window.location.href = '/ui';
+      return;
     } else if (r.status === 429) {
       msg.textContent = 'Too many attempts. Try again later.';
       msg.classList.add('visible');
@@ -247,6 +251,7 @@ async function doLogin(e) {
     msg.textContent = 'Connection error';
     msg.classList.add('visible');
   }
+  btn.disabled = false;
 }
 </script>
 </body>
