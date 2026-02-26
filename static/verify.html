@@ -1089,6 +1089,23 @@ function renderDetails(data) {
       'Data rejestracji': c.registration_date || c.start_date || c.date_of_creation,
       'Adres': c.address
     });
+
+    if (c.candidates && c.candidates.length > 0) {
+      var chtml = '<div class="signal-card"><h4>Podobne firmy w rejestrach</h4><div style="margin-top:8px;">';
+      c.candidates.forEach(function(cand) {
+        var source = cand.source || c.registry || '';
+        chtml += '<div style="padding:8px 0;border-bottom:1px solid var(--border-primary);">'
+          + '<strong>' + (cand.name || '?') + '</strong>'
+          + ' <span class="type-badge company" style="font-size:11px;">' + source + '</span>';
+        if (cand.krs) chtml += '<br>KRS: ' + cand.krs;
+        if (cand.nip) chtml += ' | NIP: ' + cand.nip;
+        if (cand.company_number) chtml += '<br>Nr: ' + cand.company_number;
+        if (cand.status) chtml += ' | Status: ' + cand.status;
+        chtml += '</div>';
+      });
+      chtml += '</div></div>';
+      g += chtml;
+    }
   }
 
   if (signals.mx) {

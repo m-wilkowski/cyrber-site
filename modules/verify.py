@@ -27,6 +27,7 @@ COMPANIES_HOUSE_KEY = os.getenv("COMPANIES_HOUSE_KEY", "")
 IPINFO_TOKEN = os.getenv("IPINFO_TOKEN", "")
 ABUSEIPDB_API_KEY = os.getenv("ABUSEIPDB_API_KEY", "")
 OTX_API_KEY = os.getenv("OTX_API_KEY", "")
+CEIDG_AUTH_KEY = os.getenv("CEIDG_AUTH_KEY", "")
 
 # ── Disposable email cache ──
 _DISPOSABLE_DOMAINS: set[str] | None = None
@@ -473,63 +474,140 @@ def _tranco_lookup(domain: str) -> dict:
 # ═══════════════════════════════════════════════════════════════
 
 def _krs_lookup(nip_or_name: str) -> dict:
-    """Check Polish KRS registry."""
-    # Detect if it's a NIP (10 digits) or name
+    """Check Polish KRS registry — NIP (10 digits) → exact lookup, name → search."""
     clean = re.sub(r"[\s-]", "", nip_or_name)
     if re.match(r"^\d{10}$", clean):
+        # NIP lookup — exact match via OdpisAktualny
         url = f"https://api-krs.ms.gov.pl/api/krs/OdpisAktualny/{clean}?rejestr=P&format=json"
+        try:
+            resp = requests.get(url, timeout=REQUEST_TIMEOUT)
+            if resp.status_code == 404:
+                return {"found": False, "registry": "KRS"}
+            resp.raise_for_status()
+            data = resp.json()
+            dane = data.get("odpis", {}).get("dane", {})
+            return {
+                "found": True, "registry": "KRS",
+                "name": dane.get("nazwa", ""),
+                "krs": dane.get("numerKRS", ""),
+                "nip": dane.get("nip", ""),
+                "regon": dane.get("regon", ""),
+                "address": dane.get("adres", ""),
+                "registration_date": dane.get("dataRejestracjiWKRS", ""),
+                "status": "active",
+            }
+        except Exception as exc:
+            log.warning(f"KRS NIP lookup failed: {exc}")
+            return {"found": False, "registry": "KRS", "error": str(exc)}
     else:
-        url = f"https://api-krs.ms.gov.pl/api/krs/OdpisAktualny/{nip_or_name}?rejestr=P&format=json"
+        # Name search via OdpisPelny
+        url = "https://api-krs.ms.gov.pl/api/krs/OdpisPelny"
+        params = {"nazwa": nip_or_name, "rejestr": "P", "format": "json", "maxWynikow": 5}
+        try:
+            resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
+            if resp.status_code == 404:
+                return {"found": False, "registry": "KRS"}
+            resp.raise_for_status()
+            data = resp.json()
+            items = data if isinstance(data, list) else data.get("odpisy", [])
+            if not items:
+                return {"found": False, "registry": "KRS"}
 
-    try:
-        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
-        if resp.status_code == 404:
-            return {"found": False, "registry": "KRS"}
-        resp.raise_for_status()
-        data = resp.json()
-        dane = data.get("odpis", {}).get("dane", {})
-        return {
-            "found": True,
-            "registry": "KRS",
-            "name": dane.get("nazwa", ""),
-            "krs": dane.get("numerKRS", ""),
-            "nip": dane.get("nip", ""),
-            "regon": dane.get("regon", ""),
-            "address": dane.get("adres", ""),
-            "registration_date": dane.get("dataRejestracjiWKRS", ""),
-            "status": "active",
-        }
-    except Exception as exc:
-        log.warning(f"KRS lookup failed: {exc}")
-        return {"found": False, "registry": "KRS", "error": str(exc)}
+            candidates = []
+            query_lower = nip_or_name.strip().lower()
+            best_match = None
+
+            for item in items[:5]:
+                dane = item.get("odpis", item).get("dane", item.get("dane", item))
+                name = dane.get("nazwa", "")
+                candidate = {
+                    "name": name,
+                    "krs": dane.get("numerKRS", ""),
+                    "nip": dane.get("nip", ""),
+                    "status": "active",
+                    "registration_date": dane.get("dataRejestracjiWKRS", ""),
+                }
+                candidates.append(candidate)
+                if query_lower in name.lower() or name.lower() in query_lower:
+                    best_match = candidate
+
+            if best_match:
+                return {
+                    "found": True, "registry": "KRS",
+                    **best_match,
+                    "address": "",
+                    "regon": "",
+                }
+
+            return {
+                "found": False, "registry": "KRS",
+                "candidates": candidates[:3],
+                "message": f"Znaleziono {len(candidates)} podobnych firm w KRS",
+            }
+        except Exception as exc:
+            log.warning(f"KRS name search failed: {exc}")
+            return {"found": False, "registry": "KRS", "error": str(exc)}
 
 
 def _ceidg_lookup(nip_or_name: str) -> dict:
-    """Check Polish CEIDG registry (sole proprietors)."""
+    """Check Polish CEIDG registry (sole proprietors) — firmy endpoint."""
     clean = re.sub(r"[\s-]", "", nip_or_name)
+    headers = {}
+    if CEIDG_AUTH_KEY:
+        headers["Authorization"] = f"Bearer {CEIDG_AUTH_KEY}"
+
     if re.match(r"^\d{10}$", clean):
-        url = f"https://dane.biznes.gov.pl/api/ceidg/v2/firma?nip={clean}"
+        url = f"https://dane.biznes.gov.pl/api/ceidg/v2/firmy?nip={clean}"
     else:
-        url = f"https://dane.biznes.gov.pl/api/ceidg/v2/firma?nazwa={nip_or_name}"
+        url = f"https://dane.biznes.gov.pl/api/ceidg/v2/firmy?nazwa={nip_or_name}&limit=5"
 
     try:
-        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
-        if resp.status_code == 404:
+        resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+        if resp.status_code in (404, 204):
             return {"found": False, "registry": "CEIDG"}
         resp.raise_for_status()
         data = resp.json()
-        firmy = data.get("firmy", [])
+        firmy = data.get("firmy", data) if isinstance(data, dict) else data
+        if not isinstance(firmy, list):
+            firmy = [firmy] if firmy else []
         if not firmy:
             return {"found": False, "registry": "CEIDG"}
-        f = firmy[0]
+
+        query_lower = nip_or_name.strip().lower()
+        candidates = []
+        best_match = None
+
+        for f in firmy[:5]:
+            name = f.get("nazwa", "")
+            candidate = {
+                "name": name,
+                "nip": f.get("wlasciciel", {}).get("nip", "") or f.get("nip", ""),
+                "status": f.get("status", ""),
+                "start_date": f.get("dataRozpoczeciaDzialalnosci", ""),
+            }
+            candidates.append(candidate)
+            if query_lower in name.lower() or name.lower() in query_lower:
+                best_match = candidate
+
+        if best_match or len(firmy) == 1:
+            match = best_match or candidates[0]
+            f_data = firmy[0] if not best_match else next(
+                (f for f in firmy if query_lower in f.get("nazwa", "").lower() or f.get("nazwa", "").lower() in query_lower),
+                firmy[0],
+            )
+            return {
+                "found": True, "registry": "CEIDG",
+                "name": match["name"],
+                "nip": match["nip"],
+                "status": match["status"],
+                "start_date": match["start_date"],
+                "address": f_data.get("adresDzialalnosci", {}).get("adres", ""),
+            }
+
         return {
-            "found": True,
-            "registry": "CEIDG",
-            "name": f.get("nazwa", ""),
-            "nip": f.get("wlasciciel", {}).get("nip", ""),
-            "status": f.get("status", ""),
-            "start_date": f.get("dataRozpoczeciaDzialalnosci", ""),
-            "address": f.get("adresDzialalnosci", {}).get("adres", ""),
+            "found": False, "registry": "CEIDG",
+            "candidates": candidates[:3],
+            "message": f"Znaleziono {len(candidates)} podobnych firm w CEIDG",
         }
     except Exception as exc:
         log.warning(f"CEIDG lookup failed: {exc}")
@@ -537,30 +615,46 @@ def _ceidg_lookup(nip_or_name: str) -> dict:
 
 
 def _companies_house_lookup(query: str) -> dict:
-    """Check UK Companies House registry."""
+    """Check UK Companies House registry — with match validation and candidates."""
     if not COMPANIES_HOUSE_KEY:
         return {"found": False, "registry": "Companies House", "reason": "no_api_key"}
     try:
         resp = requests.get(
-            f"https://api.company-information.service.gov.uk/search/companies?q={query}",
+            "https://api.company-information.service.gov.uk/search/companies",
+            params={"q": query},
             auth=(COMPANIES_HOUSE_KEY, ""),
             timeout=REQUEST_TIMEOUT,
         )
         resp.raise_for_status()
-        data = resp.json()
-        items = data.get("items", [])
+        items = resp.json().get("items", [])
         if not items:
             return {"found": False, "registry": "Companies House"}
-        c = items[0]
+
+        query_lower = query.strip().lower()
+        candidates = []
+        best_match = None
+
+        for c in items[:5]:
+            title = c.get("title", "")
+            candidate = {
+                "name": title,
+                "company_number": c.get("company_number", ""),
+                "status": c.get("company_status", ""),
+                "date_of_creation": c.get("date_of_creation", ""),
+                "address": c.get("address_snippet", ""),
+                "company_type": c.get("company_type", ""),
+            }
+            candidates.append(candidate)
+            if query_lower in title.lower() or title.lower().startswith(query_lower):
+                best_match = candidate
+
+        if best_match:
+            return {"found": True, "registry": "Companies House", **best_match}
+
         return {
-            "found": True,
-            "registry": "Companies House",
-            "name": c.get("title", ""),
-            "company_number": c.get("company_number", ""),
-            "status": c.get("company_status", ""),
-            "date_of_creation": c.get("date_of_creation", ""),
-            "address": c.get("address_snippet", ""),
-            "company_type": c.get("company_type", ""),
+            "found": False, "registry": "Companies House",
+            "candidates": candidates[:3],
+            "message": f"Znaleziono {len(candidates)} podobnych firm w Companies House",
         }
     except Exception as exc:
         log.warning(f"Companies House lookup failed: {exc}")
@@ -647,6 +741,9 @@ def calculate_risk(signals: dict) -> int:
             score += 20   # searched one registry
         else:
             score += 5    # no registries available / unknown country
+        # Candidates reduce penalty — close match means probably legit
+        if company.get("candidates"):
+            score -= 10
 
     # Disposable email
     if signals.get("disposable_email"):
@@ -821,13 +918,23 @@ def _extract_problems(signals: dict) -> list[dict]:
     company = signals.get("company", {})
     if company and not company.get("found", True):
         registries = company.get("registries_searched", [])
+        candidates = company.get("candidates", [])
         reg_str = ", ".join(registries) if registries else "rejestr"
-        problems.append({
-            "title": "Firma nie znaleziona w rejestrach",
-            "what_found": f"Nie znaleźliśmy tej firmy w: {reg_str}.",
-            "what_means": "To nie musi oznaczać oszustwa — firma może być z innego kraju lub działać pod inną nazwą. Warto to sprawdzić ręcznie.",
-            "real_risk": "Nie można potwierdzić legalności firmy automatycznie.",
-        })
+        if candidates:
+            names = ", ".join(c.get("name", "?") for c in candidates[:3])
+            problems.append({
+                "title": "Firma nie znaleziona — ale są podobne wyniki",
+                "what_found": f"Nie znaleźliśmy dokładnego dopasowania w: {reg_str}. Podobne firmy: {names}.",
+                "what_means": "Firma może działać pod nieco inną nazwą. Sprawdź czy któryś z wyników to szukana firma.",
+                "real_risk": "Upewnij się że rozmawiasz z właściwą firmą.",
+            })
+        else:
+            problems.append({
+                "title": "Firma nie znaleziona w rejestrach",
+                "what_found": f"Nie znaleźliśmy tej firmy w: {reg_str}.",
+                "what_means": "To nie musi oznaczać oszustwa — firma może być z innego kraju lub działać pod inną nazwą.",
+                "real_risk": "Nie można potwierdzić legalności firmy automatycznie.",
+            })
 
     if signals.get("disposable_email"):
         problems.append({
@@ -1587,6 +1694,9 @@ class CyrberVerify:
             signals["company"] = {"found": True, "registry": "known_company", "name": query}
         else:
             registries_searched = []
+            krs = None
+            ceidg = None
+            ch = None
 
             if country in ("PL", "AUTO"):
                 krs = _krs_lookup(query)
@@ -1604,12 +1714,23 @@ class CyrberVerify:
                     signals["company"] = ch
 
             if not signals.get("company", {}).get("found"):
+                # Collect candidates from all lookups
+                all_candidates = []
+                for result in [krs, ceidg, ch]:
+                    if result and result.get("candidates"):
+                        for c in result["candidates"]:
+                            c["source"] = result.get("registry", "?")
+                        all_candidates.extend(result["candidates"])
+
                 signals["company"] = {
                     "found": False,
                     "registry": "+".join(registries_searched) if registries_searched else "none",
                     "registries_searched": registries_searched,
                     "search_country": country,
-                    "message": f"Nie znaleziono w: {', '.join(registries_searched)}" if registries_searched else "Brak rejestrów do przeszukania",
+                    "candidates": all_candidates[:5],
+                    "message": f"Znaleziono {len(all_candidates)} podobnych firm" if all_candidates
+                               else f"Nie znaleziono w: {', '.join(registries_searched)}" if registries_searched
+                               else "Brak rejestrów do przeszukania",
                 }
 
         risk_score = calculate_risk(signals)
