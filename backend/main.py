@@ -995,6 +995,17 @@ async def scan_autoflow(task_id: str, user: dict = Depends(get_current_user)):
             "icon": "email", "priority": "high" if risk_norm in ("CRITICAL", "KRYTYCZNE", "HIGH", "WYSOKIE") else "medium",
         })
 
+    # 2b. Login page + HTTPS → Evilginx MITM
+    has_login_page = any(kw in all_text for kw in ["login", "sign-in", "signin", "authenticate", "oauth", "sso"])
+    has_https = "443" in str(scan.get("nmap", {}).get("ports", []))
+    if has_login_page and has_https:
+        actions.append({
+            "action": "evilginx", "label": "Deploy Evilginx2 MITM Proxy",
+            "reason": "Login page on HTTPS detected — intercept credentials with reverse proxy",
+            "url": "/phishing?vector=evilginx&target=" + target,
+            "icon": "shield", "priority": "high" if risk_norm in ("CRITICAL", "KRYTYCZNE", "HIGH", "WYSOKIE") else "medium",
+        })
+
     # 3. Critical/High → report
     if risk_norm in ("CRITICAL", "KRYTYCZNE", "HIGH", "WYSOKIE"):
         actions.append({
@@ -1965,6 +1976,11 @@ from modules.evilginx_phishing import (
     get_phishlet as evilginx_phishlet,
     get_stats as evilginx_stats,
     get_config as evilginx_config,
+    get_credentials as evilginx_credentials,
+    get_lures as evilginx_lures,
+    create_lure as evilginx_create_lure,
+    delete_lure as evilginx_delete_lure,
+    get_status as evilginx_status,
 )
 
 def _require_evilginx():
@@ -2016,6 +2032,47 @@ async def evilginx_get_phishlet(name: str, user: dict = Depends(get_current_user
 async def evilginx_get_config(user: dict = Depends(get_current_user)):
     _require_evilginx()
     return evilginx_config()
+
+# ── Evilginx2 extended management ──
+
+class EvilginxLureCreate(BaseModel):
+    phishlet: str
+    redirect_url: str = ""
+    path: str = ""
+
+@app.get("/api/evilginx/status")
+async def evilginx_get_status_api(user: dict = Depends(get_current_user)):
+    return evilginx_status()
+
+@app.get("/api/evilginx/credentials")
+async def evilginx_get_credentials(user: dict = Depends(get_current_user)):
+    _require_evilginx()
+    return evilginx_credentials()
+
+@app.get("/api/evilginx/lures")
+async def evilginx_get_lures(user: dict = Depends(get_current_user)):
+    _require_evilginx()
+    return evilginx_lures()
+
+@app.post("/api/evilginx/lures")
+async def evilginx_create_lure_api(request: Request, body: EvilginxLureCreate, user: dict = Depends(require_role("admin", "operator"))):
+    _require_evilginx()
+    try:
+        lure = evilginx_create_lure(body.phishlet, body.redirect_url, body.path)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    audit(request, user, "evilginx_lure_create", f"phishlet={body.phishlet}")
+    return lure
+
+@app.delete("/api/evilginx/lures/{lure_id}")
+async def evilginx_delete_lure_api(request: Request, lure_id: int, user: dict = Depends(require_role("admin", "operator"))):
+    _require_evilginx()
+    if not evilginx_delete_lure(lure_id):
+        raise HTTPException(status_code=404, detail="Lure not found")
+    audit(request, user, "evilginx_lure_delete", str(lure_id))
+    return {"status": "deleted", "lure_id": lure_id}
 
 # ── Multi-target scan ──
 

@@ -155,7 +155,7 @@ services:
       - ./backend:/app/backend
       - ./config:/app/config
       - ./knowledge_base:/app/knowledge_base
-      - evilginx_data:/app/evilginx:ro
+      - evilginx_data:/app/evilginx
 
   worker:
     build: .

@@ -426,6 +426,116 @@
     transition: border-color .2s, box-shadow .2s;
   }
   select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-muted); }
+
+  /* ── EVILGINX MONITOR ── */
+  .eg-monitor { display: none; }
+  .eg-monitor.on { display: block; }
+
+  .eg-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-5);
+    flex-wrap: wrap;
+  }
+  .eg-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-1) var(--sp-4);
+    border-radius: var(--radius-sm);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: .1em;
+  }
+  .eg-badge.online { background: rgba(46,204,113,.15); color: #2ecc71; }
+  .eg-badge.offline { background: rgba(231,76,60,.15); color: #e74c3c; }
+  .eg-badge .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor;
+  }
+  .eg-domain {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-base);
+    color: var(--text-muted);
+  }
+
+  .eg-tabs {
+    display: flex;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-5);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: var(--sp-2);
+  }
+  .eg-tab {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: var(--text-base);
+    font-weight: 600;
+    letter-spacing: .12em;
+    padding: var(--sp-2) var(--sp-4);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+  }
+  .eg-tab:hover { color: var(--text-primary); }
+  .eg-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .eg-panel { display: none; }
+  .eg-panel.on { display: block; }
+
+  .eg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  .eg-table th {
+    text-align: left;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 11px;
+    letter-spacing: .12em;
+    color: var(--text-muted);
+    padding: var(--sp-3) var(--sp-4);
+    border-bottom: 1px solid var(--border);
+  }
+  .eg-table td {
+    padding: var(--sp-3) var(--sp-4);
+    border-bottom: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+  }
+  .eg-table tr:hover td { background: var(--surface-hover); }
+
+  .eg-masked {
+    filter: blur(4px);
+    transition: filter .2s;
+    cursor: pointer;
+  }
+  .eg-masked:hover, .eg-masked.revealed { filter: none; }
+
+  .eg-create-form {
+    display: flex;
+    gap: var(--sp-3);
+    align-items: flex-end;
+    margin-top: var(--sp-4);
+    flex-wrap: wrap;
+  }
+  .eg-create-form .form-group {
+    flex: 1;
+    min-width: 150px;
+  }
+  .eg-create-form label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: .1em;
+    color: var(--text-muted);
+    margin-bottom: var(--sp-1);
+    font-family: 'Rajdhani', sans-serif;
+  }
 </style>
 </head>
 <body>
@@ -635,6 +745,51 @@
     <h2 id="resultTitle">// CAMPAIGN RESULTS</h2>
     <div class="stats-row" id="resultStats"></div>
     <div id="resultEvents"><div class="empty">No events</div></div>
+  </div>
+
+  <!-- EVILGINX MONITOR -->
+  <div class="card eg-monitor" id="egMonitor">
+    <h2>// EVILGINX MONITOR</h2>
+
+    <div class="eg-header">
+      <div class="eg-badge" id="egStatusBadge"><span class="dot"></span><span id="egStatusText">CHECKING...</span></div>
+      <div class="eg-domain" id="egDomainInfo"></div>
+    </div>
+
+    <div class="stats-row" id="egStats"></div>
+
+    <div class="eg-tabs">
+      <button class="eg-tab active" onclick="egSwitchTab('phishlets')">PHISHLETS</button>
+      <button class="eg-tab" onclick="egSwitchTab('lures')">LURES</button>
+      <button class="eg-tab" onclick="egSwitchTab('captures')">CAPTURES</button>
+    </div>
+
+    <div class="eg-panel on" id="egPanelPhishlets">
+      <div id="egPhishletsTable"><div class="empty">Loading...</div></div>
+    </div>
+
+    <div class="eg-panel" id="egPanelLures">
+      <div id="egLuresTable"><div class="empty">Loading...</div></div>
+      <div class="eg-create-form" id="egLureForm">
+        <div class="form-group">
+          <label>PHISHLET</label>
+          <select id="egLurePhishlet"><option value="">-- select --</option></select>
+        </div>
+        <div class="form-group">
+          <label>PATH</label>
+          <input type="text" id="egLurePath" placeholder="/login" style="width:100%">
+        </div>
+        <div class="form-group">
+          <label>REDIRECT URL</label>
+          <input type="text" id="egLureRedirect" placeholder="https://real-site.com" style="width:100%">
+        </div>
+        <button class="btn btn-primary" onclick="egCreateLure()">CREATE LURE</button>
+      </div>
+    </div>
+
+    <div class="eg-panel" id="egPanelCaptures">
+      <div id="egCapturesTable"><div class="empty">Loading...</div></div>
+    </div>
   </div>
 
   <footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.3.0</footer>
@@ -1178,10 +1333,221 @@ document.getElementById('consentCheck').addEventListener('change', function() {
 
 document.getElementById('wizScanSelect').addEventListener('change', wizOnScanSelect);
 
+// ══════════════════════════════════════════
+// ── EVILGINX MONITOR ──
+// ══════════════════════════════════════════
+
+var egState = { phishlets: [], configPhishlets: {} };
+
+async function loadEvilginxMonitor() {
+  try {
+    var r = await authFetch('/api/evilginx/status');
+    if (!r.ok) throw new Error();
+    var data = await r.json();
+
+    var monitor = document.getElementById('egMonitor');
+    var badge = document.getElementById('egStatusBadge');
+    var statusText = document.getElementById('egStatusText');
+    var domainInfo = document.getElementById('egDomainInfo');
+
+    if (!data.available) {
+      monitor.classList.add('on');
+      badge.className = 'eg-badge offline';
+      statusText.textContent = 'OFFLINE';
+      domainInfo.textContent = 'Start with: docker compose --profile phishing up -d';
+      document.getElementById('egStats').innerHTML = '';
+      return;
+    }
+
+    monitor.classList.add('on');
+    badge.className = 'eg-badge online';
+    statusText.textContent = 'ONLINE';
+    domainInfo.textContent = (data.domain || '—') + ' / ' + (data.ip || '—');
+
+    var statsHtml = '';
+    var items = [
+      {val: data.total_sessions || 0, lbl: 'SESSIONS', color: 'var(--accent)'},
+      {val: data.credentials_captured || 0, lbl: 'CREDENTIALS', color: 'var(--red)'},
+      {val: data.tokens_captured || 0, lbl: 'TOKENS', color: 'var(--orange)'},
+      {val: data.lures_count || 0, lbl: 'LURES', color: 'var(--yellow)'},
+      {val: data.sessions_last_24h || 0, lbl: 'LAST 24H', color: 'var(--green)'}
+    ];
+    items.forEach(function(it) {
+      statsHtml += '<div class="stat-box"><div class="stat-val" style="color:' + it.color + '">' + it.val + '</div><div class="stat-lbl">' + it.lbl + '</div></div>';
+    });
+    document.getElementById('egStats').innerHTML = statsHtml;
+
+    loadPhishlets();
+    loadLures();
+    loadCaptures();
+  } catch(e) {
+    // Evilginx not available — hide monitor
+    document.getElementById('egMonitor').classList.remove('on');
+  }
+}
+
+async function loadPhishlets() {
+  try {
+    var [r1, r2] = await Promise.all([
+      authFetch('/evilginx/phishlets'),
+      authFetch('/evilginx/config')
+    ]);
+    var phishlets = await r1.json();
+    var config = await r2.json();
+    egState.phishlets = Array.isArray(phishlets) ? phishlets : [];
+    egState.configPhishlets = config.phishlets || {};
+
+    if (!egState.phishlets.length) {
+      document.getElementById('egPhishletsTable').innerHTML = '<div class="empty">No phishlets found</div>';
+      return;
+    }
+
+    var html = '<table class="eg-table"><thead><tr><th>NAME</th><th>AUTHOR</th><th>PROXY HOSTS</th><th>STATUS</th></tr></thead><tbody>';
+    egState.phishlets.forEach(function(p) {
+      if (p.error) {
+        html += '<tr><td>' + escHtml(p.name) + '</td><td colspan="3" style="color:var(--red)">Parse error</td></tr>';
+        return;
+      }
+      var name = p.name || '';
+      var state = egState.configPhishlets[name];
+      var isActive = typeof state === 'string' && (state.toLowerCase() === 'enabled' || state.toLowerCase() === 'active');
+      var statusBadge = isActive
+        ? '<span class="badge badge-active">ACTIVE</span>'
+        : '<span class="badge badge-draft">INACTIVE</span>';
+      html += '<tr>';
+      html += '<td style="color:var(--text-primary)">' + escHtml(name) + '</td>';
+      html += '<td>' + escHtml(p.author || '—') + '</td>';
+      html += '<td>' + escHtml((p.proxy_hosts || []).join(', ') || '—') + '</td>';
+      html += '<td>' + statusBadge + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('egPhishletsTable').innerHTML = html;
+
+    // Update lure form phishlet select
+    var sel = document.getElementById('egLurePhishlet');
+    sel.innerHTML = '<option value="">-- select --</option>';
+    egState.phishlets.forEach(function(p) {
+      if (p.error || !p.name) return;
+      var opt = document.createElement('option');
+      opt.value = p.name;
+      opt.textContent = p.name;
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    document.getElementById('egPhishletsTable').innerHTML = '<div class="empty">Error loading phishlets</div>';
+  }
+}
+
+async function loadLures() {
+  try {
+    var r = await authFetch('/api/evilginx/lures');
+    var lures = await r.json();
+    if (!Array.isArray(lures) || !lures.length) {
+      document.getElementById('egLuresTable').innerHTML = '<div class="empty">No lures configured</div>';
+      return;
+    }
+    var html = '<table class="eg-table"><thead><tr><th>ID</th><th>PHISHLET</th><th>PATH</th><th>REDIRECT</th><th>PAUSED</th><th></th></tr></thead><tbody>';
+    lures.forEach(function(l) {
+      html += '<tr>';
+      html += '<td>' + (l.id || '—') + '</td>';
+      html += '<td style="color:var(--text-primary)">' + escHtml(l.phishlet || '—') + '</td>';
+      html += '<td>' + escHtml(l.path || '/') + '</td>';
+      html += '<td>' + escHtml(l.redirect_url || '—') + '</td>';
+      html += '<td>' + (l.paused ? 'YES' : 'NO') + '</td>';
+      html += '<td><button class="btn btn-danger" onclick="egDeleteLure(' + l.id + ')" style="font-size:11px;padding:2px 8px">DELETE</button></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('egLuresTable').innerHTML = html;
+  } catch(e) {
+    document.getElementById('egLuresTable').innerHTML = '<div class="empty">Error loading lures</div>';
+  }
+}
+
+async function egCreateLure() {
+  var phishlet = document.getElementById('egLurePhishlet').value;
+  var path = document.getElementById('egLurePath').value.trim();
+  var redirect = document.getElementById('egLureRedirect').value.trim();
+  if (!phishlet) { showMsg('Select a phishlet', true); return; }
+
+  try {
+    var r = await authFetch('/api/evilginx/lures', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({phishlet: phishlet, path: path, redirect_url: redirect})
+    });
+    if (r.ok) {
+      showMsg('Lure created for ' + phishlet);
+      document.getElementById('egLurePath').value = '';
+      document.getElementById('egLureRedirect').value = '';
+      loadLures();
+    } else {
+      var err = await r.json().catch(function(){ return {}; });
+      showMsg(err.detail || 'Error creating lure', true);
+    }
+  } catch(e) {
+    showMsg('Connection error: ' + e.message, true);
+  }
+}
+
+async function egDeleteLure(id) {
+  if (!confirm('Delete lure #' + id + '?')) return;
+  try {
+    var r = await authFetch('/api/evilginx/lures/' + id, {method: 'DELETE'});
+    if (r.ok) {
+      loadLures();
+      loadEvilginxMonitor();
+    } else {
+      showMsg('Error deleting lure', true);
+    }
+  } catch(e) {}
+}
+
+async function loadCaptures() {
+  try {
+    var r = await authFetch('/api/evilginx/credentials');
+    var creds = await r.json();
+    if (!Array.isArray(creds) || !creds.length) {
+      document.getElementById('egCapturesTable').innerHTML = '<div class="empty">No credentials captured yet</div>';
+      return;
+    }
+    var html = '<table class="eg-table"><thead><tr><th>PHISHLET</th><th>USERNAME</th><th>PASSWORD</th><th>TOKENS</th><th>IP</th><th>TIME</th></tr></thead><tbody>';
+    creds.forEach(function(c) {
+      var ts = c.create_time ? new Date(c.create_time * 1000).toISOString().replace('T', ' ').slice(0, 19) : '—';
+      html += '<tr>';
+      html += '<td style="color:var(--text-primary)">' + escHtml(c.phishlet || '—') + '</td>';
+      html += '<td style="color:var(--red)">' + escHtml(c.username || '—') + '</td>';
+      html += '<td><span class="eg-masked" onclick="this.classList.toggle(\'revealed\')">' + escHtml(c.password || '—') + '</span></td>';
+      html += '<td>' + (c.tokens_count || 0) + '</td>';
+      html += '<td>' + escHtml(c.remote_addr || '—') + '</td>';
+      html += '<td>' + ts + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('egCapturesTable').innerHTML = html;
+  } catch(e) {
+    document.getElementById('egCapturesTable').innerHTML = '<div class="empty">Error loading credentials</div>';
+  }
+}
+
+function egSwitchTab(tab) {
+  document.querySelectorAll('.eg-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.eg-panel').forEach(function(p) { p.classList.remove('on'); });
+
+  var tabs = {phishlets: 0, lures: 1, captures: 2};
+  var tabButtons = document.querySelectorAll('.eg-tab');
+  if (tabButtons[tabs[tab]]) tabButtons[tabs[tab]].classList.add('active');
+  var panel = document.getElementById('egPanel' + tab.charAt(0).toUpperCase() + tab.slice(1));
+  if (panel) panel.classList.add('on');
+}
+
 // ── Init ──
 wizLoadScans();
 fetchCampaigns();
+loadEvilginxMonitor();
 setInterval(fetchCampaigns, 30000);
+setInterval(loadEvilginxMonitor, 30000);
 </script>
 <script>
 (function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(r=>r.json()).then(u=>{if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}}).catch(function(){});})();
