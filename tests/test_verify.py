@@ -10,6 +10,10 @@ import pytest
 from modules.verify import (
     CyrberVerify,
     SAFE_EMAIL_DOMAINS,
+    KNOWN_COMPANIES,
+    _COMPANY_KEYWORDS_PL,
+    _COMPANY_KEYWORDS_UK,
+    _COMPANY_KEYWORDS_DE,
     calculate_risk,
     detect_query_type,
     generate_verdict,
@@ -55,6 +59,18 @@ class TestDetectQueryType:
         assert detect_query_type("AGE OTRANS sp z o o") == "company"
         assert detect_query_type("Firma Handlowa") == "company"
 
+    def test_nip_as_company(self):
+        """NIP (10 digits) should be detected as company."""
+        assert detect_query_type("5272720862") == "company"
+        assert detect_query_type("527-272-08-62") == "company"
+        assert detect_query_type("527 272 08 62") == "company"
+
+    def test_company_keywords_pl(self):
+        """Polish company keywords → company."""
+        assert detect_query_type("Firma sp z o o") == "company"
+        assert detect_query_type("Test gmbh") == "company"
+        assert detect_query_type("Acme Ltd") == "company"
+
 
 # ═══════════════════════════════════════════════════════════════
 #  calculate_risk — bidirectional scoring
@@ -95,10 +111,29 @@ class TestCalculateRisk:
         # 20 (age<365) = 20 (urlhaus urls_count no longer scores without blacklisted)
         assert score == 20
 
-    def test_company_not_found(self):
+    def test_company_not_found_no_registries(self):
+        """Company not found, no registries searched → +5 (was +60)."""
         signals = {"company": {"found": False}}
         score = calculate_risk(signals)
-        assert score == 60
+        assert score == 5
+
+    def test_company_not_found_two_registries(self):
+        """Company not found in PL (KRS+CEIDG) → +30."""
+        signals = {"company": {"found": False, "registries_searched": ["KRS", "CEIDG"], "search_country": "PL"}}
+        score = calculate_risk(signals)
+        assert score == 30
+
+    def test_company_not_found_one_registry(self):
+        """Company not found in UK (Companies House only) → +20."""
+        signals = {"company": {"found": False, "registries_searched": ["Companies House"], "search_country": "UK"}}
+        score = calculate_risk(signals)
+        assert score == 20
+
+    def test_company_not_found_auto_three_registries(self):
+        """Company not found in AUTO (KRS+CEIDG+CH) → +30."""
+        signals = {"company": {"found": False, "registries_searched": ["KRS", "CEIDG", "Companies House"], "search_country": "AUTO"}}
+        score = calculate_risk(signals)
+        assert score == 30
 
     def test_company_found_reduces(self):
         """Company confirmed in registry reduces score."""
@@ -475,15 +510,51 @@ class TestVerifyCompany:
 
     @patch("modules.verify._krs_lookup")
     @patch("modules.verify._ceidg_lookup")
-    def test_company_not_found(self, mock_ceidg, mock_krs):
+    def test_company_not_found_pl(self, mock_ceidg, mock_krs):
+        """Company not found in PL (KRS+CEIDG = 2 registries) → +30, PODEJRZANE."""
         mock_krs.return_value = {"found": False, "registry": "KRS"}
         mock_ceidg.return_value = {"found": False, "registry": "CEIDG"}
 
         v = CyrberVerify()
         result = v.verify_company("Fake Company", country="PL")
 
-        assert result["risk_score"] == 60
-        assert result["verdict"] == "OSZUSTWO"
+        assert result["risk_score"] == 30
+        assert result["verdict"] == "PODEJRZANE"
+        assert result["signals"]["company"]["registries_searched"] == ["KRS", "CEIDG"]
+
+    @patch("modules.verify._companies_house_lookup")
+    @patch("modules.verify._krs_lookup")
+    @patch("modules.verify._ceidg_lookup")
+    def test_company_not_found_auto(self, mock_ceidg, mock_krs, mock_ch):
+        """AUTO searches PL + UK registries (3 total) → +30, PODEJRZANE."""
+        mock_krs.return_value = {"found": False, "registry": "KRS"}
+        mock_ceidg.return_value = {"found": False, "registry": "CEIDG"}
+        mock_ch.return_value = {"found": False, "registry": "Companies House"}
+
+        v = CyrberVerify()
+        result = v.verify_company("Unknown Corp", country="AUTO")
+
+        assert result["risk_score"] == 30
+        assert result["verdict"] == "PODEJRZANE"
+        assert "KRS" in result["signals"]["company"]["registries_searched"]
+        assert "Companies House" in result["signals"]["company"]["registries_searched"]
+
+    def test_known_company_google(self):
+        """Known company (Google) → BEZPIECZNE, score 0."""
+        v = CyrberVerify()
+        result = v.verify_company("Google", country="AUTO")
+
+        assert result["risk_score"] == 0
+        assert result["verdict"] == "BEZPIECZNE"
+        assert result["signals"]["company"]["registry"] == "known_company"
+
+    def test_known_company_emca(self):
+        """Known company (EMCA Software) → BEZPIECZNE, score 0."""
+        v = CyrberVerify()
+        result = v.verify_company("EMCA Software", country="AUTO")
+
+        assert result["risk_score"] == 0
+        assert result["verdict"] == "BEZPIECZNE"
 
 
 # ═══════════════════════════════════════════════════════════════

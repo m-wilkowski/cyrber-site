@@ -577,6 +577,19 @@ SAFE_EMAIL_DOMAINS = {
     'icloud.com', 'me.com', 'protonmail.com',
 }
 
+KNOWN_COMPANIES = {
+    'emca', 'emca software', 'allegro', 'pkn orlen', 'pko bp', 'pzu',
+    'orange polska', 'play', 'plus', 't-mobile', 'energylogserver',
+    'asseco', 'comarch', 'cd projekt', 'livechat',
+    'google', 'microsoft', 'apple', 'amazon', 'meta', 'facebook',
+    'samsung', 'sony', 'ibm', 'oracle', 'sap', 'cisco',
+    'ikea', 'lidl', 'biedronka', 'kaufland', 'leroy merlin',
+}
+
+_COMPANY_KEYWORDS_PL = {'sp', 'spółka', 'sp.', 's.a.', 'sp.z.o.o', 'spzoo', 'z.o.o', 'zoo'}
+_COMPANY_KEYWORDS_UK = {'ltd', 'limited', 'plc', 'llp'}
+_COMPANY_KEYWORDS_DE = {'gmbh', 'ag', 'ohg', 'kg'}
+
 
 def calculate_risk(signals: dict) -> int:
     """Calculate risk score (0-100) from aggregated signals — bidirectional scoring.
@@ -624,10 +637,16 @@ def calculate_risk(signals: dict) -> int:
     if gn.get("classification") == "malicious":
         score += 30
 
-    # Company registry — not found
+    # Company registry — not found (nuanced by registries searched)
     company = signals.get("company", {})
     if company and not company.get("found", True):
-        score += 60
+        registries_searched = company.get("registries_searched", [])
+        if len(registries_searched) >= 2:
+            score += 30   # searched multiple registries, not found
+        elif len(registries_searched) == 1:
+            score += 20   # searched one registry
+        else:
+            score += 5    # no registries available / unknown country
 
     # Disposable email
     if signals.get("disposable_email"):
@@ -801,11 +820,13 @@ def _extract_problems(signals: dict) -> list[dict]:
 
     company = signals.get("company", {})
     if company and not company.get("found", True):
+        registries = company.get("registries_searched", [])
+        reg_str = ", ".join(registries) if registries else "rejestr"
         problems.append({
-            "title": "Firma nie istnieje w rejestrze",
-            "what_found": "Nie znaleźliśmy tej firmy w oficjalnym rejestrze KRS ani CEIDG.",
-            "what_means": "Każda legalna polska firma musi być zarejestrowana. Jeśli jej nie ma w rejestrze — albo podaje fałszywą nazwę, albo działa nielegalnie.",
-            "real_risk": "Nie masz żadnej ochrony prawnej jeśli firma Cię oszuka.",
+            "title": "Firma nie znaleziona w rejestrach",
+            "what_found": f"Nie znaleźliśmy tej firmy w: {reg_str}.",
+            "what_means": "To nie musi oznaczać oszustwa — firma może być z innego kraju lub działać pod inną nazwą. Warto to sprawdzić ręcznie.",
+            "real_risk": "Nie można potwierdzić legalności firmy automatycznie.",
         })
 
     if signals.get("disposable_email"):
@@ -918,11 +939,18 @@ def _extract_positives(signals: dict) -> list[dict]:
     company = signals.get("company", {})
     if company and company.get("found"):
         registry = company.get("registry", "rejestr")
-        positives.append({
-            "title": "Firma w oficjalnym rejestrze",
-            "what_found": f"Firma potwierdzona w {registry}.",
-            "what_means": "Firma jest oficjalnie zarejestrowana, co oznacza że podlega polskiemu prawu i można ją pociągnąć do odpowiedzialności.",
-        })
+        if registry == "known_company":
+            positives.append({
+                "title": "Znana, zweryfikowana firma",
+                "what_found": "Firma rozpoznana jako znana marka.",
+                "what_means": "To powszechnie znana firma z ugruntowaną pozycją na rynku.",
+            })
+        else:
+            positives.append({
+                "title": "Firma w oficjalnym rejestrze",
+                "what_found": f"Firma potwierdzona w {registry}.",
+                "what_means": "Firma jest oficjalnie zarejestrowana, co oznacza że podlega polskiemu prawu i można ją pociągnąć do odpowiedzialności.",
+            })
 
     crtsh = signals.get("crtsh", {})
     cert_age = crtsh.get("cert_age_days")
@@ -991,7 +1019,7 @@ def _generate_if_paid_already(risk_score: int) -> list[str]:
         return []
 
 
-def _generate_report_to(risk_score: int) -> list[dict]:
+def _generate_report_to(risk_score: int, signals: dict | None = None) -> list[dict]:
     """Generate list of institutions to report fraud to."""
     if risk_score <= 20:
         return []
@@ -1017,6 +1045,15 @@ def _generate_report_to(risk_score: int) -> list[dict]:
         "url": "",
         "description": "Zadzwoń na infolinię banku i poproś o procedurę chargeback (zwrot pieniędzy za oszustwo).",
     })
+    # Company registry links when company not found
+    if signals:
+        company = signals.get("company", {})
+        if company and not company.get("found", True):
+            institutions.extend([
+                {"institution": "KRS (Polska)", "url": "https://ekrs.ms.gov.pl/", "description": "Krajowy Rejestr Sądowy — sprawdź spółki"},
+                {"institution": "CEIDG (Polska)", "url": "https://aplikacja.ceidg.gov.pl/", "description": "Centralna Ewidencja — sprawdź jednoosobowe działalności"},
+                {"institution": "Companies House (UK)", "url": "https://find-and-update.company-information.service.gov.uk/", "description": "Rejestr firm brytyjskich"},
+            ])
     return institutions
 
 
@@ -1080,6 +1117,16 @@ def _generate_educational_tips(risk_score: int, signals: dict) -> list[dict]:
             "title": "Ranking popularności stron",
             "text": "Tranco to niezależny ranking miliona najpopularniejszych stron. Jeśli strona jest w top 10K — prawie na pewno jest legalna.",
             "example": "Google.com jest w top 10, Allegro.pl w top 1000. Nowa strona z ofertą 'za dobrą żeby była prawdziwa' raczej nie będzie w rankingu.",
+        })
+
+    # Company registry tip
+    company = signals.get("company", {})
+    if company and not company.get("found", True):
+        tips.append({
+            "icon": "🏢",
+            "title": "Jak sprawdzić firmę w innych krajach?",
+            "text": "Każdy kraj ma swój rejestr firm. Polska firma musi być w KRS lub CEIDG, ale zagraniczna może nie być w polskich rejestrach — to normalne.",
+            "example": "Polska: KRS (ekrs.ms.gov.pl), Niemcy: Handelsregister, Francja: INSEE, UK: Companies House",
         })
 
     if risk_score > 50:
@@ -1197,7 +1244,7 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
         result.setdefault("action", _generate_action(risk_score, query))
         result.setdefault("immediate_actions", _generate_immediate_actions(risk_score, query))
         result.setdefault("if_paid_already", _generate_if_paid_already(risk_score))
-        result.setdefault("report_to", _generate_report_to(risk_score))
+        result.setdefault("report_to", _generate_report_to(risk_score, signals))
         result.setdefault("educational_tips", _generate_educational_tips(risk_score, signals))
         # Normalize educational_tips to dict format
         tips = result.get("educational_tips", [])
@@ -1219,7 +1266,7 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
             "action": _generate_action(risk_score, query),
             "immediate_actions": _generate_immediate_actions(risk_score, query),
             "if_paid_already": _generate_if_paid_already(risk_score),
-            "report_to": _generate_report_to(risk_score),
+            "report_to": _generate_report_to(risk_score, signals),
             "educational_tips": _generate_educational_tips(risk_score, signals),
             "recommendation": "Zalecamy ostrożność." if risk_score >= 20 else "Brak podejrzanych sygnałów.",
         }
@@ -1325,7 +1372,10 @@ def _extract_trust_factors(signals: dict) -> list[str]:
     company = signals.get("company", {})
     if company and company.get("found"):
         registry = company.get("registry", "rejestr")
-        factors.append(f"Rejestr: firma potwierdzona w {registry}")
+        if registry == "known_company":
+            factors.append("Znana, zweryfikowana firma z ugruntowaną pozycją na rynku")
+        else:
+            factors.append(f"Rejestr: firma potwierdzona w {registry}")
 
     crtsh = signals.get("crtsh", {})
     cert_age = crtsh.get("cert_age_days")
@@ -1451,6 +1501,18 @@ def _extract_signal_explanations(signals: dict) -> list[dict]:
         else:
             _add("IPinfo", f"{ipinfo.get('org', '')} ({country})", "Lokalizacja serwera", "gray", "⚪")
 
+    # Company
+    company = signals.get("company", {})
+    if company:
+        if company.get("registry") == "known_company":
+            _add("Firma", "Znana marka", "Firma rozpoznana jako znana, zweryfikowana marka", "green", "🟢")
+        elif company.get("found"):
+            _add("Firma", f"Znaleziona w {company.get('registry', 'rejestrze')}", "Firma oficjalnie zarejestrowana", "green", "🟢")
+        elif not company.get("found", True):
+            registries = company.get("registries_searched", [])
+            reg_str = ", ".join(registries) if registries else "brak"
+            _add("Firma", f"Nie znaleziono ({reg_str})", "Firma nie została znaleziona w przeszukanych rejestrach — może być z innego kraju", "amber", "🟡")
+
     return explanations
 
 
@@ -1518,25 +1580,37 @@ class CyrberVerify:
         """Verify a company in public registries."""
         signals = {}
         country = country.upper()
+        query_lower = query.strip().lower()
 
-        if country == "PL":
-            krs = _krs_lookup(query)
-            ceidg = _ceidg_lookup(query)
-            # Use whichever found results
-            if krs.get("found"):
-                signals["company"] = krs
-            elif ceidg.get("found"):
-                signals["company"] = ceidg
-            else:
-                signals["company"] = {"found": False, "registry": "KRS+CEIDG", "krs": krs, "ceidg": ceidg}
-        elif country == "UK":
-            signals["company"] = _companies_house_lookup(query)
+        # Known company whitelist — short-circuit
+        if any(query_lower == k or query_lower.startswith(k + " ") for k in KNOWN_COMPANIES):
+            signals["company"] = {"found": True, "registry": "known_company", "name": query}
         else:
-            signals["company"] = {"found": False, "registry": "unsupported_country"}
+            registries_searched = []
 
-        # If company has a website, check the domain too
-        company = signals.get("company", {})
-        company_name = company.get("name", query)
+            if country in ("PL", "AUTO"):
+                krs = _krs_lookup(query)
+                ceidg = _ceidg_lookup(query)
+                registries_searched.extend(["KRS", "CEIDG"])
+                if krs.get("found"):
+                    signals["company"] = krs
+                elif ceidg.get("found"):
+                    signals["company"] = ceidg
+
+            if not signals.get("company", {}).get("found") and country in ("UK", "AUTO"):
+                ch = _companies_house_lookup(query)
+                registries_searched.append("Companies House")
+                if ch.get("found"):
+                    signals["company"] = ch
+
+            if not signals.get("company", {}).get("found"):
+                signals["company"] = {
+                    "found": False,
+                    "registry": "+".join(registries_searched) if registries_searched else "none",
+                    "registries_searched": registries_searched,
+                    "search_country": country,
+                    "message": f"Nie znaleziono w: {', '.join(registries_searched)}" if registries_searched else "Brak rejestrów do przeszukania",
+                }
 
         risk_score = calculate_risk(signals)
         verdict = generate_verdict(risk_score, signals, query)
@@ -1627,6 +1701,14 @@ def detect_query_type(query: str) -> str:
         return "email"
     if q.startswith("http://") or q.startswith("https://"):
         return "url"
-    if "." in q and not " " in q:
+    # NIP (10 digits, optionally with dashes/spaces)
+    clean = re.sub(r"[\s-]", "", q)
+    if re.match(r"^\d{10}$", clean):
+        return "company"
+    # Company keywords (sp, ltd, gmbh, etc.)
+    words = set(q.lower().split())
+    if words & (_COMPANY_KEYWORDS_PL | _COMPANY_KEYWORDS_UK | _COMPANY_KEYWORDS_DE):
+        return "company"
+    if "." in q and " " not in q:
         return "url"
     return "company"
