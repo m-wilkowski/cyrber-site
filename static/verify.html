@@ -972,7 +972,7 @@ function renderAiReport(data) {
     h += '<div class="report-grid">';
     reportTo.forEach(function(r) {
       var hasUrl = r.url && r.url.length > 0;
-      h += '<div class="report-card"' + (hasUrl ? ' onclick="window.open(\'' + escHtml(r.url) + '\',\'_blank\')"' : '') + '>';
+      h += '<div class="report-card"' + (hasUrl ? ' data-url="' + escHtml(r.url) + '" style="cursor:pointer"' : '') + '>';
       h += '<div class="report-card-name">' + escHtml(r.institution || '') + '</div>';
       h += '<div class="report-card-desc">' + escHtml(r.description || '') + '</div>';
       if (hasUrl) {
@@ -993,7 +993,7 @@ function renderAiReport(data) {
         t = {icon: '\uD83D\uDCA1', title: 'Porada', text: t, example: ''};
       }
       h += '<div class="tip-card">';
-      h += '<div class="tip-card-icon">' + (t.icon || '\uD83D\uDCA1') + '</div>';
+      h += '<div class="tip-card-icon">' + escHtml(t.icon || '\uD83D\uDCA1') + '</div>';
       h += '<div class="tip-card-title">' + escHtml(t.title || '') + '</div>';
       h += '<div class="tip-card-text">' + escHtml(t.text || '') + '</div>';
       if (t.example) {
@@ -1005,6 +1005,12 @@ function renderAiReport(data) {
   }
 
   el.innerHTML = h;
+
+  el.querySelectorAll('.report-card[data-url]').forEach(function(card) {
+    card.addEventListener('click', function() {
+      window.open(card.dataset.url, '_blank');
+    });
+  });
 }
 
 // ── Tab: Signals ──
@@ -1018,7 +1024,7 @@ function renderSignals(data) {
 
   var h = '<div class="signal-expl-grid">';
   signalExpls.forEach(function(e, idx) {
-    var riskClass = 'risk-' + (e.risk || 'gray');
+    var riskClass = 'risk-' + escHtml(e.risk || 'gray');
     h += '<div class="signal-expl ' + riskClass + '" onclick="toggleSignalExpl(this)">';
     h += '<div class="signal-expl-header">';
     h += '<span class="signal-expl-name">' + (e.icon || '') + ' ' + escHtml(e.signal || '') + '</span>';
