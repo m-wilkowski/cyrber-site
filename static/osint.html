@@ -723,7 +723,7 @@ function renderResults(data) {
   } else if (st === 'person') {
     sh = _stat('EMAILS',s.total_emails||0) + _stat('ACCOUNTS',s.total_accounts||0) + _stat('GITHUB REPOS',s.github_repos||0) + _stat('HOSTS',s.total_hosts||0) + _stat('RISK',s.risk_count||0, s.risk_count>0?'var(--red)':'var(--green)') + (s.errors_count>0?_stat('ERRORS',s.errors_count,'var(--orange)'):'');
   } else if (st === 'phone') {
-    sh = _stat('COUNTRY',s.country||'?','') + _stat('VALID',s.valid===true?'YES':s.valid===false?'NO':'?', s.valid===true?'var(--green)':'var(--orange)') + _stat('RISK',s.risk_count||0);
+    sh = _stat('COUNTRY',esc(s.country||'?'),'') + _stat('VALID',s.valid===true?'YES':s.valid===false?'NO':'?', s.valid===true?'var(--green)':'var(--orange)') + _stat('RISK',s.risk_count||0);
   }
   grid.innerHTML = sh;
 
@@ -742,7 +742,7 @@ function renderResults(data) {
   var rEl = document.getElementById('riskSection');
   if (ri.length) {
     var rh = '<div class="card"><h2>// RISK INDICATORS</h2>';
-    ri.forEach(function(r) { rh += '<div class="risk-alert risk-' + r.severity + '"><span style="font-size:14px">&#9888;</span><div><div style="font-weight:600">' + esc(r.title) + '</div><div style="font-size:11px;opacity:.8">' + esc(r.description) + '</div></div></div>'; });
+    ri.forEach(function(r) { rh += '<div class="risk-alert risk-' + esc(r.severity) + '"><span style="font-size:14px">&#9888;</span><div><div style="font-weight:600">' + esc(r.title) + '</div><div style="font-size:11px;opacity:.8">' + esc(r.description) + '</div></div></div>'; });
     rh += '</div>';
     rEl.innerHTML = rh;
   } else rEl.innerHTML = '';
@@ -1197,16 +1197,29 @@ function renderHistory() {
     var st = s.search_type || 'domain';
     var date = s.completed_at ? new Date(s.completed_at).toLocaleString('en-US') : 'pending';
     var summary = _histSummary(st, sm);
-    h += '<tr onclick="loadOsintDetail(\'' + s.task_id + '\',\'' + st + '\')">';
-    h += '<td><span class="type-badge type-' + st + '">' + st.toUpperCase() + '</span></td>';
+    h += '<tr data-task-id="' + esc(s.task_id) + '" data-stype="' + esc(st) + '" data-target="' + esc(s.target) + '">';
+    h += '<td><span class="type-badge type-' + esc(st) + '">' + st.toUpperCase() + '</span></td>';
     h += '<td style="color:var(--white);font-weight:600">' + esc(s.target) + '</td>';
     h += '<td style="font-size:11px">' + date + '</td>';
     h += '<td style="font-size:11px;color:var(--silver)">' + summary + '</td>';
-    h += '<td><button class="btn-pdf btn-sm" onclick="event.stopPropagation();downloadPdf(\'' + s.task_id + '\',\'' + esc(s.target) + '\')">PDF</button></td>';
+    h += '<td><button class="btn-pdf btn-sm hist-pdf-btn">PDF</button></td>';
     h += '</tr>';
   });
   h += '</tbody></table>';
   el.innerHTML = h;
+
+  el.querySelectorAll('tr[data-task-id]').forEach(function(row) {
+    row.addEventListener('click', function() {
+      loadOsintDetail(row.dataset.taskId, row.dataset.stype);
+    });
+    var pdfBtn = row.querySelector('.hist-pdf-btn');
+    if (pdfBtn) {
+      pdfBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        downloadPdf(row.dataset.taskId, row.dataset.target);
+      });
+    }
+  });
 }
 
 function _histSummary(type, sm) {
@@ -1214,7 +1227,7 @@ function _histSummary(type, sm) {
   if (type === 'email') return (sm.total_breaches||0)+' breaches';
   if (type === 'username') return (sm.total_accounts||0)+' accounts';
   if (type === 'person') return (sm.total_emails||0)+' emails, '+(sm.total_accounts||0)+' accounts';
-  if (type === 'phone') return (sm.country||'?');
+  if (type === 'phone') return esc(sm.country||'?');
   return '';
 }
 
