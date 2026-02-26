@@ -36,6 +36,8 @@ GREYNOISE_API_URL = "https://api.greynoise.io/v3/community"
 EXPLOITDB_REPO = "https://github.com/offensive-security/exploitdb.git"
 EXPLOITDB_PATH = "/opt/exploitdb"
 MALWAREBAZAAR_API_URL = "https://mb-api.abuse.ch/api/v1/"
+URLHAUS_API_KEY = os.getenv("URLHAUS_API_KEY", "")
+MALWAREBAZAAR_API_KEY = os.getenv("MALWAREBAZAAR_API_KEY", "")
 
 REQUEST_TIMEOUT = 60
 ATTACK_TIMEOUT = 120  # enterprise-attack.json is ~30MB
@@ -755,13 +757,16 @@ def sync_shodan(ip: str) -> dict | None:
 # ── URLhaus ───────────────────────────────────────────────────────
 
 def sync_urlhaus(host: str) -> dict | None:
-    """Lookup host in URLhaus (free, no API key).
-    Works for both IP and domain."""
+    """Lookup host in URLhaus. Works for both IP and domain."""
     t0 = time.time()
     try:
+        headers = {}
+        if URLHAUS_API_KEY:
+            headers["Auth-Key"] = URLHAUS_API_KEY
         resp = requests.post(
             f"{URLHAUS_API_URL}/host/",
             data={"host": host},
+            headers=headers,
             timeout=REQUEST_TIMEOUT,
         )
         resp.raise_for_status()
@@ -930,12 +935,16 @@ def _parse_exploitdb_csv(csv_path: str) -> list[dict]:
 # ── MalwareBazaar (abuse.ch) ──────────────────────────────
 
 def sync_malwarebazaar(limit: int = 100) -> int:
-    """Fetch recent MalwareBazaar samples and cache in DB. Free, no API key."""
+    """Fetch recent MalwareBazaar samples and cache in DB."""
     t0 = time.time()
     try:
+        headers = {}
+        if MALWAREBAZAAR_API_KEY:
+            headers["Auth-Key"] = MALWAREBAZAAR_API_KEY
         resp = requests.post(
             MALWAREBAZAAR_API_URL,
             data={"query": "get_recent", "selector": str(limit)},
+            headers=headers,
             timeout=REQUEST_TIMEOUT,
         )
         resp.raise_for_status()
@@ -983,9 +992,13 @@ def lookup_malwarebazaar(hash_val: str) -> dict | None:
 
     # Live lookup
     try:
+        headers = {}
+        if MALWAREBAZAAR_API_KEY:
+            headers["Auth-Key"] = MALWAREBAZAAR_API_KEY
         resp = requests.post(
             MALWAREBAZAAR_API_URL,
             data={"query": "get_info", "hash": hash_val},
+            headers=headers,
             timeout=REQUEST_TIMEOUT,
         )
         resp.raise_for_status()
