@@ -15,7 +15,7 @@ Jesteś asystentem Michała Wilkowskiego przy projekcie **CYRBER** – autonomic
 
 Nazwa: Cerberus + Cyber. Trzy głowy = trzy warstwy.
 
-**Projekt ma tydzień.** Nie jest gotowy do sprzedaży – jest w fazie aktywnego developmentu. Sekwencja: software → AI integration → testy → hardware → sprzedaż.
+**Projekt ma ~3 tygodnie** (start ~5.02.2026). Nie jest gotowy do sprzedaży – jest w fazie aktywnego developmentu. Sekwencja: software → AI integration → testy → hardware → sprzedaż.
 
 ---
 
@@ -70,6 +70,9 @@ cyrber-nginx-1    Nginx reverse proxy    :443 (HTTPS), :80 (redirect)
 ```
 Self-signed TLS cert (ważny do 2029), security headers (HSTS, X-Frame-Options, CSP, X-Content-Type-Options), rate limiting (10r/s burst 20).
 
+**Backend:** 176 endpointów API (138 GET, 30 POST, 1 PUT, 1 PATCH, 6 DELETE)
+**Testy:** 278 testów w 13 plikach (test_verify 100, test_evilginx_phishing 40, test_context_manager 29, test_certipy 28, test_evilginx 16, test_intel_sources 15 i inne)
+
 **Auth:** JWT (HS256) + RBAC (admin/operator/viewer). Login: POST /auth/login → token. Domyślnie: admin:cyrber2024.
 
 **System licencji:** On-prem HMAC-SHA256 (`modules/license.py`). Tier: demo (1 skan/dzień, SZCZENIAK only) / basic (10/dzień) / pro (50/dzień) / enterprise (unlimited). Plik licencji: `/etc/cyrber/license.key`. GET /license/status, POST /license/activate.
@@ -78,7 +81,7 @@ Self-signed TLS cert (ważny do 2029), security headers (HSTS, X-Frame-Options, 
 
 ---
 
-## 4. Zaimplementowane moduły (50+)
+## 4. Zaimplementowane moduły (80 plików Python, ~24 000 linii)
 
 ### Web Application
 - Nuclei (14 000+ templates)
@@ -151,7 +154,7 @@ Self-signed TLS cert (ważny do 2029), security headers (HSTS, X-Frame-Options, 
 
 ### Social Engineering
 - GoPhish (własny kontener)
-- Evilginx2 (modules/evilginx.py) — SQLite reader: sessions, phishlets, config, stats; 7 endpointów /evilginx/* z JWT auth; 40 testów; docker-compose profile phishing
+- Evilginx2 (modules/evilginx.py) — SQLite reader: sessions, phishlets, config, stats; 11 endpointów: legacy `/evilginx/*` (stats/sessions/phishlets/config) + nowe `/api/evilginx/*` (status/lures/credentials); 40 testów; docker-compose profile phishing
 - BeEF-XSS (modules/beef_xss.py) — REST API client: login z token cache, hooks/modules/run_module/logs; 9 endpointów /beef/*; docker-compose profile phishing; janes/beef image, port 3001; config/beef.yaml z custom credentials
 - Phishing Campaign Wizard (static/phishing.html) — 4-step wizard: Recon Data → Attack Vector → Kampania → Review & Launch; GoPhish + Evilginx2 wybór trybu; checkbox zgody prawnej; AI email generator POST /phishing/generate-email
 
@@ -159,11 +162,12 @@ Self-signed TLS cert (ważny do 2029), security headers (HSTS, X-Frame-Options, 
 - Garak (docker/garak/, modules/garak_scan.py) — NVIDIA garak 0.14.0 w osobnym kontenerze (torch+transformers ~4GB); mini FastAPI wrapper (server.py); async scan z poll; 40+ probe'ów (prompt injection, jailbreak, encoding, data leakage); OWASP LLM Top 10; 5 endpointów /garak/*; profil ai-security; probe categories: prompt_injection, data_leakage, toxicity, jailbreak, full
 
 ### Frontend / UI
-- Scan View (static/index.html) — **przepisany od zera**: 3-step flow (target→profil→start), animated pulsing ring hero, target validation (domain/IP/CIDR), profile cards z license lock overlay (admin bypass licencji), SSE live feed z typewriter effect (30ms/char) + terminal panel (surowy output SSE obok), 17 faz funkcjonalnych (MODULE_LABELS z 52 modułów), progress bar z ETA, completion screen, recent scans (5 ostatnich); nav uproszczony: SCAN | DASHBOARD | SCHEDULER | PHISHING | ADMIN
-- Scan Detail (static/scan_detail.html) — pełna strona szczegółów skanu: hero (risk ring + target + badges), 6 zakładek (Overview/Findings/Moduły/AI Analysis/Report/Remediation), sparkline security score trend w Overview, floating AI agent chat (POST /api/scan-agent, Claude Haiku + scan context, sessionStorage history)
-- Dashboard (static/dashboard.html) — **przepisany od zera**: KPI bar (4 karty), filtry (data/profil/ryzyko/target + debounce), sortowalna tabela z paginacją, slide-in drilldown (4 zakładki), pure CSS/SVG. Klik wiersza → scan detail (desktop) / drilldown (mobile)
+- Scan View (static/index.html, 1383 linie) — **przepisany od zera**: 3-step flow (target→profil→start), animated pulsing ring hero, target validation (domain/IP/CIDR), profile cards z license lock overlay (admin bypass licencji), SSE live feed z typewriter effect (30ms/char) + terminal panel (surowy output SSE obok), 17 faz funkcjonalnych (MODULE_LABELS z 52 modułów), progress bar z ETA, completion screen, recent scans (5 ostatnich)
+- Scan Detail (static/scan_detail.html, 1367 linii) — pełna strona szczegółów skanu: hero (risk ring + target + badges), 6 zakładek (Overview/Findings/Moduły/AI Analysis/Report/Remediation), sparkline security score trend w Overview, floating AI agent chat (POST /api/scan-agent, Claude Haiku + scan context, sessionStorage history), enrichment badges (KEV/EUVD/MISP/EPSS/ATT&CK)
+- Dashboard (static/dashboard.html, 2365 linii) — **przepisany od zera**: KPI bar (4 karty), filtry (data/profil/ryzyko/target + debounce), sortowalna tabela z paginacją, slide-in drilldown (4 zakładki), pure CSS/SVG, MISP export. Klik wiersza → scan detail (desktop) / drilldown (mobile)
 - Cache-busting headers — no-cache na /ui, /dashboard, /scheduler, /phishing, /osint, /scan/{id}/detail
 - SSE Streaming (static/index.html + backend/main.py) — real-time postęp skanowania: connectSSE() primary z fallback na polling; GET /scan/stream/{task_id}?token=JWT; Redis pub/sub 49 kroków per skan
+- Network Topology (static/topology.html) — D3.js v7 force-directed graph wizualizacja topologii sieci ze skanów; `build_topology()` parsuje nmap/netdiscover/arpscan/nbtscan/bloodhound/traceroute/certipy; node types: cloud/target/gateway/host/dc; risk per node z nuclei findings; API: GET /api/scan/{task_id}/topology; scan selector dropdown, KPI strip, legenda, zoom/drag, side panel po kliknięciu noda
 - AI Explain per Finding — POST /api/explain-finding: Claude Haiku, Redis cache 24h (klucz: explain:{name}:{severity})
 - AI Scan Agent — POST /api/scan-agent: Claude Haiku + kontekst skanu (target, risk, findings top 15, chains top 3), conversation history
 
@@ -212,14 +216,19 @@ Prompt do LLM zawiera sekcję `=== KORELACJE MIEDZYMODULOWE ===` między KONTEKS
 - `/ui` – index.html: **przepisany od zera** — 3-step scan launcher (target→profil→start), hero z animowanym pulsing ring, walidacja target (domain/IP/CIDR), profile cards z license lock overlay, SSE live feed z typewriter effect (30ms/char), 17 faz funkcjonalnych (MODULE_LABELS), progress bar z ETA, completion screen ze statystykami + link do scan detail, recent scans (5 ostatnich)
 - `/scan/{task_id}/detail` – scan_detail.html: pełna strona szczegółów skanu — hero (risk ring + target + badges), 6 zakładek (Overview z KPI+bar chart+top findings+sparkline trend, Findings z severity toggles + WYJAŚNIJ AI, Moduły grid z expand JSON, AI Analysis z narrative+chains timeline, Report z iframe preview, Remediation z task cards+inline edit+TRACK ALL+RETEST), floating AI agent chat (POST /api/scan-agent, Claude Haiku + kontekst skanu, sessionStorage history)
 - `/dashboard` – **przepisany od zera**: KPI bar (4 karty), filtry (data/profil/ryzyko/target + debounce), sortowalna tabela z paginacją (20/stronę), prawy slide-in drilldown panel (50% width, cubic-bezier) z 4 zakładkami: Summary (CSS conic-gradient risk ring, narrative, business impact, compliance), Findings (filtr severity + WYJAŚNIJ AI per finding), Moduły (grid ~44 modułów, expand JSON), Exploit Chains (vertical timeline, confidence badges). BEZ Chart.js — pure CSS/SVG. Klik wiersza → /scan/{task_id}/detail (desktop), drilldown fallback (mobile ≤768px). **Security Score Timeline**: SVG line chart + stacked bars + 3 KPI (poprawa/fix rate/trend) + target selector dropdown.
-- `/command-center` – Command Center: unified dashboard trzech głównych widoków, szybki dostęp do skanów/alertów/akcji
-- `/scheduler` – planowanie skanów
-- `/phishing` – GoPhish UI + Phishing Campaign Wizard
-- `/osint` – OSINT dashboard
-- `/admin` – Admin Panel: zarządzanie użytkownikami (CRUD), role RBAC, status licencji, system info, audit log
-- `/report/{task_id}` – Client Report View: raport dla CEO/managera, czytelny bez technicznego żargonu, risk gauge, compliance badges, recommendations
+- `/login` – login.html (258 linii): JWT auth form, localStorage token, redirect do /ui
+- `/command-center` – command_center.html (892 linii): unified dashboard trzech głównych widoków, szybki dostęp do skanów/alertów/akcji
+- `/scheduler` – scheduler.html (342 linie): planowanie skanów (CRUD), lista zaplanowanych, cron-style
+- `/phishing` – phishing.html (1565 linii): GoPhish UI + Phishing Campaign Wizard (4-step), Evilginx2 monitor (sessions/credentials/lures), BeEF hooks
+- `/osint` – osint.html (1269 linii): Deep OSINT Scanner — 5 typów (domain/IP/email/phone/username), progress tracking, historia z PDF export, moduły: Sherlock/Maigret/Holehe/theHarvester/WHOIS/subfinder/httpx
+- `/topology` – topology.html (455 linii): D3.js v7 force-directed graph wizualizacja topologii sieci ze skanów; `build_topology()` parsuje nmap/netdiscover/arpscan/nbtscan/bloodhound/traceroute/certipy; node types: cloud/target/gateway/host/dc; risk glow per node; zoom/drag; side panel po kliknięciu; scan selector dropdown; KPI strip (hosts/ports/edges/risk)
+- `/verify` – verify.html (1348 linii): CYRBER VERIFY — fraud detection dla URL/email/firmy; 14 OSINT źródeł (WHOIS, GSB, VT, URLhaus, GreyNoise, Wayback, MX, RDAP, crt.sh, SPF/DMARC, IPinfo, AbuseIPDB, OTX, Tranco); tabs UI: wyniki + raport AI + historia; bidirectional scoring 0-100
+- `/admin` – admin.html (1333 linie): Admin Panel — zarządzanie użytkownikami (CRUD), role RBAC, status licencji, system info, Intel Sync (status/logi/SYNC NOW), audit log
+- `/report/{task_id}` – report.html (733 linie): Client Report View — raport dla CEO/managera, czytelny bez technicznego żargonu, risk gauge, compliance badges, recommendations
 - PDF Report – automatyczny, WeasyPrint + Jinja2
 - AI Explain per Finding – POST /api/explain-finding: Claude Haiku tłumaczy znalezisko po polsku (CO TO JEST / CZYM GROZI / JAK NAPRAWIĆ), Redis cache 24h (klucz: explain:{name}:{severity})
+
+**Frontend stats:** 12 plików HTML, ~13 300 linii, vanilla JS (zero frameworków), authFetch() z JWT 401 handler, esc()/escHtml() XSS protection
 
 **Notify:** Email + Slack + Discord + Telegram
 
@@ -232,6 +241,30 @@ Prompt do LLM zawiera sekcję `=== KORELACJE MIEDZYMODULOWE ===` między KONTEKS
 3. **pdf_report.py** – `{{}}` w f-stringu (enum4linux, netexec) → `TypeError: unhashable type: 'dict'`. Naprawione (2 miejsca).
 4. **Wapiti timeout** – 30s → 120s, max-scan-time 300s → 600s.
 5. **SQLmap timeout** – 30s → 60s, retries 1 → 2.
+
+### Frontend Security Audit (sesja 26.02.2026 — część 5-6)
+
+Pełny audyt bezpieczeństwa wszystkich 12 plików HTML (2 sesje, ~22 bugi):
+
+| Plik | Bugi | Typy | Commit |
+|------|------|------|--------|
+| index.html | 2 | XSS risk_level | `97e9d17` |
+| scan_detail.html | 3 | XSS, delete double-click, dedup auth/me | `0b739c1` |
+| login.html | 1 | double-submit guard | `957c057` |
+| dashboard.html | 3 | XSS risk, malware_signature, module | `d35b37a` |
+| phishing.html | 3 | XSS status, review values, double-click | `ef75a9a` |
+| osint.html | 4 | XSS inline onclick→data-attrs, country | `e9ec943` |
+| verify.html | 3 | XSS inline onclick→data-attrs, icon, risk | `8da6471` |
+| admin.html | 3 | XSS role, inline onclick→data-attrs, status | `91ea2e2` |
+| scheduler.html | 0 | — | — |
+| topology.html | 1 | XSS d.risk unescaped | `9912137` |
+| report.html | — | (audyt wcześniej) | `b80cc4b`+ |
+| command_center.html | — | (audyt wcześniej) | — |
+
+**Wzorce naprawione:**
+1. **escHtml()/esc() nie escapuje `'`** — inline `onclick="fn('${escHtml(data)}')"` = JS injection. Fix: `data-*` atrybuty + `addEventListener`
+2. **Backend string data w innerHTML bez escape** — risk_level, status, role, country, malware_signature, module name
+3. **Brak disabled guard na buttonach** — double-click/double-submit
 
 ---
 
@@ -309,7 +342,7 @@ ZNAJDŹ → ZROZUM → NAPRAW → SPRAWDŹ → (powtórz)
 
 ### Do zrealizowania (kolejne sesje)
 - **Compliance Evidence PDF** — GET /report/{task_id}/compliance?framework=nis2
-- **Integracje zewnętrzne** — Jira webhook, GitHub Issues, MISP
+- **Integracje zewnętrzne** — Jira webhook, GitHub Issues (MISP ✅ zrealizowane sesja 25.02)
 - **Notyfikacje do ownera** — email/Slack/Discord po retest
 
 ### Model biznesowy — subskrypcja CYRBER LOOP
@@ -327,12 +360,14 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 ## 11. Backlog (priorytety)
 
 ### Priorytet 0 – Następna sesja
-1. **Compliance Evidence PDF export** (GET /report/{task_id}/compliance?framework=nis2, WeasyPrint + Jinja2)
-2. **ATT&CK full sync + ENISA EU VDB** (rozszerzenie intelligence_sync.py)
-3. **Dark/Light theme toggle** (CSS custom properties + localStorage)
-4. **Testy end-to-end całego nowego GUI na DVWA** (Remediation Tracker, Timeline, Intel Sync, Retest)
-5. **Pentest-as-Code CI/CD** (GitHub Actions — skan jako step w pipeline)
-6. **MISP integration** (enterprise — Threat Intelligence sharing)
+1. **Hardware head bridge** (cyrber-hw-bridge — WiFi Pineapple, Flipper Zero)
+
+### Zrealizowane z Priorytet 0
+- ~~ATT&CK full sync + ENISA EU VDB~~ ✅ (sesja 25.02)
+- ~~Dark/Light theme toggle~~ ✅ (sesja 25.02 — Design System)
+- ~~Pentest-as-Code CI/CD~~ ✅ (sesja 25.02)
+- ~~MISP integration~~ ✅ (sesja 25.02)
+- ~~Network topology visualization~~ ✅ (sesja 26.02 — D3.js)
 
 ### Priorytet 1 – AI Integration (w toku)
 - Cross-module reasoning ✅
@@ -379,8 +414,9 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 
 ### Priorytet 7 – OSINT rozszerzenia
 - Exiftool ✅ — EXIF metadata extraction, GPS/device/datetime, always-run w pipeline
+- GreyNoise ✅ — intel source (sesja 25.02)
 - Blackbird – 600+ platform, AI profiling
-- URLScan.io, GreyNoise, Fullhunt.io (darmowe tier)
+- URLScan.io, Fullhunt.io (darmowe tier)
 - HaveIBeenPwned ($3.50/msc)
 
 ### Priorytet 8 – Hardware (po stabilizacji software)
@@ -405,7 +441,7 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 - Dashboard redirect ✅ — klik wiersza → /scan/{task_id}/detail (desktop), drilldown (mobile)
 - Terminal panel ✅ — surowy techniczny podgląd SSE obok live feed podczas skanowania
 - Admin bypass licencji ✅ — rola admin omija lock profili, licencja ogranicza tylko klientów
-- Nav uproszczony ✅ — SCAN | DASHBOARD | SCHEDULER | PHISHING | ADMIN (usunięte OSINT, CMD CENTER)
+- Nav ✅ — SCAN | DASHBOARD | PHISHING | SCHEDULER | OSINT | TOPOLOGY | VERIFY | ADMIN (+ LOGOUT)
 - Bugfix scan-agent ✅ — exploit_chains dict→list extraction (TypeError: unhashable type 'slice')
 
 ### Zrealizowane – Sesja 24.02.2026 (część 2: CYRBER LOOP)
@@ -414,8 +450,24 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 - **Auto-retest** ✅ — run_targeted_retest() (13 modułów, dynamiczny import), retest_finding Celery task, 2 endpointy API, UI RETEST button z polling 5s, verified/reopened flow
 - **Security Score Timeline** ✅ — dashboard SVG line chart (pure JS, zero bibliotek) + stacked bars + 3 KPI + target selector, scan_detail sparkline SVG 150x40, 2 endpointy API (timeline + security-scores)
 
+### Zrealizowane – Sesja 25.02.2026
+- **ATT&CK Full Sync** ✅ — sync_attack() STIX→DB, 6 tabel ORM, CAPEC-CWE map, ENISA EUVD, Celery Beat weekly/daily
+- **GUI Design System** ✅ — static/theme.css dark/light, 10 stron zaktualizowanych, auto-switch prefers-color-scheme
+- **Pentest-as-Code CI/CD** ✅ — CI profile (6 modułów, ~3 min), SARIF 2.1.0, GitHub Actions (reusable workflow + dispatch), 23 testów
+- **MISP Integration** ✅ — bidirectional (import IOC + export findings), PyMISP, enterprise tier, 5 testów
+- **Enrichment Badges** ✅ — KEV/EUVD/MISP/EPSS/ATT&CK per finding w scan_detail, dashboard, report
+- **Shodan/URLhaus/GreyNoise** ✅ — 3 nowe intel sources (zero API key), 15 testów
+
+### Zrealizowane – Sesja 26.02.2026
+- **ExploitDB + MalwareBazaar** ✅ — 2 nowe intel sources (12 total), abuse.ch integration, 6 testów
+- **CYRBER VERIFY v2-v4** ✅ — 14 OSINT źródeł, bidirectional scoring, edukacyjny AI raport, tabs UI redesign, narrative/problems/positives, 46 testów
+- **Network Topology** ✅ — D3.js force-directed graph, build_topology() pure function, GET /api/scan/{task_id}/topology, 8 testów
+- **Fix test_verify.py** ✅ — mockowanie generate_verdict() (Claude Haiku), 100 testów w 7s (zamiast hang)
+- **Frontend 404 audit & fixes** ✅ — extract_cves() dict/None handling, ZAP healthcheck endpoint, /api/me→/auth/me w topology.html, /evilginx/lures→/api/evilginx/lures w phishing.html; pełny audit 27 fetch() paths z 11 plików HTML → 0 404-ek
+- **Frontend Security Audit (XSS)** ✅ — pełny audyt bezpieczeństwa 12 plików HTML (2 sesje): ~22 bugi XSS naprawione (unescaped innerHTML, inline onclick→data-attrs, double-click guards); wzorce: escHtml() nie escapuje `'` w JS strings; 18 commitów security fix
+
 ### Must-have przed pierwszym pilotem
-- Claude Code Security scan własnego kodu ⚠️
+- ~~Claude Code Security scan własnego kodu~~ ✅ (frontend XSS audit — 12 plików, ~22 bugów naprawionych)
 - Demo video (5 minut)
 - NDA + kontrakt pentestingowy
 - Landing page cyrber.pl (realizuje syn)
@@ -459,34 +511,52 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 
 ## 14. Aktualny stan commitów
 
-Ostatnie commity na master (stan 24.02.2026 → najnowsze na górze):
+Ostatnie commity na master (stan 26.02.2026 → najnowsze na górze):
 ```
+9912137 fix: escape d.risk in topology side panel innerHTML
+91ea2e2 fix: XSS in admin.html — role badge, inline onclick, intel status
+8da6471 fix: XSS in verify.html — inline onclick, unescaped icon and risk class
+e9ec943 fix: XSS in osint.html — inline onclick replaced with data attributes
+ef75a9a fix: XSS escaping + double-click guard in phishing.html
+d35b37a fix: XSS escaping in dashboard.html — risk, malware_signature, module name
+0b739c1 fix: scan_detail.html XSS escaping, delete double-click, dedupe auth/me
+97e9d17 fix: index.html escape risk_level in recent scans innerHTML
+957c057 fix: login.html double-submit guard on authenticate button
+b80cc4b fix: topology.html add authFetch 401 handler, consistent nav, footer
+aec8895 fix: admin.html add 401 handler to authFetch, double-click guards on modals
+203ece2 fix: verify.html Enter key duplicate guard, XSS escaping for candidates & URLs
+4936da8 fix: osint.html Enter key duplicate scan, PDF error handling, XSS escaping
+d175061 fix: scheduler.html XSS escaping, double-click guard, null-safe, json catch
+4f73436 fix: phishing.html AI generate double-send guard, XSS escaping, json catch
+8d0a37b fix: scan_detail.html prevent AI chat double-send via Enter key
+dca326d fix: dashboard.html KPI label CRITICAL FINDINGS → TOTAL FINDINGS
+51726aa fix: index.html MODULE_LABELS sync with backend pipeline
+2c99bb7 fix: phishing.html POST /evilginx/lures → /api/evilginx/lures
+ea659ce fix: /api/me → /auth/me endpoint alignment in topology.html
+57075e5 fix: ZAP healthcheck endpoint
+409bfcf fix: extract_cves() handle dict/None items in sequence join
+00364e0 feat: network topology + fix tests
+6e94728 feat: certipy tests - 28 testów ESC1-ESC13
+5e799c6 fix: verify_company - realistyczny flow dla PL firm
+994531b feat: verify_company - wyszukiwanie po nazwie firmy
+a3272ec fix: verify_company false positive - nuanced scoring
+2c8c529 fix: URLhaus + MalwareBazaar Auth-Key authentication
+5f9ca32 fix: CYRBER VERIFY - 3 bugi + false positive protection
+0898c1b feat: CYRBER VERIFY v4 - edukacyjny raport AI
+0b6a3de feat: CYRBER VERIFY v3 - redesign UI + zakładka RAPORT AI
+3467fae feat: CYRBER VERIFY v2 - 7 nowych zrodel + bidirectional scoring
+cbea0ed feat: CYRBER VERIFY live - ageotrans.eu PODEJRZANE 60/100
+5d7541d feat: Evilginx2 integration - social engineering / MITM phishing
+c932157 feat: MalwareBazaar integration
+0b5e870 feat: ExploitDB integration
+6eb8d80 feat: enrichment badges UI + MISP export
+e31c387 feat: MISP integration
+6ea40b7 feat: Pentest-as-Code CI/CD
+4db4d8f feat: Design System dark/light theme
 560b19c feat: Security Score Timeline UI
-8b9dc60 feat: Security Score Timeline API
 d9ca69c feat: Auto-retest - CYRBER LOOP krok 2
 649ed45 feat: Intelligence Sync - KEV/NVD/EPSS enrichment
 4ed42fe feat: Remediation Tracker - CYRBER LOOP krok 1
-ed4662b docs: transfer prompt - CYRBER LOOP koncept + priorytety
-84d70ef docs: transfer prompt - sesja 24.02.2026 final
-3fbca85 fix: bugfixy scan detail i agent
-0ba9aac docs: transfer prompt - scan detail page + index.html rewrite
-44aff0c feat: Scan View rewrite - 3-step flow + SSE live feed
-3de1492 feat: Scan Detail Page + Floating AI Agent
-924626b docs: transfer prompt - sesja 24.02.2026 czesc 3
-1c2b17b feat: dashboard pełny rewrite + AI explain
-b334ece feat: Client Report View - raport dla CEO/managera
-cdd112c feat: Auto-Flow po skanie - rekomendowane akcje
-6bbeff1 feat: Command Center - unified dashboard trzech glow
-f9251ea feat: Nginx reverse proxy + HTTPS/TLS
-6cb7eff feat: hardening - security headers, rate limiting, docker no-new-privileges
-cecbf0d feat: system licencji on-prem HMAC-SHA256
-4bd0375 feat: system licencji on-prem HMAC-SHA256
-f357c0d feat: Admin Panel UI - zarzadzanie uzytkownikami
-390b184 feat: system uzytkownikow i ról RBAC
-df9b945 docs: transfer prompt - sesja 24.02.2026 kompletna
-3fd35be feat: Garak LLM security scanner - osobny kontener
-2d3b67e feat: Certipy - AD Certificate Services enumeration
-f660d59 docs: SET usunieto z backlogu - nieintegrowalny TUI, zastapiony GoPhish+BeEF+Evilginx
 ```
 
 ---
@@ -501,8 +571,7 @@ Open-source vulnerability scanner, 978 gwiazdek, MIT, stack: Go + Next.js + Rabb
    Inspiracja dla hardware head (Flipper Zero, WiFi Pineapple jako agenty raportujące do CYRBER).
    Plik do analizy: sirius-engine/
 
-2. Network topology visualization - interaktywna mapa sieci z odkrytych hostów podczas skanów CIDR.
-   Przydatne dla enterprise przy skanach 10.0.0.0/24 i większych.
+2. ~~Network topology visualization~~ — ✅ ZREALIZOWANE (sesja 26.02.2026) — D3.js force-directed graph, /topology
 
 3. Visual workflow editor - drag-and-drop konfiguracja modułów.
    Rozważyć dla enterprise tier jako alternatywa dla poziomów Szczeniak/Strażnik/Cerber.
@@ -534,4 +603,4 @@ NIE kopiować stack Go/gRPC, zaadaptować KONCEPT modułowego agenta w Pythonie.
 
 ---
 
-*Transfer prompt wygenerowany: luty 2026*
+*Transfer prompt zaktualizowany: 26 luty 2026 (po frontend security audit — 80 modułów, 176 endpointów, 278 testów, 12 stron HTML)*
