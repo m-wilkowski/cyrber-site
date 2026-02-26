@@ -845,7 +845,7 @@ function renderCampaigns(campaigns) {
     var date = c.created_date ? c.created_date.replace('T',' ').slice(0,16) : '—';
     html += '<tr>';
     html += '<td style="color:var(--white)">' + escHtml(c.name || '—') + '</td>';
-    html += '<td><span class="badge ' + badgeCls + '">' + (c.status || 'N/A').toUpperCase() + '</span></td>';
+    html += '<td><span class="badge ' + badgeCls + '">' + escHtml((c.status || 'N/A').toUpperCase()) + '</span></td>';
     html += '<td>' + (stats.sent || 0) + '</td>';
     html += '<td>' + (stats.opened || 0) + '</td>';
     html += '<td>' + (stats.clicked || 0) + '</td>';
@@ -1306,22 +1306,22 @@ function wizBuildReview() {
   rows.push(['VECTOR', wizState.vector === 'gophish' ? 'GoPhish (Email)' : 'Evilginx2 (MITM)']);
 
   if (wizState.vector === 'gophish') {
-    rows.push(['NAME', document.getElementById('campName').value || '—']);
-    rows.push(['DOMAIN', document.getElementById('campDomain').value || '—']);
-    rows.push(['SUBJECT', document.getElementById('campSubject').value || '—']);
+    rows.push(['NAME', escHtml(document.getElementById('campName').value || '—')]);
+    rows.push(['DOMAIN', escHtml(document.getElementById('campDomain').value || '—')]);
+    rows.push(['SUBJECT', escHtml(document.getElementById('campSubject').value || '—')]);
     rows.push(['BODY', '<pre style="white-space:pre-wrap;font-size:11px;max-height:150px;overflow:auto;margin:0">' + escHtml(document.getElementById('campBody').value || '—') + '</pre>']);
-    rows.push(['LANDING', document.getElementById('campLanding').value || '—']);
+    rows.push(['LANDING', escHtml(document.getElementById('campLanding').value || '—')]);
     var targets = document.getElementById('campTargets').value.trim().split('\n').filter(function(e){ return e.trim(); });
     rows.push(['RECIPIENTS', targets.length + ' addresses']);
   } else {
-    rows.push(['NAME', document.getElementById('evilCampName').value || '—']);
-    rows.push(['PHISHLET', document.getElementById('evilPhishlet').value || '—']);
-    rows.push(['LURE URL', document.getElementById('evilLureUrl').value || '—']);
-    rows.push(['REDIRECT', document.getElementById('evilRedirectUrl').value || '—']);
+    rows.push(['NAME', escHtml(document.getElementById('evilCampName').value || '—')]);
+    rows.push(['PHISHLET', escHtml(document.getElementById('evilPhishlet').value || '—')]);
+    rows.push(['LURE URL', escHtml(document.getElementById('evilLureUrl').value || '—')]);
+    rows.push(['REDIRECT', escHtml(document.getElementById('evilRedirectUrl').value || '—')]);
   }
 
   if (wizState.selectedScan) {
-    rows.push(['RECON', wizState.selectedScan.target || '—']);
+    rows.push(['RECON', escHtml(wizState.selectedScan.target || '—')]);
   }
 
   var html = '';
@@ -1471,10 +1471,13 @@ async function loadLures() {
 }
 
 async function egCreateLure() {
+  var createBtn = event ? event.target : document.querySelector('#egLureForm .btn-primary');
+  if (createBtn && createBtn.disabled) return;
   var phishlet = document.getElementById('egLurePhishlet').value;
   var path = document.getElementById('egLurePath').value.trim();
   var redirect = document.getElementById('egLureRedirect').value.trim();
   if (!phishlet) { showMsg('Select a phishlet', true); return; }
+  if (createBtn) createBtn.disabled = true;
 
   try {
     var r = await authFetch('/api/evilginx/lures', {
@@ -1494,6 +1497,7 @@ async function egCreateLure() {
   } catch(e) {
     showMsg('Connection error: ' + e.message, true);
   }
+  if (createBtn) createBtn.disabled = false;
 }
 
 async function egDeleteLure(id) {
