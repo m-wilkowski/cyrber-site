@@ -244,9 +244,15 @@ async function fetchSchedules() {
   }
 }
 
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
 function renderSchedules(schedules) {
   const el = document.getElementById('schedules-list');
-  if (!schedules.length) {
+  if (!schedules || !schedules.length) {
     el.innerHTML = '<div class="empty">No schedules found</div>';
     return;
   }
@@ -265,7 +271,7 @@ function renderSchedules(schedules) {
       <tbody>
         ${schedules.map(s => `
           <tr>
-            <td>${s.target}</td>
+            <td>${escHtml(s.target)}</td>
             <td>every ${s.interval_hours}h</td>
             <td><span class="badge ${s.enabled ? 'badge-on' : 'badge-off'}">${s.enabled ? 'ACTIVE' : 'DISABLED'}</span></td>
             <td>${s.last_run ? s.last_run.replace('T', ' ').slice(0,16) : '—'}</td>
@@ -279,12 +285,15 @@ function renderSchedules(schedules) {
 }
 
 async function addSchedule() {
+  var addBtn = document.querySelector('.btn-primary');
+  if (addBtn.disabled) return;
   const target = document.getElementById('target').value.trim();
   const interval = parseInt(document.getElementById('interval').value);
   const msg = document.getElementById('msg');
 
   if (!target) { showMsg('Target is required', true); return; }
   if (!interval || interval < 1) { showMsg('Interval must be at least 1 hour', true); return; }
+  addBtn.disabled = true;
 
   try {
     const r = await authFetch('/schedules', {
@@ -297,12 +306,13 @@ async function addSchedule() {
       document.getElementById('target').value = '';
       fetchSchedules();
     } else {
-      const err = await r.json();
+      const err = await r.json().catch(function(){ return {}; });
       showMsg(err.detail || 'Error', true);
     }
   } catch(e) {
     showMsg('Connection error', true);
   }
+  addBtn.disabled = false;
 }
 
 async function deleteSchedule(id) {
