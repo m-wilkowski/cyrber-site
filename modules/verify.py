@@ -710,6 +710,118 @@ def calculate_risk(signals: dict) -> int:
 #  AI VERDICT
 # ═══════════════════════════════════════════════════════════════
 
+def _extract_problems(signals: dict) -> list[dict]:
+    """Convert red flags into structured problem cards."""
+    problems = []
+    flags = _extract_red_flags(signals)
+    for flag in flags:
+        parts = flag.split(": ", 1)
+        if len(parts) == 2:
+            problems.append({"title": parts[0], "explanation": parts[1]})
+        else:
+            problems.append({"title": "Ostrzeżenie", "explanation": flag})
+    return problems
+
+
+def _extract_positives(signals: dict) -> list[dict]:
+    """Convert trust factors into structured positive cards."""
+    positives = []
+    factors = _extract_trust_factors(signals)
+    for factor in factors:
+        parts = factor.split(": ", 1)
+        if len(parts) == 2:
+            positives.append({"title": parts[0], "explanation": parts[1]})
+        else:
+            positives.append({"title": "Pozytywny sygnał", "explanation": factor})
+    return positives
+
+
+def _generate_action(risk_score: int, query: str) -> str:
+    """Generate concrete action recommendation based on risk score."""
+    if risk_score > 50:
+        return f"Nie wchodź na {query}. Jeśli ktoś przysłał Ci ten link — zignoruj wiadomość. Jeśli podałeś dane, natychmiast zmień hasła i skontaktuj się z bankiem."
+    elif risk_score >= 20:
+        return f"Zachowaj ostrożność. Nie podawaj danych osobowych ani finansowych na {query}. Sprawdź adres URL dokładnie — czy to na pewno oficjalna strona?"
+    else:
+        return f"Strona {query} wygląda bezpiecznie. Pamiętaj jednak, aby zawsze sprawdzać adres URL przed podaniem danych."
+
+
+def _generate_narrative(risk_score: int, signals: dict, query: str) -> str:
+    """Generate a warm, educational narrative about the verification result."""
+    problems = _extract_problems(signals)
+    positives = _extract_positives(signals)
+
+    if risk_score > 50:
+        intro = f"Sprawdziliśmy {query} w {len(signals)} niezależnych bazach danych bezpieczeństwa i mamy poważne obawy."
+        detail = f" Znaleźliśmy {len(problems)} sygnałów ostrzegawczych." if problems else ""
+        advice = " Zdecydowanie odradzamy interakcję z tą stroną — wiele wskazuje na to, że może być niebezpieczna."
+        outro = " Jeśli otrzymałeś ten link w wiadomości od kogoś — nie klikaj i ostrzeż nadawcę, bo jego konto mogło zostać przejęte."
+    elif risk_score >= 20:
+        intro = f"Sprawdziliśmy {query} i znaleźliśmy mieszane sygnały."
+        detail = f" Z jednej strony {len(positives)} czynników wygląda dobrze, ale {len(problems)} budzi nasze wątpliwości." if positives and problems else ""
+        advice = " Nie oznacza to od razu oszustwa, ale zalecamy zachowanie czujności."
+        outro = " Zanim podasz jakiekolwiek dane, upewnij się że to oficjalna strona firmy, z którą chcesz mieć do czynienia."
+    else:
+        intro = f"Sprawdziliśmy {query} w naszych bazach bezpieczeństwa i wszystko wygląda w porządku."
+        detail = f" Znaleźliśmy {len(positives)} pozytywnych sygnałów zaufania." if positives else ""
+        advice = " Strona ma dobre wskaźniki bezpieczeństwa."
+        outro = " Pamiętaj jednak, że żadna automatyczna analiza nie daje 100% pewności — zawsze warto zachować zdrowy rozsądek."
+
+    return intro + detail + advice + outro
+
+
+def _generate_educational_tips(risk_score: int, signals: dict) -> list[dict]:
+    """Generate structured educational tips based on analysis."""
+    tips = []
+
+    whois = signals.get("whois", {})
+    if whois.get("age_days") is not None:
+        tips.append({
+            "icon": "📅",
+            "title": "Sprawdzaj wiek domeny",
+            "text": "Legalne firmy działają od lat. Jeśli domena ma mniej niż 90 dni — to poważny sygnał ostrzegawczy. Możesz to sprawdzić na whois.domaintools.com.",
+        })
+
+    spf = signals.get("spf_dmarc", {})
+    if spf:
+        tips.append({
+            "icon": "📧",
+            "title": "SPF i DMARC chronią przed spoofingiem",
+            "text": "Te techniczne zabezpieczenia DNS potwierdzają, że emaile z danej domeny są autentyczne. Ich brak oznacza, że ktoś może podszywać się pod nadawcę.",
+        })
+
+    if signals.get("virustotal", {}).get("available"):
+        tips.append({
+            "icon": "🔍",
+            "title": "Jak samodzielnie sprawdzić link?",
+            "text": "Wklej podejrzany link na virustotal.com — 70+ silników antywirusowych sprawdzi go za darmo. Nigdy nie klikaj linku, zanim go nie zweryfikujesz.",
+        })
+
+    if signals.get("tranco", {}):
+        tips.append({
+            "icon": "📊",
+            "title": "Ranking popularności stron",
+            "text": "Tranco to niezależny ranking miliona najpopularniejszych stron. Jeśli strona jest w top 10K — prawie na pewno jest legalna.",
+        })
+
+    if risk_score > 50:
+        tips.append({
+            "icon": "🚨",
+            "title": "Co zrobić gdy podałeś dane?",
+            "text": "Natychmiast zmień hasła (zacznij od banku i emaila). Włącz weryfikację dwuetapową (2FA). Zgłoś incydent na incydent.cert.pl.",
+        })
+
+    # Always return at least 3 tips
+    if len(tips) < 3:
+        tips.append({
+            "icon": "🔒",
+            "title": "Zawsze sprawdzaj HTTPS",
+            "text": "Kłódka w pasku adresu oznacza szyfrowane połączenie, ale NIE gwarantuje, że strona jest bezpieczna. Oszuści też używają HTTPS.",
+        })
+
+    return tips[:5]
+
+
 def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
     """Generate AI verdict using Claude Haiku — educational mode."""
     # Determine base verdict from score (new thresholds)
@@ -736,15 +848,19 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
             f"Sygnały:\n{signals_summary}\n\n"
             f"Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown):\n"
             f'{{"verdict": "{base_verdict}", '
-            f'"summary": "Podsumowanie po polsku (2-3 zdania) — wyjaśnij CO zbadałeś i DLACZEGO wynik jest taki a nie inny", '
+            f'"summary": "Krótkie podsumowanie 1-2 zdania po polsku", '
+            f'"narrative": "Dłuższe wyjaśnienie 4-6 zdań ciepłym językiem jakbyś tłumaczył przyjacielowi — co sprawdziliśmy, co znaleźliśmy, co to oznacza", '
             f'"red_flags": ["lista czerwonych flag po polsku — każda zaczyna się od nazwy źródła np. VirusTotal: ..."], '
-            f'"trust_factors": ["lista czynników zaufania po polsku — np. Tranco: domena w top 10K popularnych stron"], '
-            f'"signal_explanations": [{{"signal": "nazwa_techniczna", "value": "wartość", "meaning": "co to znaczy dla laika po polsku", "risk": "green|gray|amber|red", "icon": "emoji"}}], '
-            f'"educational_tips": ["3 praktyczne porady po polsku — czego użytkownik może się nauczyć z tej analizy"], '
+            f'"trust_factors": ["lista czynników zaufania po polsku"], '
+            f'"signal_explanations": [{{"signal": "nazwa", "value": "wartość", "meaning": "co to znaczy", "risk": "green|gray|amber|red", "icon": "emoji"}}], '
+            f'"problems": [{{"title": "nazwa problemu", "explanation": "wyjaśnienie 2-3 zdania"}}], '
+            f'"positives": [{{"title": "pozytywny sygnał", "explanation": "wyjaśnienie 2-3 zdania"}}], '
+            f'"action": "Konkretne kroki co zrobić TERAZ — 2-3 zdania", '
+            f'"educational_tips": [{{"icon": "emoji", "title": "tytuł porady", "text": "treść porady 2-3 zdania"}}], '
             f'"recommendation": "Rekomendacja działania po polsku (1-2 zdania)"}}'
         )
 
-        response_text = provider.chat(prompt, max_tokens=1200)
+        response_text = provider.chat(prompt, max_tokens=2000)
         clean = response_text.strip()
         if clean.startswith("```"):
             clean = clean.split("```")[1]
@@ -762,10 +878,18 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
 
         # Ensure verdict matches score-based threshold
         result["verdict"] = base_verdict
-        # Ensure new fields present
+        # Ensure all fields present with fallbacks
         result.setdefault("trust_factors", _extract_trust_factors(signals))
         result.setdefault("signal_explanations", _extract_signal_explanations(signals))
-        result.setdefault("educational_tips", [])
+        result.setdefault("narrative", _generate_narrative(risk_score, signals, query))
+        result.setdefault("problems", _extract_problems(signals))
+        result.setdefault("positives", _extract_positives(signals))
+        result.setdefault("action", _generate_action(risk_score, query))
+        result.setdefault("educational_tips", _generate_educational_tips(risk_score, signals))
+        # Normalize educational_tips to dict format
+        tips = result.get("educational_tips", [])
+        if tips and isinstance(tips[0], str):
+            result["educational_tips"] = [{"icon": "💡", "title": "Porada", "text": t} for t in tips]
         return result
 
     except Exception as exc:
@@ -773,10 +897,14 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
         return {
             "verdict": base_verdict,
             "summary": f"Analiza automatyczna wykazała risk score {risk_score}/100.",
+            "narrative": _generate_narrative(risk_score, signals, query),
             "red_flags": _extract_red_flags(signals),
             "trust_factors": _extract_trust_factors(signals),
             "signal_explanations": _extract_signal_explanations(signals),
-            "educational_tips": [],
+            "problems": _extract_problems(signals),
+            "positives": _extract_positives(signals),
+            "action": _generate_action(risk_score, query),
+            "educational_tips": _generate_educational_tips(risk_score, signals),
             "recommendation": "Zalecamy ostrożność." if risk_score >= 20 else "Brak podejrzanych sygnałów.",
         }
 
@@ -1117,8 +1245,13 @@ class CyrberVerify:
             return {
                 "query": email, "type": "email", "risk_score": 80,
                 "verdict": "OSZUSTWO", "summary": "Nieprawidłowy format adresu email.",
+                "narrative": "Podany adres email ma nieprawidłowy format — brakuje znaku @ lub domeny. Prawidłowy email wygląda tak: nazwa@domena.pl. Nie mogliśmy przeprowadzić dalszej analizy.",
                 "red_flags": ["Nieprawidłowy format email"],
-                "trust_factors": [], "signal_explanations": [], "educational_tips": [],
+                "trust_factors": [], "signal_explanations": [],
+                "problems": [{"title": "Nieprawidłowy format", "explanation": "Adres email nie zawiera wymaganego znaku @ z domeną."}],
+                "positives": [],
+                "action": "Sprawdź poprawność adresu email i spróbuj ponownie.",
+                "educational_tips": [{"icon": "📧", "title": "Format email", "text": "Prawidłowy adres email zawsze ma format: nazwa@domena.pl"}],
                 "recommendation": "Podaj poprawny adres email.",
                 "signals": {}, "timestamp": datetime.now(timezone.utc).isoformat(),
             }

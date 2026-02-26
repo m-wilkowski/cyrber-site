@@ -10,9 +10,15 @@ from modules.verify import (
     CyrberVerify,
     calculate_risk,
     detect_query_type,
+    generate_verdict,
     _extract_red_flags,
     _extract_trust_factors,
     _extract_signal_explanations,
+    _extract_problems,
+    _extract_positives,
+    _generate_action,
+    _generate_narrative,
+    _generate_educational_tips,
     _whois_lookup,
     _wayback_first,
     _check_mx,
@@ -501,7 +507,6 @@ class TestGenerateVerdict:
 
     def test_verdict_thresholds(self):
         """New thresholds: <20 BEZPIECZNE, 20-50 PODEJRZANE, >50 OSZUSTWO."""
-        from modules.verify import generate_verdict
         with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
             assert generate_verdict(0, {}, "t")["verdict"] == "BEZPIECZNE"
             assert generate_verdict(19, {}, "t")["verdict"] == "BEZPIECZNE"
@@ -509,3 +514,52 @@ class TestGenerateVerdict:
             assert generate_verdict(50, {}, "t")["verdict"] == "PODEJRZANE"
             assert generate_verdict(51, {}, "t")["verdict"] == "OSZUSTWO"
             assert generate_verdict(100, {}, "t")["verdict"] == "OSZUSTWO"
+
+    def test_verdict_has_narrative(self):
+        """generate_verdict returns narrative string."""
+        with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
+            result = generate_verdict(60, {"urlhaus": {"blacklisted": True}}, "evil.com")
+        assert "narrative" in result
+        assert isinstance(result["narrative"], str)
+        assert len(result["narrative"]) > 20
+
+    def test_verdict_has_problems_positives(self):
+        """generate_verdict returns problems and positives as list[dict]."""
+        signals = {
+            "urlhaus": {"blacklisted": True},
+            "whois": {"age_days": 5000, "available": False},
+        }
+        with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
+            result = generate_verdict(30, signals, "test.com")
+        assert isinstance(result["problems"], list)
+        assert isinstance(result["positives"], list)
+        # With blacklisted urlhaus there should be at least 1 problem
+        assert len(result["problems"]) >= 1
+        assert "title" in result["problems"][0]
+        assert "explanation" in result["problems"][0]
+        # With age 5000 days there should be at least 1 positive
+        assert len(result["positives"]) >= 1
+        assert "title" in result["positives"][0]
+        assert "explanation" in result["positives"][0]
+
+    def test_verdict_has_action(self):
+        """generate_verdict returns action string."""
+        with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
+            result = generate_verdict(10, {}, "safe.com")
+        assert "action" in result
+        assert isinstance(result["action"], str)
+        assert len(result["action"]) > 10
+
+    def test_educational_tips_dict_format(self):
+        """educational_tips are list[dict] with icon/title/text."""
+        signals = {"whois": {"age_days": 100}, "virustotal": {"available": True, "positives": 0, "total": 70}}
+        with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
+            result = generate_verdict(20, signals, "test.com")
+        tips = result["educational_tips"]
+        assert isinstance(tips, list)
+        assert len(tips) >= 3
+        for tip in tips:
+            assert isinstance(tip, dict)
+            assert "icon" in tip
+            assert "title" in tip
+            assert "text" in tip

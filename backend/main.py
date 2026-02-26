@@ -2151,6 +2151,14 @@ async def api_verify_history(user: dict = Depends(require_role("admin", "operato
     from modules.database import get_verify_history
     return get_verify_history(limit=50)
 
+@app.get("/api/verify/{result_id}")
+async def api_verify_get(result_id: int, user: dict = Depends(require_role("admin", "operator"))):
+    from modules.database import get_verify_result_by_id
+    result = get_verify_result_by_id(result_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Verify result not found")
+    return result
+
 # ── Multi-target scan ──
 
 class MultiTargetScan(BaseModel):

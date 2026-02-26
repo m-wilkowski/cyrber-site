@@ -201,28 +201,175 @@
     line-height: 1.6;
   }
 
-  /* ── RED FLAGS ── */
-  .flags-list { list-style: none; padding: 0; margin: 0; }
-  .flags-list li {
-    display: flex;
-    gap: var(--sp-3);
-    align-items: flex-start;
-    padding: var(--sp-3) 0;
-    border-bottom: 1px solid var(--border);
-    font-size: var(--text-base);
+  /* ── TABS (wzorzec scan_detail) ── */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: var(--sp-6); overflow-x: auto; }
+  .tab { font-family: 'Share Tech Mono', monospace; font-size: var(--text-base); letter-spacing: .12em; color: var(--text-muted); background: none; border: none; border-bottom: 2px solid transparent; padding: var(--sp-4) var(--sp-6); cursor: pointer; transition: all .2s; white-space: nowrap; }
+  .tab:hover { color: var(--text-secondary); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── AI REPORT TAB ── */
+  .narrative-block {
     color: var(--text-secondary);
-  }
-  .flags-list li::before {
-    content: '\26A0';
-    color: var(--red, #e74c3c);
-    flex-shrink: 0;
-  }
-  .flags-list .safe-flag::before {
-    content: '\2713';
-    color: #2ecc71;
+    font-size: var(--text-base);
+    line-height: 1.8;
+    padding: var(--sp-5) var(--sp-6);
+    background: var(--surface-elevated);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--accent);
+    margin-bottom: var(--sp-6);
   }
 
-  /* ── SIGNAL CARDS ── */
+  .pp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-5);
+    margin-bottom: var(--sp-6);
+  }
+  @media (max-width: 768px) { .pp-grid { grid-template-columns: 1fr; } }
+
+  .pp-col h3 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: .15em;
+    margin: 0 0 var(--sp-4) 0;
+  }
+  .problems-col h3 { color: #e74c3c; }
+  .positives-col h3 { color: #2ecc71; }
+
+  .pp-card {
+    padding: var(--sp-4) var(--sp-5);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--sp-3);
+    background: var(--surface-elevated);
+  }
+  .pp-card-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: var(--text-base);
+    letter-spacing: .08em;
+    margin-bottom: var(--sp-2);
+  }
+  .pp-card-text {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .problem-card { border-left: 3px solid #e74c3c; }
+  .problem-card .pp-card-title { color: #e74c3c; }
+  .positive-card { border-left: 3px solid #2ecc71; }
+  .positive-card .pp-card-title { color: #2ecc71; }
+
+  .action-box {
+    padding: var(--sp-5) var(--sp-6);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--accent);
+    background: var(--surface-elevated);
+    margin-bottom: var(--sp-6);
+  }
+  .action-box h3 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: .15em;
+    color: var(--accent);
+    margin: 0 0 var(--sp-3) 0;
+  }
+  .action-box p {
+    font-size: var(--text-base);
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .tips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--sp-4);
+  }
+  .tip-card {
+    background: var(--surface-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--sp-4) var(--sp-5);
+  }
+  .tip-card-icon {
+    font-size: var(--text-lg);
+    margin-bottom: var(--sp-2);
+  }
+  .tip-card-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: var(--text-sm);
+    letter-spacing: .08em;
+    color: var(--text-primary);
+    margin-bottom: var(--sp-2);
+  }
+  .tip-card-text {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* ── SIGNAL EXPLANATIONS TAB ── */
+  .signal-expl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--sp-4);
+  }
+  .signal-expl {
+    border-radius: var(--radius-sm);
+    padding: var(--sp-4) var(--sp-5);
+    border-left: 3px solid var(--border);
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .signal-expl:hover { filter: brightness(1.05); }
+  .signal-expl.risk-green { border-left-color: #2ecc71; background: rgba(46,204,113,.06); }
+  .signal-expl.risk-gray { border-left-color: var(--text-muted); background: var(--surface-elevated); }
+  .signal-expl.risk-amber { border-left-color: #f1c40f; background: rgba(241,196,15,.06); }
+  .signal-expl.risk-red { border-left-color: #e74c3c; background: rgba(231,76,60,.06); }
+  .signal-expl-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--sp-2);
+  }
+  .signal-expl-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: var(--text-sm);
+    letter-spacing: .1em;
+    color: var(--text-primary);
+  }
+  .signal-expl-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+  .signal-expl-meaning {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .3s ease;
+  }
+  .signal-expl.expanded .signal-expl-meaning {
+    max-height: 200px;
+  }
+  .signal-expl-toggle {
+    font-size: 10px;
+    color: var(--text-muted);
+    transition: transform .2s;
+  }
+  .signal-expl.expanded .signal-expl-toggle {
+    transform: rotate(180deg);
+  }
+
+  /* ── DETAILS TAB ── */
   .signal-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -257,92 +404,29 @@
     word-break: break-all;
   }
 
-  /* ── TRUST FACTORS ── */
-  .trust-list { list-style: none; padding: 0; margin: 0; }
-  .trust-list li {
+  /* ── HISTORY TAB ── */
+  .history-filters {
     display: flex;
-    gap: var(--sp-3);
-    align-items: flex-start;
-    padding: var(--sp-3) 0;
-    border-bottom: 1px solid var(--border);
-    font-size: var(--text-base);
-    color: var(--text-secondary);
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-5);
+    flex-wrap: wrap;
   }
-  .trust-list li::before {
-    content: '\2713';
-    color: #2ecc71;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  /* ── SIGNAL EXPLANATIONS ── */
-  .signal-expl-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: var(--sp-4);
-  }
-  .signal-expl {
-    border-radius: var(--radius-sm);
-    padding: var(--sp-4) var(--sp-5);
-    border-left: 3px solid var(--border);
-  }
-  .signal-expl.risk-green { border-left-color: #2ecc71; background: rgba(46,204,113,.06); }
-  .signal-expl.risk-gray { border-left-color: var(--text-muted); background: var(--surface-elevated); }
-  .signal-expl.risk-amber { border-left-color: #f1c40f; background: rgba(241,196,15,.06); }
-  .signal-expl.risk-red { border-left-color: #e74c3c; background: rgba(231,76,60,.06); }
-  .signal-expl-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--sp-2);
-  }
-  .signal-expl-name {
+  .filter-chip {
     font-family: 'Rajdhani', sans-serif;
-    font-weight: 700;
     font-size: var(--text-sm);
-    letter-spacing: .1em;
-    color: var(--text-primary);
-  }
-  .signal-expl-val {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: .08em;
+    padding: var(--sp-1) var(--sp-4);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: transparent;
     color: var(--text-muted);
+    cursor: pointer;
+    transition: all .2s;
   }
-  .signal-expl-meaning {
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-    line-height: 1.5;
-  }
+  .filter-chip:hover { color: var(--text-secondary); border-color: var(--text-muted); }
+  .filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-  /* ── EDUCATIONAL TIPS ── */
-  .tips-list { list-style: none; padding: 0; margin: 0; }
-  .tips-list li {
-    display: flex;
-    gap: var(--sp-3);
-    align-items: flex-start;
-    padding: var(--sp-3) 0;
-    border-bottom: 1px solid var(--border);
-    font-size: var(--text-base);
-    color: var(--text-secondary);
-    line-height: 1.5;
-  }
-  .tips-list li::before {
-    content: '\1F4A1';
-    flex-shrink: 0;
-  }
-
-  /* ── AI VERDICT ── */
-  .ai-verdict {
-    border-left: 3px solid var(--accent);
-    padding: var(--sp-4) var(--sp-6);
-    background: var(--surface-elevated);
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    color: var(--text-secondary);
-    font-size: var(--text-base);
-    line-height: 1.6;
-  }
-
-  /* ── HISTORY TABLE ── */
   .history-table {
     width: 100%;
     border-collapse: collapse;
@@ -396,6 +480,14 @@
     25% { content: 'Weryfikacja.'; }
     50% { content: 'Weryfikacja..'; }
     75% { content: 'Weryfikacja...'; }
+  }
+
+  .section-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: var(--text-sm);
+    letter-spacing: .18em;
+    color: var(--accent);
+    margin: var(--sp-6) 0 var(--sp-4);
   }
 
   .msg { padding: var(--sp-3) var(--sp-4); margin-top: var(--sp-3); border-radius: var(--radius-sm); font-size: var(--text-sm); font-family: 'Share Tech Mono', monospace; }
@@ -461,45 +553,29 @@
       <div class="result-hero" id="resultHero"></div>
     </div>
 
-    <!-- Red Flags -->
-    <div class="card" id="flagsCard" style="display:none">
-      <h2>// RED FLAGS</h2>
-      <ul class="flags-list" id="flagsList"></ul>
+    <!-- Tabs -->
+    <div class="tabs" id="tabsBar">
+      <button class="tab active" data-tab="report" onclick="switchTab('report')">RAPORT AI</button>
+      <button class="tab" data-tab="signals" onclick="switchTab('signals')">SYGNALY</button>
+      <button class="tab" data-tab="details" onclick="switchTab('details')">SZCZEGOLY</button>
+      <button class="tab" data-tab="history" onclick="switchTab('history')">HISTORIA</button>
     </div>
 
-    <!-- Trust Factors -->
-    <div class="card" id="trustCard" style="display:none">
-      <h2>// CZYNNIKI ZAUFANIA</h2>
-      <ul class="trust-list" id="trustList"></ul>
-    </div>
+    <!-- Tab: AI Report -->
+    <div id="tab-report" class="tab-panel active"></div>
 
-    <!-- Signal Explanations -->
-    <div class="card" id="signalExplCard" style="display:none">
-      <h2>// ANALIZA SYGNALOW</h2>
-      <div class="signal-expl-grid" id="signalExplGrid"></div>
-    </div>
+    <!-- Tab: Signals -->
+    <div id="tab-signals" class="tab-panel"></div>
 
-    <!-- Educational Tips -->
-    <div class="card" id="tipsCard" style="display:none">
-      <h2>// CZEGO SIE NAUCZYLES</h2>
-      <ul class="tips-list" id="tipsList"></ul>
-    </div>
+    <!-- Tab: Details -->
+    <div id="tab-details" class="tab-panel"></div>
 
-    <!-- Signal Details -->
-    <div class="card">
-      <h2>// SZCZEGOLY</h2>
-      <div class="signal-grid" id="signalGrid"></div>
-    </div>
-
-    <!-- AI Verdict -->
-    <div class="card" id="aiCard" style="display:none">
-      <h2>// AI WERDYKT</h2>
-      <div class="ai-verdict" id="aiVerdict"></div>
-    </div>
+    <!-- Tab: History -->
+    <div id="tab-history" class="tab-panel"></div>
   </div>
 
-  <!-- HISTORY -->
-  <div class="card">
+  <!-- HISTORY (pre-result, always visible) -->
+  <div class="card" id="historyCard">
     <h2>// HISTORIA WERYFIKACJI</h2>
     <div id="historyTable"><div style="color:var(--text-muted);font-size:var(--text-sm)">Ladowanie...</div></div>
   </div>
@@ -509,6 +585,9 @@
 
 <script>
 var API = '';
+var _currentData = null;
+var _historyItems = [];
+var _historyFilter = 'all';
 
 // ── Auth ──
 function getToken() { return localStorage.getItem('cyrber_token'); }
@@ -574,6 +653,14 @@ function verdictClass(verdict) {
   return 'safe';
 }
 
+// ── Tab switching ──
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-tab') === name); });
+  document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.toggle('active', p.id === 'tab-' + name); });
+  // Lazy-render history tab
+  if (name === 'history') loadHistory();
+}
+
 // ── Run verify ──
 async function runVerify() {
   var query = queryInput.value.trim();
@@ -605,7 +692,6 @@ async function runVerify() {
 
     var data = await r.json();
     renderResult(data);
-    loadHistory();
   } catch(e) {
     msgEl.innerHTML = '<div class="msg error">' + escHtml(e.message) + '</div>';
   }
@@ -616,6 +702,7 @@ async function runVerify() {
 
 // ── Render result ──
 function renderResult(data) {
+  _currentData = data;
   var sec = document.getElementById('resultSection');
   var score = data.risk_score || 0;
   var sc = scoreColor(score);
@@ -635,23 +722,149 @@ function renderResult(data) {
   h += '</div>';
   document.getElementById('resultHero').innerHTML = h;
 
-  // Red flags
-  var flags = data.red_flags || [];
-  var flagsCard = document.getElementById('flagsCard');
-  var flagsList = document.getElementById('flagsList');
-  if (flags.length) {
-    var fl = '';
-    flags.forEach(function(f) { fl += '<li>' + escHtml(f) + '</li>'; });
-    flagsList.innerHTML = fl;
-    flagsCard.style.display = '';
-  } else {
-    flagsList.innerHTML = '<li class="safe-flag">Brak podejrzanych sygnalow</li>';
-    flagsCard.style.display = '';
+  // Render all tabs
+  renderAiReport(data);
+  renderSignals(data);
+  renderDetails(data);
+
+  // Hide pre-result history, show tabs
+  document.getElementById('historyCard').style.display = 'none';
+
+  // Switch to AI Report tab
+  switchTab('report');
+  sec.classList.add('on');
+  sec.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+// ── Tab: AI Report ──
+function renderAiReport(data) {
+  var el = document.getElementById('tab-report');
+  var h = '';
+
+  // Narrative
+  var narrative = data.narrative || data.summary || '';
+  if (narrative) {
+    h += '<div class="section-label">// PODSUMOWANIE</div>';
+    h += '<div class="narrative-block">' + escHtml(narrative) + '</div>';
   }
 
-  // Signal cards
+  // Problems & Positives grid
+  var problems = data.problems || [];
+  var positives = data.positives || [];
+  if (problems.length || positives.length) {
+    h += '<div class="section-label">// CO ZNALEZLISMY</div>';
+    h += '<div class="pp-grid">';
+
+    // Problems column
+    h += '<div class="pp-col problems-col">';
+    h += '<h3>PROBLEMY</h3>';
+    if (problems.length) {
+      problems.forEach(function(p) {
+        h += '<div class="pp-card problem-card">';
+        h += '<div class="pp-card-title">' + escHtml(p.title || '') + '</div>';
+        h += '<div class="pp-card-text">' + escHtml(p.explanation || '') + '</div>';
+        h += '</div>';
+      });
+    } else {
+      h += '<div style="color:var(--text-muted);font-size:var(--text-sm);padding:var(--sp-3)">Brak problemow</div>';
+    }
+    h += '</div>';
+
+    // Positives column
+    h += '<div class="pp-col positives-col">';
+    h += '<h3>POZYTYWNE</h3>';
+    if (positives.length) {
+      positives.forEach(function(p) {
+        h += '<div class="pp-card positive-card">';
+        h += '<div class="pp-card-title">' + escHtml(p.title || '') + '</div>';
+        h += '<div class="pp-card-text">' + escHtml(p.explanation || '') + '</div>';
+        h += '</div>';
+      });
+    } else {
+      h += '<div style="color:var(--text-muted);font-size:var(--text-sm);padding:var(--sp-3)">Brak pozytywnych sygnalow</div>';
+    }
+    h += '</div>';
+
+    h += '</div>'; // pp-grid
+  }
+
+  // Fallback: red_flags if no problems
+  if (!problems.length && (data.red_flags || []).length) {
+    h += '<div class="section-label">// RED FLAGS</div>';
+    data.red_flags.forEach(function(f) {
+      var parts = f.split(': ');
+      var title = parts.length > 1 ? parts[0] : 'Ostrzezenie';
+      var expl = parts.length > 1 ? parts.slice(1).join(': ') : f;
+      h += '<div class="pp-card problem-card">';
+      h += '<div class="pp-card-title">' + escHtml(title) + '</div>';
+      h += '<div class="pp-card-text">' + escHtml(expl) + '</div>';
+      h += '</div>';
+    });
+  }
+
+  // Action box
+  var action = data.action || data.recommendation || '';
+  if (action) {
+    h += '<div class="section-label">// CO TO OZNACZA</div>';
+    h += '<div class="action-box">';
+    h += '<h3>REKOMENDOWANE DZIALANIE</h3>';
+    h += '<p>' + escHtml(action) + '</p>';
+    h += '</div>';
+  }
+
+  // Educational tips
+  var tips = data.educational_tips || [];
+  if (tips.length) {
+    h += '<div class="section-label">// CZEGO SIE NAUCZYLES</div>';
+    h += '<div class="tips-grid">';
+    tips.forEach(function(t) {
+      if (typeof t === 'string') {
+        t = {icon: '\uD83D\uDCA1', title: 'Porada', text: t};
+      }
+      h += '<div class="tip-card">';
+      h += '<div class="tip-card-icon">' + (t.icon || '\uD83D\uDCA1') + '</div>';
+      h += '<div class="tip-card-title">' + escHtml(t.title || '') + '</div>';
+      h += '<div class="tip-card-text">' + escHtml(t.text || '') + '</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+  }
+
+  el.innerHTML = h;
+}
+
+// ── Tab: Signals ──
+function renderSignals(data) {
+  var el = document.getElementById('tab-signals');
+  var signalExpls = data.signal_explanations || [];
+  if (!signalExpls.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);padding:var(--sp-6)">Brak danych o sygnalach</div>';
+    return;
+  }
+
+  var h = '<div class="signal-expl-grid">';
+  signalExpls.forEach(function(e, idx) {
+    var riskClass = 'risk-' + (e.risk || 'gray');
+    h += '<div class="signal-expl ' + riskClass + '" onclick="toggleSignalExpl(this)">';
+    h += '<div class="signal-expl-header">';
+    h += '<span class="signal-expl-name">' + (e.icon || '') + ' ' + escHtml(e.signal || '') + '</span>';
+    h += '<span><span class="signal-expl-val">' + escHtml(e.value || '') + '</span> <span class="signal-expl-toggle">\u25BC</span></span>';
+    h += '</div>';
+    h += '<div class="signal-expl-meaning">' + escHtml(e.meaning || '') + '</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  el.innerHTML = h;
+}
+
+function toggleSignalExpl(el) {
+  el.classList.toggle('expanded');
+}
+
+// ── Tab: Details ──
+function renderDetails(data) {
+  var el = document.getElementById('tab-details');
   var signals = data.signals || {};
-  var grid = document.getElementById('signalGrid');
   var g = '';
 
   if (signals.whois) {
@@ -728,25 +941,22 @@ function renderResult(data) {
   }
 
   if (signals.resolved_ip) {
-    g += buildSignalCard('DNS', {
-      'IP': signals.resolved_ip
-    });
+    g += buildSignalCard('DNS', { 'IP': signals.resolved_ip });
   }
 
-  // ── New v2 signal cards ──
   if (signals.rdap && signals.rdap.available) {
     g += buildSignalCard('RDAP', {
-      'Rejestracja': signals.rdap.registration || '—',
-      'Wygasa': signals.rdap.expiry || '—',
-      'Registrar': signals.rdap.registrar || '—',
-      'Status': (signals.rdap.status || []).join(', ') || '—'
+      'Rejestracja': signals.rdap.registration || '\u2014',
+      'Wygasa': signals.rdap.expiry || '\u2014',
+      'Registrar': signals.rdap.registrar || '\u2014',
+      'Status': (signals.rdap.status || []).join(', ') || '\u2014'
     });
   }
 
   if (signals.crtsh) {
     g += buildSignalCard('CRT.SH', {
       'Wiek certyfikatu (dni)': signals.crtsh.cert_age_days,
-      'Wystawca': signals.crtsh.issuer || '—'
+      'Wystawca': signals.crtsh.issuer || '\u2014'
     });
   }
 
@@ -759,9 +969,9 @@ function renderResult(data) {
 
   if (signals.ipinfo && signals.ipinfo.available) {
     g += buildSignalCard('IPINFO', {
-      'Organizacja': signals.ipinfo.org || '—',
-      'Kraj': signals.ipinfo.country || '—',
-      'Miasto': signals.ipinfo.city || '—',
+      'Organizacja': signals.ipinfo.org || '\u2014',
+      'Kraj': signals.ipinfo.country || '\u2014',
+      'Miasto': signals.ipinfo.city || '\u2014',
       'Hosting': signals.ipinfo.hosting ? 'TAK' : 'NIE'
     });
   }
@@ -787,73 +997,14 @@ function renderResult(data) {
     });
   }
 
-  grid.innerHTML = g;
-
-  // Trust Factors
-  var trustFactors = data.trust_factors || [];
-  var trustCard = document.getElementById('trustCard');
-  var trustList = document.getElementById('trustList');
-  if (trustFactors.length) {
-    var tfl = '';
-    trustFactors.forEach(function(f) { tfl += '<li>' + escHtml(f) + '</li>'; });
-    trustList.innerHTML = tfl;
-    trustCard.style.display = '';
-  } else {
-    trustCard.style.display = 'none';
-  }
-
-  // Signal Explanations
-  var signalExpls = data.signal_explanations || [];
-  var signalExplCard = document.getElementById('signalExplCard');
-  var signalExplGrid = document.getElementById('signalExplGrid');
-  if (signalExpls.length) {
-    var seg = '';
-    signalExpls.forEach(function(e) {
-      var riskClass = 'risk-' + (e.risk || 'gray');
-      seg += '<div class="signal-expl ' + riskClass + '">';
-      seg += '<div class="signal-expl-header"><span class="signal-expl-name">' + (e.icon || '') + ' ' + escHtml(e.signal || '') + '</span>';
-      seg += '<span class="signal-expl-val">' + escHtml(e.value || '') + '</span></div>';
-      seg += '<div class="signal-expl-meaning">' + escHtml(e.meaning || '') + '</div>';
-      seg += '</div>';
-    });
-    signalExplGrid.innerHTML = seg;
-    signalExplCard.style.display = '';
-  } else {
-    signalExplCard.style.display = 'none';
-  }
-
-  // Educational Tips
-  var tips = data.educational_tips || [];
-  var tipsCard = document.getElementById('tipsCard');
-  var tipsList = document.getElementById('tipsList');
-  if (tips.length) {
-    var tl = '';
-    tips.forEach(function(t) { tl += '<li>' + escHtml(t) + '</li>'; });
-    tipsList.innerHTML = tl;
-    tipsCard.style.display = '';
-  } else {
-    tipsCard.style.display = 'none';
-  }
-
-  // AI Verdict
-  var aiCard = document.getElementById('aiCard');
-  var aiDiv = document.getElementById('aiVerdict');
-  if (data.recommendation) {
-    aiDiv.innerHTML = '<p>' + escHtml(data.summary || '') + '</p><p style="margin-top:var(--sp-3);color:var(--text-primary)"><strong>Rekomendacja:</strong> ' + escHtml(data.recommendation) + '</p>';
-    aiCard.style.display = '';
-  } else {
-    aiCard.style.display = 'none';
-  }
-
-  sec.classList.add('on');
-  sec.scrollIntoView({behavior: 'smooth', block: 'start'});
+  el.innerHTML = g ? '<div class="signal-grid">' + g + '</div>' : '<div style="color:var(--text-muted);padding:var(--sp-6)">Brak danych</div>';
 }
 
 function buildSignalCard(title, pairs) {
   var h = '<div class="signal-card"><h3>' + escHtml(title) + '</h3>';
   for (var k in pairs) {
     var v = pairs[k];
-    if (v === undefined || v === null) v = '—';
+    if (v === undefined || v === null) v = '\u2014';
     h += '<div class="signal-row"><span class="signal-key">' + escHtml(k) + '</span><span class="signal-val">' + escHtml(String(v)) + '</span></div>';
   }
   h += '</div>';
@@ -865,10 +1016,62 @@ async function loadHistory() {
   try {
     var r = await authFetch('/api/verify/history');
     var data = await r.json();
-    renderHistory(data);
+    _historyItems = data || [];
+    renderHistoryTab();
+    renderHistory(_historyItems);
   } catch(e) {
     document.getElementById('historyTable').innerHTML = '<div style="color:var(--text-muted)">Blad ladowania historii</div>';
   }
+}
+
+function renderHistoryTab() {
+  var el = document.getElementById('tab-history');
+  if (!_historyItems.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);padding:var(--sp-6)">Brak historii weryfikacji</div>';
+    return;
+  }
+
+  var h = '';
+  // Filter chips
+  h += '<div class="history-filters">';
+  h += '<button class="filter-chip' + (_historyFilter === 'all' ? ' active' : '') + '" onclick="filterHistory(\'all\')">WSZYSTKIE</button>';
+  h += '<button class="filter-chip' + (_historyFilter === 'safe' ? ' active' : '') + '" onclick="filterHistory(\'safe\')" style="color:#2ecc71;border-color:#2ecc71">BEZPIECZNE</button>';
+  h += '<button class="filter-chip' + (_historyFilter === 'suspect' ? ' active' : '') + '" onclick="filterHistory(\'suspect\')" style="color:#f1c40f;border-color:#f1c40f">PODEJRZANE</button>';
+  h += '<button class="filter-chip' + (_historyFilter === 'fraud' ? ' active' : '') + '" onclick="filterHistory(\'fraud\')" style="color:#e74c3c;border-color:#e74c3c">OSZUSTWO</button>';
+  h += '</div>';
+
+  // Filtered items
+  var items = _historyItems;
+  if (_historyFilter !== 'all') {
+    items = items.filter(function(item) {
+      return verdictClass(item.verdict) === _historyFilter;
+    });
+  }
+
+  if (!items.length) {
+    h += '<div style="color:var(--text-muted);padding:var(--sp-4)">Brak wynikow dla wybranego filtru</div>';
+  } else {
+    h += '<table class="history-table"><thead><tr><th>ZAPYTANIE</th><th>TYP</th><th>WERDYKT</th><th>RISK</th><th>DATA</th></tr></thead><tbody>';
+    items.forEach(function(item) {
+      var vc = verdictClass(item.verdict);
+      var date = item.created_at ? item.created_at.replace('T', ' ').slice(0, 16) : '\u2014';
+      h += '<tr onclick="loadHistoryResult(' + item.id + ')">';
+      h += '<td style="color:var(--text-primary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(item.query) + '</td>';
+      h += '<td>' + escHtml(item.query_type || '\u2014') + '</td>';
+      h += '<td><span class="verdict-sm ' + vc + '">' + escHtml(item.verdict || '?') + '</span></td>';
+      h += '<td style="color:' + scoreColor(item.risk_score) + '">' + (item.risk_score || 0) + '</td>';
+      h += '<td>' + date + '</td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table>';
+  }
+
+  el.innerHTML = h;
+}
+
+function filterHistory(filter) {
+  _historyFilter = filter;
+  renderHistoryTab();
 }
 
 function renderHistory(items) {
@@ -880,10 +1083,10 @@ function renderHistory(items) {
   var h = '<table class="history-table"><thead><tr><th>ZAPYTANIE</th><th>TYP</th><th>WERDYKT</th><th>RISK</th><th>DATA</th></tr></thead><tbody>';
   items.forEach(function(item) {
     var vc = verdictClass(item.verdict);
-    var date = item.created_at ? item.created_at.replace('T', ' ').slice(0, 16) : '—';
-    h += '<tr onclick="reVerify(\'' + escHtml(item.query).replace(/'/g, "\\'") + '\')">';
+    var date = item.created_at ? item.created_at.replace('T', ' ').slice(0, 16) : '\u2014';
+    h += '<tr onclick="loadHistoryResult(' + item.id + ')">';
     h += '<td style="color:var(--text-primary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(item.query) + '</td>';
-    h += '<td>' + escHtml(item.query_type || '—') + '</td>';
+    h += '<td>' + escHtml(item.query_type || '\u2014') + '</td>';
     h += '<td><span class="verdict-sm ' + vc + '">' + escHtml(item.verdict || '?') + '</span></td>';
     h += '<td style="color:' + scoreColor(item.risk_score) + '">' + (item.risk_score || 0) + '</td>';
     h += '<td>' + date + '</td>';
@@ -893,10 +1096,16 @@ function renderHistory(items) {
   el.innerHTML = h;
 }
 
-function reVerify(query) {
-  queryInput.value = query;
-  queryInput.dispatchEvent(new Event('input'));
-  runVerify();
+async function loadHistoryResult(id) {
+  try {
+    var r = await authFetch('/api/verify/' + id);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    renderResult(data);
+    switchTab('report');
+  } catch(e) {
+    console.error('Failed to load result:', e);
+  }
 }
 
 // ── URL params ──

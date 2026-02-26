@@ -287,6 +287,13 @@ class VerifyResult(Base):
     red_flags      = Column(JSON)
     summary        = Column(Text)
     recommendation = Column(Text)
+    narrative      = Column(Text)              # 4-6 sentence AI narrative
+    trust_factors  = Column(JSON)              # list of trust factors
+    signal_explanations = Column(JSON)         # per-signal explanations
+    educational_tips = Column(JSON)            # [{icon, title, text}]
+    problems       = Column(JSON)              # [{title, explanation}]
+    positives      = Column(JSON)              # [{title, explanation}]
+    action         = Column(Text)              # what to do NOW
     created_at     = Column(DateTime, default=datetime.utcnow)
     created_by     = Column(String)
 
@@ -323,6 +330,26 @@ def init_db(retries=10, delay=3):
                             with engine.begin() as conn:
                                 conn.execute(text(f"ALTER TABLE remediation_tasks ADD COLUMN {col_name} {col_type}"))
                             print(f"Migration: added {col_name} to remediation_tasks")
+            except Exception:
+                pass
+            # Migrate: add v3 columns to verify_results if missing
+            try:
+                insp = sa_inspect(engine)
+                if 'verify_results' in insp.get_table_names():
+                    vr_cols = [c['name'] for c in insp.get_columns('verify_results')]
+                    for col_name, col_type in [
+                        ('narrative', 'TEXT'),
+                        ('trust_factors', 'JSON'),
+                        ('signal_explanations', 'JSON'),
+                        ('educational_tips', 'JSON'),
+                        ('problems', 'JSON'),
+                        ('positives', 'JSON'),
+                        ('action', 'TEXT'),
+                    ]:
+                        if col_name not in vr_cols:
+                            with engine.begin() as conn:
+                                conn.execute(text(f"ALTER TABLE verify_results ADD COLUMN {col_name} {col_type}"))
+                            print(f"Migration: added {col_name} to verify_results")
             except Exception:
                 pass
             print("Database initialized successfully")
@@ -997,12 +1024,50 @@ def save_verify_result(data: dict, created_by: str = "system") -> int:
             red_flags=data.get("red_flags"),
             summary=data.get("summary", ""),
             recommendation=data.get("recommendation", ""),
+            narrative=data.get("narrative", ""),
+            trust_factors=data.get("trust_factors"),
+            signal_explanations=data.get("signal_explanations"),
+            educational_tips=data.get("educational_tips"),
+            problems=data.get("problems"),
+            positives=data.get("positives"),
+            action=data.get("action", ""),
             created_by=created_by,
         )
         db.add(row)
         db.commit()
         db.refresh(row)
         return row.id
+    finally:
+        db.close()
+
+
+def get_verify_result_by_id(result_id: int) -> dict | None:
+    db = SessionLocal()
+    try:
+        r = db.query(VerifyResult).filter(VerifyResult.id == result_id).first()
+        if not r:
+            return None
+        return {
+            "id": r.id,
+            "query": r.query,
+            "type": r.query_type,
+            "query_type": r.query_type,
+            "risk_score": r.risk_score,
+            "verdict": r.verdict,
+            "signals": r.signals,
+            "red_flags": r.red_flags,
+            "summary": r.summary,
+            "recommendation": r.recommendation,
+            "narrative": r.narrative,
+            "trust_factors": r.trust_factors,
+            "signal_explanations": r.signal_explanations,
+            "educational_tips": r.educational_tips,
+            "problems": r.problems,
+            "positives": r.positives,
+            "action": r.action,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "created_by": r.created_by,
+        }
     finally:
         db.close()
 
