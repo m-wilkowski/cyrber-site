@@ -944,7 +944,7 @@ function renderRecentList(scans) {
     if (isRunning) h += ' <span class="pulse" style="color:var(--green);font-size:10px">\u25CF</span>';
     h += '</div>';
     h += '<div class="recent-item-meta">';
-    h += '<span class="risk-badge ' + riskClass + '">' + risk + '</span>';
+    h += '<span class="risk-badge ' + riskClass + '">' + escH(risk) + '</span>';
     h += '<span class="recent-item-findings">' + findings + ' fd</span>';
     h += '<span class="recent-item-time">' + timeAgo(s.created_at) + '</span>';
     h += '</div></div>';
