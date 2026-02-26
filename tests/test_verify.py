@@ -19,6 +19,9 @@ from modules.verify import (
     _generate_action,
     _generate_narrative,
     _generate_educational_tips,
+    _generate_immediate_actions,
+    _generate_if_paid_already,
+    _generate_report_to,
     _whois_lookup,
     _wayback_first,
     _check_mx,
@@ -524,7 +527,7 @@ class TestGenerateVerdict:
         assert len(result["narrative"]) > 20
 
     def test_verdict_has_problems_positives(self):
-        """generate_verdict returns problems and positives as list[dict]."""
+        """generate_verdict returns problems and positives as list[dict] with v3 fields."""
         signals = {
             "urlhaus": {"blacklisted": True},
             "whois": {"age_days": 5000, "available": False},
@@ -535,12 +538,17 @@ class TestGenerateVerdict:
         assert isinstance(result["positives"], list)
         # With blacklisted urlhaus there should be at least 1 problem
         assert len(result["problems"]) >= 1
-        assert "title" in result["problems"][0]
-        assert "explanation" in result["problems"][0]
+        p = result["problems"][0]
+        assert "title" in p
+        assert "what_found" in p
+        assert "what_means" in p
+        assert "real_risk" in p
         # With age 5000 days there should be at least 1 positive
         assert len(result["positives"]) >= 1
-        assert "title" in result["positives"][0]
-        assert "explanation" in result["positives"][0]
+        pos = result["positives"][0]
+        assert "title" in pos
+        assert "what_found" in pos
+        assert "what_means" in pos
 
     def test_verdict_has_action(self):
         """generate_verdict returns action string."""
@@ -551,7 +559,7 @@ class TestGenerateVerdict:
         assert len(result["action"]) > 10
 
     def test_educational_tips_dict_format(self):
-        """educational_tips are list[dict] with icon/title/text."""
+        """educational_tips are list[dict] with icon/title/text/example."""
         signals = {"whois": {"age_days": 100}, "virustotal": {"available": True, "positives": 0, "total": 70}}
         with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
             result = generate_verdict(20, signals, "test.com")
@@ -563,3 +571,44 @@ class TestGenerateVerdict:
             assert "icon" in tip
             assert "title" in tip
             assert "text" in tip
+            assert "example" in tip
+
+    def test_verdict_has_immediate_actions(self):
+        """generate_verdict returns immediate_actions list."""
+        with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
+            result = generate_verdict(80, {"urlhaus": {"blacklisted": True}}, "evil.com")
+        assert "immediate_actions" in result
+        assert isinstance(result["immediate_actions"], list)
+        assert len(result["immediate_actions"]) >= 3
+
+    def test_verdict_has_if_paid_already(self):
+        """generate_verdict returns if_paid_already for fraud."""
+        with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
+            result = generate_verdict(80, {}, "evil.com")
+        assert "if_paid_already" in result
+        assert isinstance(result["if_paid_already"], list)
+        assert len(result["if_paid_already"]) >= 3
+
+    def test_verdict_safe_no_if_paid(self):
+        """BEZPIECZNE verdict has empty if_paid_already."""
+        with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
+            result = generate_verdict(5, {}, "safe.com")
+        assert result["if_paid_already"] == []
+
+    def test_verdict_has_report_to(self):
+        """OSZUSTWO verdict has report_to with institutions."""
+        with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
+            result = generate_verdict(80, {}, "evil.com")
+        assert "report_to" in result
+        assert isinstance(result["report_to"], list)
+        assert len(result["report_to"]) >= 3
+        inst = result["report_to"][0]
+        assert "institution" in inst
+        assert "url" in inst
+        assert "description" in inst
+
+    def test_verdict_safe_no_report_to(self):
+        """BEZPIECZNE verdict has empty report_to."""
+        with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
+            result = generate_verdict(5, {}, "safe.com")
+        assert result["report_to"] == []

@@ -291,9 +291,12 @@ class VerifyResult(Base):
     trust_factors  = Column(JSON)              # list of trust factors
     signal_explanations = Column(JSON)         # per-signal explanations
     educational_tips = Column(JSON)            # [{icon, title, text}]
-    problems       = Column(JSON)              # [{title, explanation}]
-    positives      = Column(JSON)              # [{title, explanation}]
+    problems       = Column(JSON)              # [{title, what_found, what_means, real_risk}]
+    positives      = Column(JSON)              # [{title, what_found, what_means}]
     action         = Column(Text)              # what to do NOW
+    immediate_actions = Column(JSON)           # ["action1", "action2"]
+    if_paid_already = Column(JSON)             # ["step1", "step2"]
+    report_to      = Column(JSON)              # [{institution, url, description}]
     created_at     = Column(DateTime, default=datetime.utcnow)
     created_by     = Column(String)
 
@@ -345,6 +348,9 @@ def init_db(retries=10, delay=3):
                         ('problems', 'JSON'),
                         ('positives', 'JSON'),
                         ('action', 'TEXT'),
+                        ('immediate_actions', 'JSON'),
+                        ('if_paid_already', 'JSON'),
+                        ('report_to', 'JSON'),
                     ]:
                         if col_name not in vr_cols:
                             with engine.begin() as conn:
@@ -1031,6 +1037,9 @@ def save_verify_result(data: dict, created_by: str = "system") -> int:
             problems=data.get("problems"),
             positives=data.get("positives"),
             action=data.get("action", ""),
+            immediate_actions=data.get("immediate_actions"),
+            if_paid_already=data.get("if_paid_already"),
+            report_to=data.get("report_to"),
             created_by=created_by,
         )
         db.add(row)
@@ -1065,6 +1074,9 @@ def get_verify_result_by_id(result_id: int) -> dict | None:
             "problems": r.problems,
             "positives": r.positives,
             "action": r.action,
+            "immediate_actions": r.immediate_actions,
+            "if_paid_already": r.if_paid_already,
+            "report_to": r.report_to,
             "created_at": r.created_at.isoformat() if r.created_at else None,
             "created_by": r.created_by,
         }

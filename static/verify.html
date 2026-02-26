@@ -213,19 +213,19 @@
   .narrative-block {
     color: var(--text-secondary);
     font-size: var(--text-base);
-    line-height: 1.8;
-    padding: var(--sp-5) var(--sp-6);
+    line-height: 1.9;
+    padding: var(--sp-6) var(--sp-8);
     background: var(--surface-elevated);
     border-radius: var(--radius-sm);
-    border-left: 3px solid var(--accent);
-    margin-bottom: var(--sp-6);
+    border-left: 4px solid var(--accent);
+    margin-bottom: 32px;
   }
 
   .pp-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--sp-5);
-    margin-bottom: var(--sp-6);
+    gap: var(--sp-6);
+    margin-bottom: 32px;
   }
   @media (max-width: 768px) { .pp-grid { grid-template-columns: 1fr; } }
 
@@ -240,9 +240,9 @@
   .positives-col h3 { color: #2ecc71; }
 
   .pp-card {
-    padding: var(--sp-4) var(--sp-5);
+    padding: 16px 20px;
     border-radius: var(--radius-sm);
-    margin-bottom: var(--sp-3);
+    margin-bottom: var(--sp-4);
     background: var(--surface-elevated);
   }
   .pp-card-title {
@@ -250,50 +250,139 @@
     font-weight: 700;
     font-size: var(--text-base);
     letter-spacing: .08em;
+    margin-bottom: var(--sp-3);
+  }
+  .pp-card-row {
+    font-size: var(--text-sm);
+    line-height: 1.6;
     margin-bottom: var(--sp-2);
   }
-  .pp-card-text {
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-    line-height: 1.5;
+  .pp-card-label {
+    color: var(--text-muted);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .05em;
   }
-  .problem-card { border-left: 3px solid #e74c3c; }
+  .pp-card-val {
+    color: var(--text-secondary);
+    display: block;
+    margin-top: 2px;
+  }
+  .pp-card-risk {
+    font-weight: 700;
+    display: block;
+    margin-top: 2px;
+  }
+  .problem-card { border-left: 4px solid #e74c3c; }
   .problem-card .pp-card-title { color: #e74c3c; }
-  .positive-card { border-left: 3px solid #2ecc71; }
+  .problem-card .pp-card-risk { color: #e74c3c; }
+  .positive-card { border-left: 4px solid #2ecc71; }
   .positive-card .pp-card-title { color: #2ecc71; }
 
+  /* ── ACTION BOXES ── */
+  .action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-5);
+    margin-bottom: 32px;
+  }
+  @media (max-width: 768px) { .action-grid { grid-template-columns: 1fr; } }
+
   .action-box {
-    padding: var(--sp-5) var(--sp-6);
+    padding: 20px 24px;
     border-radius: var(--radius-sm);
-    border: 1px solid var(--accent);
     background: var(--surface-elevated);
-    margin-bottom: var(--sp-6);
   }
   .action-box h3 {
     font-family: 'Rajdhani', sans-serif;
     font-size: var(--text-sm);
     font-weight: 700;
     letter-spacing: .15em;
-    color: var(--accent);
-    margin: 0 0 var(--sp-3) 0;
+    margin: 0 0 var(--sp-4) 0;
   }
-  .action-box p {
-    font-size: var(--text-base);
-    color: var(--text-primary);
+  .action-box ol {
+    margin: 0; padding: 0 0 0 var(--sp-5);
+    list-style: none;
+    counter-reset: action-counter;
+  }
+  .action-box ol li {
+    counter-increment: action-counter;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
     line-height: 1.6;
-    margin: 0;
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .action-box ol li:last-child { border-bottom: none; }
+  .action-box ol li::before {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    margin-right: var(--sp-2);
+  }
+  .action-immediate {
+    border: 1px solid #ef4444;
+    background: rgba(239,68,68,.08);
+  }
+  .action-immediate h3 { color: #ef4444; }
+  .action-immediate ol li::before { content: '\2713 '; color: #ef4444; }
+  .action-paid {
+    border: 1px solid #f59e0b;
+    background: rgba(245,158,11,.08);
+  }
+  .action-paid h3 { color: #f59e0b; }
+  .action-paid ol li::before { content: counter(action-counter) '. '; color: #f59e0b; }
+
+  /* ── REPORT TO ── */
+  .report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--sp-4);
+    margin-bottom: 32px;
+  }
+  .report-card {
+    background: var(--surface-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    transition: border-color .2s, box-shadow .2s;
+    cursor: pointer;
+  }
+  .report-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(74,143,212,.15);
+  }
+  .report-card-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: var(--text-base);
+    letter-spacing: .08em;
+    color: var(--accent);
+    margin-bottom: var(--sp-2);
+  }
+  .report-card-desc {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: var(--sp-2);
+  }
+  .report-card-url {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    word-break: break-all;
   }
 
+  /* ── EDUCATIONAL TIPS ── */
   .tips-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: var(--sp-4);
   }
   .tip-card {
     background: var(--surface-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: var(--sp-4) var(--sp-5);
+    padding: 16px 20px;
   }
   .tip-card-icon {
     font-size: var(--text-lg);
@@ -311,6 +400,15 @@
     font-size: var(--text-sm);
     color: var(--text-secondary);
     line-height: 1.5;
+    margin-bottom: var(--sp-2);
+  }
+  .tip-card-example {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    line-height: 1.4;
+    font-style: italic;
+    padding-top: var(--sp-2);
+    border-top: 1px solid var(--border);
   }
 
   /* ── SIGNAL EXPLANATIONS TAB ── */
@@ -487,8 +585,9 @@
     font-size: var(--text-sm);
     letter-spacing: .18em;
     color: var(--accent);
-    margin: var(--sp-6) 0 var(--sp-4);
+    margin: 32px 0 var(--sp-4);
   }
+  .section-label:first-child { margin-top: 0; }
 
   .msg { padding: var(--sp-3) var(--sp-4); margin-top: var(--sp-3); border-radius: var(--radius-sm); font-size: var(--text-sm); font-family: 'Share Tech Mono', monospace; }
   .msg.error { background: rgba(231,76,60,.1); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
@@ -740,15 +839,19 @@ function renderResult(data) {
 function renderAiReport(data) {
   var el = document.getElementById('tab-report');
   var h = '';
+  var vc = verdictClass(data.verdict);
+  var isFraud = vc === 'fraud';
+  var isSuspect = vc === 'suspect';
+  var isDangerous = isFraud || isSuspect;
 
-  // Narrative
+  // ── Section 1: PODSUMOWANIE ──
   var narrative = data.narrative || data.summary || '';
   if (narrative) {
     h += '<div class="section-label">// PODSUMOWANIE</div>';
     h += '<div class="narrative-block">' + escHtml(narrative) + '</div>';
   }
 
-  // Problems & Positives grid
+  // ── Section 2: CO ZNALEZLISMY ──
   var problems = data.problems || [];
   var positives = data.positives || [];
   if (problems.length || positives.length) {
@@ -757,35 +860,54 @@ function renderAiReport(data) {
 
     // Problems column
     h += '<div class="pp-col problems-col">';
-    h += '<h3>PROBLEMY</h3>';
+    h += '<h3>\u26A0 PROBLEMY</h3>';
     if (problems.length) {
       problems.forEach(function(p) {
         h += '<div class="pp-card problem-card">';
         h += '<div class="pp-card-title">' + escHtml(p.title || '') + '</div>';
-        h += '<div class="pp-card-text">' + escHtml(p.explanation || '') + '</div>';
+        if (p.what_found) {
+          h += '<div class="pp-card-row"><span class="pp-card-label">Co znalazlem:</span><span class="pp-card-val">' + escHtml(p.what_found) + '</span></div>';
+        }
+        if (p.what_means) {
+          h += '<div class="pp-card-row"><span class="pp-card-label">Co to znaczy:</span><span class="pp-card-val">' + escHtml(p.what_means) + '</span></div>';
+        }
+        if (p.real_risk) {
+          h += '<div class="pp-card-row"><span class="pp-card-label">Ryzyko:</span><span class="pp-card-risk">' + escHtml(p.real_risk) + '</span></div>';
+        }
+        // Fallback for old format
+        if (!p.what_found && p.explanation) {
+          h += '<div class="pp-card-row"><span class="pp-card-val">' + escHtml(p.explanation) + '</span></div>';
+        }
         h += '</div>';
       });
     } else {
-      h += '<div style="color:var(--text-muted);font-size:var(--text-sm);padding:var(--sp-3)">Brak problemow</div>';
+      h += '<div style="color:var(--text-muted);font-size:var(--text-sm);padding:var(--sp-3)">\u2713 Brak problemow</div>';
     }
     h += '</div>';
 
     // Positives column
     h += '<div class="pp-col positives-col">';
-    h += '<h3>POZYTYWNE</h3>';
+    h += '<h3>\u2713 POZYTYWNE</h3>';
     if (positives.length) {
       positives.forEach(function(p) {
         h += '<div class="pp-card positive-card">';
         h += '<div class="pp-card-title">' + escHtml(p.title || '') + '</div>';
-        h += '<div class="pp-card-text">' + escHtml(p.explanation || '') + '</div>';
+        if (p.what_found) {
+          h += '<div class="pp-card-row"><span class="pp-card-label">Co znalazlem:</span><span class="pp-card-val">' + escHtml(p.what_found) + '</span></div>';
+        }
+        if (p.what_means) {
+          h += '<div class="pp-card-row"><span class="pp-card-label">Dlaczego to dobrze:</span><span class="pp-card-val">' + escHtml(p.what_means) + '</span></div>';
+        }
+        if (!p.what_found && p.explanation) {
+          h += '<div class="pp-card-row"><span class="pp-card-val">' + escHtml(p.explanation) + '</span></div>';
+        }
         h += '</div>';
       });
     } else {
       h += '<div style="color:var(--text-muted);font-size:var(--text-sm);padding:var(--sp-3)">Brak pozytywnych sygnalow</div>';
     }
     h += '</div>';
-
-    h += '</div>'; // pp-grid
+    h += '</div>';
   }
 
   // Fallback: red_flags if no problems
@@ -797,34 +919,77 @@ function renderAiReport(data) {
       var expl = parts.length > 1 ? parts.slice(1).join(': ') : f;
       h += '<div class="pp-card problem-card">';
       h += '<div class="pp-card-title">' + escHtml(title) + '</div>';
-      h += '<div class="pp-card-text">' + escHtml(expl) + '</div>';
+      h += '<div class="pp-card-row"><span class="pp-card-val">' + escHtml(expl) + '</span></div>';
       h += '</div>';
     });
   }
 
-  // Action box
-  var action = data.action || data.recommendation || '';
-  if (action) {
-    h += '<div class="section-label">// CO TO OZNACZA</div>';
-    h += '<div class="action-box">';
-    h += '<h3>REKOMENDOWANE DZIALANIE</h3>';
-    h += '<p>' + escHtml(action) + '</p>';
+  // ── Section 3: CO ZROBIC TERAZ ──
+  var immediateActions = data.immediate_actions || [];
+  var ifPaid = data.if_paid_already || [];
+  if (immediateActions.length || ifPaid.length) {
+    h += '<div class="section-label">// CO ZROBIC TERAZ</div>';
+    h += '<div class="action-grid">';
+
+    // Left: immediate actions
+    if (immediateActions.length) {
+      h += '<div class="action-box action-immediate">';
+      h += '<h3>NATYCHMIAST</h3>';
+      h += '<ol>';
+      immediateActions.forEach(function(a) {
+        h += '<li>' + escHtml(a) + '</li>';
+      });
+      h += '</ol></div>';
+    }
+
+    // Right: if paid already (hide for BEZPIECZNE)
+    if (ifPaid.length && isDangerous) {
+      h += '<div class="action-box action-paid">';
+      h += '<h3>JESLI JUZ ZAPLACILES</h3>';
+      h += '<ol>';
+      ifPaid.forEach(function(a) {
+        h += '<li>' + escHtml(a) + '</li>';
+      });
+      h += '</ol></div>';
+    }
+
     h += '</div>';
   }
 
-  // Educational tips
+  // ── Section 4: GDZIE ZGLOSIC (only for PODEJRZANE/OSZUSTWO) ──
+  var reportTo = data.report_to || [];
+  if (reportTo.length && isDangerous) {
+    h += '<div class="section-label">// GDZIE ZGLOSIC</div>';
+    h += '<div class="report-grid">';
+    reportTo.forEach(function(r) {
+      var hasUrl = r.url && r.url.length > 0;
+      h += '<div class="report-card"' + (hasUrl ? ' onclick="window.open(\'' + escHtml(r.url) + '\',\'_blank\')"' : '') + '>';
+      h += '<div class="report-card-name">' + escHtml(r.institution || '') + '</div>';
+      h += '<div class="report-card-desc">' + escHtml(r.description || '') + '</div>';
+      if (hasUrl) {
+        h += '<div class="report-card-url">' + escHtml(r.url) + '</div>';
+      }
+      h += '</div>';
+    });
+    h += '</div>';
+  }
+
+  // ── Section 5: CZEGO SIE NAUCZYLES ──
   var tips = data.educational_tips || [];
   if (tips.length) {
     h += '<div class="section-label">// CZEGO SIE NAUCZYLES</div>';
     h += '<div class="tips-grid">';
     tips.forEach(function(t) {
       if (typeof t === 'string') {
-        t = {icon: '\uD83D\uDCA1', title: 'Porada', text: t};
+        t = {icon: '\uD83D\uDCA1', title: 'Porada', text: t, example: ''};
       }
       h += '<div class="tip-card">';
       h += '<div class="tip-card-icon">' + (t.icon || '\uD83D\uDCA1') + '</div>';
       h += '<div class="tip-card-title">' + escHtml(t.title || '') + '</div>';
       h += '<div class="tip-card-text">' + escHtml(t.text || '') + '</div>';
+      if (t.example) {
+        h += '<div class="tip-card-example">\uD83D\uDCBC Przyklad: ' + escHtml(t.example) + '</div>';
+      }
       h += '</div>';
     });
     h += '</div>';

@@ -711,28 +711,205 @@ def calculate_risk(signals: dict) -> int:
 # ═══════════════════════════════════════════════════════════════
 
 def _extract_problems(signals: dict) -> list[dict]:
-    """Convert red flags into structured problem cards."""
+    """Convert red flags into structured problem cards with what_found/what_means/real_risk."""
     problems = []
-    flags = _extract_red_flags(signals)
-    for flag in flags:
-        parts = flag.split(": ", 1)
-        if len(parts) == 2:
-            problems.append({"title": parts[0], "explanation": parts[1]})
-        else:
-            problems.append({"title": "Ostrzeżenie", "explanation": flag})
+
+    whois = signals.get("whois", {})
+    age = whois.get("age_days")
+    if age is not None and age < 90:
+        problems.append({
+            "title": "Bardzo nowa domena",
+            "what_found": f"Domena została zarejestrowana zaledwie {age} dni temu.",
+            "what_means": "Oszuści zakładają nowe strony tuż przed atakiem i porzucają je po kilku tygodniach. Legalne firmy mają domeny od lat.",
+            "real_risk": "Strona może zniknąć razem z Twoimi pieniędzmi.",
+        })
+    elif age is not None and age < 365:
+        problems.append({
+            "title": "Stosunkowo nowa domena",
+            "what_found": f"Domena istnieje od {age} dni (mniej niż rok).",
+            "what_means": "Nowe domeny nie muszą być złośliwe, ale warto zachować czujność — większość oszustw odbywa się na domenach młodszych niż rok.",
+            "real_risk": "Podwyższone ryzyko — zweryfikuj firmę innymi kanałami.",
+        })
+
+    gsb = signals.get("google_safe_browsing", {})
+    if gsb.get("flagged"):
+        threats = ", ".join(gsb.get("threats", []))
+        problems.append({
+            "title": "Google ostrzega przed tą stroną",
+            "what_found": f"Google Safe Browsing aktywnie blokuje tę stronę. Zagrożenia: {threats}.",
+            "what_means": "Google przeskanował miliardy stron i oznaczył tę jako niebezpieczną. Twoja przeglądarka powinna pokazać ostrzeżenie.",
+            "real_risk": "Wejście na tę stronę może zainstalować złośliwe oprogramowanie lub wykraść Twoje dane.",
+        })
+
+    vt = signals.get("virustotal", {})
+    pos = vt.get("positives", 0)
+    if pos >= 5:
+        problems.append({
+            "title": "Antywirusy oznaczają jako złośliwe",
+            "what_found": f"{pos} z {vt.get('total', 0)} silników antywirusowych oznaczyło ten URL.",
+            "what_means": "To jak gdyby kilkudziesięciu lekarzy zbadało pacjenta i większość powiedziała, że jest chory. Jeśli wiele antywirusów się zgadza — to poważny sygnał.",
+            "real_risk": "Możesz stracić pieniądze lub dane osobowe.",
+        })
+    elif pos >= 2:
+        problems.append({
+            "title": "Kilka antywirusów ma zastrzeżenia",
+            "what_found": f"{pos} z {vt.get('total', 0)} silników oznaczyło ten URL.",
+            "what_means": "Nie jest to jednoznaczne, ale kilka niezależnych systemów zabezpieczeń wykryło potencjalne zagrożenie.",
+            "real_risk": "Zachowaj ostrożność — nie podawaj danych osobowych.",
+        })
+
+    urlhaus = signals.get("urlhaus", {})
+    if urlhaus.get("blacklisted"):
+        problems.append({
+            "title": "Strona na czarnej liście",
+            "what_found": "URLhaus (baza złośliwych stron) ma tę domenę na czarnej liście.",
+            "what_means": "Ta strona była wcześniej wykorzystywana do rozprzestrzeniania złośliwego oprogramowania lub phishingu.",
+            "real_risk": "Twój komputer może zostać zainfekowany wirusem.",
+        })
+
+    gn = signals.get("greynoise", {})
+    if gn.get("classification") == "malicious":
+        problems.append({
+            "title": "IP oznaczone jako złośliwe",
+            "what_found": "GreyNoise klasyfikuje adres IP serwera jako złośliwy.",
+            "what_means": "Serwer, na którym stoi ta strona, jest znany z podejrzanej aktywności w internecie.",
+            "real_risk": "Strona może być częścią większej sieci oszustw.",
+        })
+
+    company = signals.get("company", {})
+    if company and not company.get("found", True):
+        problems.append({
+            "title": "Firma nie istnieje w rejestrze",
+            "what_found": "Nie znaleźliśmy tej firmy w oficjalnym rejestrze KRS ani CEIDG.",
+            "what_means": "Każda legalna polska firma musi być zarejestrowana. Jeśli jej nie ma w rejestrze — albo podaje fałszywą nazwę, albo działa nielegalnie.",
+            "real_risk": "Nie masz żadnej ochrony prawnej jeśli firma Cię oszuka.",
+        })
+
+    if signals.get("disposable_email"):
+        problems.append({
+            "title": "Jednorazowy adres email",
+            "what_found": "Domena emailowa należy do serwisu jednorazowych adresów.",
+            "what_means": "Osoba używa tymczasowego emaila, który za chwilę przestanie istnieć. Legalne firmy nie używają takich adresów.",
+            "real_risk": "Nie będziesz w stanie skontaktować się z nadawcą.",
+        })
+
+    mx = signals.get("mx", {})
+    if mx and not mx.get("has_mx", True):
+        problems.append({
+            "title": "Domena nie obsługuje poczty",
+            "what_found": "Brak rekordów MX — ta domena nie może wysyłać ani odbierać emaili.",
+            "what_means": "Jeśli firma twierdzi, że kontakt jest przez email na tej domenie — kłamie.",
+            "real_risk": "Odpowiedzi na emaile nie dotrą do nikogo.",
+        })
+
+    abuse = signals.get("abuseipdb", {})
+    if abuse.get("abuseConfidenceScore", 0) > 20:
+        problems.append({
+            "title": "IP zgłaszane za nadużycia",
+            "what_found": f"AbuseIPDB: {abuse['abuseConfidenceScore']}% pewności nadużyć, {abuse.get('totalReports', 0)} zgłoszeń.",
+            "what_means": "Inni internauci zgłaszali problemy z tym adresem IP — spam, ataki, oszustwa.",
+            "real_risk": "Serwer ma złą reputację w społeczności bezpieczeństwa.",
+        })
+
+    spf_dmarc = signals.get("spf_dmarc", {})
+    if spf_dmarc and not spf_dmarc.get("has_spf") and not spf_dmarc.get("has_dmarc"):
+        problems.append({
+            "title": "Brak ochrony przed podszywaniem",
+            "what_found": "Domena nie ma zabezpieczeń SPF ani DMARC.",
+            "what_means": "Ktokolwiek może wysyłać emaile udając, że jest z tej domeny. To jak gdyby firma nie miała pieczątki.",
+            "real_risk": "Możesz dostać fałszywy email wyglądający jak od tej firmy.",
+        })
+
+    crtsh = signals.get("crtsh", {})
+    if crtsh.get("cert_age_days") is not None and crtsh["cert_age_days"] < 30:
+        problems.append({
+            "title": "Bardzo nowy certyfikat SSL",
+            "what_found": f"Certyfikat SSL wystawiony {crtsh['cert_age_days']} dni temu.",
+            "what_means": "Oszuści uzyskują certyfikaty SSL tuż przed atakiem, żeby strona wyglądała na bezpieczną (kłódka w przeglądarce).",
+            "real_risk": "Kłódka w przeglądarce NIE gwarantuje bezpieczeństwa.",
+        })
+
+    otx = signals.get("otx", {})
+    if otx.get("pulse_count", 0) > 0:
+        problems.append({
+            "title": "Widoczna w raportach zagrożeń",
+            "what_found": f"OTX AlienVault: {otx['pulse_count']} raportów threat intelligence.",
+            "what_means": "Eksperci ds. bezpieczeństwa analizowali tę domenę i powiązali ją z zagrożeniami.",
+            "real_risk": "Domena jest znana w świecie cyberbezpieczeństwa jako podejrzana.",
+        })
+
     return problems
 
 
 def _extract_positives(signals: dict) -> list[dict]:
-    """Convert trust factors into structured positive cards."""
+    """Convert trust factors into structured positive cards with what_found/what_means."""
     positives = []
-    factors = _extract_trust_factors(signals)
-    for factor in factors:
-        parts = factor.split(": ", 1)
-        if len(parts) == 2:
-            positives.append({"title": parts[0], "explanation": parts[1]})
-        else:
-            positives.append({"title": "Pozytywny sygnał", "explanation": factor})
+
+    tranco = signals.get("tranco", {})
+    rank = tranco.get("rank")
+    if rank is not None:
+        if rank <= 10000:
+            positives.append({
+                "title": "Popularna strona",
+                "what_found": f"Domena jest na pozycji #{rank} w rankingu Tranco (top 10K).",
+                "what_means": "To jedna z najpopularniejszych stron w internecie — miliony ludzi z niej korzystają.",
+            })
+        elif rank <= 100000:
+            positives.append({
+                "title": "Znana strona",
+                "what_found": f"Domena jest na pozycji #{rank} w rankingu Tranco.",
+                "what_means": "Strona ma spory ruch — to dobry znak, bo oszuści rzadko osiągają taką popularność.",
+            })
+
+    whois = signals.get("whois", {})
+    age = whois.get("age_days")
+    if age is not None and age > 3650:
+        positives.append({
+            "title": "Domena od wielu lat",
+            "what_found": f"Domena istnieje od {age // 365} lat.",
+            "what_means": "Długo działające domeny to dobry znak — oszuści porzucają strony po kilku miesiącach.",
+        })
+    elif age is not None and age > 1825:
+        positives.append({
+            "title": "Ugruntowana domena",
+            "what_found": f"Domena istnieje od {age // 365} lat.",
+            "what_means": "Kilka lat działalności buduje zaufanie.",
+        })
+
+    abuse = signals.get("abuseipdb", {})
+    if abuse.get("isWhitelisted"):
+        positives.append({
+            "title": "IP na białej liście",
+            "what_found": "AbuseIPDB uznaje ten adres IP za zaufany.",
+            "what_means": "Serwer jest oficjalnie uznawany za bezpieczny przez społeczność bezpieczeństwa.",
+        })
+
+    spf_dmarc = signals.get("spf_dmarc", {})
+    if spf_dmarc.get("has_spf") and spf_dmarc.get("has_dmarc"):
+        positives.append({
+            "title": "Ochrona przed spoofingiem",
+            "what_found": "Domena ma skonfigurowane zabezpieczenia SPF + DMARC.",
+            "what_means": "Firma dba o bezpieczeństwo emaili — nikt nie może się pod nią podszywać.",
+        })
+
+    company = signals.get("company", {})
+    if company and company.get("found"):
+        registry = company.get("registry", "rejestr")
+        positives.append({
+            "title": "Firma w oficjalnym rejestrze",
+            "what_found": f"Firma potwierdzona w {registry}.",
+            "what_means": "Firma jest oficjalnie zarejestrowana, co oznacza że podlega polskiemu prawu i można ją pociągnąć do odpowiedzialności.",
+        })
+
+    crtsh = signals.get("crtsh", {})
+    cert_age = crtsh.get("cert_age_days")
+    if cert_age is not None and cert_age > 730:
+        positives.append({
+            "title": "Długotrwały certyfikat SSL",
+            "what_found": f"Certyfikat SSL od {cert_age // 365} lat.",
+            "what_means": "Strona od dawna dba o szyfrowanie — to dobra praktyka.",
+        })
+
     return positives
 
 
@@ -744,6 +921,80 @@ def _generate_action(risk_score: int, query: str) -> str:
         return f"Zachowaj ostrożność. Nie podawaj danych osobowych ani finansowych na {query}. Sprawdź adres URL dokładnie — czy to na pewno oficjalna strona?"
     else:
         return f"Strona {query} wygląda bezpiecznie. Pamiętaj jednak, aby zawsze sprawdzać adres URL przed podaniem danych."
+
+
+def _generate_immediate_actions(risk_score: int, query: str) -> list[str]:
+    """Generate numbered list of immediate actions."""
+    if risk_score > 50:
+        return [
+            f"Nie wchodź na {query} — zamknij kartę jeśli jest otwarta",
+            "Jeśli kliknąłeś link — uruchom skanowanie antywirusowe na komputerze",
+            "Jeśli podałeś login/hasło — natychmiast zmień hasło na tej i innych stronach gdzie używasz tego samego",
+            "Ostrzeż osobę, która przysłała Ci ten link — jej konto mogło zostać przejęte",
+        ]
+    elif risk_score >= 20:
+        return [
+            f"Nie podawaj żadnych danych osobowych ani finansowych na {query}",
+            "Sprawdź adres URL literka po literce — czy to na pewno oficjalna strona?",
+            "Poszukaj opinii o tej firmie w Google — dopisz słowo 'oszustwo' lub 'opinie'",
+            "Jeśli chcesz coś kupić — szukaj tej samej oferty na znanych portalach (Allegro, OLX)",
+        ]
+    else:
+        return [
+            "Strona wygląda bezpiecznie — możesz z niej korzystać",
+            "Mimo to zawsze sprawdzaj adres URL przed podaniem danych",
+            "Używaj silnych, unikalnych haseł na każdej stronie",
+        ]
+
+
+def _generate_if_paid_already(risk_score: int) -> list[str]:
+    """Generate steps for when user already paid/shared data."""
+    if risk_score > 50:
+        return [
+            "Natychmiast zadzwoń do swojego banku i zablokuj kartę/konto",
+            "Zmień hasła — zacznij od banku, potem email, potem reszta",
+            "Włącz weryfikację dwuetapową (2FA) wszędzie gdzie to możliwe",
+            "Zgłoś sprawę na policję i do CERT Polska (incydent.cert.pl)",
+            "Monitoruj wyciągi bankowe przez najbliższe 30 dni",
+        ]
+    elif risk_score >= 20:
+        return [
+            "Sprawdź wyciąg bankowy — czy są nieautoryzowane transakcje",
+            "Zmień hasło jeśli podałeś je na tej stronie",
+            "Jeśli podałeś dane karty — skontaktuj się z bankiem",
+            "Zachowaj dowody (screenshoty, emaile) na wypadek reklamacji",
+        ]
+    else:
+        return []
+
+
+def _generate_report_to(risk_score: int) -> list[dict]:
+    """Generate list of institutions to report fraud to."""
+    if risk_score <= 20:
+        return []
+    institutions = []
+    if risk_score > 50:
+        institutions.append({
+            "institution": "CERT Polska",
+            "url": "https://incydent.cert.pl",
+            "description": "Zgłoś stronę phishingową lub oszustwo internetowe. CERT doda ją do listy ostrzeżeń.",
+        })
+        institutions.append({
+            "institution": "Policja — cyberprzestępczość",
+            "url": "https://www.policja.pl/pol/zgloszenie",
+            "description": "Złóż oficjalne zawiadomienie o przestępstwie. Będziesz potrzebować screenshotów i dowodów wpłaty.",
+        })
+    institutions.append({
+        "institution": "UOKiK",
+        "url": "https://uokik.gov.pl/kontakt",
+        "description": "Zgłoś nieuczciwą praktykę handlową. UOKiK może nałożyć karę na firmę.",
+    })
+    institutions.append({
+        "institution": "Twój bank",
+        "url": "",
+        "description": "Zadzwoń na infolinię banku i poproś o procedurę chargeback (zwrot pieniędzy za oszustwo).",
+    })
+    return institutions
 
 
 def _generate_narrative(risk_score: int, signals: dict, query: str) -> str:
@@ -779,15 +1030,17 @@ def _generate_educational_tips(risk_score: int, signals: dict) -> list[dict]:
         tips.append({
             "icon": "📅",
             "title": "Sprawdzaj wiek domeny",
-            "text": "Legalne firmy działają od lat. Jeśli domena ma mniej niż 90 dni — to poważny sygnał ostrzegawczy. Możesz to sprawdzić na whois.domaintools.com.",
+            "text": "Legalne firmy działają od lat. Jeśli domena ma mniej niż 90 dni — to poważny sygnał ostrzegawczy.",
+            "example": "Następnym razem wpisz nazwę strony na whois.domaintools.com — zobaczysz kiedy została zarejestrowana.",
         })
 
     spf = signals.get("spf_dmarc", {})
     if spf:
         tips.append({
             "icon": "📧",
-            "title": "SPF i DMARC chronią przed spoofingiem",
-            "text": "Te techniczne zabezpieczenia DNS potwierdzają, że emaile z danej domeny są autentyczne. Ich brak oznacza, że ktoś może podszywać się pod nadawcę.",
+            "title": "SPF i DMARC chronią przed fałszywymi emailami",
+            "text": "To jak pieczątka na liście — potwierdza, że email naprawdę pochodzi z tej firmy. Bez SPF i DMARC ktokolwiek może udawać daną firmę.",
+            "example": "Jeśli dostaniesz email 'z banku' — sprawdź czy bank ma SPF/DMARC. Większość dużych firm je ma.",
         })
 
     if signals.get("virustotal", {}).get("available"):
@@ -795,6 +1048,7 @@ def _generate_educational_tips(risk_score: int, signals: dict) -> list[dict]:
             "icon": "🔍",
             "title": "Jak samodzielnie sprawdzić link?",
             "text": "Wklej podejrzany link na virustotal.com — 70+ silników antywirusowych sprawdzi go za darmo. Nigdy nie klikaj linku, zanim go nie zweryfikujesz.",
+            "example": "Kopiuj link (prawy przycisk → Kopiuj adres linku) i wklej na virustotal.com zamiast klikać.",
         })
 
     if signals.get("tranco", {}):
@@ -802,6 +1056,7 @@ def _generate_educational_tips(risk_score: int, signals: dict) -> list[dict]:
             "icon": "📊",
             "title": "Ranking popularności stron",
             "text": "Tranco to niezależny ranking miliona najpopularniejszych stron. Jeśli strona jest w top 10K — prawie na pewno jest legalna.",
+            "example": "Google.com jest w top 10, Allegro.pl w top 1000. Nowa strona z ofertą 'za dobrą żeby była prawdziwa' raczej nie będzie w rankingu.",
         })
 
     if risk_score > 50:
@@ -809,21 +1064,22 @@ def _generate_educational_tips(risk_score: int, signals: dict) -> list[dict]:
             "icon": "🚨",
             "title": "Co zrobić gdy podałeś dane?",
             "text": "Natychmiast zmień hasła (zacznij od banku i emaila). Włącz weryfikację dwuetapową (2FA). Zgłoś incydent na incydent.cert.pl.",
+            "example": "Zainstaluj aplikację do 2FA (np. Google Authenticator) — nawet jeśli ktoś pozna Twoje hasło, nie zaloguje się bez kodu z telefonu.",
         })
 
-    # Always return at least 3 tips
     if len(tips) < 3:
         tips.append({
             "icon": "🔒",
-            "title": "Zawsze sprawdzaj HTTPS",
+            "title": "Kłódka nie oznacza bezpieczeństwa",
             "text": "Kłódka w pasku adresu oznacza szyfrowane połączenie, ale NIE gwarantuje, że strona jest bezpieczna. Oszuści też używają HTTPS.",
+            "example": "Patrz na adres obok kłódki: allegro.pl jest OK, ale allegro-promocja.xyz to oszustwo — mimo że oba mają kłódkę.",
         })
 
     return tips[:5]
 
 
 def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
-    """Generate AI verdict using Claude Haiku — educational mode."""
+    """Generate AI verdict using Claude Haiku — educational mode for non-tech users."""
     # Determine base verdict from score (new thresholds)
     if risk_score < 20:
         base_verdict = "BEZPIECZNE"
@@ -842,25 +1098,33 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
             signals_summary = signals_summary[:3000] + "..."
 
         prompt = (
-            f"Jesteś ekspertem ds. cyberbezpieczeństwa i edukacji cyfrowej. "
-            f"Przeanalizuj poniższe sygnały OSINT dla zapytania: {query}\n\n"
+            f"Jesteś ekspertem od bezpieczeństwa online. Piszesz raport dla osoby "
+            f"bez wiedzy technicznej — np. emeryta który szuka samochodu online.\n\n"
+            f"Dane weryfikacji:\n{signals_summary}\n"
             f"Risk score: {risk_score}/100 (progi: <20 bezpieczne, 20-50 podejrzane, >50 oszustwo)\n"
-            f"Sygnały:\n{signals_summary}\n\n"
-            f"Odpowiedz WYŁĄCZNIE w formacie JSON (bez markdown):\n"
+            f"Sprawdzana domena: {query}\n\n"
+            f"Zwróć WYŁĄCZNIE JSON (bez markdown, wszystkie pola PO POLSKU):\n"
             f'{{"verdict": "{base_verdict}", '
-            f'"summary": "Krótkie podsumowanie 1-2 zdania po polsku", '
-            f'"narrative": "Dłuższe wyjaśnienie 4-6 zdań ciepłym językiem jakbyś tłumaczył przyjacielowi — co sprawdziliśmy, co znaleźliśmy, co to oznacza", '
-            f'"red_flags": ["lista czerwonych flag po polsku — każda zaczyna się od nazwy źródła np. VirusTotal: ..."], '
-            f'"trust_factors": ["lista czynników zaufania po polsku"], '
-            f'"signal_explanations": [{{"signal": "nazwa", "value": "wartość", "meaning": "co to znaczy", "risk": "green|gray|amber|red", "icon": "emoji"}}], '
-            f'"problems": [{{"title": "nazwa problemu", "explanation": "wyjaśnienie 2-3 zdania"}}], '
-            f'"positives": [{{"title": "pozytywny sygnał", "explanation": "wyjaśnienie 2-3 zdania"}}], '
-            f'"action": "Konkretne kroki co zrobić TERAZ — 2-3 zdania", '
-            f'"educational_tips": [{{"icon": "emoji", "title": "tytuł porady", "text": "treść porady 2-3 zdania"}}], '
-            f'"recommendation": "Rekomendacja działania po polsku (1-2 zdania)"}}'
+            f'"summary": "3-4 zdania. Powiedz CO konkretnie znalazłeś i DLACZEGO to niepokojące lub bezpieczne. Nie używaj żargonu technicznego.", '
+            f'"narrative": "4-6 zdań ciepłym językiem — co sprawdziliśmy, co znaleźliśmy, co to oznacza", '
+            f'"red_flags": ["lista flag po polsku"], '
+            f'"trust_factors": ["lista czynników zaufania"], '
+            f'"signal_explanations": [{{"signal": "nazwa", "value": "wartość", "meaning": "co to znaczy po polsku", "risk": "green|gray|amber|red", "icon": "emoji"}}], '
+            f'"problems": [{{"title": "Krótka nazwa problemu", "what_found": "Co technicznie znalazłeś - 1 zdanie", "what_means": "Co to oznacza dla zwykłego człowieka - 1-2 zdania", "real_risk": "Konkretne ryzyko np. Możesz stracić pieniądze"}}], '
+            f'"positives": [{{"title": "Krótka nazwa pozytywu", "what_found": "Co znalazłeś - 1 zdanie", "what_means": "Dlaczego to dobry znak - 1 zdanie"}}], '
+            f'"immediate_actions": ["Natychmiastowe działanie 1 - konkretne i wykonalne", "Działanie 2", "Działanie 3"], '
+            f'"if_paid_already": ["Co zrobić jeśli już zapłaciłeś krok 1", "Krok 2"], '
+            f'"report_to": [{{"institution": "Nazwa instytucji", "url": "adres strony", "description": "Co tam zgłosić i po co"}}], '
+            f'"educational_tips": [{{"icon": "emoji", "title": "Tytuł wskazówki", "text": "2-3 zdania edukacyjne", "example": "Konkretny przykład jak zastosować tę wiedzę"}}], '
+            f'"recommendation": "Rekomendacja 1-2 zdania"}}\n\n'
+            f"WAŻNE:\n"
+            f"- Dla OSZUSTWA: report_to musi zawierać CERT Polska (incydent.cert.pl), Policję, UOKiK, bank\n"
+            f"- Dla PODEJRZANE: daj konkretne kroki jak zweryfikować ręcznie\n"
+            f"- if_paid_already wypełnij zawsze dla OSZUSTWO i PODEJRZANE\n"
+            f"- Pisz jakbyś rozmawiał z osobą starszą która nie zna się na technologii"
         )
 
-        response_text = provider.chat(prompt, max_tokens=2000)
+        response_text = provider.chat(prompt, max_tokens=2500)
         clean = response_text.strip()
         if clean.startswith("```"):
             clean = clean.split("```")[1]
@@ -885,11 +1149,14 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
         result.setdefault("problems", _extract_problems(signals))
         result.setdefault("positives", _extract_positives(signals))
         result.setdefault("action", _generate_action(risk_score, query))
+        result.setdefault("immediate_actions", _generate_immediate_actions(risk_score, query))
+        result.setdefault("if_paid_already", _generate_if_paid_already(risk_score))
+        result.setdefault("report_to", _generate_report_to(risk_score))
         result.setdefault("educational_tips", _generate_educational_tips(risk_score, signals))
         # Normalize educational_tips to dict format
         tips = result.get("educational_tips", [])
         if tips and isinstance(tips[0], str):
-            result["educational_tips"] = [{"icon": "💡", "title": "Porada", "text": t} for t in tips]
+            result["educational_tips"] = [{"icon": "💡", "title": "Porada", "text": t, "example": ""} for t in tips]
         return result
 
     except Exception as exc:
@@ -904,6 +1171,9 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
             "problems": _extract_problems(signals),
             "positives": _extract_positives(signals),
             "action": _generate_action(risk_score, query),
+            "immediate_actions": _generate_immediate_actions(risk_score, query),
+            "if_paid_already": _generate_if_paid_already(risk_score),
+            "report_to": _generate_report_to(risk_score),
             "educational_tips": _generate_educational_tips(risk_score, signals),
             "recommendation": "Zalecamy ostrożność." if risk_score >= 20 else "Brak podejrzanych sygnałów.",
         }
@@ -1248,10 +1518,13 @@ class CyrberVerify:
                 "narrative": "Podany adres email ma nieprawidłowy format — brakuje znaku @ lub domeny. Prawidłowy email wygląda tak: nazwa@domena.pl. Nie mogliśmy przeprowadzić dalszej analizy.",
                 "red_flags": ["Nieprawidłowy format email"],
                 "trust_factors": [], "signal_explanations": [],
-                "problems": [{"title": "Nieprawidłowy format", "explanation": "Adres email nie zawiera wymaganego znaku @ z domeną."}],
+                "problems": [{"title": "Nieprawidłowy format", "what_found": "Adres email nie zawiera znaku @ z domeną.", "what_means": "To nie jest prawdziwy adres email.", "real_risk": "Nie można zweryfikować nadawcy."}],
                 "positives": [],
                 "action": "Sprawdź poprawność adresu email i spróbuj ponownie.",
-                "educational_tips": [{"icon": "📧", "title": "Format email", "text": "Prawidłowy adres email zawsze ma format: nazwa@domena.pl"}],
+                "immediate_actions": ["Sprawdź poprawność adresu email i spróbuj ponownie"],
+                "if_paid_already": [],
+                "report_to": [],
+                "educational_tips": [{"icon": "📧", "title": "Format email", "text": "Prawidłowy adres email zawsze ma format: nazwa@domena.pl", "example": "jan.kowalski@gmail.com — to poprawny adres."}],
                 "recommendation": "Podaj poprawny adres email.",
                 "signals": {}, "timestamp": datetime.now(timezone.utc).isoformat(),
             }
