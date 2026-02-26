@@ -385,8 +385,31 @@ class TestExtractSignalExplanations:
 # ═══════════════════════════════════════════════════════════════
 
 
+_MOCK_VERDICT = {
+    "verdict": "BEZPIECZNE", "risk_score": 0,
+    "summary": "test", "narrative": "test",
+    "red_flags": [], "trust_factors": [], "signal_explanations": [],
+    "problems": [], "positives": [], "action": "test",
+    "immediate_actions": [], "if_paid_already": [],
+    "report_to": [], "educational_tips": [],
+    "recommendation": "test",
+}
+
+
+def _mock_verdict_fn(risk_score, signals, query):
+    """Mock generate_verdict that respects risk_score thresholds."""
+    if risk_score < 20:
+        verdict = "BEZPIECZNE"
+    elif risk_score <= 50:
+        verdict = "PODEJRZANE"
+    else:
+        verdict = "OSZUSTWO"
+    return {**_MOCK_VERDICT, "verdict": verdict, "risk_score": risk_score}
+
+
 class TestVerifyUrl:
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify._otx_lookup")
     @patch("modules.verify._tranco_lookup")
     @patch("modules.verify._check_spf_dmarc")
@@ -398,7 +421,7 @@ class TestVerifyUrl:
     @patch("modules.verify._wayback_first")
     @patch("modules.verify._resolve_domain_ip")
     def test_verify_url_clean(self, mock_ip, mock_wb, mock_vt, mock_gsb, mock_whois,
-                               mock_rdap, mock_crtsh, mock_spf, mock_tranco, mock_otx):
+                               mock_rdap, mock_crtsh, mock_spf, mock_tranco, mock_otx, mock_verdict):
         mock_whois.return_value = {"age_days": 3650, "domain": "example.com", "available": False}
         mock_gsb.return_value = {"available": True, "flagged": False}
         mock_vt.return_value = {"available": True, "positives": 0, "total": 70}
@@ -422,6 +445,7 @@ class TestVerifyUrl:
         assert "trust_factors" in result
         assert "signal_explanations" in result
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify._otx_lookup")
     @patch("modules.verify._tranco_lookup")
     @patch("modules.verify._check_spf_dmarc")
@@ -433,7 +457,7 @@ class TestVerifyUrl:
     @patch("modules.verify._wayback_first")
     @patch("modules.verify._resolve_domain_ip")
     def test_verify_url_suspicious(self, mock_ip, mock_wb, mock_vt, mock_gsb, mock_whois,
-                                    mock_rdap, mock_crtsh, mock_spf, mock_tranco, mock_otx):
+                                    mock_rdap, mock_crtsh, mock_spf, mock_tranco, mock_otx, mock_verdict):
         mock_whois.return_value = {"age_days": 200, "domain": "shady.com", "available": False}
         mock_gsb.return_value = {"available": True, "flagged": False}
         mock_vt.return_value = {"available": True, "positives": 2, "total": 70}
@@ -456,11 +480,12 @@ class TestVerifyUrl:
 
 class TestVerifyEmail:
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify._check_spf_dmarc")
     @patch("modules.verify._whois_lookup")
     @patch("modules.verify._check_mx")
     @patch("modules.verify._load_disposable_domains")
-    def test_verify_email_clean(self, mock_disp, mock_mx, mock_whois, mock_spf):
+    def test_verify_email_clean(self, mock_disp, mock_mx, mock_whois, mock_spf, mock_verdict):
         mock_disp.return_value = set()
         mock_mx.return_value = {"has_mx": True, "records": [{"host": "mx.example.com", "priority": 10}]}
         mock_whois.return_value = {"age_days": 5000, "domain": "example.com", "available": False}
@@ -474,11 +499,12 @@ class TestVerifyEmail:
         assert result["risk_score"] == 0
         assert result["verdict"] == "BEZPIECZNE"
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify._check_spf_dmarc")
     @patch("modules.verify._whois_lookup")
     @patch("modules.verify._check_mx")
     @patch("modules.verify._load_disposable_domains")
-    def test_verify_email_disposable(self, mock_disp, mock_mx, mock_whois, mock_spf):
+    def test_verify_email_disposable(self, mock_disp, mock_mx, mock_whois, mock_spf, mock_verdict):
         mock_disp.return_value = {"tempmail.com", "guerrillamail.com"}
         mock_mx.return_value = {"has_mx": True, "records": []}
         mock_whois.return_value = {"age_days": 100, "domain": "tempmail.com", "available": False}
@@ -502,10 +528,11 @@ class TestVerifyEmail:
 
 class TestVerifyCompany:
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify._biala_lista_lookup")
     @patch("modules.verify._krs_lookup")
     @patch("modules.verify._ceidg_lookup")
-    def test_nip_found_biala_lista(self, mock_ceidg, mock_krs, mock_bl):
+    def test_nip_found_biala_lista(self, mock_ceidg, mock_krs, mock_bl, mock_verdict):
         """NIP → Biała Lista found first → BEZPIECZNE."""
         mock_bl.return_value = {
             "found": True, "registry": "Biała Lista VAT",
@@ -521,10 +548,11 @@ class TestVerifyCompany:
         assert result["risk_score"] == 0
         assert result["signals"]["company"]["registry"] == "Biała Lista VAT"
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify._biala_lista_lookup")
     @patch("modules.verify._krs_lookup")
     @patch("modules.verify._ceidg_lookup")
-    def test_nip_bl_miss_krs_found(self, mock_ceidg, mock_krs, mock_bl):
+    def test_nip_bl_miss_krs_found(self, mock_ceidg, mock_krs, mock_bl, mock_verdict):
         """NIP → BL miss → KRS fallback found → BEZPIECZNE."""
         mock_bl.return_value = {"found": False, "registry": "Biała Lista VAT"}
         mock_krs.return_value = {
@@ -539,10 +567,11 @@ class TestVerifyCompany:
         assert result["risk_score"] == 0
         assert result["signals"]["company"]["registry"] == "KRS"
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify._biala_lista_lookup")
     @patch("modules.verify._krs_lookup")
     @patch("modules.verify._ceidg_lookup")
-    def test_nip_not_found(self, mock_ceidg, mock_krs, mock_bl):
+    def test_nip_not_found(self, mock_ceidg, mock_krs, mock_bl, mock_verdict):
         """NIP not found in all 3 PL registries → +30, PODEJRZANE."""
         mock_bl.return_value = {"found": False, "registry": "Biała Lista VAT"}
         mock_krs.return_value = {"found": False, "registry": "KRS"}
@@ -556,9 +585,10 @@ class TestVerifyCompany:
         assert "Biała Lista VAT" in result["signals"]["company"]["registries_searched"]
         assert "KRS" in result["signals"]["company"]["registries_searched"]
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify._biala_lista_lookup")
     @patch("modules.verify._krs_lookup")
-    def test_krs_number_found(self, mock_krs, mock_bl):
+    def test_krs_number_found(self, mock_krs, mock_bl, mock_verdict):
         """KRS number (0000XXXXXX) → KRS found, enriched with BL status_vat."""
         mock_krs.return_value = {
             "found": True, "registry": "KRS",
@@ -576,8 +606,9 @@ class TestVerifyCompany:
         assert result["signals"]["company"]["registry"] == "KRS"
         assert result["signals"]["company"]["status_vat"] == "Czynny"
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify._krs_lookup")
-    def test_krs_number_not_found(self, mock_krs):
+    def test_krs_number_not_found(self, mock_krs, mock_verdict):
         """KRS number not found → PODEJRZANE."""
         mock_krs.return_value = {"found": False, "registry": "KRS"}
 
@@ -587,9 +618,10 @@ class TestVerifyCompany:
         assert result["signals"]["company"]["query_type"] == "krs"
         assert result["risk_score"] == 20  # 1 registry
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify.COMPANIES_HOUSE_KEY", "test-key")
     @patch("modules.verify._companies_house_lookup")
-    def test_name_search_not_found_limited(self, mock_ch):
+    def test_name_search_not_found_limited(self, mock_ch, mock_verdict):
         """Name search not found → name_search_limited, manual_check_urls."""
         mock_ch.return_value = {"found": False, "registry": "Companies House"}
 
@@ -603,9 +635,10 @@ class TestVerifyCompany:
         assert result["risk_score"] == 5
         assert result["verdict"] == "BEZPIECZNE"
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify.COMPANIES_HOUSE_KEY", "test-key")
     @patch("modules.verify._companies_house_lookup")
-    def test_name_search_found_companies_house(self, mock_ch):
+    def test_name_search_found_companies_house(self, mock_ch, mock_verdict):
         """Name search → CH found → BEZPIECZNE."""
         mock_ch.return_value = {
             "found": True, "registry": "Companies House",
@@ -618,9 +651,10 @@ class TestVerifyCompany:
         assert result["risk_score"] == 0
         assert result["signals"]["company"]["registry"] == "Companies House"
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify.COMPANIES_HOUSE_KEY", "test-key")
     @patch("modules.verify._companies_house_lookup")
-    def test_name_search_ch_candidates(self, mock_ch):
+    def test_name_search_ch_candidates(self, mock_ch, mock_verdict):
         """Name search → CH candidates → name_search_limited + candidates propagated."""
         mock_ch.return_value = {
             "found": False, "registry": "Companies House",
@@ -636,7 +670,8 @@ class TestVerifyCompany:
         assert company["candidates"][0]["source"] == "Companies House"
         assert result["risk_score"] == 0  # 5 - 5
 
-    def test_known_company_google(self):
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
+    def test_known_company_google(self, mock_verdict):
         """Known company (Google) → BEZPIECZNE, score 0."""
         v = CyrberVerify()
         result = v.verify_company("Google", country="AUTO")
@@ -645,7 +680,8 @@ class TestVerifyCompany:
         assert result["verdict"] == "BEZPIECZNE"
         assert result["signals"]["company"]["registry"] == "known_company"
 
-    def test_known_company_emca(self):
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
+    def test_known_company_emca(self, mock_verdict):
         """Known company (EMCA Software) → BEZPIECZNE, score 0."""
         v = CyrberVerify()
         result = v.verify_company("EMCA Software", country="AUTO")
@@ -1307,11 +1343,12 @@ class TestSafeEmailDomains:
         score = calculate_risk(signals)
         assert score <= 15
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify._check_spf_dmarc")
     @patch("modules.verify._whois_lookup")
     @patch("modules.verify._check_mx")
     @patch("modules.verify._load_disposable_domains")
-    def test_verify_email_gmail_safe(self, mock_disp, mock_mx, mock_whois, mock_spf):
+    def test_verify_email_gmail_safe(self, mock_disp, mock_mx, mock_whois, mock_spf, mock_verdict):
         """Verifying test@gmail.com should return BEZPIECZNE with score ≤ 15."""
         mock_disp.return_value = set()
         mock_mx.return_value = {"has_mx": True, "records": [{"host": "mx.google.com", "priority": 5}]}
@@ -1326,11 +1363,12 @@ class TestSafeEmailDomains:
         assert result["verdict"] == "BEZPIECZNE"
         assert "Znany bezpieczny dostawca poczty" in result.get("trust_factors", [])
 
+    @patch("modules.verify.generate_verdict", side_effect=_mock_verdict_fn)
     @patch("modules.verify._check_spf_dmarc")
     @patch("modules.verify._whois_lookup")
     @patch("modules.verify._check_mx")
     @patch("modules.verify._load_disposable_domains")
-    def test_verify_email_unknown_domain_not_safe(self, mock_disp, mock_mx, mock_whois, mock_spf):
+    def test_verify_email_unknown_domain_not_safe(self, mock_disp, mock_mx, mock_whois, mock_spf, mock_verdict):
         """Unknown domain should NOT get safe email treatment."""
         mock_disp.return_value = set()
         mock_mx.return_value = {"has_mx": False, "records": []}

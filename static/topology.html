@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CYRBER — NETWORK TOPOLOGY</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+
+/* ── LAYOUT ── */
+.wrapper{position:relative;z-index:1;max-width:var(--content-max);margin:0 auto;padding:var(--sp-8) var(--content-padding) var(--sp-16)}
+
+/* ── CONTROLS ── */
+.controls{display:flex;gap:var(--sp-4);align-items:center;margin-bottom:var(--sp-6);flex-wrap:wrap}
+.controls select{font-family:'Share Tech Mono',monospace;font-size:var(--text-base);background:var(--input-bg);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--sp-2) var(--sp-3);outline:none;min-width:300px}
+.controls select:focus{border-color:var(--accent)}
+.ctrl-btn{font-family:'Rajdhani',sans-serif;font-size:var(--text-base);font-weight:600;letter-spacing:.1em;padding:var(--sp-2) var(--sp-5);cursor:pointer;border:1px solid var(--accent);border-radius:var(--radius-sm);color:var(--accent);background:transparent;transition:all .2s}
+.ctrl-btn:hover{background:var(--accent);color:var(--bg-root)}
+
+/* ── KPI ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-4);margin-bottom:var(--sp-6)}
+.kpi{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:var(--sp-7) var(--sp-8);position:relative;overflow:hidden;box-shadow:var(--card-shadow);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent-color,var(--accent))}
+.kpi-label{font-family:'Share Tech Mono',monospace;font-size:var(--text-sm);letter-spacing:.2em;color:var(--text-secondary);margin-bottom:var(--sp-3)}
+.kpi-value{font-family:'Orbitron',sans-serif;font-size:var(--text-2xl);font-weight:900;color:var(--accent-color,var(--accent));line-height:1;margin-bottom:var(--sp-2)}
+.kpi-sub{font-family:'Share Tech Mono',monospace;font-size:var(--text-sm);color:var(--text-secondary)}
+
+/* ── LEGEND ── */
+.legend{display:flex;gap:var(--sp-5);align-items:center;margin-bottom:var(--sp-4);flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:var(--sp-2);font-family:'Share Tech Mono',monospace;font-size:var(--text-sm);color:var(--text-secondary)}
+.legend-dot{width:14px;height:14px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-size:9px}
+
+/* ── GRAPH ── */
+.graph-container{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;position:relative;box-shadow:var(--card-shadow);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.graph-container svg{display:block;width:100%;cursor:grab}
+.graph-container svg:active{cursor:grabbing}
+
+/* ── SIDE PANEL ── */
+.side-panel{position:fixed;top:var(--nav-height);right:0;width:380px;height:calc(100vh - var(--nav-height));background:var(--bg-raised);border-left:1px solid var(--border);z-index:100;transform:translateX(100%);transition:transform .3s ease;overflow-y:auto;padding:var(--sp-6)}
+.side-panel.open{transform:translateX(0)}
+.sp-close{position:absolute;top:var(--sp-4);right:var(--sp-4);font-size:20px;color:var(--text-secondary);background:none;border:none;cursor:pointer}
+.sp-close:hover{color:var(--text-primary)}
+.sp-icon{font-size:48px;text-align:center;margin-bottom:var(--sp-4)}
+.sp-title{font-family:'Orbitron',sans-serif;font-size:var(--text-lg);font-weight:700;color:var(--text-primary);margin-bottom:var(--sp-2);word-break:break-all}
+.sp-type{font-family:'Share Tech Mono',monospace;font-size:var(--text-sm);letter-spacing:.15em;color:var(--accent);margin-bottom:var(--sp-6)}
+.sp-section{margin-bottom:var(--sp-5)}
+.sp-label{font-family:'Share Tech Mono',monospace;font-size:var(--text-xs);letter-spacing:.2em;color:var(--text-secondary);margin-bottom:var(--sp-2)}
+.sp-value{font-size:var(--text-base);color:var(--text-primary);line-height:1.5}
+.sp-port{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:var(--text-xs);padding:2px var(--sp-2);border:1px solid var(--border);border-radius:var(--radius-sm);margin:2px;color:var(--text-primary)}
+.sp-risk{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:var(--text-sm);letter-spacing:.1em;padding:var(--sp-1) var(--sp-3);border:1px solid;border-radius:var(--radius-sm);font-weight:600}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:var(--sp-16) var(--sp-8);color:var(--text-secondary)}
+.empty-state .icon{font-size:64px;margin-bottom:var(--sp-4)}
+.empty-state p{font-family:'Share Tech Mono',monospace;font-size:var(--text-md);letter-spacing:.1em}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .controls select{min-width:180px}
+  .side-panel{width:100%}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ NAV ══ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="/ui">CYRBER<span style="font-size:.6em;opacity:.5;margin-left:4px">v3</span></a>
+    <div class="nav-links" id="navLinks">
+      <a class="nav-link" href="/ui">SCAN</a>
+      <a class="nav-link" href="/dashboard">DASHBOARD</a>
+      <a class="nav-link" href="/phishing">PHISHING</a>
+      <a class="nav-link" href="/scheduler">SCHEDULER</a>
+      <a class="nav-link" href="/osint">OSINT</a>
+      <a class="nav-link active" href="/topology">TOPOLOGY</a>
+      <a class="nav-link" href="/verify">VERIFY</a>
+      <a class="nav-link" href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+      <span class="nav-spacer"></span>
+      <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrapper">
+
+<!-- ── CONTROLS ── -->
+<div class="controls">
+  <select id="scanSelect"><option value="">-- Select scan --</option></select>
+  <button class="ctrl-btn" onclick="loadTopology()" id="refreshBtn">REFRESH</button>
+</div>
+
+<!-- ── KPI ── -->
+<div class="kpi-grid" id="kpiGrid" style="display:none">
+  <div class="kpi" style="--accent-color:var(--accent)">
+    <div class="kpi-label">HOSTS</div>
+    <div class="kpi-value" id="kpiHosts">0</div>
+    <div class="kpi-sub">discovered</div>
+  </div>
+  <div class="kpi" style="--accent-color:var(--teal)">
+    <div class="kpi-label">OPEN PORTS</div>
+    <div class="kpi-value" id="kpiPorts">0</div>
+    <div class="kpi-sub">total</div>
+  </div>
+  <div class="kpi" style="--accent-color:var(--amber)">
+    <div class="kpi-label">EDGES</div>
+    <div class="kpi-value" id="kpiEdges">0</div>
+    <div class="kpi-sub">connections</div>
+  </div>
+  <div class="kpi" style="--accent-color:var(--red)">
+    <div class="kpi-label">RISK LEVEL</div>
+    <div class="kpi-value" id="kpiRisk">—</div>
+    <div class="kpi-sub">overall</div>
+  </div>
+</div>
+
+<!-- ── LEGEND ── -->
+<div class="legend" id="legend" style="display:none">
+  <div class="legend-item"><div class="legend-dot" style="border-color:var(--text-secondary);color:var(--text-secondary)">&#9729;</div> Cloud</div>
+  <div class="legend-item"><div class="legend-dot" style="border-color:var(--red);color:var(--red)">&#9678;</div> Target</div>
+  <div class="legend-item"><div class="legend-dot" style="border-color:var(--amber);color:var(--amber)">&#8644;</div> Gateway</div>
+  <div class="legend-item"><div class="legend-dot" style="border-color:var(--accent);color:var(--accent)">&#9633;</div> Host</div>
+  <div class="legend-item"><div class="legend-dot" style="border-color:var(--purple);color:var(--purple)">&#9730;</div> DC</div>
+</div>
+
+<!-- ── GRAPH ── -->
+<div class="graph-container" id="graphContainer">
+  <div class="empty-state" id="emptyState">
+    <div class="icon">&#128752;</div>
+    <p>Select a scan to visualize network topology</p>
+  </div>
+</div>
+
+</div><!-- /wrapper -->
+
+<!-- ── SIDE PANEL ── -->
+<div class="side-panel" id="sidePanel">
+  <button class="sp-close" onclick="closeSidePanel()">&times;</button>
+  <div class="sp-icon" id="spIcon"></div>
+  <div class="sp-title" id="spTitle"></div>
+  <div class="sp-type" id="spType"></div>
+  <div id="spBody"></div>
+</div>
+
+<script>
+const TOKEN = localStorage.getItem('cyrber_token');
+const HEADERS = {'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json'};
+
+const NODE_ICONS = {cloud:'\u2601', target:'\uD83C\uDFAF', gateway:'\uD83D\uDD00', host:'\uD83D\uDCBB', dc:'\uD83C\uDFDB'};
+const NODE_COLORS = {
+  cloud: 'var(--text-secondary)',
+  target: 'var(--red)',
+  gateway: 'var(--amber)',
+  host: 'var(--accent)',
+  dc: 'var(--purple)'
+};
+const RISK_COLORS = {critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--green)', info:'var(--accent)'};
+
+let simulation = null;
+
+// ── Auth guard ──
+if (!TOKEN) window.location.href = '/login';
+
+// ── Load admin nav ──
+(async function(){
+  try {
+    const r = await fetch('/api/me', {headers: HEADERS});
+    if (!r.ok) { window.location.href = '/login'; return; }
+    const u = await r.json();
+    if (u.role === 'admin') document.getElementById('adminNavLink').style.display = '';
+  } catch(e) { window.location.href = '/login'; }
+})();
+
+// ── Load scans into dropdown ──
+async function loadScans() {
+  try {
+    const r = await fetch('/scans?limit=30', {headers: HEADERS});
+    if (!r.ok) return;
+    const scans = await r.json();
+    const sel = document.getElementById('scanSelect');
+    scans.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.task_id;
+      const date = s.completed_at ? s.completed_at.substring(0,10) : s.created_at?.substring(0,10) || '';
+      opt.textContent = `${s.target} — ${s.profile || 'STRAZNIK'} — ${date} [${s.risk_level || 'N/A'}]`;
+      sel.appendChild(opt);
+    });
+    // Auto-select from URL hash
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+      sel.value = hash;
+      loadTopology();
+    }
+  } catch(e) { console.error('loadScans error:', e); }
+}
+
+// ── Load topology data ──
+async function loadTopology() {
+  const taskId = document.getElementById('scanSelect').value;
+  if (!taskId) return;
+  window.location.hash = taskId;
+
+  try {
+    const r = await fetch(`/api/scan/${taskId}/topology`, {headers: HEADERS});
+    if (!r.ok) { console.error('topology fetch failed:', r.status); return; }
+    const data = await r.json();
+    renderKPI(data.meta, data.edges.length);
+    renderGraph(data.nodes, data.edges);
+    document.getElementById('kpiGrid').style.display = '';
+    document.getElementById('legend').style.display = '';
+    document.getElementById('emptyState').style.display = 'none';
+  } catch(e) { console.error('loadTopology error:', e); }
+}
+
+// ── KPI ──
+function renderKPI(meta, edgeCount) {
+  document.getElementById('kpiHosts').textContent = meta.total_hosts;
+  document.getElementById('kpiPorts').textContent = meta.open_ports_count;
+  document.getElementById('kpiEdges').textContent = edgeCount;
+  const rk = document.getElementById('kpiRisk');
+  rk.textContent = (meta.risk_level || 'info').toUpperCase();
+  rk.style.color = RISK_COLORS[meta.risk_level] || 'var(--accent)';
+}
+
+// ── D3 Graph ──
+function renderGraph(nodes, edges) {
+  const container = document.getElementById('graphContainer');
+  container.querySelector('svg')?.remove();
+
+  const W = container.clientWidth;
+  const H = Math.max(500, window.innerHeight - 380);
+
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('width', W)
+    .attr('height', H);
+
+  // Zoom
+  const g = svg.append('g');
+  const zoom = d3.zoom()
+    .scaleExtent([0.2, 5])
+    .on('zoom', e => g.attr('transform', e.transform));
+  svg.call(zoom);
+
+  // Arrow marker
+  svg.append('defs').append('marker')
+    .attr('id','arrow').attr('viewBox','0 -5 10 10')
+    .attr('refX',25).attr('refY',0)
+    .attr('markerWidth',6).attr('markerHeight',6)
+    .attr('orient','auto')
+    .append('path').attr('d','M0,-5L10,0L0,5')
+    .attr('fill','var(--text-muted)');
+
+  // Compute node sizes based on ports
+  const maxPorts = Math.max(1, ...nodes.map(n => (n.ports||[]).length));
+  nodes.forEach(n => {
+    n._r = 20 + Math.min(30, ((n.ports||[]).length / maxPorts) * 30);
+  });
+
+  // Simulation
+  if (simulation) simulation.stop();
+  simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(edges).id(d => d.id).distance(120))
+    .force('charge', d3.forceManyBody().strength(-300))
+    .force('center', d3.forceCenter(W/2, H/2))
+    .force('collide', d3.forceCollide().radius(d => d._r + 10));
+
+  // Edges
+  const link = g.append('g').attr('class','links')
+    .selectAll('line')
+    .data(edges)
+    .join('line')
+    .attr('stroke','var(--text-muted)')
+    .attr('stroke-opacity',0.4)
+    .attr('stroke-width',1.5)
+    .attr('marker-end','url(#arrow)');
+
+  // Edge labels
+  const linkLabel = g.append('g').attr('class','link-labels')
+    .selectAll('text')
+    .data(edges)
+    .join('text')
+    .text(d => d.label)
+    .attr('font-family','Share Tech Mono, monospace')
+    .attr('font-size','10px')
+    .attr('fill','var(--text-muted)')
+    .attr('text-anchor','middle');
+
+  // Node groups
+  const node = g.append('g').attr('class','nodes')
+    .selectAll('g')
+    .data(nodes)
+    .join('g')
+    .attr('cursor','pointer')
+    .on('click', (e, d) => openSidePanel(d))
+    .call(d3.drag()
+      .on('start', dragStart)
+      .on('drag', dragging)
+      .on('end', dragEnd));
+
+  // Node circles
+  node.append('circle')
+    .attr('r', d => d._r)
+    .attr('fill', d => {
+      const c = getComputedColor(NODE_COLORS[d.type] || 'var(--accent)');
+      return c + '22';
+    })
+    .attr('stroke', d => getComputedColor(NODE_COLORS[d.type] || 'var(--accent)'))
+    .attr('stroke-width', 2);
+
+  // Risk glow
+  node.filter(d => d.risk && d.risk !== 'info')
+    .append('circle')
+    .attr('r', d => d._r + 4)
+    .attr('fill', 'none')
+    .attr('stroke', d => getComputedColor(RISK_COLORS[d.risk] || 'var(--accent)'))
+    .attr('stroke-width', 1.5)
+    .attr('stroke-dasharray', '4,4')
+    .attr('opacity', 0.6);
+
+  // Node icons
+  node.append('text')
+    .text(d => NODE_ICONS[d.type] || '\uD83D\uDCBB')
+    .attr('text-anchor','middle')
+    .attr('dominant-baseline','central')
+    .attr('font-size', d => Math.max(16, d._r * 0.7) + 'px')
+    .attr('pointer-events','none');
+
+  // Node labels
+  node.append('text')
+    .text(d => truncLabel(d.label, 20))
+    .attr('text-anchor','middle')
+    .attr('dy', d => d._r + 14)
+    .attr('font-family','Share Tech Mono, monospace')
+    .attr('font-size','11px')
+    .attr('fill','var(--text-secondary)')
+    .attr('pointer-events','none');
+
+  // Tick
+  simulation.on('tick', () => {
+    link
+      .attr('x1', d => d.source.x)
+      .attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x)
+      .attr('y2', d => d.target.y);
+    linkLabel
+      .attr('x', d => (d.source.x + d.target.x)/2)
+      .attr('y', d => (d.source.y + d.target.y)/2 - 6);
+    node.attr('transform', d => `translate(${d.x},${d.y})`);
+  });
+
+  // Drag handlers
+  function dragStart(e, d) {
+    if (!e.active) simulation.alphaTarget(0.3).restart();
+    d.fx = d.x; d.fy = d.y;
+  }
+  function dragging(e, d) { d.fx = e.x; d.fy = e.y; }
+  function dragEnd(e, d) {
+    if (!e.active) simulation.alphaTarget(0);
+    d.fx = null; d.fy = null;
+  }
+}
+
+function truncLabel(s, max) {
+  return s && s.length > max ? s.substring(0, max-1) + '\u2026' : (s || '');
+}
+
+// ── Resolve CSS var to actual color ──
+function getComputedColor(v) {
+  if (!v.startsWith('var(')) return v;
+  const prop = v.replace(/var\(([^)]+)\)/, '$1');
+  return getComputedStyle(document.documentElement).getPropertyValue(prop).trim() || '#4a8fd4';
+}
+
+// ── Side Panel ──
+function openSidePanel(d) {
+  document.getElementById('spIcon').textContent = NODE_ICONS[d.type] || '\uD83D\uDCBB';
+  document.getElementById('spTitle').textContent = d.label || d.id;
+  document.getElementById('spType').textContent = d.type.toUpperCase();
+
+  let html = '';
+
+  // IP/ID
+  html += `<div class="sp-section"><div class="sp-label">ID</div><div class="sp-value">${esc(d.id)}</div></div>`;
+
+  // Risk
+  if (d.risk) {
+    const rc = RISK_COLORS[d.risk] || 'var(--accent)';
+    html += `<div class="sp-section"><div class="sp-label">RISK</div><div class="sp-risk" style="color:${rc};border-color:${rc}">${d.risk.toUpperCase()}</div></div>`;
+  }
+
+  // OS
+  if (d.os) html += `<div class="sp-section"><div class="sp-label">OS</div><div class="sp-value">${esc(d.os)}</div></div>`;
+
+  // Vendor / MAC
+  if (d.vendor) html += `<div class="sp-section"><div class="sp-label">VENDOR</div><div class="sp-value">${esc(d.vendor)}</div></div>`;
+  if (d.mac) html += `<div class="sp-section"><div class="sp-label">MAC</div><div class="sp-value">${esc(d.mac)}</div></div>`;
+
+  // NetBIOS
+  if (d.netbios_name) html += `<div class="sp-section"><div class="sp-label">NETBIOS</div><div class="sp-value">${esc(d.netbios_name)}</div></div>`;
+  if (d.workgroup) html += `<div class="sp-section"><div class="sp-label">WORKGROUP</div><div class="sp-value">${esc(d.workgroup)}</div></div>`;
+
+  // Ports
+  if (d.ports && d.ports.length) {
+    html += `<div class="sp-section"><div class="sp-label">OPEN PORTS (${d.ports.length})</div><div class="sp-value">`;
+    d.ports.forEach(p => {
+      const port = typeof p === 'object' ? `${p.port||'?'}/${p.protocol||'tcp'} ${p.service||''}` : p;
+      html += `<span class="sp-port">${esc(String(port))}</span>`;
+    });
+    html += `</div></div>`;
+  }
+
+  document.getElementById('spBody').innerHTML = html;
+  document.getElementById('sidePanel').classList.add('open');
+}
+
+function closeSidePanel() {
+  document.getElementById('sidePanel').classList.remove('open');
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ── Init ──
+document.getElementById('scanSelect').addEventListener('change', loadTopology);
+loadScans();
+</script>
+</body>
+</html>
