@@ -409,7 +409,7 @@ function openSidePanel(d) {
   // Risk
   if (d.risk) {
     const rc = RISK_COLORS[d.risk] || 'var(--accent)';
-    html += `<div class="sp-section"><div class="sp-label">RISK</div><div class="sp-risk" style="color:${rc};border-color:${rc}">${d.risk.toUpperCase()}</div></div>`;
+    html += `<div class="sp-section"><div class="sp-label">RISK</div><div class="sp-risk" style="color:${rc};border-color:${rc}">${esc(d.risk.toUpperCase())}</div></div>`;
   }
 
   // OS
