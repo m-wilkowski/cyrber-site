@@ -844,7 +844,7 @@ function renderCampaigns(campaigns) {
     var stats = c.stats || {};
     var date = c.created_date ? c.created_date.replace('T',' ').slice(0,16) : '—';
     html += '<tr>';
-    html += '<td style="color:var(--white)">' + (c.name || '—') + '</td>';
+    html += '<td style="color:var(--white)">' + escHtml(c.name || '—') + '</td>';
     html += '<td><span class="badge ' + badgeCls + '">' + (c.status || 'N/A').toUpperCase() + '</span></td>';
     html += '<td>' + (stats.sent || 0) + '</td>';
     html += '<td>' + (stats.opened || 0) + '</td>';
@@ -946,7 +946,7 @@ async function launchCampaign() {
       document.getElementById('launchBtn').disabled = true;
       fetchCampaigns();
     } else {
-      var err = await r.json();
+      var err = await r.json().catch(function(){ return {}; });
       showMsg(err.detail || 'Error creating campaign', true);
       document.getElementById('launchBtn').disabled = !document.getElementById('consentCheck').checked;
     }
@@ -1006,7 +1006,7 @@ function renderResults(data, id) {
     events.forEach(function(ev) {
       var icon = icons[ev.message] || icons[ev.status] || '·';
       var time = ev.time ? ev.time.replace('T',' ').slice(0,19) : '—';
-      evHtml += '<div class="event-row"><div class="event-icon">' + icon + '</div><div class="event-email">' + (ev.email || '—') + '</div><div style="flex:1;color:var(--silver);font-size:10px">' + (ev.message || ev.status || '') + '</div><div class="event-time">' + time + '</div></div>';
+      evHtml += '<div class="event-row"><div class="event-icon">' + icon + '</div><div class="event-email">' + escHtml(ev.email || '—') + '</div><div style="flex:1;color:var(--silver);font-size:10px">' + escHtml(ev.message || ev.status || '') + '</div><div class="event-time">' + time + '</div></div>';
     });
   } else {
     evHtml = '<div class="empty">No events</div>';
@@ -1240,6 +1240,8 @@ function wizInitStep3() {
 // ── Step 3: AI Generate ──
 async function wizAiGenerate() {
   var btn = document.getElementById('aiGenBtn');
+  if (btn.disabled) return;
+  btn.disabled = true;
   var msgEl = document.getElementById('wizAiMsg');
   btn.classList.add('loading');
   btn.textContent = 'GENERATING';
@@ -1293,6 +1295,7 @@ async function wizAiGenerate() {
 
   btn.classList.remove('loading');
   btn.textContent = 'AI GENERATE';
+  btn.disabled = false;
 }
 
 // ── Step 4: Build review table ──
