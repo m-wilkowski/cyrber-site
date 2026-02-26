@@ -62,8 +62,15 @@ def _resolve_domain_ip(domain: str) -> str | None:
 
 
 def _urlhaus_lookup(host: str) -> dict:
-    """Wrapper around intelligence_sync.sync_urlhaus for testability."""
+    """Wrapper around intelligence_sync.sync_urlhaus for testability.
+
+    URLhaus /v1/host/ only supports IPs and domains — not email addresses.
+    If host contains '@', extract the domain part first.
+    """
     try:
+        # Extract domain from email address if needed
+        if "@" in host:
+            host = host.split("@", 1)[1]
         from modules.intelligence_sync import sync_urlhaus
         return sync_urlhaus(host) or {"urls_count": 0, "blacklisted": False}
     except Exception:
@@ -111,6 +118,10 @@ def _whois_lookup(domain: str) -> dict:
         age_days = None
         if creation:
             if isinstance(creation, datetime):
+                # Normalize to timezone-naive to avoid "can't subtract
+                # offset-naive and offset-aware datetimes" error
+                if hasattr(creation, 'tzinfo') and creation.tzinfo:
+                    creation = creation.replace(tzinfo=None)
                 age_days = (datetime.now() - creation).days
             creation = str(creation)
 
@@ -560,6 +571,13 @@ def _companies_house_lookup(query: str) -> dict:
 #  RISK SCORING
 # ═══════════════════════════════════════════════════════════════
 
+SAFE_EMAIL_DOMAINS = {
+    'gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com',
+    'wp.pl', 'onet.pl', 'interia.pl', 'o2.pl', 'proton.me',
+    'icloud.com', 'me.com', 'protonmail.com',
+}
+
+
 def calculate_risk(signals: dict) -> int:
     """Calculate risk score (0-100) from aggregated signals — bidirectional scoring.
 
@@ -702,6 +720,11 @@ def calculate_risk(signals: dict) -> int:
     # Company confirmed in registry
     if company and company.get("found"):
         score -= 40
+
+    # Safe email domain override — known providers cap at 15
+    whois_domain = whois_data.get("domain", "").lower()
+    if whois_domain in SAFE_EMAIL_DOMAINS:
+        score = min(score, 15)
 
     return max(0, min(100, score))
 
@@ -1094,8 +1117,8 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
         provider = ClaudeProvider(model="claude-haiku-4-5-20251001")
 
         signals_summary = json.dumps(signals, ensure_ascii=False, default=str)
-        if len(signals_summary) > 3000:
-            signals_summary = signals_summary[:3000] + "..."
+        if len(signals_summary) > 2000:
+            signals_summary = signals_summary[:2000] + '... (skrócono)"'
 
         prompt = (
             f"Jesteś ekspertem od bezpieczeństwa online. Piszesz raport dla osoby "
@@ -1130,15 +1153,38 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
             clean = clean.split("```")[1]
             if clean.startswith("json"):
                 clean = clean[4:]
-        try:
-            result = json.loads(clean.strip())
-        except json.JSONDecodeError:
-            start = response_text.find("{")
-            end = response_text.rfind("}") + 1
+
+        def _repair_json(text: str) -> dict:
+            """Try to parse JSON with progressive repair strategies."""
+            text = text.strip()
+            # Strategy 1: direct parse
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError:
+                pass
+            # Strategy 2: remove trailing commas
+            repaired = re.sub(r',(\s*[}\]])', r'\1', text)
+            try:
+                return json.loads(repaired)
+            except json.JSONDecodeError:
+                pass
+            # Strategy 3: extract outermost { ... }
+            start = text.find("{")
+            end = text.rfind("}") + 1
             if start >= 0 and end > start:
-                result = json.loads(response_text[start:end])
-            else:
-                raise
+                fragment = text[start:end]
+                try:
+                    return json.loads(fragment)
+                except json.JSONDecodeError:
+                    # Try repair on fragment too
+                    repaired_frag = re.sub(r',(\s*[}\]])', r'\1', fragment)
+                    try:
+                        return json.loads(repaired_frag)
+                    except json.JSONDecodeError:
+                        pass
+            raise json.JSONDecodeError("All repair strategies failed", text, 0)
+
+        result = _repair_json(clean)
 
         # Ensure verdict matches score-based threshold
         result["verdict"] = base_verdict
@@ -1548,7 +1594,20 @@ class CyrberVerify:
         signals["spf_dmarc"] = _check_spf_dmarc(domain)
 
         risk_score = calculate_risk(signals)
+
+        # Safe email domain override
+        if domain in SAFE_EMAIL_DOMAINS:
+            risk_score = min(risk_score, 15)
+
         verdict = generate_verdict(risk_score, signals, email)
+
+        # Inject trust factor for safe email domains
+        if domain in SAFE_EMAIL_DOMAINS:
+            verdict["verdict"] = "BEZPIECZNE"
+            tf = verdict.get("trust_factors", [])
+            if isinstance(tf, list):
+                tf.insert(0, "Znany bezpieczny dostawca poczty")
+                verdict["trust_factors"] = tf
 
         return {
             "query": email,

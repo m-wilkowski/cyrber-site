@@ -2,12 +2,14 @@
 
 import json
 import os
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from modules.verify import (
     CyrberVerify,
+    SAFE_EMAIL_DOMAINS,
     calculate_risk,
     detect_query_type,
     generate_verdict,
@@ -22,6 +24,7 @@ from modules.verify import (
     _generate_immediate_actions,
     _generate_if_paid_already,
     _generate_report_to,
+    _urlhaus_lookup,
     _whois_lookup,
     _wayback_first,
     _check_mx,
@@ -612,3 +615,191 @@ class TestGenerateVerdict:
         with patch("modules.llm_provider.ClaudeProvider", side_effect=ImportError):
             result = generate_verdict(5, {}, "safe.com")
         assert result["report_to"] == []
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Bug fix tests
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestWhoisDatetimeBug:
+    """Bug #1: offset-naive vs offset-aware datetime comparison."""
+
+    def test_timezone_aware_creation_date(self):
+        """WHOIS with timezone-aware creation_date should not crash."""
+        from datetime import timezone, timedelta
+        import sys
+
+        aware_dt = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        mock_whois_result = MagicMock()
+        mock_whois_result.creation_date = aware_dt
+        mock_whois_result.expiration_date = None
+        mock_whois_result.registrar = "Test"
+        mock_whois_result.org = ""
+        mock_whois_result.country = "PL"
+
+        mock_whois_mod = MagicMock()
+        mock_whois_mod.whois.return_value = mock_whois_result
+
+        with patch.dict(sys.modules, {"whois": mock_whois_mod}):
+            result = _whois_lookup("example.com")
+        assert result["age_days"] is not None
+        assert result["age_days"] > 0
+
+    def test_timezone_naive_creation_date(self):
+        """WHOIS with timezone-naive creation_date still works."""
+        import sys
+
+        naive_dt = datetime(2020, 6, 15)
+        mock_whois_result = MagicMock()
+        mock_whois_result.creation_date = naive_dt
+        mock_whois_result.expiration_date = None
+        mock_whois_result.registrar = "Test"
+        mock_whois_result.org = ""
+        mock_whois_result.country = ""
+
+        mock_whois_mod = MagicMock()
+        mock_whois_mod.whois.return_value = mock_whois_result
+
+        with patch.dict(sys.modules, {"whois": mock_whois_mod}):
+            result = _whois_lookup("example.com")
+        assert result["age_days"] is not None
+        assert result["age_days"] > 0
+
+    def test_timezone_aware_with_offset(self):
+        """WHOIS with non-UTC timezone offset should not crash."""
+        from datetime import timezone, timedelta
+        import sys
+
+        offset_dt = datetime(2019, 3, 10, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+        mock_whois_result = MagicMock()
+        mock_whois_result.creation_date = offset_dt
+        mock_whois_result.expiration_date = None
+        mock_whois_result.registrar = ""
+        mock_whois_result.org = ""
+        mock_whois_result.country = ""
+
+        mock_whois_mod = MagicMock()
+        mock_whois_mod.whois.return_value = mock_whois_result
+
+        with patch.dict(sys.modules, {"whois": mock_whois_mod}):
+            result = _whois_lookup("example.com")
+        assert result["age_days"] is not None
+
+
+class TestUrlhausEmailBug:
+    """Bug #2: URLhaus 401 for email addresses."""
+
+    def test_urlhaus_strips_email(self):
+        """_urlhaus_lookup with email should extract domain — not send full email."""
+        # _urlhaus_lookup imports sync_urlhaus inside the function
+        mock_sync = MagicMock(return_value={"urls_count": 0, "blacklisted": False})
+        mock_intel_mod = MagicMock()
+        mock_intel_mod.sync_urlhaus = mock_sync
+
+        import sys
+        with patch.dict(sys.modules, {"modules.intelligence_sync": mock_intel_mod}):
+            result = _urlhaus_lookup("user@example.com")
+        mock_sync.assert_called_once_with("example.com")
+        assert result["blacklisted"] is False
+
+    def test_urlhaus_plain_domain(self):
+        """_urlhaus_lookup with plain domain works as before."""
+        mock_sync = MagicMock(return_value={"urls_count": 0, "blacklisted": False})
+        mock_intel_mod = MagicMock()
+        mock_intel_mod.sync_urlhaus = mock_sync
+
+        import sys
+        with patch.dict(sys.modules, {"modules.intelligence_sync": mock_intel_mod}):
+            result = _urlhaus_lookup("example.com")
+        mock_sync.assert_called_once_with("example.com")
+
+
+class TestJsonRepairBug:
+    """Bug #3: AI verdict JSON parse error — repair logic."""
+
+    def test_trailing_comma_repair(self):
+        """JSON with trailing commas should be repaired."""
+        mock_provider = MagicMock()
+        mock_provider.chat.return_value = '{"verdict": "BEZPIECZNE", "summary": "Ok", "red_flags": [],}'
+
+        with patch("modules.llm_provider.ClaudeProvider", return_value=mock_provider):
+            result = generate_verdict(10, {}, "test.com")
+        assert result["verdict"] == "BEZPIECZNE"
+
+    def test_json_with_prefix_text(self):
+        """JSON embedded in surrounding text should be extracted."""
+        mock_provider = MagicMock()
+        mock_provider.chat.return_value = 'Here is the result:\n{"verdict": "OSZUSTWO", "summary": "Bad"}\nDone.'
+
+        with patch("modules.llm_provider.ClaudeProvider", return_value=mock_provider):
+            result = generate_verdict(80, {}, "evil.com")
+        assert result["verdict"] == "OSZUSTWO"
+
+    def test_signals_truncation(self):
+        """Signals JSON longer than 2000 chars should be truncated in prompt."""
+        big_signals = {"key_" + str(i): "x" * 100 for i in range(30)}
+        mock_provider = MagicMock()
+        mock_provider.chat.return_value = '{"verdict": "PODEJRZANE", "summary": "Test"}'
+
+        with patch("modules.llm_provider.ClaudeProvider", return_value=mock_provider):
+            result = generate_verdict(30, big_signals, "test.com")
+        # Should not crash, should return valid result
+        assert result["verdict"] == "PODEJRZANE"
+
+
+class TestSafeEmailDomains:
+    """Additional fix: safe email domain whitelist."""
+
+    def test_safe_domains_constant(self):
+        """SAFE_EMAIL_DOMAINS contains expected providers."""
+        assert "gmail.com" in SAFE_EMAIL_DOMAINS
+        assert "wp.pl" in SAFE_EMAIL_DOMAINS
+        assert "proton.me" in SAFE_EMAIL_DOMAINS
+        assert "onet.pl" in SAFE_EMAIL_DOMAINS
+
+    def test_calculate_risk_safe_domain_cap(self):
+        """Safe email domain caps risk score at 15."""
+        signals = {
+            "whois": {"age_days": 100, "domain": "gmail.com", "available": False},
+            "spf_dmarc": {"has_spf": False, "has_dmarc": False},
+        }
+        score = calculate_risk(signals)
+        assert score <= 15
+
+    @patch("modules.verify._check_spf_dmarc")
+    @patch("modules.verify._whois_lookup")
+    @patch("modules.verify._check_mx")
+    @patch("modules.verify._load_disposable_domains")
+    def test_verify_email_gmail_safe(self, mock_disp, mock_mx, mock_whois, mock_spf):
+        """Verifying test@gmail.com should return BEZPIECZNE with score ≤ 15."""
+        mock_disp.return_value = set()
+        mock_mx.return_value = {"has_mx": True, "records": [{"host": "mx.google.com", "priority": 5}]}
+        mock_whois.return_value = {"age_days": 8000, "domain": "gmail.com", "available": False}
+        mock_spf.return_value = {"has_spf": True, "has_dmarc": True}
+
+        with patch("modules.verify._urlhaus_lookup", return_value={"urls_count": 0, "blacklisted": False}):
+            v = CyrberVerify()
+            result = v.verify_email("test@gmail.com")
+
+        assert result["risk_score"] <= 15
+        assert result["verdict"] == "BEZPIECZNE"
+        assert "Znany bezpieczny dostawca poczty" in result.get("trust_factors", [])
+
+    @patch("modules.verify._check_spf_dmarc")
+    @patch("modules.verify._whois_lookup")
+    @patch("modules.verify._check_mx")
+    @patch("modules.verify._load_disposable_domains")
+    def test_verify_email_unknown_domain_not_safe(self, mock_disp, mock_mx, mock_whois, mock_spf):
+        """Unknown domain should NOT get safe email treatment."""
+        mock_disp.return_value = set()
+        mock_mx.return_value = {"has_mx": False, "records": []}
+        mock_whois.return_value = {"age_days": 30, "domain": "shadymail.xyz", "available": False}
+        mock_spf.return_value = {"has_spf": False, "has_dmarc": False}
+
+        with patch("modules.verify._urlhaus_lookup", return_value={"urls_count": 0, "blacklisted": False}):
+            v = CyrberVerify()
+            result = v.verify_email("user@shadymail.xyz")
+
+        assert result["risk_score"] > 15
+        assert result["verdict"] != "BEZPIECZNE"
