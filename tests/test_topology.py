@@ -1,7 +1,7 @@
 """Tests for build_topology() network graph builder."""
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from backend.main import build_topology
+from backend.routers.topology import build_topology
 
 
 def _minimal_scan(target="192.168.1.1", **extra):
