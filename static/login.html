@@ -51,6 +51,21 @@ body::after {
   z-index: 0;
 }
 
+/* ── Blurred wolf watermark ── */
+.wolf-watermark {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60vw;
+  height: 60vw;
+  background: url('/static/logo.jpg') center/contain no-repeat;
+  opacity: 0.04;
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* ── Login card ── */
 .login-card {
   position: relative;
@@ -265,6 +280,7 @@ body::after {
 </head>
 <body>
 
+<div class="wolf-watermark"></div>
 <div class="login-card">
   <img src="/static/logo.jpg" alt="CYRBER" class="login-logo">
   <h1 class="login-title">CYRBER</h1>

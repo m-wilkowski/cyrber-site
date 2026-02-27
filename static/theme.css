@@ -874,6 +874,32 @@ html[data-theme="light"] .badge-info     { background: rgba(30,64,175,.06); }
   box-shadow: 0 0 12px rgba(201,168,76,0.3);
 }
 
+/* ── CYRBER Table ── */
+.cyrber-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-base);
+}
+.cyrber-table thead th {
+  font-size: var(--text-sm);
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  text-align: left;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border-strong);
+}
+.cyrber-table tbody td {
+  padding: var(--sp-3) var(--sp-4);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.cyrber-table tbody tr { transition: background 0.15s; }
+.cyrber-table tbody tr:hover { background: var(--accent-muted); }
+.cyrber-table tbody tr:last-child td { border-bottom: none; }
+
 /* ── Dropdown navbar ── */
 .cyrber-nav .nav-links { gap: 0; }
 
