@@ -37,6 +37,44 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 # ── JWT config ──
 _logger = logging.getLogger("cyrber")
 
+
+def _check_production_secrets():
+    """Warn loudly if running with default/well-known secrets."""
+    warnings = []
+
+    jwt_secret = os.getenv("JWT_SECRET", "change_me_in_production")
+    if jwt_secret in ("change_me_in_production", "change_me", "secret"):
+        warnings.append("JWT_SECRET is default – JWT tokens can be forged!")
+
+    cyrber_pass = os.getenv("CYRBER_PASS", "cyrber2024")
+    if cyrber_pass in ("cyrber2024", "admin", "password", "cyrber"):
+        warnings.append("CYRBER_PASS is default – admin account has a known password!")
+
+    pg_pass = os.getenv("POSTGRES_PASSWORD", "cyrber123")
+    if pg_pass in ("cyrber123", "postgres", "password"):
+        warnings.append("POSTGRES_PASSWORD is default – database is not secured!")
+
+    license_secret = os.getenv("CYRBER_LICENSE_SECRET", "cyrber-license-secret-2024")
+    if license_secret == "cyrber-license-secret-2024":
+        warnings.append("CYRBER_LICENSE_SECRET is default – licenses can be forged!")
+
+    if warnings:
+        banner = "\n" + "=" * 60
+        banner += "\n  CYRBER SECURITY WARNING"
+        banner += "\n" + "=" * 60
+        for w in warnings:
+            banner += f"\n  * {w}"
+        banner += "\n" + "=" * 60
+        banner += "\n  Set these variables in .env before production deployment!"
+        banner += "\n" + "=" * 60 + "\n"
+        print(banner, flush=True)
+        for w in warnings:
+            _logger.warning("SECURITY: %s", w)
+
+
+_check_production_secrets()
+
+
 def _load_jwt_secret() -> str:
     env_val = os.getenv("JWT_SECRET")
     if env_val:
