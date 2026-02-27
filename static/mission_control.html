@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYRBER — THEATRUM BELLI</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+
+/* ── WRAPPER ── */
+.wrapper {
+  max-width: var(--content-max); margin: 0 auto;
+  padding: var(--sp-4) var(--content-padding) var(--sp-8);
+  position: relative; z-index: 1;
+}
+
+/* ── MISSION BAR ── */
+.mission-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-6);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(12px);
+  margin-bottom: var(--sp-4);
+  flex-wrap: wrap;
+}
+.mission-bar-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-lg);
+  font-weight: 900;
+  letter-spacing: .12em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.live-dot {
+  width: 10px; height: 10px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: livepulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--green);
+  display: none;
+}
+.live-dot.active { display: inline-block; }
+@keyframes livepulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .4; transform: scale(.6); }
+}
+.mission-target {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-base);
+  color: var(--accent);
+  letter-spacing: .08em;
+}
+.mission-timer {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: .1em;
+}
+.mission-bar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.mb-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  letter-spacing: .12em;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all .2s;
+}
+.mb-btn:hover { border-color: var(--accent); color: var(--accent); }
+.mb-btn.btn-new {
+  background: var(--btn-primary-bg);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+.mb-btn.btn-new:hover { background: var(--btn-primary-hover); }
+.mb-btn.btn-abort { border-color: var(--red); color: var(--red); }
+.mb-btn.btn-abort:hover { background: rgba(255,68,68,.1); }
+.mb-btn.btn-pause { border-color: var(--amber); color: var(--amber); }
+.mb-btn.btn-pause:hover { background: rgba(245,158,11,.1); }
+
+/* ── STATUS BADGE ── */
+.status-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  letter-spacing: .12em;
+  padding: 3px var(--sp-3);
+  border: 1px solid;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+.status-pending  { color: var(--text-secondary); border-color: var(--text-secondary); }
+.status-running  { color: var(--green); border-color: var(--green); animation: livepulse 1.5s infinite; }
+.status-paused   { color: var(--amber); border-color: var(--amber); }
+.status-completed { color: var(--accent); border-color: var(--accent); }
+.status-aborted  { color: var(--red); border-color: var(--red); }
+
+/* ── THREE-PANEL GRID ── */
+.tb-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  grid-template-rows: 1fr 340px;
+  gap: var(--sp-4);
+  height: calc(100vh - 200px);
+  min-height: 500px;
+}
+.tb-grid .panel-terrain { grid-column: 1; grid-row: 1; }
+.tb-grid .panel-cerberus { grid-column: 2; grid-row: 1 / 3; }
+.tb-grid .panel-cogitatio { grid-column: 1; grid-row: 2; }
+
+@media (max-width: 1100px) {
+  .tb-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: 400px 300px 340px;
+    height: auto;
+  }
+  .tb-grid .panel-cerberus { grid-column: 1; grid-row: 2; }
+  .tb-grid .panel-cogitatio { grid-column: 1; grid-row: 3; }
+}
+
+/* ── PANEL BASE ── */
+.tb-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--card-shadow);
+}
+.panel-head {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: .18em;
+  color: var(--accent);
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+.panel-head-icon { font-size: var(--text-md); }
+.panel-body {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+/* ── TERRAIN MAP ── */
+.terrain-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-md);
+  letter-spacing: .1em;
+  gap: var(--sp-4);
+}
+.terrain-empty-icon { font-size: 48px; opacity: .3; }
+
+/* ── CERBERUS PANEL ── */
+.cerberus-heads {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  padding: var(--sp-5);
+}
+.cerberus-head {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4);
+  background: var(--bg-raised);
+}
+.cerberus-head-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: .2em;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-2);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.cerberus-head-title .head-icon { font-size: 16px; }
+.cerberus-head-desc {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.cerberus-head-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: var(--sp-2);
+}
+
+/* ── FIDUCIA BAR ── */
+.fiducia-section {
+  padding: var(--sp-5);
+  border-top: 1px solid var(--border);
+}
+.fiducia-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: .2em;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-2);
+}
+.fiducia-bar-bg {
+  height: 20px;
+  background: var(--bg-overlay);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.fiducia-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: var(--radius-full);
+  transition: width .8s ease, background .5s;
+  background: linear-gradient(90deg, var(--red), var(--amber), var(--green));
+}
+.fiducia-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+  margin-top: var(--sp-2);
+}
+
+/* ── MISSION LIST ── */
+.mission-list {
+  padding: var(--sp-5);
+  border-top: 1px solid var(--border);
+  max-height: 200px;
+  overflow-y: auto;
+}
+.mission-list-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: .2em;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-3);
+}
+.mission-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border2);
+  cursor: pointer;
+  transition: background .2s;
+}
+.mission-item:hover { background: var(--accent-muted); }
+.mission-item:last-child { border-bottom: none; }
+.mission-item-target {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+.mission-item-status {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: .1em;
+}
+
+/* ── COGITATIO TERMINAL ── */
+.cogitatio-terminal {
+  background: var(--terminal-bg);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--green);
+  padding: var(--sp-4);
+  overflow-y: auto;
+  flex: 1;
+  line-height: 1.7;
+}
+.cog-line {
+  opacity: 0;
+  animation: typein .3s forwards;
+}
+@keyframes typein {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.cog-time {
+  color: var(--text-muted);
+  margin-right: var(--sp-2);
+}
+.cog-module {
+  color: var(--accent);
+  margin-right: var(--sp-2);
+}
+.cog-phase {
+  color: var(--amber);
+  margin-right: var(--sp-2);
+}
+.cog-text { color: var(--green); }
+.cog-error { color: var(--red); }
+.cog-approval {
+  color: var(--amber);
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.cog-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: var(--green);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-8);
+  width: 90%;
+  max-width: 520px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-md);
+  font-weight: 700;
+  letter-spacing: .15em;
+  color: var(--text-primary);
+  margin-bottom: var(--sp-6);
+}
+.modal-field {
+  margin-bottom: var(--sp-4);
+}
+.modal-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  letter-spacing: .12em;
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-1);
+  text-transform: uppercase;
+  display: block;
+}
+.modal-input, .modal-select, .modal-textarea {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-base);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color .2s;
+  box-sizing: border-box;
+}
+.modal-textarea { resize: vertical; min-height: 80px; }
+.modal-input:focus, .modal-select:focus, .modal-textarea:focus {
+  border-color: var(--accent);
+}
+.modal-select option {
+  background: var(--bg-root);
+  color: var(--text-primary);
+}
+.modal-actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-6);
+  justify-content: flex-end;
+}
+.modal-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  letter-spacing: .1em;
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .2s;
+  border: 1px solid var(--border);
+}
+.modal-btn-primary {
+  background: var(--btn-primary-bg);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+.modal-btn-primary:hover { background: var(--btn-primary-hover); }
+.modal-btn-cancel {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.modal-btn-cancel:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+.modal-btn-approve {
+  background: rgba(61,220,132,.15);
+  color: var(--green);
+  border-color: var(--green);
+}
+.modal-btn-approve:hover { background: rgba(61,220,132,.25); }
+.modal-btn-reject {
+  background: rgba(255,68,68,.1);
+  color: var(--red);
+  border-color: var(--red);
+}
+.modal-btn-reject:hover { background: rgba(255,68,68,.2); }
+
+/* ── D3 TERRAIN STYLES ── */
+.terrain-svg { width: 100%; height: 100%; }
+.terrain-node-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  fill: var(--text-secondary);
+  pointer-events: none;
+}
+.terrain-edge {
+  stroke: var(--text-muted);
+  stroke-opacity: 0.35;
+  stroke-width: 1.5;
+}
+
+/* ── ITERATION COUNTER ── */
+.iter-counter {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  letter-spacing: .1em;
+  padding: var(--sp-2) var(--sp-4);
+  border-top: 1px solid var(--border);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══ NAVBAR ═══ -->
+<nav>
+  <a class="nav-brand" href="/ui">
+    <div class="nav-ring" style="background-image:url(/static/cyrber_wolf.png);background-size:100%;background-repeat:no-repeat;background-position:center center;"></div>
+    CYRBER
+    <span>AUTONOMOUS RECON</span>
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" href="/ui">SCAN</a>
+    <a class="nav-link" href="/dashboard">DASHBOARD</a>
+    <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="/scheduler">SCHEDULER</a>
+    <a class="nav-link" href="/osint">OSINT</a>
+    <a class="nav-link" href="/topology">TOPOLOGY</a>
+    <a class="nav-link" href="/verify">VERIFY</a>
+    <a class="nav-link active" href="/mission-control">MENS</a>
+    <a class="nav-link" href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
+  </div>
+</nav>
+
+<div class="wrapper">
+
+<!-- ═══ MISSION BAR ═══ -->
+<div class="mission-bar">
+  <div class="mission-bar-title">
+    <div class="live-dot" id="liveDot"></div>
+    THEATRUM BELLI
+  </div>
+  <span class="mission-target" id="missionTarget">NO ACTIVE MISSION</span>
+  <span class="status-badge status-pending" id="missionStatus" style="display:none"></span>
+  <span class="mission-timer" id="missionTimer"></span>
+  <div class="mission-bar-right">
+    <button class="mb-btn btn-new" onclick="openNewMission()">NEW MISSION</button>
+    <button class="mb-btn btn-pause" id="btnPause" style="display:none" onclick="pauseMission()">PAUSE</button>
+    <button class="mb-btn btn-abort" id="btnAbort" style="display:none" onclick="abortMission()">ABORT</button>
+    <button class="mb-btn" id="btnLex" onclick="window.open('/admin','_blank')">LEX</button>
+  </div>
+</div>
+
+<!-- ═══ THREE PANEL GRID ═══ -->
+<div class="tb-grid">
+
+  <!-- PANEL 1: TERRAIN MAP -->
+  <div class="tb-panel panel-terrain">
+    <div class="panel-head">
+      <span class="panel-head-icon">&#x1F5FA;</span> TERRAIN MAP
+    </div>
+    <div class="panel-body" id="terrainContainer">
+      <div class="terrain-empty" id="terrainEmpty">
+        <div class="terrain-empty-icon">&#x1F5FA;</div>
+        <div>Launch a mission to map the terrain</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 2: CERBERUS STATUS -->
+  <div class="tb-panel panel-cerberus">
+    <div class="panel-head">
+      <span class="panel-head-icon">&#x1F43A;</span> CERBERUS
+    </div>
+    <div class="panel-body" style="overflow-y:auto">
+      <div class="cerberus-heads">
+
+        <!-- RATIO — analytical head -->
+        <div class="cerberus-head">
+          <div class="cerberus-head-title">
+            <span class="head-icon">&#x1F9E0;</span> RATIO
+          </div>
+          <div class="cerberus-head-desc" id="ratioDesc">Analytical reasoning — module selection, risk assessment</div>
+          <div class="cerberus-head-value" id="ratioValue">IDLE</div>
+        </div>
+
+        <!-- ANIMUS — execution head -->
+        <div class="cerberus-head">
+          <div class="cerberus-head-title">
+            <span class="head-icon">&#x26A1;</span> ANIMUS
+          </div>
+          <div class="cerberus-head-desc" id="animusDesc">Execution engine — running tools, collecting data</div>
+          <div class="cerberus-head-value" id="animusValue">IDLE</div>
+        </div>
+
+        <!-- FATUM — learning head -->
+        <div class="cerberus-head">
+          <div class="cerberus-head-title">
+            <span class="head-icon">&#x1F52E;</span> FATUM
+          </div>
+          <div class="cerberus-head-desc" id="fatumDesc">Learning &amp; adaptation — pattern recognition, confidence</div>
+          <div class="cerberus-head-value" id="fatumValue">IDLE</div>
+        </div>
+
+      </div>
+
+      <!-- FIDUCIA -->
+      <div class="fiducia-section">
+        <div class="fiducia-label">FIDUCIA (CONFIDENCE)</div>
+        <div class="fiducia-bar-bg">
+          <div class="fiducia-bar-fill" id="fiduciaBar"></div>
+        </div>
+        <div class="fiducia-value" id="fiduciaValue">0.00</div>
+      </div>
+
+      <!-- RECENT MISSIONS -->
+      <div class="mission-list" id="missionListSection">
+        <div class="mission-list-title">RECENT MISSIONS</div>
+        <div id="missionList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 3: COGITATIO STREAM -->
+  <div class="tb-panel panel-cogitatio">
+    <div class="panel-head">
+      <span class="panel-head-icon">&#x1F4AD;</span> COGITATIO
+    </div>
+    <div class="cogitatio-terminal" id="cogitatioTerminal">
+      <div class="cog-line"><span class="cog-time">[--:--:--]</span><span class="cog-text">Awaiting mission...</span><span class="cog-cursor"></span></div>
+    </div>
+    <div class="iter-counter" id="iterCounter">ITERATIONS: 0</div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══ MODAL: NEW MISSION ═══ -->
+<div class="modal-overlay" id="modalNewMission">
+  <div class="modal-box">
+    <div class="modal-title">NEW MISSION</div>
+    <div class="modal-field">
+      <label class="modal-label">TARGET</label>
+      <input class="modal-input" id="nmTarget" placeholder="10.0.0.1 or domain.com">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">OBJECTIVE</label>
+      <textarea class="modal-textarea" id="nmObjective" placeholder="Full reconnaissance and vulnerability assessment"></textarea>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">MODE</label>
+      <select class="modal-select" id="nmMode">
+        <option value="comes">COMES — human approval per iteration</option>
+        <option value="liber">LIBER — fully autonomous</option>
+        <option value="iterum">ITERUM — re-run previous mission</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">LEX RULE</label>
+      <select class="modal-select" id="nmLexRule">
+        <option value="">Loading rules...</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-cancel" onclick="closeModal('modalNewMission')">CANCEL</button>
+      <button class="modal-btn modal-btn-primary" onclick="createMission()">LAUNCH MISSION</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: COMES APPROVAL ═══ -->
+<div class="modal-overlay" id="modalApproval">
+  <div class="modal-box">
+    <div class="modal-title">COMES APPROVAL REQUIRED</div>
+    <div class="modal-field">
+      <label class="modal-label">ITERATION</label>
+      <div id="approvalIteration" style="font-family:'Share Tech Mono',monospace;color:var(--text-primary);font-size:var(--text-base)"></div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">MODULE</label>
+      <div id="approvalModule" style="font-family:'Orbitron',sans-serif;color:var(--accent);font-size:var(--text-md);font-weight:700"></div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">COGITATIO (REASONING)</label>
+      <div id="approvalCogitatio" style="font-family:'Share Tech Mono',monospace;color:var(--text-secondary);font-size:var(--text-sm);line-height:1.6;white-space:pre-wrap"></div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">REJECT REASON (OPTIONAL)</label>
+      <textarea class="modal-textarea" id="approvalReason" placeholder="Reason for rejection..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-cancel" onclick="closeModal('modalApproval')">CANCEL</button>
+      <button class="modal-btn modal-btn-reject" onclick="rejectIteration()">REJECT</button>
+      <button class="modal-btn modal-btn-approve" onclick="approveIteration()">APPROVE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CYRBER THEATRUM BELLI — Mission Control
+   ═══════════════════════════════════════════════════════════ */
+
+var API = '';
+var currentMission = null;
+var currentIterations = [];
+var eventSource = null;
+var timerInterval = null;
+var pendingApprovalIteration = null;
+var terrainSimulation = null;
+
+// ── Auth ───────────────────────────────────────────────────
+
+function getToken() { return localStorage.getItem('cyrber_token'); }
+if (!getToken()) window.location.href = '/login';
+
+function authHeaders(extra) {
+  var token = getToken();
+  if (!token) { window.location.href = '/login'; return {}; }
+  var h = {'Authorization': 'Bearer ' + token};
+  if (extra) Object.assign(h, extra);
+  return h;
+}
+
+async function authFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = authHeaders(opts.headers || {});
+  var r = await fetch(url, opts);
+  if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
+  return r;
+}
+
+// ── Admin nav link ─────────────────────────────────────────
+
+(async function() {
+  try {
+    var r = await authFetch('/auth/me');
+    if (r.ok) {
+      var u = await r.json();
+      if (u.role === 'admin') document.getElementById('adminNavLink').style.display = '';
+    }
+  } catch(e) {}
+})();
+
+// ── Init ───────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadMissions();
+  loadLexRules();
+
+  // Resume active mission from localStorage
+  var saved = localStorage.getItem('cyrber_mission_id');
+  if (saved) loadMission(saved);
+});
+
+// ── Load Missions ──────────────────────────────────────────
+
+async function loadMissions() {
+  try {
+    var r = await authFetch(API + '/api/mind/missions');
+    if (!r.ok) return;
+    var missions = await r.json();
+    renderMissionList(missions);
+
+    // Auto-select first running mission
+    if (!currentMission) {
+      var running = missions.find(function(m) { return m.status === 'running' || m.status === 'paused'; });
+      if (running) loadMission(running.id);
+    }
+  } catch(e) { console.error('loadMissions:', e); }
+}
+
+function renderMissionList(missions) {
+  var el = document.getElementById('missionList');
+  if (!missions.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-family:Share Tech Mono,monospace;font-size:var(--text-sm)">No missions yet</div>';
+    return;
+  }
+  el.innerHTML = missions.slice(0, 10).map(function(m) {
+    return '<div class="mission-item" onclick="loadMission(\'' + m.id + '\')">' +
+      '<span class="mission-item-target">' + escHtml(m.target) + '</span>' +
+      '<span class="mission-item-status status-' + m.status + '">' + m.status.toUpperCase() + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Load Single Mission ────────────────────────────────────
+
+async function loadMission(missionId) {
+  try {
+    var r = await authFetch(API + '/api/mind/missions/' + missionId);
+    if (!r.ok) {
+      if (r.status === 404) {
+        localStorage.removeItem('cyrber_mission_id');
+        currentMission = null;
+        updateMissionBar();
+      }
+      return;
+    }
+    currentMission = await r.json();
+    currentIterations = currentMission.iterations || [];
+    localStorage.setItem('cyrber_mission_id', missionId);
+    updateMissionBar();
+    updateCerberus();
+    updateFiducia(currentMission.fiducia || 0);
+    renderCogitatio();
+    renderTerrain();
+    updateIterCounter();
+
+    // Connect SSE if running
+    if (currentMission.status === 'running' || currentMission.status === 'paused') {
+      connectSSE(missionId);
+      startTimer();
+    } else {
+      disconnectSSE();
+      stopTimer();
+    }
+  } catch(e) { console.error('loadMission:', e); }
+}
+
+// ── Mission Bar ────────────────────────────────────────────
+
+function updateMissionBar() {
+  var targetEl = document.getElementById('missionTarget');
+  var statusEl = document.getElementById('missionStatus');
+  var liveDot = document.getElementById('liveDot');
+  var btnPause = document.getElementById('btnPause');
+  var btnAbort = document.getElementById('btnAbort');
+
+  if (!currentMission) {
+    targetEl.textContent = 'NO ACTIVE MISSION';
+    statusEl.style.display = 'none';
+    liveDot.classList.remove('active');
+    btnPause.style.display = 'none';
+    btnAbort.style.display = 'none';
+    return;
+  }
+
+  targetEl.textContent = currentMission.target + ' — ' + (currentMission.objective || '').substring(0, 60);
+  statusEl.textContent = currentMission.status.toUpperCase();
+  statusEl.className = 'status-badge status-' + currentMission.status;
+  statusEl.style.display = '';
+
+  var isActive = currentMission.status === 'running' || currentMission.status === 'paused';
+  liveDot.classList.toggle('active', currentMission.status === 'running');
+  btnAbort.style.display = isActive ? '' : 'none';
+  btnPause.style.display = currentMission.status === 'running' ? '' : 'none';
+}
+
+// ── Timer ──────────────────────────────────────────────────
+
+function startTimer() {
+  stopTimer();
+  if (!currentMission || !currentMission.started_at) return;
+  var startTime = new Date(currentMission.started_at).getTime();
+  var timerEl = document.getElementById('missionTimer');
+
+  timerInterval = setInterval(function() {
+    var elapsed = Date.now() - startTime;
+    var h = Math.floor(elapsed / 3600000);
+    var m = Math.floor((elapsed % 3600000) / 60000);
+    var s = Math.floor((elapsed % 60000) / 1000);
+    timerEl.textContent = pad(h) + ':' + pad(m) + ':' + pad(s);
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+// ── SSE (COGITATIO Stream) ─────────────────────────────────
+
+function connectSSE(missionId) {
+  disconnectSSE();
+  var token = getToken();
+  if (!token) return;
+
+  eventSource = new EventSource(
+    API + '/api/mind/missions/' + missionId + '/stream?token=' + encodeURIComponent(token)
+  );
+
+  eventSource.onmessage = function(e) {
+    try {
+      var data = JSON.parse(e.data);
+      handleSSEEvent(data);
+    } catch(ex) { /* ignore parse errors */ }
+  };
+
+  eventSource.onerror = function() {
+    // SSE will auto-reconnect; on permanent failure, disconnect after timeout
+    setTimeout(function() {
+      if (eventSource && eventSource.readyState === 2) {
+        disconnectSSE();
+      }
+    }, 10000);
+  };
+}
+
+function disconnectSSE() {
+  if (eventSource) {
+    eventSource.close();
+    eventSource = null;
+  }
+}
+
+function handleSSEEvent(data) {
+  switch (data.type) {
+    case 'status':
+      if (currentMission) {
+        currentMission.status = data.status;
+        currentMission.fiducia = data.fiducia;
+        updateMissionBar();
+        updateFiducia(data.fiducia || 0);
+      }
+      break;
+
+    case 'cogitatio':
+      appendCogitatio(data);
+      updateCerberusFromIteration(data);
+      break;
+
+    case 'iteration':
+      // Full iteration data — update list and terrain
+      var exists = currentIterations.find(function(it) { return it.id === data.id; });
+      if (!exists) {
+        currentIterations.push(data);
+        updateIterCounter();
+        renderTerrain();
+      }
+      // Check if needs approval (COMES mode)
+      if (data.approved === null && currentMission && currentMission.mode === 'comes') {
+        showApprovalModal(data);
+      }
+      break;
+
+    case 'done':
+      if (currentMission) {
+        currentMission.status = data.status;
+        currentMission.fiducia = data.fiducia;
+        updateMissionBar();
+        updateFiducia(data.fiducia || 0);
+      }
+      appendCogitatioLine('[MISSION ' + (data.status || 'DONE').toUpperCase() + ']', 'cog-text', null, null);
+      disconnectSSE();
+      stopTimer();
+      setCerberusIdle();
+      loadMissions();
+      break;
+
+    case 'error':
+      appendCogitatioLine('[ERROR] ' + (data.message || 'Unknown error'), 'cog-error', null, null);
+      break;
+  }
+}
+
+// ── Cogitatio Rendering ────────────────────────────────────
+
+function renderCogitatio() {
+  var terminal = document.getElementById('cogitatioTerminal');
+  terminal.innerHTML = '';
+  if (!currentIterations.length) {
+    terminal.innerHTML = '<div class="cog-line"><span class="cog-time">[--:--:--]</span><span class="cog-text">Awaiting iteration data...</span><span class="cog-cursor"></span></div>';
+    return;
+  }
+  currentIterations.forEach(function(it) {
+    appendCogitatioLine(
+      it.cogitatio || '...',
+      it.approved === false ? 'cog-error' : 'cog-text',
+      it.module_selected,
+      it.phase
+    );
+  });
+}
+
+function appendCogitatio(data) {
+  appendCogitatioLine(
+    data.cogitatio || '...',
+    'cog-text',
+    data.module,
+    null
+  );
+}
+
+function appendCogitatioLine(text, cls, module, phase) {
+  var terminal = document.getElementById('cogitatioTerminal');
+  // Remove cursor from previous line
+  var cursors = terminal.querySelectorAll('.cog-cursor');
+  cursors.forEach(function(c) { c.remove(); });
+
+  var line = document.createElement('div');
+  line.className = 'cog-line';
+
+  var now = new Date();
+  var timeStr = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+  var html = '<span class="cog-time">[' + timeStr + ']</span>';
+  if (module) html += '<span class="cog-module">[' + escHtml(module) + ']</span>';
+  if (phase) html += '<span class="cog-phase">[' + escHtml(phase) + ']</span>';
+  html += '<span class="' + cls + '">' + escHtml(text) + '</span>';
+  html += '<span class="cog-cursor"></span>';
+
+  line.innerHTML = html;
+  terminal.appendChild(line);
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+function updateIterCounter() {
+  document.getElementById('iterCounter').textContent = 'ITERATIONS: ' + currentIterations.length;
+}
+
+// ── Cerberus Update ────────────────────────────────────────
+
+function updateCerberus() {
+  if (!currentMission) { setCerberusIdle(); return; }
+  var isActive = currentMission.status === 'running';
+  document.getElementById('ratioValue').textContent = isActive ? 'ACTIVE' : currentMission.status.toUpperCase();
+  document.getElementById('animusValue').textContent = isActive ? 'ACTIVE' : 'STANDBY';
+  document.getElementById('fatumValue').textContent = isActive ? 'LEARNING' : 'STANDBY';
+
+  if (isActive) {
+    document.getElementById('ratioValue').style.color = 'var(--green)';
+    document.getElementById('animusValue').style.color = 'var(--amber)';
+    document.getElementById('fatumValue').style.color = 'var(--purple)';
+  } else {
+    document.getElementById('ratioValue').style.color = 'var(--text-muted)';
+    document.getElementById('animusValue').style.color = 'var(--text-muted)';
+    document.getElementById('fatumValue').style.color = 'var(--text-muted)';
+  }
+}
+
+function updateCerberusFromIteration(data) {
+  if (data.module) {
+    document.getElementById('ratioValue').textContent = data.module.toUpperCase();
+    document.getElementById('ratioValue').style.color = 'var(--green)';
+    document.getElementById('animusValue').textContent = 'EXECUTING';
+    document.getElementById('animusValue').style.color = 'var(--amber)';
+  }
+}
+
+function setCerberusIdle() {
+  document.getElementById('ratioValue').textContent = 'IDLE';
+  document.getElementById('animusValue').textContent = 'IDLE';
+  document.getElementById('fatumValue').textContent = 'IDLE';
+  ['ratioValue', 'animusValue', 'fatumValue'].forEach(function(id) {
+    document.getElementById(id).style.color = 'var(--text-muted)';
+  });
+}
+
+// ── Fiducia ────────────────────────────────────────────────
+
+function updateFiducia(val) {
+  var pct = Math.max(0, Math.min(100, val * 100));
+  document.getElementById('fiduciaBar').style.width = pct + '%';
+  document.getElementById('fiduciaValue').textContent = val.toFixed(2);
+}
+
+// ── Terrain Map (D3.js) ────────────────────────────────────
+
+var TERRAIN_COLORS = {
+  target: 'var(--red)',
+  host: 'var(--accent)',
+  service: 'var(--teal)',
+  vuln: 'var(--orange)',
+  finding: 'var(--amber)'
+};
+
+var TERRAIN_ICONS = {
+  target: '\uD83C\uDFAF',
+  host: '\uD83D\uDCBB',
+  service: '\u2699',
+  vuln: '\u26A0',
+  finding: '\uD83D\uDD0D'
+};
+
+function getComputedColor(v) {
+  if (!v || !v.startsWith('var(')) return v || '#4a8fd4';
+  var prop = v.replace(/var\(([^)]+)\)/, '$1');
+  return getComputedStyle(document.documentElement).getPropertyValue(prop).trim() || '#4a8fd4';
+}
+
+function renderTerrain() {
+  var container = document.getElementById('terrainContainer');
+  var emptyEl = document.getElementById('terrainEmpty');
+
+  if (!currentMission || !currentIterations.length) {
+    emptyEl.style.display = '';
+    // Remove old SVG
+    var oldSvg = container.querySelector('svg');
+    if (oldSvg) oldSvg.remove();
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  // Build nodes and edges from iterations
+  var nodes = [];
+  var edges = [];
+  var nodeMap = {};
+
+  // Target node (always present)
+  var targetId = 'target-' + currentMission.target;
+  nodeMap[targetId] = { id: targetId, label: currentMission.target, type: 'target' };
+  nodes.push(nodeMap[targetId]);
+
+  currentIterations.forEach(function(it) {
+    if (!it.module_selected || it.module_selected === 'DONE') return;
+
+    // Module node
+    var modId = 'mod-' + it.iteration_number + '-' + it.module_selected;
+    if (!nodeMap[modId]) {
+      nodeMap[modId] = {
+        id: modId,
+        label: it.module_selected + ' #' + it.iteration_number,
+        type: it.findings_count > 0 ? 'finding' : 'service'
+      };
+      nodes.push(nodeMap[modId]);
+      edges.push({ source: targetId, target: modId });
+    }
+
+    // If findings, add a finding child node
+    if (it.findings_count > 0) {
+      var findId = 'find-' + it.iteration_number;
+      if (!nodeMap[findId]) {
+        nodeMap[findId] = {
+          id: findId,
+          label: it.findings_count + ' findings',
+          type: 'vuln'
+        };
+        nodes.push(nodeMap[findId]);
+        edges.push({ source: modId, target: findId });
+      }
+    }
+  });
+
+  // Clear old SVG
+  var oldSvg = container.querySelector('svg');
+  if (oldSvg) oldSvg.remove();
+
+  var W = container.clientWidth;
+  var H = container.clientHeight;
+  if (W < 100 || H < 100) return;
+
+  var svg = d3.select(container)
+    .append('svg')
+    .attr('width', W)
+    .attr('height', H)
+    .attr('class', 'terrain-svg');
+
+  var g = svg.append('g');
+  var zoom = d3.zoom()
+    .scaleExtent([0.3, 4])
+    .on('zoom', function(e) { g.attr('transform', e.transform); });
+  svg.call(zoom);
+
+  // Arrow marker
+  svg.append('defs').append('marker')
+    .attr('id', 'tarrow').attr('viewBox', '0 -5 10 10')
+    .attr('refX', 22).attr('refY', 0)
+    .attr('markerWidth', 6).attr('markerHeight', 6)
+    .attr('orient', 'auto')
+    .append('path').attr('d', 'M0,-5L10,0L0,5')
+    .attr('fill', 'var(--text-muted)');
+
+  // Node sizes
+  nodes.forEach(function(n) {
+    n._r = n.type === 'target' ? 28 : n.type === 'vuln' ? 18 : 22;
+  });
+
+  // Simulation
+  if (terrainSimulation) terrainSimulation.stop();
+  terrainSimulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(edges).id(function(d) { return d.id; }).distance(100))
+    .force('charge', d3.forceManyBody().strength(-250))
+    .force('center', d3.forceCenter(W / 2, H / 2))
+    .force('collide', d3.forceCollide().radius(function(d) { return d._r + 10; }));
+
+  // Edges
+  var link = g.append('g')
+    .selectAll('line')
+    .data(edges)
+    .join('line')
+    .attr('class', 'terrain-edge')
+    .attr('marker-end', 'url(#tarrow)');
+
+  // Nodes
+  var node = g.append('g')
+    .selectAll('g')
+    .data(nodes)
+    .join('g')
+    .attr('cursor', 'pointer')
+    .call(d3.drag()
+      .on('start', function(e, d) {
+        if (!e.active) terrainSimulation.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on('drag', function(e, d) { d.fx = e.x; d.fy = e.y; })
+      .on('end', function(e, d) {
+        if (!e.active) terrainSimulation.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      })
+    );
+
+  node.append('circle')
+    .attr('r', function(d) { return d._r; })
+    .attr('fill', function(d) {
+      var c = getComputedColor(TERRAIN_COLORS[d.type] || 'var(--accent)');
+      return c + '22';
+    })
+    .attr('stroke', function(d) {
+      return getComputedColor(TERRAIN_COLORS[d.type] || 'var(--accent)');
+    })
+    .attr('stroke-width', 2);
+
+  // Icons
+  node.append('text')
+    .text(function(d) { return TERRAIN_ICONS[d.type] || '\uD83D\uDCBB'; })
+    .attr('text-anchor', 'middle')
+    .attr('dominant-baseline', 'central')
+    .attr('font-size', function(d) { return Math.max(14, d._r * 0.65) + 'px'; })
+    .attr('pointer-events', 'none');
+
+  // Labels
+  node.append('text')
+    .text(function(d) { return d.label.length > 20 ? d.label.substring(0, 19) + '\u2026' : d.label; })
+    .attr('class', 'terrain-node-label')
+    .attr('text-anchor', 'middle')
+    .attr('dy', function(d) { return d._r + 14; });
+
+  // Tick
+  terrainSimulation.on('tick', function() {
+    link
+      .attr('x1', function(d) { return d.source.x; })
+      .attr('y1', function(d) { return d.source.y; })
+      .attr('x2', function(d) { return d.target.x; })
+      .attr('y2', function(d) { return d.target.y; });
+    node.attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
+  });
+}
+
+// ── Load LEX Rules ─────────────────────────────────────────
+
+async function loadLexRules() {
+  try {
+    var r = await authFetch(API + '/api/mind/lex/rules');
+    if (!r.ok) return;
+    var rules = await r.json();
+    var sel = document.getElementById('nmLexRule');
+    sel.innerHTML = '';
+    if (!rules.length) {
+      sel.innerHTML = '<option value="">No LEX rules — create one in Admin</option>';
+      return;
+    }
+    rules.forEach(function(rule) {
+      var opt = document.createElement('option');
+      opt.value = rule.id;
+      opt.textContent = rule.name + ' (' + (rule.scope_cidrs || []).join(', ') + ')';
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.error('loadLexRules:', e); }
+}
+
+// ── Create Mission ─────────────────────────────────────────
+
+async function createMission() {
+  var target = document.getElementById('nmTarget').value.trim();
+  var objective = document.getElementById('nmObjective').value.trim();
+  var mode = document.getElementById('nmMode').value;
+  var lexRuleId = document.getElementById('nmLexRule').value;
+
+  if (!target) { alert('Target is required'); return; }
+  if (!objective) { alert('Objective is required'); return; }
+  if (!lexRuleId) { alert('Select a LEX rule'); return; }
+
+  try {
+    var r = await authFetch(API + '/api/mind/missions', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        target: target,
+        objective: objective,
+        mode: mode,
+        lex_rule_id: lexRuleId
+      })
+    });
+    if (!r.ok) {
+      var err = await r.json().catch(function() { return {}; });
+      alert('Error: ' + (err.detail || r.statusText));
+      return;
+    }
+    var mission = await r.json();
+    closeModal('modalNewMission');
+    loadMission(mission.id);
+    loadMissions();
+
+    // Auto-start the mission
+    startMission(mission.id);
+  } catch(e) { alert('Failed to create mission: ' + e.message); }
+}
+
+async function startMission(missionId) {
+  try {
+    var r = await authFetch(API + '/api/mind/missions/' + missionId + '/start', { method: 'POST' });
+    if (r.ok) {
+      loadMission(missionId);
+    }
+  } catch(e) { console.error('startMission:', e); }
+}
+
+// ── Abort / Pause ──────────────────────────────────────────
+
+async function abortMission() {
+  if (!currentMission) return;
+  if (!confirm('Abort mission against ' + currentMission.target + '?')) return;
+
+  try {
+    var r = await authFetch(API + '/api/mind/missions/' + currentMission.id + '/abort', { method: 'POST' });
+    if (r.ok) loadMission(currentMission.id);
+  } catch(e) { alert('Failed to abort: ' + e.message); }
+}
+
+function pauseMission() {
+  // Pause = abort for now (agent pauses naturally in COMES mode)
+  abortMission();
+}
+
+// ── COMES Approval ─────────────────────────────────────────
+
+function showApprovalModal(iteration) {
+  pendingApprovalIteration = iteration;
+  document.getElementById('approvalIteration').textContent =
+    '#' + iteration.iteration_number + ' — ' + (iteration.phase || 'unknown');
+  document.getElementById('approvalModule').textContent = iteration.module_selected || 'N/A';
+  document.getElementById('approvalCogitatio').textContent = iteration.cogitatio || 'No reasoning provided';
+  document.getElementById('approvalReason').value = '';
+  openModal('modalApproval');
+}
+
+async function approveIteration() {
+  if (!pendingApprovalIteration || !currentMission) return;
+  try {
+    var r = await authFetch(
+      API + '/api/mind/missions/' + currentMission.id +
+      '/iterations/' + pendingApprovalIteration.id + '/approve',
+      { method: 'POST' }
+    );
+    if (r.ok) {
+      appendCogitatioLine('APPROVED iteration #' + pendingApprovalIteration.iteration_number, 'cog-text', null, 'COMES');
+      closeModal('modalApproval');
+      pendingApprovalIteration = null;
+      // Resume mission if paused
+      if (currentMission.status === 'paused') {
+        startMission(currentMission.id);
+      }
+    }
+  } catch(e) { alert('Approve failed: ' + e.message); }
+}
+
+async function rejectIteration() {
+  if (!pendingApprovalIteration || !currentMission) return;
+  var reason = document.getElementById('approvalReason').value.trim();
+  try {
+    var r = await authFetch(
+      API + '/api/mind/missions/' + currentMission.id +
+      '/iterations/' + pendingApprovalIteration.id + '/reject',
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ reason: reason || null })
+      }
+    );
+    if (r.ok) {
+      appendCogitatioLine('REJECTED iteration #' + pendingApprovalIteration.iteration_number + (reason ? ': ' + reason : ''), 'cog-error', null, 'COMES');
+      closeModal('modalApproval');
+      pendingApprovalIteration = null;
+    }
+  } catch(e) { alert('Reject failed: ' + e.message); }
+}
+
+// ── Modal Helpers ──────────────────────────────────────────
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openNewMission() {
+  document.getElementById('nmTarget').value = '';
+  document.getElementById('nmObjective').value = '';
+  document.getElementById('nmMode').value = 'comes';
+  loadLexRules();
+  openModal('modalNewMission');
+}
+
+// Close modal on overlay click
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('open');
+  }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach(function(m) { m.classList.remove('open'); });
+  }
+});
+
+// ── Utility ────────────────────────────────────────────────
+
+function escHtml(s) {
+  if (!s) return '';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ── Window resize → re-render terrain ──────────────────────
+
+var resizeTimeout;
+window.addEventListener('resize', function() {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(function() {
+    if (currentMission && currentIterations.length) renderTerrain();
+  }, 300);
+});
+
+</script>
+</body>
+</html>

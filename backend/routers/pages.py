@@ -54,6 +54,11 @@ async def topology_page():
     return FileResponse("static/topology.html", headers=_NO_CACHE)
 
 
+@router.get("/mission-control")
+async def mission_control_page():
+    return FileResponse("static/mission_control.html", headers=_NO_CACHE)
+
+
 @router.get("/admin")
 async def admin_page():
     return FileResponse("static/admin.html", headers=_NO_CACHE)
