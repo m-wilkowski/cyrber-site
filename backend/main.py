@@ -74,6 +74,7 @@ from backend.routers.intelligence import router as intelligence_router
 from backend.routers.remediation import router as remediation_router
 from backend.routers.dashboard import router as dashboard_router
 from backend.routers.mind import router as mind_router
+from backend.routers.mirror import router as mirror_router
 
 app.include_router(pages_router)
 app.include_router(auth_router)
@@ -89,3 +90,4 @@ app.include_router(intelligence_router)
 app.include_router(remediation_router)
 app.include_router(dashboard_router)
 app.include_router(mind_router)
+app.include_router(mirror_router)

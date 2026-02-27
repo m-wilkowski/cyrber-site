@@ -158,6 +158,13 @@ def mens_run_task(self, mission_id: str):
                   mission_id, iteration_count,
                   final_row.status if final_row else "unknown")
 
+        # ── MIRROR: update organization profile on completion ────
+        if final_row and final_row.status == "completed":
+            try:
+                _update_mirror_profile(mission_id, mission.target, db)
+            except Exception as exc:
+                _log.warning("[MENS task] MIRROR update failed: %s", exc)
+
         return {
             "status": "ok",
             "mission_id": mission_id,
@@ -200,3 +207,35 @@ def _abort_mission(db, mission_id: str, error_msg: str):
         db.commit()
     except Exception:
         _log.exception("[MENS task] failed to abort mission %s", mission_id)
+
+
+def _update_mirror_profile(mission_id: str, target: str, db):
+    """Build mission summary and feed it to MIRROR engine."""
+    from backend.mind_agent import MensIterationModel
+    from backend.mirror import MirrorEngine
+
+    iter_rows = (
+        db.query(MensIterationModel)
+        .filter(MensIterationModel.mission_id == mission_id)
+        .order_by(MensIterationModel.iteration_number)
+        .all()
+    )
+
+    iterations_data = [
+        {
+            "module": r.module_selected,
+            "findings_count": r.findings_count or 0,
+            "result_summary": r.result_summary,
+            "head": r.head or "RATIO",
+        }
+        for r in iter_rows
+    ]
+
+    mission_summary = {
+        "iterations": iterations_data,
+        "iteration_count": len(iterations_data),
+    }
+
+    engine = MirrorEngine()
+    engine.update_profile(target, mission_summary, db)
+    _log.info("[MENS task] MIRROR profile updated for target=%s", target)
