@@ -2,13 +2,13 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: cyrber
-      POSTGRES_PASSWORD: cyrber123
-      POSTGRES_DB: cyrber
+      POSTGRES_USER: ${POSTGRES_USER:-cyrber}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cyrber123}
+      POSTGRES_DB: ${POSTGRES_DB:-cyrber}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cyrber"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cyrber}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -110,7 +110,7 @@ services:
     tmpfs:
       - /tmp
     environment:
-      DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cyrber}:${POSTGRES_PASSWORD:-cyrber123}@db/${POSTGRES_DB:-cyrber}
       REDIS_URL: redis://:${REDIS_PASSWORD:-cyrber_redis_2024}@redis:6379/0
       LLM_PROVIDER: ${LLM_PROVIDER:-claude}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
@@ -172,7 +172,7 @@ services:
     build: .
     command: celery -A modules.tasks worker --loglevel=info
     environment:
-      DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cyrber}:${POSTGRES_PASSWORD:-cyrber123}@db/${POSTGRES_DB:-cyrber}
       REDIS_URL: redis://:${REDIS_PASSWORD:-cyrber_redis_2024}@redis:6379/0
       LLM_PROVIDER: ${LLM_PROVIDER:-claude}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
@@ -222,7 +222,7 @@ services:
     build: .
     command: celery -A modules.tasks beat --loglevel=info
     environment:
-      DATABASE_URL: postgresql://cyrber:cyrber123@db/cyrber
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cyrber}:${POSTGRES_PASSWORD:-cyrber123}@db/${POSTGRES_DB:-cyrber}
       REDIS_URL: redis://:${REDIS_PASSWORD:-cyrber_redis_2024}@redis:6379/0
       LLM_PROVIDER: ${LLM_PROVIDER:-claude}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
