@@ -69,6 +69,16 @@ async def proof_page():
     return FileResponse("static/proof.html", headers=_NO_CACHE)
 
 
+@router.get("/chronicle")
+async def chronicle_page():
+    return FileResponse("static/chronicle.html", headers=_NO_CACHE)
+
+
+@router.get("/hardware")
+async def hardware_page():
+    return FileResponse("static/hardware.html", headers=_NO_CACHE)
+
+
 @router.get("/admin")
 async def admin_page():
     return FileResponse("static/admin.html", headers=_NO_CACHE)

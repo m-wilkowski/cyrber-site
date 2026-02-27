@@ -12,202 +12,291 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
-  .theme-toggle{position:fixed;top:var(--sp-4);right:var(--sp-4);z-index:100}
+body {
+  background: #0a0a0f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
 
-  body {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding-bottom: 5vh;
-  }
+/* ── Animated gradient background ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #0a0a1a 0%, #0a0a0f 30%, #0d1025 60%, #0a0a0f 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  z-index: 0;
+}
 
-  .login-container {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    max-width: 400px;
-    padding: 0 var(--sp-5);
-  }
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
 
-  .login-brand {
-    position: fixed;
-    top: 6vh;
-    left: 0;
-    right: 0;
-    text-align: center;
-    z-index: 1;
-  }
+/* ── Radar grid lines ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(193,18,31,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(193,18,31,0.015) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 0;
+}
 
-  .login-brand h1 {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 56px;
-    font-weight: 900;
-    letter-spacing: .2em;
-    color: var(--text-primary);
-  }
+/* ── Login card ── */
+.login-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 400px;
+  padding: 48px 40px 36px;
+  background: rgba(13,13,26,0.85);
+  border: 1px solid rgba(193,18,31,0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 0 60px rgba(193,18,31,0.08), 0 2px 20px rgba(0,0,0,0.5);
+}
 
-  .login-brand span {
-    display: block;
-    font-family: 'Orbitron', sans-serif;
-    font-size: var(--text-sm);
-    font-weight: 400;
-    color: var(--accent);
-    letter-spacing: .3em;
-    margin-top: var(--sp-1);
-  }
+/* ── Logo ── */
+.login-logo {
+  display: block;
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  filter: brightness(1.1);
+  border: 2px solid rgba(193,18,31,0.3);
+}
 
-  .login-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: var(--sp-8);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: var(--card-shadow);
-  }
+.login-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--text-primary);
+  text-align: center;
+  margin: 0 0 6px;
+}
 
-  .login-card h2 {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: var(--text-base);
-    letter-spacing: .2em;
-    color: var(--text-secondary);
-    margin-bottom: var(--sp-6);
-  }
+.login-tagline {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: #C9A84C;
+  text-align: center;
+  text-transform: uppercase;
+  margin: 0;
+}
 
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-1);
-    margin-bottom: var(--sp-4);
-  }
+.login-sep {
+  width: 60px;
+  height: 2px;
+  background: #C1121F;
+  margin: 20px auto;
+  border: none;
+}
 
-  label {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: var(--text-sm);
-    letter-spacing: .15em;
-    color: var(--text-secondary);
-  }
+/* ── Form ── */
+.form-group {
+  position: relative;
+  margin-bottom: 16px;
+}
 
-  input {
-    background: var(--input-bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-primary);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: var(--text-md);
-    padding: var(--sp-3) var(--sp-4);
-    outline: none;
-    width: 100%;
-    transition: border-color .2s;
-  }
+.form-group .icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #555577;
+  font-size: 15px;
+  pointer-events: none;
+}
 
-  input:focus {
-    border-color: var(--accent);
-  }
+.form-group input {
+  width: 100%;
+  padding: 12px 14px 12px 42px;
+  background: rgba(10,10,20,0.7);
+  border: 1px solid rgba(193,18,31,0.15);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
 
-  .btn {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: var(--text-base);
-    letter-spacing: .15em;
-    padding: var(--sp-3) var(--sp-6);
-    border: 1px solid rgba(74,143,212,.3);
-    border-radius: var(--radius-sm);
-    background: var(--btn-primary-bg);
-    color: #fff;
-    cursor: pointer;
-    width: 100%;
-    margin-top: var(--sp-2);
-    transition: all .2s;
-  }
+.form-group input:focus {
+  border-color: #C1121F;
+  box-shadow: 0 0 0 3px rgba(193,18,31,0.1);
+}
 
-  .btn:hover {
-    background: var(--btn-primary-hover);
-    box-shadow: 0 0 24px var(--glow);
-  }
+.form-group input::placeholder {
+  color: #555577;
+  letter-spacing: 0.05em;
+}
 
-  .msg {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: var(--text-base);
-    padding: var(--sp-2) var(--sp-4);
-    margin-top: var(--sp-4);
-    border-left: 3px solid var(--red);
-    border-radius: var(--radius-sm);
-    background: rgba(255,68,68,.08);
-    color: var(--red);
-    display: none;
-  }
+/* ── Remember me ── */
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 20px;
+}
 
-  .msg.visible { display: block; }
+.remember-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #C1121F;
+  cursor: pointer;
+}
 
-  footer {
-    position: fixed;
-    bottom: var(--sp-5);
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: var(--text-sm);
-    color: var(--text-muted);
-    letter-spacing: .22em;
-    z-index: 1;
-  }
+.remember-row label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: #8888aa;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
 
-  .bg-logo {
-    position: fixed;
-    top: 56%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 92vw;
-    height: 92vh;
-    max-width: 1200px;
-    max-height: 1000px;
-    background: url('/static/cyrber_wolf.png') center center / contain no-repeat;
-    opacity: 0.04;
-    pointer-events: none;
-    z-index: 0;
-  }
+/* ── Button ── */
+.btn-login {
+  width: 100%;
+  padding: 12px;
+  background: #C1121F;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
 
-  @media (max-width: 768px) {
-    .login-card { max-width: 360px; padding: var(--sp-6); }
-    .login-brand h1 { font-size: 44px; }
-  }
-  @media (max-width: 480px) {
-    .login-brand h1 { font-size: 36px; }
-    .login-card { padding: var(--sp-6); }
-    body { padding-bottom: 4vh; }
-  }
+.btn-login:hover:not(:disabled) {
+  background: #9a0e17;
+  box-shadow: 0 0 20px rgba(193,18,31,0.4);
+}
+
+.btn-login:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ── Spinner ── */
+.spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn-login.loading .spinner { display: inline-block; }
+.btn-login.loading .btn-text { display: none; }
+.btn-login.loading .btn-loading-text { display: inline; }
+.btn-loading-text { display: none; }
+
+/* ── Error message ── */
+.error-msg {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: #ff4444;
+  text-align: center;
+  margin-top: 12px;
+  min-height: 16px;
+  letter-spacing: 0.05em;
+}
+
+/* ── Footer ── */
+.login-footer {
+  text-align: center;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(193,18,31,0.1);
+}
+
+.login-footer .copy {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: #555577;
+  letter-spacing: 0.1em;
+  margin: 0 0 6px;
+}
+
+.login-footer .motto {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  color: #C9A84C;
+  font-style: italic;
+  letter-spacing: 0.05em;
+  margin: 0;
+  opacity: 0.7;
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .login-card { padding: 36px 24px 28px; margin: 0 16px; }
+  .login-logo { width: 90px; height: 90px; }
+  .login-title { font-size: 24px; }
+}
 </style>
 </head>
 <body>
 
-<button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+<div class="login-card">
+  <img src="/static/logo.jpg" alt="CYRBER" class="login-logo">
+  <h1 class="login-title">CYRBER</h1>
+  <p class="login-tagline">Adversary Reasoning Platform</p>
+  <hr class="login-sep">
 
-<div class="login-brand">
-  <h1>CYRBER</h1>
-  <span>AUTONOMOUS RECON</span>
-</div>
+  <form id="loginForm" onsubmit="doLogin(event)" autocomplete="on">
+    <div class="form-group">
+      <span class="icon">&#9679;</span>
+      <input type="text" id="username" placeholder="Username" autocomplete="username" autofocus required>
+    </div>
+    <div class="form-group">
+      <span class="icon">&#128274;</span>
+      <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+    </div>
+    <div class="remember-row">
+      <input type="checkbox" id="rememberMe">
+      <label for="rememberMe">Remember me</label>
+    </div>
+    <button type="submit" class="btn-login" id="btnLogin">
+      <span class="btn-text">LOGIN</span>
+      <div class="spinner"></div>
+      <span class="btn-loading-text">Authenticating...</span>
+    </button>
+  </form>
+  <div class="error-msg" id="errorMsg"></div>
 
-<div class="bg-logo"></div>
-
-<div class="login-container">
-  <div class="login-card">
-    <h2>// AUTHENTICATION REQUIRED</h2>
-    <form id="loginForm" onsubmit="doLogin(event)">
-      <div class="form-group">
-        <label>USERNAME</label>
-        <input type="text" id="username" autocomplete="username" autofocus required>
-      </div>
-      <div class="form-group">
-        <label>PASSWORD</label>
-        <input type="password" id="password" autocomplete="current-password" required>
-      </div>
-      <button type="submit" class="btn">AUTHENTICATE</button>
-    </form>
-    <div class="msg" id="msg"></div>
+  <div class="login-footer">
+    <p class="copy">CYRBER &copy; 2026</p>
+    <p class="motto">Videt omnia. Meminit omnia. Iudicat omnia.</p>
   </div>
 </div>
-
-<footer>CYRBER &nbsp;&middot;&nbsp; AUTONOMOUS RECON &nbsp;&middot;&nbsp; AUTHORIZED TARGETS ONLY &nbsp;&middot;&nbsp; v0.3.0</footer>
 
 <script>
 // If already authenticated, redirect to /ui
@@ -217,42 +306,59 @@ if (localStorage.getItem('cyrber_token')) {
 
 async function doLogin(e) {
   e.preventDefault();
-  var btn = document.querySelector('.btn');
+  var btn = document.getElementById('btnLogin');
+  var errEl = document.getElementById('errorMsg');
   if (btn.disabled) return;
-  const username = document.getElementById('username').value.trim();
-  const password = document.getElementById('password').value;
-  const msg = document.getElementById('msg');
 
-  msg.classList.remove('visible');
+  var username = document.getElementById('username').value.trim();
+  var password = document.getElementById('password').value;
+  var remember = document.getElementById('rememberMe').checked;
+
+  errEl.textContent = '';
   btn.disabled = true;
+  btn.classList.add('loading');
 
   try {
-    const r = await fetch('/auth/login', {
+    var r = await fetch('/auth/login', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({username, password})
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, password: password })
     });
 
     if (r.ok) {
-      const data = await r.json();
-      localStorage.setItem('cyrber_token', data.token);
-      // Remove old Basic Auth credentials
-      localStorage.removeItem('cyrber_creds');
+      var data = await r.json();
+      if (remember) {
+        localStorage.setItem('cyrber_token', data.token);
+      } else {
+        sessionStorage.setItem('cyrber_token', data.token);
+        localStorage.setItem('cyrber_token', data.token);
+      }
+      // Fetch username
+      try {
+        var me = await fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + data.token } });
+        if (me.ok) {
+          var u = await me.json();
+          localStorage.setItem('cyrber_user', u.username || '');
+        }
+      } catch (_) {}
       window.location.href = '/ui';
       return;
     } else if (r.status === 429) {
-      msg.textContent = 'Too many attempts. Try again later.';
-      msg.classList.add('visible');
+      errEl.textContent = 'Too many attempts. Try again later.';
     } else {
-      msg.textContent = 'Invalid credentials';
-      msg.classList.add('visible');
+      errEl.textContent = 'Invalid credentials';
     }
-  } catch(err) {
-    msg.textContent = 'Connection error';
-    msg.classList.add('visible');
+  } catch (err) {
+    errEl.textContent = 'Connection error';
   }
   btn.disabled = false;
+  btn.classList.remove('loading');
 }
+
+// Enter key submit
+document.getElementById('password').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin(e);
+});
 </script>
 </body>
 </html>

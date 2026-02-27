@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYRBER — HARDWARE</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+.hw-header { text-align: center; margin-bottom: 48px; }
+.hw-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+.hw-subtitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  letter-spacing: 0.2em;
+  margin: 0 0 16px;
+}
+.hw-badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #C9A84C;
+  border: 1px solid rgba(201,168,76,0.3);
+  background: rgba(201,168,76,0.08);
+}
+
+/* Kit cards */
+.kit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+.kit-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 28px;
+  backdrop-filter: blur(12px);
+  position: relative;
+  transition: border-color 0.2s;
+}
+.kit-card:hover { border-color: var(--border-strong); }
+.kit-icon {
+  font-size: 36px;
+  margin-bottom: 16px;
+  display: block;
+}
+.kit-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0 0 4px;
+}
+.kit-name.tiro { color: #C9A84C; }
+.kit-name.venator { color: #C1121F; }
+.kit-name.orthrus { color: #C9A84C; }
+.kit-alias {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0 0 16px;
+}
+.kit-hw {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+}
+.kit-use {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+.kit-price {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin-bottom: 16px;
+}
+.kit-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  background: rgba(85,85,119,0.08);
+  margin-bottom: 16px;
+}
+.kit-btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  cursor: not-allowed;
+  opacity: 0.5;
+  text-align: center;
+}
+
+/* Coming soon panel */
+.coming-soon {
+  background: var(--card-bg);
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: var(--radius-md);
+  padding: 32px;
+  text-align: center;
+  margin-bottom: 40px;
+  backdrop-filter: blur(12px);
+}
+.coming-soon p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0 0 20px;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Live feed */
+.live-feed {
+  background: var(--terminal-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+.live-feed-header {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.live-feed-header .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.live-feed-line {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #555577;
+  line-height: 2;
+}
+</style>
+</head>
+<body>
+
+<nav class="cyrber-nav">
+  <a href="/ui" class="nav-logo">
+    <img src="/static/logo.jpg" alt="CYRBER">
+    <span class="nav-logo-text">CYRBER</span>
+  </a>
+  <div class="nav-links">
+    <a href="/ui">SCAN</a>
+    <a href="/dashboard">DASHBOARD</a>
+    <a href="/mission-control">MENS</a>
+    <a href="/mirror">MIRROR</a>
+    <a href="/proof">PROOF</a>
+    <a href="/chronicle">CHRONICLE</a>
+    <a href="/hardware">HARDWARE</a>
+    <a href="/phishing">PHISHING</a>
+    <a href="/scheduler">SCHEDULER</a>
+    <a href="/osint">OSINT</a>
+    <a href="/topology">TOPOLOGY</a>
+    <a href="/verify">VERIFY</a>
+    <a href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+  </div>
+  <div class="nav-user">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+    <span id="nav-username"></span>
+    <a href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red);font-size:12px;text-decoration:none;letter-spacing:.08em;">LOGOUT</a>
+  </div>
+</nav>
+<script>
+document.querySelectorAll('.cyrber-nav .nav-links a').forEach(function(a){if(a.getAttribute('href')===window.location.pathname)a.classList.add('active');});
+(function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){var el=document.getElementById('nav-username');if(el)el.textContent=u.username||'';if(u.role==='admin'){var al=document.getElementById('adminNavLink');if(al)al.style.display='';}}).catch(function(){});})();
+</script>
+
+<div class="wrapper fade-in">
+
+  <div class="hw-header">
+    <div class="hw-title">HARDWARE ASSESSMENT</div>
+    <div class="hw-subtitle">FATUM &mdash; Physical World Intelligence</div>
+    <span class="hw-badge">Sprint 1 &mdash; Coming Soon</span>
+  </div>
+
+  <div class="kit-grid">
+
+    <!-- TIRO -->
+    <div class="kit-card">
+      <span class="kit-icon">&#128421;</span>
+      <div class="kit-name tiro">TIRO</div>
+      <div class="kit-alias">Rekrut</div>
+      <div class="kit-hw">Raspberry Pi 4 + Alfa AWUS036ACH</div>
+      <div class="kit-use">Remote sensor, WiFi recon, packet capture</div>
+      <div class="kit-price">~$95</div>
+      <span class="kit-status">NOT CONNECTED</span>
+      <button class="kit-btn" disabled>Configure</button>
+    </div>
+
+    <!-- VENATOR -->
+    <div class="kit-card">
+      <span class="kit-icon">&#128225;</span>
+      <div class="kit-name venator">VENATOR</div>
+      <div class="kit-alias">My&#347;liwy</div>
+      <div class="kit-hw">WiFi Pineapple Mark VII + LAN Turtle</div>
+      <div class="kit-use">Evil Twin, PineAP recon, MITM</div>
+      <div class="kit-price">~$400</div>
+      <span class="kit-status">NOT CONNECTED</span>
+      <button class="kit-btn" disabled>Configure</button>
+    </div>
+
+    <!-- ORTHRUS -->
+    <div class="kit-card">
+      <span class="kit-icon">&#128305;</span>
+      <div class="kit-name orthrus">ORTHRUS</div>
+      <div class="kit-alias">Brat Cerbera</div>
+      <div class="kit-hw">VENATOR + Flipper Zero + Proxmark3 + HackRF</div>
+      <div class="kit-use">Full physical audit: RF, RFID, BadUSB, Sub-GHz</div>
+      <div class="kit-price">~$800</div>
+      <span class="kit-status">NOT CONNECTED</span>
+      <button class="kit-btn" disabled>Configure</button>
+    </div>
+
+  </div>
+
+  <!-- Coming Soon -->
+  <div class="coming-soon">
+    <p>
+      Hardware bridge integration coming in Sprint 1.<br>
+      Connect your WiFi Pineapple Mark VII to unlock<br>
+      remote hardware assessment capabilities.
+    </p>
+    <button class="kit-btn" style="max-width:220px;margin:0 auto;" disabled>View Hardware Docs</button>
+  </div>
+
+  <!-- Live Sensor Feed -->
+  <div class="live-feed">
+    <div class="live-feed-header">
+      <span class="dot"></span>
+      LIVE SENSOR FEED
+    </div>
+    <div class="live-feed-line">[Waiting for hardware agents to connect...]</div>
+    <div class="live-feed-line">[Configure a TIRO, VENATOR, or ORTHRUS kit to begin]</div>
+  </div>
+
+</div>
+
+</body>
+</html>
