@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, Float
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, Float, ForeignKey
 from sqlalchemy.types import JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -64,7 +64,7 @@ class LicenseUsage(Base):
 class RemediationTask(Base):
     __tablename__ = "remediation_tasks"
     id              = Column(Integer, primary_key=True, index=True)
-    scan_id         = Column(String, nullable=False, index=True)       # task_id z Scan
+    scan_id         = Column(String, ForeignKey("scans.task_id", ondelete="CASCADE"), nullable=False, index=True)
     finding_name    = Column(String, nullable=False)
     finding_severity = Column(String, nullable=False)
     finding_module  = Column(String, nullable=True)
@@ -144,7 +144,7 @@ class AttackTechnique(Base):
     data_sources    = Column(JSON)
     detection       = Column(Text)
     is_subtechnique = Column(Boolean, default=False)
-    parent_id       = Column(String, nullable=True)      # T1059 for T1059.001
+    parent_id       = Column(String, ForeignKey("attack_techniques.technique_id", ondelete="SET NULL"), nullable=True)
     deprecated      = Column(Boolean, default=False)
     updated_at      = Column(DateTime, default=datetime.utcnow)
 
@@ -168,8 +168,8 @@ class AttackMitigation(Base):
 class AttackMitigationLink(Base):
     __tablename__ = "attack_mitigation_links"
     id            = Column(Integer, primary_key=True)
-    technique_id  = Column(String, index=True)
-    mitigation_id = Column(String, index=True)
+    technique_id  = Column(String, ForeignKey("attack_techniques.technique_id", ondelete="CASCADE"), index=True)
+    mitigation_id = Column(String, ForeignKey("attack_mitigations.mitigation_id", ondelete="CASCADE"), index=True)
     description   = Column(Text)
 
 class CweAttackMap(Base):
@@ -177,7 +177,7 @@ class CweAttackMap(Base):
     id           = Column(Integer, primary_key=True)
     cwe_id       = Column(String, index=True)   # CWE-89
     capec_id     = Column(String)                # CAPEC-66
-    technique_id = Column(String, index=True)    # T1190
+    technique_id = Column(String, ForeignKey("attack_techniques.technique_id", ondelete="CASCADE"), index=True)
     updated_at   = Column(DateTime, default=datetime.utcnow)
 
 class EuvdCache(Base):
@@ -213,7 +213,7 @@ class MispAttribute(Base):
     __tablename__ = "misp_attributes"
     id             = Column(Integer, primary_key=True, autoincrement=True)
     attribute_id   = Column(Integer, unique=True, index=True)
-    event_id       = Column(Integer, index=True)
+    event_id       = Column(Integer, ForeignKey("misp_events.event_id", ondelete="CASCADE"), index=True)
     type           = Column(String)
     value          = Column(String, index=True)
     category       = Column(String)
@@ -1196,19 +1196,23 @@ def upsert_attack_mitigation_links(entries: list[dict]) -> int:
         db.close()
 
 def upsert_cwe_attack_map(entries: list[dict]) -> int:
-    """Upsert CWE→technique mappings. Replaces all."""
+    """Upsert CWE→technique mappings. Replaces all. Skips entries with unknown technique_id."""
     db = SessionLocal()
     try:
         db.query(CweAttackMap).delete()
+        existing_techs = {t.technique_id for t in db.query(AttackTechnique.technique_id).all()}
+        count = 0
         for e in entries:
-            row = CweAttackMap(
-                cwe_id=e.get("cwe_id"),
-                capec_id=e.get("capec_id"),
-                technique_id=e.get("technique_id"),
-            )
-            db.add(row)
+            if e.get("technique_id") in existing_techs:
+                row = CweAttackMap(
+                    cwe_id=e.get("cwe_id"),
+                    capec_id=e.get("capec_id"),
+                    technique_id=e.get("technique_id"),
+                )
+                db.add(row)
+                count += 1
         db.commit()
-        return len(entries)
+        return count
     finally:
         db.close()
 
