@@ -17,8 +17,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start services
+        run: docker compose up -d api --wait
+
+      - name: Copy tests into container
+        run: |
+          docker compose cp tests/ api:/app/tests/
+          docker compose cp scripts/ api:/app/scripts/
+
+      - name: Run unit tests
+        run: |
+          docker compose exec -T api \
+            python -m pytest tests/ -v --tb=short
+
+      - name: Stop services
+        if: always()
+        run: docker compose down
+
   scan-dvwa:
     name: Scan DVWA
+    needs: unit-tests
     uses: ./.github/workflows/_security-scan.yml
     with:
       target: "http://localhost:8888"
