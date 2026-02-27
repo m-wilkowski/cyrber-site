@@ -1,6 +1,10 @@
 import os
+import logging
 from celery import Celery
+from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
+
+logger = logging.getLogger("cyrber.tasks")
 from modules.nmap_scan import scan as nmap_scan
 from modules.nuclei_scan import scan as nuclei_scan
 from modules.whatweb_scan import scan as whatweb_scan
@@ -192,13 +196,25 @@ def _ci_local_analysis(scan_data: dict) -> dict:
         "recommendations": "",
     }
 
-@celery_app.task
+@celery_app.task(soft_time_limit=7200, time_limit=7260)
 def full_scan_task(target: str, profile: str = "STRAZNIK"):
     task_id = full_scan_task.request.id
+    total = 52
+    try:
+        return _execute_full_scan(target, profile, task_id, total)
+    except SoftTimeLimitExceeded:
+        logger.error("Scan %s exceeded 2h time limit – aborting", task_id)
+        publish_progress(task_id, "timeout", "error", 0, total, "Scan exceeded 2h time limit")
+        try:
+            save_scan(task_id, target, {"error": "timeout", "profile": profile}, profile=profile)
+        except Exception:
+            pass
+        raise
+
+
+def _execute_full_scan(target: str, profile: str, task_id: str, total: int):
     run = lambda mod: should_run_module(mod, profile)
     is_ci = profile.upper() == "CI"
-    # Total = 42 scan modules + 8 post-processing = 50 steps
-    total = 52
     completed = 0
     pp = lambda mod, st, msg="": publish_progress(task_id, mod, st, completed, total, msg)
 
