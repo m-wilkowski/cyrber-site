@@ -1,4 +1,4 @@
-# CYRBER – Transfer Prompt (stan: luty 2026)
+# CYRBER – Transfer Prompt (stan: 27 luty 2026)
 
 Jesteś asystentem Michała Wilkowskiego przy projekcie **CYRBER** – autonomicznej platformy do pentestingu. Poniżej kompletny kontekst projektu, aktualny stan techniczny, zespół, backlog i decyzje które zostały podjęte. Czytaj uważnie zanim zaczniesz pomagać.
 
@@ -46,42 +46,48 @@ Syn starszy dostał briefing (dokument CYRBER_Briefing_WWW.docx) z opisem projek
 
 **Działające kontenery:**
 ```
-cyrber-api-1      FastAPI backend        :8000
+cyrber-api-1      FastAPI backend        (expose 8000, za nginx)
 cyrber-worker-1   Celery worker
 cyrber-beat-1     Celery scheduler
-cyrber-db-1       PostgreSQL             :5432
-cyrber-redis-1    Redis                  :6379
-cyrber-zap-1      OWASP ZAP              :8090  (port zmapowany po naprawie)
-cyrber-gophish-1  GoPhish                :3333, :8080
-```
-
-**DVWA** dodana do docker-compose.yml jako guinea pig:
-```yaml
-dvwa:
-  image: vulnerables/web-dvwa
-  ports:
-    - "8888:80"
-  restart: unless-stopped
-```
-
-**Nginx Reverse Proxy:**
-```
+cyrber-db-1       PostgreSQL             :5432 (internal only)
+cyrber-redis-1    Redis                  :6379 (internal only, requirepass)
 cyrber-nginx-1    Nginx reverse proxy    :443 (HTTPS), :80 (redirect)
+cyrber-zap-1      OWASP ZAP              127.0.0.1:8090
+cyrber-gophish-1  GoPhish                127.0.0.1:3333, 127.0.0.1:8080
+cyrber-dvwa-1     DVWA (guinea pig)      127.0.0.1:8888
 ```
+
+**Opcjonalne kontenery (profile):**
+```
+beef         BeEF-XSS        127.0.0.1:3001, 127.0.0.1:6789   (profile: phishing)
+evilginx     Evilginx2       127.0.0.1:8443, 127.0.0.1:8081   (profile: phishing)
+ollama       Ollama LLM      127.0.0.1:11434                   (profile: ollama)
+garak        Garak LLM sec   (internal only)                   (profile: ai-security)
+```
+
+**Porty:** Narzędzia ofensywne (ZAP, GoPhish, BeEF, Evilginx, DVWA, Ollama) zbindowane do `127.0.0.1` — niedostępne z sieci. API i Nginx dostępne publicznie.
+
 Self-signed TLS cert (ważny do 2029), security headers (HSTS, X-Frame-Options, CSP, X-Content-Type-Options), rate limiting (10r/s burst 20).
 
 **Backend:** 176 endpointów API (138 GET, 30 POST, 1 PUT, 1 PATCH, 6 DELETE)
 **Testy:** 278 testów w 13 plikach (test_verify 100, test_evilginx_phishing 40, test_context_manager 29, test_certipy 28, test_evilginx 16, test_intel_sources 15 i inne)
 
-**Auth:** JWT (HS256) + RBAC (admin/operator/viewer). Login: POST /auth/login → token. Domyślnie: admin:cyrber2024.
+**Auth:** JWT (HS256) + RBAC (admin/operator/viewer). Login: POST /auth/login → `token` (nie `access_token`). Domyślnie: admin:cyrber2024. Health check: `curl -sk https://localhost/api/health`.
 
 **System licencji:** On-prem HMAC-SHA256 (`modules/license.py`). Tier: demo (1 skan/dzień, SZCZENIAK only) / basic (10/dzień) / pro (50/dzień) / enterprise (unlimited). Plik licencji: `/etc/cyrber/license.key`. GET /license/status, POST /license/activate.
 
-**Hardening:** Docker no-new-privileges, read-only root fs (nginx), rate limiting na API (slowapi), security headers via nginx
+**Hardening (po code review 27.02):**
+- Docker no-new-privileges, read-only root fs (nginx), rate limiting na API (slowapi), security headers via nginx
+- Redis z `--requirepass` (env var `REDIS_PASSWORD`, default: `cyrber_redis_2024`)
+- PostgreSQL credentials przez env var substitution (`${POSTGRES_PASSWORD:-cyrber123}`)
+- Startup banner `CYRBER SECURITY WARNING` ostrzega o default JWT_SECRET, CYRBER_PASS, POSTGRES_PASSWORD, CYRBER_LICENSE_SECRET
+- `full_scan_task` z `soft_time_limit=7200` (2h) i `SoftTimeLimitExceeded` handler
+
+**Baza danych:** SQLAlchemy ORM, 24 tabel, `modules/database.py` (1759 LOC). Brak Alembic — ręczne ALTER TABLE w `init_db()`. Brak ForeignKey constraints. `raw_data` jako Text (nie JSONB).
 
 ---
 
-## 4. Zaimplementowane moduły (80 plików Python, ~24 000 linii)
+## 4. Zaimplementowane moduły (~70 plików Python po usunięciu duplikatów)
 
 ### Web Application
 - Nuclei (14 000+ templates)
@@ -266,6 +272,36 @@ Pełny audyt bezpieczeństwa wszystkich 12 plików HTML (2 sesje, ~22 bugi):
 2. **Backend string data w innerHTML bez escape** — risk_level, status, role, country, malware_signature, module name
 3. **Brak disabled guard na buttonach** — double-click/double-submit
 
+### Code Review + Security Hardening (sesja 27.02.2026)
+
+Kompleksowy code review (5 równoległych agentów, 6 obszarów). Oceny: bezpieczeństwo 4/10, jakość kodu 5/10, testowalność 3/10, gotowość prod 3/10.
+
+**Naprawione (6 commitów):**
+
+| Commit | Fix |
+|--------|-----|
+| `cc4a81b` | Usunięto `modules/modules/`, `backend/backend/`, `tasks.pyy` — 156 plików, 43729 linii martwego kodu |
+| `ec71ea8` | Porty narzędzi ofensywnych → `127.0.0.1` (ZAP/GoPhish/BeEF/Evilginx/DVWA/Ollama) + fix kolizji 8080→8081 |
+| `fac01df` | Redis `--requirepass` authentication |
+| `e40d983` | PostgreSQL credentials przez env var substitution |
+| `d33d381` | Startup `CYRBER SECURITY WARNING` banner dla default secrets |
+| `9299e3c` | `full_scan_task` soft/hard time limit 2h + SoftTimeLimitExceeded handler |
+
+**Znany dług techniczny (P2 — po pilocie):**
+
+| Problem | Plik | Effort |
+|---------|------|--------|
+| Brak Alembic migracji — ręczne ALTER TABLE z `except Exception: pass` | `modules/database.py:303-368` | 4-6h |
+| Zero ForeignKey w 24 tabelach — brak referential integrity, cascading deletes | `modules/database.py` | 4-6h |
+| Brak Celery queue separation — full_scan blokuje schedule check | `modules/tasks.py` | 2-3h |
+| `main.py` God Object — 3091 LOC, ~150 endpointów, 40+ identycznych scan wrapperów | `backend/main.py` | 4-8h |
+| Brak shared HTTP client — 67 raw requests, 210 bare `except Exception` | modules/*.py | 4-6h |
+| 10/12 Celery tasków bez timeout | `modules/tasks.py` | 1h |
+| Brak pytest w CI (GitHub Actions robi E2E, nie unit testy) | `.github/workflows/` | 1h |
+| 51 scan modułów bez testów, brak `conftest.py` | `tests/` | 8-16h |
+| `pdf_report.py` 2762 LOC inline HTML (brak template engine) | `modules/pdf_report.py` | 6-10h |
+| CSP allows `unsafe-inline`, rate limiter za proxy może nie działać | `backend/main.py` | 2h |
+
 ---
 
 ## 9. Wyniki testu end-to-end (DVWA, profil STRAŻNIK)
@@ -361,6 +397,7 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 
 ### Priorytet 0 – Następna sesja
 1. **Hardware head bridge** (cyrber-hw-bridge — WiFi Pineapple, Flipper Zero)
+2. **Dług techniczny P2** (z code review 27.02): Alembic migracje, ForeignKeys, Celery queue separation, split main.py na routery
 
 ### Zrealizowane z Priorytet 0
 - ~~ATT&CK full sync + ENISA EU VDB~~ ✅ (sesja 25.02)
@@ -466,8 +503,18 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 - **Frontend 404 audit & fixes** ✅ — extract_cves() dict/None handling, ZAP healthcheck endpoint, /api/me→/auth/me w topology.html, /evilginx/lures→/api/evilginx/lures w phishing.html; pełny audit 27 fetch() paths z 11 plików HTML → 0 404-ek
 - **Frontend Security Audit (XSS)** ✅ — pełny audyt bezpieczeństwa 12 plików HTML (2 sesje): ~22 bugi XSS naprawione (unescaped innerHTML, inline onclick→data-attrs, double-click guards); wzorce: escHtml() nie escapuje `'` w JS strings; 18 commitów security fix
 
+### Zrealizowane – Sesja 27.02.2026
+- **Code Review** ✅ — kompleksowy przegląd 6 obszarów (architektura, security, jakość kodu, DB, Celery, testy); 5 równoległych agentów
+- **Security Hardening** ✅ — 6 quick fixów:
+  - Usunięto 14 MB martwego kodu (modules/modules/, backend/backend/, tasks.pyy)
+  - Porty narzędzi ofensywnych → 127.0.0.1
+  - Redis requirepass authentication
+  - PostgreSQL credentials via env vars
+  - Startup security warning dla default secrets
+  - full_scan_task soft/hard time limit 2h + SoftTimeLimitExceeded
+
 ### Must-have przed pierwszym pilotem
-- ~~Claude Code Security scan własnego kodu~~ ✅ (frontend XSS audit — 12 plików, ~22 bugów naprawionych)
+- ~~Claude Code Security scan własnego kodu~~ ✅ (frontend XSS audit + backend code review)
 - Demo video (5 minut)
 - NDA + kontrakt pentestingowy
 - Landing page cyrber.pl (realizuje syn)
@@ -511,8 +558,15 @@ Uzupełnia jednorazowe pentest (SZCZENIAK/STRAŻNIK/CERBER) o model recurring re
 
 ## 14. Aktualny stan commitów
 
-Ostatnie commity na master (stan 26.02.2026 → najnowsze na górze):
+Ostatnie commity na master (stan 27.02.2026 → najnowsze na górze):
 ```
+9299e3c fix: full_scan_task soft/hard time limit 2h
+d33d381 fix: startup security warning for default credentials
+e40d983 fix: PostgreSQL credentials via env vars
+fac01df fix: Redis requirepass authentication
+ec71ea8 fix: bind offensive tool ports to 127.0.0.1 only
+cc4a81b chore: remove dead code – modules/modules/, backend/backend/, tasks.pyy
+bcfae56 docs: update Transfer Prompt with current project stats
 9912137 fix: escape d.risk in topology side panel innerHTML
 91ea2e2 fix: XSS in admin.html — role badge, inline onclick, intel status
 8da6471 fix: XSS in verify.html — inline onclick, unescaped icon and risk class
@@ -522,31 +576,10 @@ d35b37a fix: XSS escaping in dashboard.html — risk, malware_signature, module 
 0b739c1 fix: scan_detail.html XSS escaping, delete double-click, dedupe auth/me
 97e9d17 fix: index.html escape risk_level in recent scans innerHTML
 957c057 fix: login.html double-submit guard on authenticate button
-b80cc4b fix: topology.html add authFetch 401 handler, consistent nav, footer
-aec8895 fix: admin.html add 401 handler to authFetch, double-click guards on modals
-203ece2 fix: verify.html Enter key duplicate guard, XSS escaping for candidates & URLs
-4936da8 fix: osint.html Enter key duplicate scan, PDF error handling, XSS escaping
-d175061 fix: scheduler.html XSS escaping, double-click guard, null-safe, json catch
-4f73436 fix: phishing.html AI generate double-send guard, XSS escaping, json catch
-8d0a37b fix: scan_detail.html prevent AI chat double-send via Enter key
-dca326d fix: dashboard.html KPI label CRITICAL FINDINGS → TOTAL FINDINGS
-51726aa fix: index.html MODULE_LABELS sync with backend pipeline
-2c99bb7 fix: phishing.html POST /evilginx/lures → /api/evilginx/lures
-ea659ce fix: /api/me → /auth/me endpoint alignment in topology.html
-57075e5 fix: ZAP healthcheck endpoint
-409bfcf fix: extract_cves() handle dict/None items in sequence join
 00364e0 feat: network topology + fix tests
-6e94728 feat: certipy tests - 28 testów ESC1-ESC13
-5e799c6 fix: verify_company - realistyczny flow dla PL firm
-994531b feat: verify_company - wyszukiwanie po nazwie firmy
-a3272ec fix: verify_company false positive - nuanced scoring
-2c8c529 fix: URLhaus + MalwareBazaar Auth-Key authentication
-5f9ca32 fix: CYRBER VERIFY - 3 bugi + false positive protection
 0898c1b feat: CYRBER VERIFY v4 - edukacyjny raport AI
 0b6a3de feat: CYRBER VERIFY v3 - redesign UI + zakładka RAPORT AI
 3467fae feat: CYRBER VERIFY v2 - 7 nowych zrodel + bidirectional scoring
-cbea0ed feat: CYRBER VERIFY live - ageotrans.eu PODEJRZANE 60/100
-5d7541d feat: Evilginx2 integration - social engineering / MITM phishing
 c932157 feat: MalwareBazaar integration
 0b5e870 feat: ExploitDB integration
 6eb8d80 feat: enrichment badges UI + MISP export
@@ -603,4 +636,4 @@ NIE kopiować stack Go/gRPC, zaadaptować KONCEPT modułowego agenta w Pythonie.
 
 ---
 
-*Transfer prompt zaktualizowany: 26 luty 2026 (po frontend security audit — 80 modułów, 176 endpointów, 278 testów, 12 stron HTML)*
+*Transfer prompt zaktualizowany: 27 luty 2026 (po code review + security hardening — ~70 modułów, 176 endpointów, 278 testów, 24 tabel DB, 12 stron HTML)*
