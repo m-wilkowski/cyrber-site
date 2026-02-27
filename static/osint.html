@@ -1335,5 +1335,43 @@ window.addEventListener('load', function() { loadHistory(); });
 <script>
 (function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(r=>r.json()).then(u=>{if(u.role==='admin'){var el=document.getElementById('adminNavLink');if(el)el.style.display='';}}).catch(function(){});})();
 </script>
+<script>
+(function() {
+  function initDropdowns() {
+    var navItems = document.querySelectorAll(".nav-item");
+    navItems.forEach(function(item) {
+      var trigger = item.querySelector("span");
+      var dropdown = item.querySelector(".nav-dropdown");
+      if (!trigger || !dropdown) return;
+      trigger.style.cursor = "pointer";
+      trigger.addEventListener("click", function(e) {
+        e.stopPropagation();
+        var isOpen = dropdown.style.display === "block";
+        document.querySelectorAll(".nav-dropdown").forEach(function(d) {
+          d.style.display = "none";
+        });
+        dropdown.style.display = isOpen ? "none" : "block";
+      });
+    });
+    document.addEventListener("click", function() {
+      document.querySelectorAll(".nav-dropdown").forEach(function(d) {
+        d.style.display = "none";
+      });
+    });
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") {
+        document.querySelectorAll(".nav-dropdown").forEach(function(d) {
+          d.style.display = "none";
+        });
+      }
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initDropdowns);
+  } else {
+    initDropdowns();
+  }
+})();
+</script>
 </body>
 </html>
