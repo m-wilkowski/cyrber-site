@@ -474,7 +474,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
     <div class="idle-main">
       <!-- HERO -->
       <div class="hero hero-section" id="heroSection">
-        <div style="position:relative;width:180px;height:180px;margin:0 auto 24px;">
+        <div class="hero-rings" style="position:relative;width:clamp(120px,15vw,200px);height:clamp(120px,15vw,200px);margin:0 auto clamp(16px,3vw,28px);">
           <svg viewBox="0 0 180 180" style="position:absolute;top:0;left:0;width:100%;height:100%;">
             <circle cx="90" cy="90" r="82" fill="none" stroke="#C1121F" stroke-width="1.5"
               stroke-dasharray="200 320" opacity="0.6"
@@ -490,10 +490,10 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
             <circle cx="90" cy="90" r="6" fill="none" stroke="#C9A84C" stroke-width="1.5"/>
             <circle cx="90" cy="90" r="2" fill="#C9A84C"/>
           </svg>
-          <img src="/static/logo.jpg" alt="CYRBER" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70px;height:auto;border-radius:50%;filter:brightness(1.2);">
+          <img src="/static/logo.jpg" alt="CYRBER" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:clamp(50px,6vw,80px);height:auto;border-radius:50%;filter:brightness(1.2);">
         </div>
-        <h1 style="font-family:'Orbitron',sans-serif;font-size:56px;font-weight:800;color:var(--text-primary);letter-spacing:.12em;margin:0 0 8px;line-height:1;">CYRBER</h1>
-        <p style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--accent-gold, #C9A84C);letter-spacing:.2em;text-transform:uppercase;margin:0 0 32px;">Adversary Reasoning Platform</p>
+        <h1 class="hero-title" style="font-family:'Orbitron',sans-serif;font-size:clamp(36px,6vw,80px);font-weight:800;color:var(--text-primary);letter-spacing:.12em;margin:0 0 8px;line-height:1;">CYRBER</h1>
+        <p class="hero-subtitle" style="font-family:'Share Tech Mono',monospace;font-size:clamp(10px,1.2vw,14px);color:var(--accent-gold, #C9A84C);letter-spacing:.2em;text-transform:uppercase;margin:0 0 clamp(16px,4vw,40px);">Adversary Reasoning Platform</p>
       </div>
 
       <!-- SCAN FORM -->

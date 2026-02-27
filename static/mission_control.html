@@ -138,6 +138,12 @@
   .tb-grid .panel-cerberus { grid-column: 1; grid-row: 2; }
   .tb-grid .panel-cogitatio { grid-column: 1; grid-row: 3; }
 }
+@media (min-width: 2560px) {
+  .tb-grid { grid-template-columns: 1fr 420px; gap: var(--sp-6); }
+}
+@media (min-width: 3840px) {
+  .tb-grid { grid-template-columns: 1fr 520px; }
+}
 
 /* ── PANEL BASE ── */
 .tb-panel {

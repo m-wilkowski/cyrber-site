@@ -1022,3 +1022,113 @@ html[data-theme="light"] .badge-info     { background: rgba(30,64,175,.06); }
   .nav-item > a, .nav-item > span { font-size: 11px; padding: 0 8px; }
   .cyrber-nav .nav-user span { display: none; }
 }
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — 3K / 4K / HiDPI + Mobile
+   ══════════════════════════════════════════════════════ */
+
+/* ─── BASE ─────────────────────────────────────────── */
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  html { font-size: 15px; }
+}
+
+body { min-width: 320px; }
+
+/* ─── CONTAINER SYSTEM ─────────────────────────────── */
+.container      { width: 100%; max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+.container-wide { width: 100%; max-width: 1800px; margin: 0 auto; padding: 0 32px; }
+.container-fluid{ width: 100%; padding: 0 24px; }
+
+/* ─── NAVBAR RESPONSIVE ────────────────────────────── */
+@media (max-width: 1200px) {
+  .nav-item > a, .nav-item > span { padding: 0 10px; font-size: 11px; }
+  .cyrber-nav .nav-logo-text { display: none; }
+}
+
+@media (max-width: 900px) {
+  .cyrber-nav { flex-wrap: wrap; height: auto; padding: 8px 16px; }
+  .cyrber-nav .nav-links {
+    order: 3; width: 100%; overflow-x: auto; padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .cyrber-nav .nav-links::-webkit-scrollbar { display: none; }
+  .nav-item > a, .nav-item > span { padding: 8px 10px; height: auto; }
+  .nav-dropdown { position: fixed; top: auto; }
+}
+
+/* ─── GRID SYSTEM ──────────────────────────────────── */
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+
+@media (max-width: 1200px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 900px)  { .grid-3 { grid-template-columns: repeat(2, 1fr); } .grid-4 { grid-template-columns: 1fr; } }
+@media (max-width: 600px)  { .grid-2, .grid-3 { grid-template-columns: 1fr; } .container, .container-fluid { padding: 0 16px; } }
+
+/* ─── 4K / LARGE SCREENS ──────────────────────────── */
+@media (min-width: 2560px) {
+  html { font-size: 18px; }
+  .container { max-width: 2000px; }
+  .container-wide { max-width: 2400px; }
+  .wrapper { max-width: 2200px; }
+  .cyrber-nav { height: 64px; }
+  .nav-item > a, .nav-item > span { height: 64px; font-size: 13px; }
+  .nav-dropdown { top: 64px; }
+  .cyrber-nav .nav-logo img { height: 44px; }
+}
+
+@media (min-width: 3840px) {
+  html { font-size: 20px; }
+  .container { max-width: 2800px; }
+  .wrapper { max-width: 3200px; }
+}
+
+/* ─── TYPOGRAPHY SCALE (clamp) ─────────────────────── */
+.text-xs   { font-size: clamp(10px, 0.75rem, 12px); }
+.text-sm   { font-size: clamp(11px, 0.875rem, 14px); }
+.text-base { font-size: clamp(13px, 1rem, 16px); }
+.text-lg   { font-size: clamp(16px, 1.25rem, 20px); }
+.text-xl   { font-size: clamp(20px, 1.5rem, 24px); }
+.text-2xl  { font-size: clamp(24px, 2rem, 32px); }
+.text-3xl  { font-size: clamp(32px, 3vw, 48px); }
+
+/* ─── HERO SECTION RESPONSIVE ──────────────────────── */
+.hero-rings   { width: clamp(120px, 15vw, 200px); height: clamp(120px, 15vw, 200px); }
+.hero-title   { font-size: clamp(36px, 6vw, 80px) !important; }
+.hero-subtitle{ font-size: clamp(10px, 1.2vw, 14px); }
+
+/* ─── CARDS RESPONSIVE ─────────────────────────────── */
+.card { padding: clamp(14px, 2vw, 28px); }
+
+/* ─── TABLES RESPONSIVE ────────────────────────────── */
+@media (max-width: 768px) {
+  .cyrber-table-wrap { overflow-x: auto; }
+  .cyrber-table { min-width: 600px; }
+}
+
+/* ─── PANEL GRID (mission-control 2-col) ───────────── */
+.panel-grid {
+  display: grid;
+  grid-template-columns: 55fr 45fr;
+  gap: 16px;
+  height: calc(100vh - 56px - 32px);
+}
+@media (max-width: 1100px) { .panel-grid { grid-template-columns: 1fr; height: auto; } }
+@media (min-width: 2560px) { .panel-grid { gap: 24px; } }
+
+/* ─── DNA BARS RESPONSIVE ──────────────────────────── */
+.dna-bar-track { height: clamp(8px, 1vw, 14px); }
+
+/* ─── COGITATIO TERMINAL RESPONSIVE ────────────────── */
+.cogitatio-terminal {
+  height: clamp(200px, 25vh, 350px);
+  font-size: clamp(11px, 0.8vw, 13px);
+}
+
+/* ─── SCROLLBAR RESPONSIVE ─────────────────────────── */
+::-webkit-scrollbar { width: clamp(4px, 0.4vw, 8px); }
