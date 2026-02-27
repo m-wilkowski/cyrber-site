@@ -599,114 +599,160 @@ def osint_scan_task(target: str, search_type: str = "domain"):
 
 from modules.agent import run_agent
 
-@celery_app.task
-def agent_scan_task(target: str):
+@celery_app.task(bind=True, soft_time_limit=3600, time_limit=3660)
+def agent_scan_task(self, target: str):
     task_id = agent_scan_task.request.id
-    result = run_agent(target)
-    chains = generate_exploit_chains(result)
-    result["exploit_chains"] = chains.get("exploit_chains", {})
-    narrative = generate_hacker_narrative(result)
-    result["hacker_narrative"] = narrative
-    save_scan(task_id, target, result)
-    send_scan_notification(target, task_id, result)
-    return result
+    try:
+        result = run_agent(target)
+        chains = generate_exploit_chains(result)
+        result["exploit_chains"] = chains.get("exploit_chains", {})
+        narrative = generate_hacker_narrative(result)
+        result["hacker_narrative"] = narrative
+        save_scan(task_id, target, result)
+        send_scan_notification(target, task_id, result)
+        return result
+    except SoftTimeLimitExceeded:
+        logger.warning(f"Task {self.name} soft time limit exceeded for {target}")
+        raise
 
-@celery_app.task
-def run_due_schedules():
-    schedules = get_due_schedules()
-    for schedule in schedules:
-        full_scan_task.delay(schedule.target)
-        update_schedule_run(schedule.id)
-    return {"triggered": len(schedules)}
+@celery_app.task(bind=True, soft_time_limit=300, time_limit=360)
+def run_due_schedules(self):
+    try:
+        schedules = get_due_schedules()
+        for schedule in schedules:
+            full_scan_task.delay(schedule.target)
+            update_schedule_run(schedule.id)
+        return {"triggered": len(schedules)}
+    except SoftTimeLimitExceeded:
+        logger.warning(f"Task {self.name} soft time limit exceeded")
+        raise
 
-@celery_app.task
-def run_intel_sync():
+@celery_app.task(bind=True, soft_time_limit=1800, time_limit=1860)
+def run_intel_sync(self):
     """Sync all intelligence feeds: KEV + EPSS + ATT&CK + CAPEC + EUVD + MISP."""
     from modules.intelligence_sync import sync_kev, sync_epss, sync_attack, sync_capec_cwe_map, sync_euvd
     results = {}
     try:
         results["kev"] = sync_kev()
+    except SoftTimeLimitExceeded:
+        logger.warning(f"Task {self.name} soft time limit exceeded")
+        raise
     except Exception as e:
         results["kev_error"] = str(e)
     try:
         cve_ids = get_all_cve_ids_from_findings()
         results["epss"] = sync_epss(cve_ids)
         results["cve_ids_found"] = len(cve_ids)
+    except SoftTimeLimitExceeded:
+        raise
     except Exception as e:
         results["epss_error"] = str(e)
     try:
         results["attack"] = sync_attack()
+    except SoftTimeLimitExceeded:
+        raise
     except Exception as e:
         results["attack_error"] = str(e)
     try:
         results["capec_cwe_map"] = sync_capec_cwe_map()
+    except SoftTimeLimitExceeded:
+        raise
     except Exception as e:
         results["capec_cwe_map_error"] = str(e)
     try:
         results["euvd"] = sync_euvd(days_back=7)
+    except SoftTimeLimitExceeded:
+        raise
     except Exception as e:
         results["euvd_error"] = str(e)
     try:
         from modules.misp_integration import sync_misp
         results["misp"] = sync_misp(days_back=7)
+    except SoftTimeLimitExceeded:
+        raise
     except Exception as e:
         results["misp_error"] = str(e)
     return results
 
-@celery_app.task
-def run_attack_sync():
+@celery_app.task(bind=True, soft_time_limit=1800, time_limit=1860)
+def run_attack_sync(self):
     """Sync ATT&CK + CAPEC-CWE mapping. Runs weekly (Sunday 04:00)."""
     from modules.intelligence_sync import sync_attack, sync_capec_cwe_map
     results = {}
     try:
         results["attack"] = sync_attack()
+    except SoftTimeLimitExceeded:
+        logger.warning(f"Task {self.name} soft time limit exceeded")
+        raise
     except Exception as e:
         results["attack_error"] = str(e)
     try:
         results["capec_cwe_map"] = sync_capec_cwe_map()
+    except SoftTimeLimitExceeded:
+        raise
     except Exception as e:
         results["capec_cwe_map_error"] = str(e)
     return results
 
-@celery_app.task
-def run_euvd_sync():
+@celery_app.task(bind=True, soft_time_limit=1800, time_limit=1860)
+def run_euvd_sync(self):
     """Sync ENISA EUVD. Runs daily at 03:30."""
     from modules.intelligence_sync import sync_euvd
-    return {"euvd": sync_euvd(days_back=7)}
+    try:
+        return {"euvd": sync_euvd(days_back=7)}
+    except SoftTimeLimitExceeded:
+        logger.warning(f"Task {self.name} soft time limit exceeded")
+        raise
 
-@celery_app.task
-def run_misp_sync():
+@celery_app.task(bind=True, soft_time_limit=1800, time_limit=1860)
+def run_misp_sync(self):
     """Sync MISP events/attributes. Runs daily at 03:15."""
     from modules.misp_integration import sync_misp
-    return {"misp": sync_misp(days_back=7)}
+    try:
+        return {"misp": sync_misp(days_back=7)}
+    except SoftTimeLimitExceeded:
+        logger.warning(f"Task {self.name} soft time limit exceeded")
+        raise
 
-@celery_app.task
-def run_urlhaus_sync():
+@celery_app.task(bind=True, soft_time_limit=1800, time_limit=1860)
+def run_urlhaus_sync(self):
     """Sync URLhaus for all known scan targets. Runs daily at 03:45."""
     from modules.intelligence_sync import sync_urlhaus_batch
-    targets = set()
-    db_scans = get_scan_history(limit=100)
-    for s in db_scans:
-        t = s.get("target", "")
-        if t:
-            targets.add(t)
-    if not targets:
-        return {"urlhaus": "no_targets"}
-    return {"urlhaus": sync_urlhaus_batch(list(targets))}
+    try:
+        targets = set()
+        db_scans = get_scan_history(limit=100)
+        for s in db_scans:
+            t = s.get("target", "")
+            if t:
+                targets.add(t)
+        if not targets:
+            return {"urlhaus": "no_targets"}
+        return {"urlhaus": sync_urlhaus_batch(list(targets))}
+    except SoftTimeLimitExceeded:
+        logger.warning(f"Task {self.name} soft time limit exceeded")
+        raise
 
-@celery_app.task
-def run_exploitdb_sync():
+@celery_app.task(bind=True, soft_time_limit=1800, time_limit=1860)
+def run_exploitdb_sync(self):
     """Sync ExploitDB git repo + CSV parse. Runs weekly Sunday 04:30."""
     from modules.intelligence_sync import sync_exploitdb
-    return {"exploitdb": sync_exploitdb()}
+    try:
+        return {"exploitdb": sync_exploitdb()}
+    except SoftTimeLimitExceeded:
+        logger.warning(f"Task {self.name} soft time limit exceeded")
+        raise
 
-@celery_app.task
-def run_malwarebazaar_sync():
+@celery_app.task(bind=True, soft_time_limit=1800, time_limit=1860)
+def run_malwarebazaar_sync(self):
     """Sync recent MalwareBazaar samples. Runs daily 03:50."""
     from modules.intelligence_sync import sync_malwarebazaar
-    return {"malwarebazaar": sync_malwarebazaar()}
+    try:
+        return {"malwarebazaar": sync_malwarebazaar()}
+    except SoftTimeLimitExceeded:
+        logger.warning(f"Task {self.name} soft time limit exceeded")
+        raise
 
-@celery_app.task(bind=True, max_retries=1)
+@celery_app.task(bind=True, max_retries=1, soft_time_limit=600, time_limit=660)
 def retest_finding(self, remediation_id: int, finding_name: str,
                    target: str, module: str):
     """Run targeted re-scan for a single finding after it's marked as fixed."""
