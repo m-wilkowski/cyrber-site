@@ -8,6 +8,7 @@ import ipaddress
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, Text
@@ -87,11 +88,35 @@ def is_ip_in_cidr(ip: str, cidr: str) -> bool:
         return False
 
 
+def _extract_host(target: str) -> str:
+    """Extract the hostname/IP from a target that may be a URL, host:port, or bare IP."""
+    # Strip surrounding whitespace
+    t = target.strip()
+
+    # URL with scheme: http://172.18.0.5/path → 172.18.0.5
+    if "://" in t:
+        parsed = urlparse(t)
+        host = parsed.hostname or t
+        return host
+
+    # host:port → host
+    if ":" in t and not t.startswith("["):
+        host, _, port = t.rpartition(":")
+        if port.isdigit():
+            return host
+
+    return t
+
+
 def _resolve_target_ip(target: str) -> Optional[str]:
-    """Extract IP from target string. Returns None for hostnames."""
+    """Extract IP from target string (URL, host:port, or bare IP).
+
+    Returns the IP string if target contains a valid IP, None for hostnames.
+    """
+    host = _extract_host(target)
     try:
-        ipaddress.ip_address(target)
-        return target
+        ipaddress.ip_address(host)
+        return host
     except ValueError:
         return None
 
@@ -131,13 +156,20 @@ class LexEngine:
             session.close()
 
     def validate_target(self, target: str, rule: LexRule) -> tuple[bool, str]:
-        """Check if target is within scope_cidrs and not in excluded_hosts."""
-        if target in rule.excluded_hosts:
-            return False, f"target '{target}' is in excluded_hosts"
+        """Check if target is within scope_cidrs and not in excluded_hosts.
+
+        Handles bare IPs, URLs (http://1.2.3.4/path), and host:port formats.
+        """
+        host = _extract_host(target)
+
+        # Check excluded_hosts — both raw target and extracted host
+        for excl in rule.excluded_hosts:
+            if host == excl or target == excl:
+                return False, f"target '{host}' is in excluded_hosts"
 
         ip = _resolve_target_ip(target)
 
-        # Check excluded_hosts for IP match
+        # Check excluded_hosts for CIDR match
         if ip:
             for excl in rule.excluded_hosts:
                 if is_ip_in_cidr(ip, excl):
@@ -147,18 +179,17 @@ class LexEngine:
         if not rule.scope_cidrs:
             return True, "ok"
 
+        # IP targets (bare, URL, or host:port): check CIDR membership
+        if ip:
+            for cidr in rule.scope_cidrs:
+                if is_ip_in_cidr(ip, cidr):
+                    return True, "ok"
+            return False, f"target {ip} not in any scope CIDR"
+
         # Hostname targets: check literal match in scope_cidrs
-        if not ip:
-            if target in rule.scope_cidrs:
-                return True, "ok"
-            return False, f"hostname '{target}' not found in scope_cidrs"
-
-        # IP targets: check CIDR membership
-        for cidr in rule.scope_cidrs:
-            if is_ip_in_cidr(ip, cidr):
-                return True, "ok"
-
-        return False, f"target {ip} not in any scope CIDR"
+        if host in rule.scope_cidrs:
+            return True, "ok"
+        return False, f"hostname '{host}' not found in scope_cidrs"
 
     def validate_module(self, module_name: str, rule: LexRule) -> tuple[bool, str]:
         """Check if the module is allowed by the rule."""
