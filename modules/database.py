@@ -1,18 +1,45 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, Float, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, Float, ForeignKey, event
 from sqlalchemy.types import JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import Pool
 from datetime import datetime
 import os
 import json
+import logging
 import time
 from dotenv import load_dotenv
 load_dotenv()
 
+_db_logger = logging.getLogger("cyrber.db")
+
 DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
+    pool_recycle=1800,
+    pool_pre_ping=True,
+    echo=False,
+    connect_args={
+        "connect_timeout": 10,
+        "application_name": "cyrber",
+        "options": "-c statement_timeout=30000",
+    },
+)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
+
+
+@event.listens_for(Pool, "connect")
+def _on_pool_connect(dbapi_connection, connection_record):
+    _db_logger.debug("DB pool: new connection established")
+
+
+@event.listens_for(Pool, "checkout")
+def _on_pool_checkout(dbapi_connection, connection_record, connection_proxy):
+    _db_logger.debug("DB pool: connection checked out")
 
 class Scan(Base):
     __tablename__ = "scans"

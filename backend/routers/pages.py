@@ -104,6 +104,28 @@ async def health():
     return {"status": "ok"}
 
 
+@router.get("/api/health/db")
+async def db_health():
+    from sqlalchemy import text
+    from modules.database import SessionLocal, engine
+
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        pool = engine.pool
+        return {
+            "status": "ok",
+            "pool_size": pool.size(),
+            "checked_out": pool.checkedout(),
+            "overflow": pool.overflow(),
+            "checked_in": pool.checkedin(),
+        }
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+    finally:
+        db.close()
+
+
 @router.get("/")
 async def root():
     return RedirectResponse(url="/ui")
