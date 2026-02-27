@@ -653,3 +653,231 @@ html[data-theme="light"] .badge-info     { background: rgba(30,64,175,.06); }
   border-radius: 50%;
   display: block;
 }
+
+/* ══════════════════════════════════════════════════════
+   CYRBER v2 — Extended Design Tokens + Components
+   ══════════════════════════════════════════════════════ */
+
+/* ── Extra palette aliases ── */
+:root {
+  --bg-primary:    var(--bg-root);
+  --bg-secondary:  var(--bg-base);
+  --bg-tertiary:   var(--bg-raised);
+  --accent-red:    #C1121F;
+  --accent-gold:   #C9A84C;
+  --accent-blue:   #1a6fb5;
+  --accent-amber:  #e85d04;
+  --accent-purple: #6b3fa0;
+  --border-bright: var(--border-strong);
+  --success:       var(--green);
+  --warning:       var(--orange);
+  --danger:        var(--red);
+}
+
+/* ── Selection ── */
+::selection { background: rgba(193,18,31,0.3); color: var(--text-primary); }
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeInUp 0.35s ease forwards; }
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(193,18,31,0.4); }
+  50%      { box-shadow: 0 0 24px rgba(193,18,31,0.8); }
+}
+.pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+
+@keyframes rotateRing {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes liveDot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.2; }
+}
+
+/* ── Live dot ── */
+.live-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: liveDot 1.2s ease-in-out infinite;
+  margin-right: 6px;
+}
+
+/* ── Unified navbar with logo ── */
+.cyrber-nav {
+  height: 56px;
+  background: var(--nav-bg);
+  border-bottom: 1px solid var(--accent-red);
+  box-shadow: 0 1px 20px rgba(193,18,31,0.15);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.cyrber-nav .nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.cyrber-nav .nav-logo img {
+  height: 36px;
+  width: auto;
+  border-radius: 4px;
+  filter: brightness(1.1);
+}
+.cyrber-nav .nav-logo-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.15em;
+}
+.cyrber-nav .nav-links {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  overflow-x: auto;
+}
+.cyrber-nav .nav-links a {
+  font-family: 'Share Tech Mono', monospace;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.cyrber-nav .nav-links a:hover {
+  color: var(--text-primary);
+  background: var(--accent-muted);
+}
+.cyrber-nav .nav-links a.active {
+  color: var(--accent-red);
+  background: rgba(193,18,31,0.1);
+}
+.cyrber-nav .nav-user {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Button variants v2 ── */
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+}
+.btn-secondary:hover:not(:disabled) { background: rgba(193,18,31,0.1); }
+
+.btn-gold {
+  background: var(--accent-gold);
+  color: #0a0a0f;
+  font-weight: 600;
+  border: none;
+}
+.btn-gold:hover:not(:disabled) { background: #b8943e; }
+
+/* ── DNA progress bars ── */
+.dna-bar-track {
+  height: 12px;
+  background: var(--bg-raised);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.dna-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dna-bar-fill.high   { background: linear-gradient(90deg, #C1121F, #ff4444); box-shadow: 0 0 10px rgba(193,18,31,0.5); }
+.dna-bar-fill.medium { background: linear-gradient(90deg, #e85d04, #ff8844); box-shadow: 0 0 10px rgba(232,93,4,0.5); }
+.dna-bar-fill.low    { background: linear-gradient(90deg, #2d6a4f, #4ade80); box-shadow: 0 0 10px rgba(45,106,79,0.5); }
+
+/* ── FIDUCIA bar ── */
+.fiducia-bar-track {
+  height: 8px;
+  background: var(--bg-raised);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.fiducia-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #C1121F, #C9A84C, #4ade80);
+  transition: width 0.5s ease;
+}
+
+/* ── Cogitatio terminal ── */
+.cogitatio-terminal {
+  background: var(--terminal-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #22c55e;
+  height: 280px;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+.cogitatio-terminal .cogitatio-line { margin-bottom: 4px; }
+.cogitatio-terminal .cogitatio-ts { color: var(--text-muted); margin-right: 8px; }
+.cogitatio-terminal .cogitatio-prefix { color: var(--accent-gold); margin-right: 6px; }
+.cogitatio-terminal .cursor {
+  display: inline-block;
+  width: 8px; height: 14px;
+  background: #22c55e;
+  animation: liveDot 0.8s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+/* ── Merkle hash ── */
+.merkle-hash {
+  font-family: 'Courier New', monospace;
+  color: var(--accent-gold);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+
+/* ── Seal badge ── */
+.seal-badge {
+  width: 40px; height: 40px;
+  border: 2px solid var(--accent-gold);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-gold);
+  font-size: 18px;
+  box-shadow: 0 0 12px rgba(201,168,76,0.3);
+}
+
+/* ── Responsive: cyrber-nav ── */
+@media (max-width: 768px) {
+  .cyrber-nav { padding: 0 12px; gap: 10px; }
+  .cyrber-nav .nav-logo-text { display: none; }
+  .cyrber-nav .nav-links a { font-size: 11px; padding: 4px 6px; }
+  .cyrber-nav .nav-user span { display: none; }
+}

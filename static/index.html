@@ -379,24 +379,34 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
 </head>
 <body>
 
-<nav>
-  <a class="nav-brand" href="/ui"><div class="nav-ring" style="background-image:url(/static/cyrber_wolf.png);background-size:100%;background-repeat:no-repeat;background-position:center center;"></div>CYRBER<span>AUTONOMOUS RECON</span></a>
+<nav class="cyrber-nav">
+  <a href="/ui" class="nav-logo">
+    <img src="/static/logo.jpg" alt="CYRBER">
+    <span class="nav-logo-text">CYRBER</span>
+  </a>
   <div class="nav-links">
-    <a class="nav-link active" href="/ui">SCAN</a>
-    <a class="nav-link" href="/dashboard">DASHBOARD</a>
-    <a class="nav-link" href="/phishing">PHISHING</a>
-    <a class="nav-link" href="/scheduler">SCHEDULER</a>
-    <a class="nav-link" href="/osint">OSINT</a>
-    <a class="nav-link" href="/topology">TOPOLOGY</a>
-    <a class="nav-link" href="/verify">VERIFY</a>
-    <a class="nav-link" href="/mission-control">MENS</a>
-    <a class="nav-link" href="/mirror">MIRROR</a>
-    <a class="nav-link" href="/proof">PROOF</a>
-    <a class="nav-link" href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+    <a href="/ui">SCAN</a>
+    <a href="/dashboard">DASHBOARD</a>
+    <a href="/mission-control">MENS</a>
+    <a href="/mirror">MIRROR</a>
+    <a href="/proof">PROOF</a>
+    <a href="/phishing">PHISHING</a>
+    <a href="/scheduler">SCHEDULER</a>
+    <a href="/osint">OSINT</a>
+    <a href="/topology">TOPOLOGY</a>
+    <a href="/verify">VERIFY</a>
+    <a href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+  </div>
+  <div class="nav-user">
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
-    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
+    <span id="nav-username"></span>
+    <a href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red);font-size:12px;text-decoration:none;letter-spacing:.08em;">LOGOUT</a>
   </div>
 </nav>
+<script>
+document.querySelectorAll('.cyrber-nav .nav-links a').forEach(function(a){if(a.getAttribute('href')===window.location.pathname)a.classList.add('active');});
+(function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){var el=document.getElementById('nav-username');if(el)el.textContent=u.username||'';if(u.role==='admin'){var al=document.getElementById('adminNavLink');if(al)al.style.display='';}}).catch(function(){});})();
+</script>
 
 <div class="wrapper">
 
@@ -407,10 +417,26 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
     <div class="idle-main">
       <!-- HERO -->
       <div class="hero" id="heroSection">
-        <div class="hero-ring"><div class="hero-ring-text"><img src="/static/cyrber_logo.jpg" style="width:220px;height:220px;object-fit:cover;object-position:center 30%;border-radius:50%;"></div></div>
-        <div class="hero-title">CYRBER</div>
-        <div class="hero-tagline">AUTONOMOUS SECURITY TESTING</div>
-        <div class="hero-sub">Pick a target. Choose a level. The rest happens automatically.</div>
+        <div style="position:relative;width:180px;height:180px;margin:0 auto 24px;">
+          <svg viewBox="0 0 180 180" style="position:absolute;top:0;left:0;width:100%;height:100%;">
+            <circle cx="90" cy="90" r="82" fill="none" stroke="#C1121F" stroke-width="1.5"
+              stroke-dasharray="200 320" opacity="0.6"
+              style="transform-origin:90px 90px;animation:rotateRing 12s linear infinite"/>
+            <circle cx="90" cy="90" r="68" fill="none" stroke="#C9A84C" stroke-width="1"
+              stroke-dasharray="150 278" opacity="0.5"
+              style="transform-origin:90px 90px;animation:rotateRing 8s linear infinite reverse"/>
+            <circle cx="90" cy="90" r="54" fill="none" stroke="#1a6fb5" stroke-width="1"
+              stroke-dasharray="100 240" opacity="0.4"
+              style="transform-origin:90px 90px;animation:rotateRing 6s linear infinite"/>
+            <line x1="90" y1="72" x2="90" y2="108" stroke="#C1121F" stroke-width="1.5" opacity="0.8"/>
+            <line x1="72" y1="90" x2="108" y2="90" stroke="#C1121F" stroke-width="1.5" opacity="0.8"/>
+            <circle cx="90" cy="90" r="6" fill="none" stroke="#C9A84C" stroke-width="1.5"/>
+            <circle cx="90" cy="90" r="2" fill="#C9A84C"/>
+          </svg>
+          <img src="/static/logo.jpg" alt="CYRBER" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70px;height:auto;border-radius:50%;filter:brightness(1.2);">
+        </div>
+        <h1 style="font-family:'Orbitron',sans-serif;font-size:56px;font-weight:800;color:var(--text-primary);letter-spacing:.12em;margin:0 0 8px;line-height:1;">CYRBER</h1>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--accent-gold, #C9A84C);letter-spacing:.2em;text-transform:uppercase;margin:0 0 32px;">Adversary Reasoning Platform</p>
       </div>
 
       <!-- SCAN FORM -->

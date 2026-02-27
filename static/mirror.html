@@ -310,24 +310,34 @@
 </style>
 </head>
 <body>
-<nav>
-  <a class="nav-brand" href="/ui"><div class="nav-ring"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2L8 7H4L7 10.5L6 16L11 13L16 16L15 10.5L18 7H14L11 2Z" fill="#4a8fd4" opacity="0.9"/></svg></div>CYRBER<span>AUTONOMOUS RECON</span></a>
+<nav class="cyrber-nav">
+  <a href="/ui" class="nav-logo">
+    <img src="/static/logo.jpg" alt="CYRBER">
+    <span class="nav-logo-text">CYRBER</span>
+  </a>
   <div class="nav-links">
-    <a class="nav-link" href="/ui">SCAN</a>
-    <a class="nav-link" href="/dashboard">DASHBOARD</a>
-    <a class="nav-link" href="/phishing">PHISHING</a>
-    <a class="nav-link" href="/scheduler">SCHEDULER</a>
-    <a class="nav-link" href="/osint">OSINT</a>
-    <a class="nav-link" href="/topology">TOPOLOGY</a>
-    <a class="nav-link" href="/verify">VERIFY</a>
-    <a class="nav-link" href="/mission-control">MENS</a>
-    <a class="nav-link active" href="/mirror">MIRROR</a>
-    <a class="nav-link" href="/proof">PROOF</a>
-    <a class="nav-link" href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+    <a href="/ui">SCAN</a>
+    <a href="/dashboard">DASHBOARD</a>
+    <a href="/mission-control">MENS</a>
+    <a href="/mirror">MIRROR</a>
+    <a href="/proof">PROOF</a>
+    <a href="/phishing">PHISHING</a>
+    <a href="/scheduler">SCHEDULER</a>
+    <a href="/osint">OSINT</a>
+    <a href="/topology">TOPOLOGY</a>
+    <a href="/verify">VERIFY</a>
+    <a href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+  </div>
+  <div class="nav-user">
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
-    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
+    <span id="nav-username"></span>
+    <a href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red);font-size:12px;text-decoration:none;letter-spacing:.08em;">LOGOUT</a>
   </div>
 </nav>
+<script>
+document.querySelectorAll('.cyrber-nav .nav-links a').forEach(function(a){if(a.getAttribute('href')===window.location.pathname)a.classList.add('active');});
+(function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){var el=document.getElementById('nav-username');if(el)el.textContent=u.username||'';if(u.role==='admin'){var al=document.getElementById('adminNavLink');if(al)al.style.display='';}}).catch(function(){});})();
+</script>
 
 <div class="wrapper">
 
