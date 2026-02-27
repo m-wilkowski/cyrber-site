@@ -26,7 +26,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     profiles:
       - ollama
     healthcheck:
@@ -43,7 +43,7 @@ services:
       -config api.addrs.addr.name=.*
       -config api.addrs.addr.regex=true
     ports:
-      - "8090:8090"
+      - "127.0.0.1:8090:8090"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8090/JSON/core/view/version/?apikey=${ZAP_API_KEY:-cyrber-zap-key}"]
@@ -55,8 +55,8 @@ services:
   gophish:
     image: gophish/gophish:latest
     ports:
-      - "3333:3333"
-      - "8080:80"
+      - "127.0.0.1:3333:3333"
+      - "127.0.0.1:8080:80"
     volumes:
       - gophish_data:/opt/gophish
     profiles:
@@ -76,8 +76,8 @@ services:
   beef:
     image: janes/beef
     ports:
-      - "3001:3000"
-      - "6789:6789"
+      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:6789:6789"
     volumes:
       - ./config/beef.yaml:/beef/config.yaml:ro
     profiles:
@@ -87,9 +87,9 @@ services:
   evilginx:
     image: kgretzky/evilginx2:latest
     ports:
-      - "8443:443"
-      - "8080:80"
-      - "5353:53/udp"
+      - "127.0.0.1:8443:443"
+      - "127.0.0.1:8081:80"
+      - "127.0.0.1:5353:53/udp"
     volumes:
       - evilginx_data:/app
     environment:
@@ -252,7 +252,7 @@ services:
   dvwa:
     image: vulnerables/web-dvwa
     ports:
-      - "8888:80"
+      - "127.0.0.1:8888:80"
     restart: unless-stopped
 
 volumes:
