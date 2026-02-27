@@ -48,5 +48,45 @@
     /* Double-click theme toggle = reset to auto */
     var btn = document.querySelector('.theme-toggle');
     if (btn) btn.addEventListener('dblclick', function(){ window.resetThemeAuto(); });
+
+    /* ── Dropdown navigation — click toggle ── */
+    var navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(function(item) {
+      var trigger = item.querySelector('span, a');
+      var dropdown = item.querySelector('.nav-dropdown');
+      if (!dropdown || !trigger) return;
+
+      trigger.addEventListener('click', function(e) {
+        /* Only intercept top-level nav triggers, not dropdown links */
+        if (e.target.closest('.nav-dropdown')) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        /* Close all others */
+        document.querySelectorAll('.nav-dropdown.open').forEach(function(d) {
+          if (d !== dropdown) d.classList.remove('open');
+        });
+
+        dropdown.classList.toggle('open');
+      });
+    });
+
+    /* Click outside closes all */
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.cyrber-nav')) {
+        document.querySelectorAll('.nav-dropdown.open').forEach(function(d) {
+          d.classList.remove('open');
+        });
+      }
+    });
+
+    /* Escape closes all */
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.nav-dropdown.open').forEach(function(d) {
+          d.classList.remove('open');
+        });
+      }
+    });
   });
 })();

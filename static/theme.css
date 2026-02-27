@@ -956,7 +956,8 @@ html[data-theme="light"] .badge-info     { background: rgba(30,64,175,.06); }
 .nav-item.mirror .nav-dropdown  { border-top-color: var(--accent-gold); }
 .nav-item.proof .nav-dropdown   { border-top-color: var(--accent-gold); }
 
-.nav-item:hover .nav-dropdown { display: block; }
+/* hover removed — JS click toggle via .open class */
+.nav-dropdown.open { display: block; }
 
 .nav-dropdown a {
   display: flex;
