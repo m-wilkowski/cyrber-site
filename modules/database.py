@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, Float, text, inspect as sa_inspect
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, Float
 from sqlalchemy.types import JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -301,71 +301,28 @@ class VerifyResult(Base):
     created_by     = Column(String)
 
 def init_db(retries=10, delay=3):
+    from alembic.config import Config
+    from alembic import command
+    from sqlalchemy import inspect as sa_inspect
     for i in range(retries):
         try:
-            Base.metadata.create_all(bind=engine)
-            # Migrate: add scan_type column if missing
-            try:
-                insp = sa_inspect(engine)
-                cols = [c['name'] for c in insp.get_columns('scans')]
-                if 'scan_type' not in cols:
-                    with engine.begin() as conn:
-                        conn.execute(text("ALTER TABLE scans ADD COLUMN scan_type VARCHAR DEFAULT 'full'"))
-                    print("Migration: added scan_type column")
-                if 'profile' not in cols:
-                    with engine.begin() as conn:
-                        conn.execute(text("ALTER TABLE scans ADD COLUMN profile VARCHAR DEFAULT 'STRAZNIK'"))
-                    print("Migration: added profile column")
-            except Exception:
-                pass
-            # Migrate: add retest columns to remediation_tasks if missing
-            try:
-                insp = sa_inspect(engine)
-                if 'remediation_tasks' in insp.get_table_names():
-                    rem_cols = [c['name'] for c in insp.get_columns('remediation_tasks')]
-                    for col_name, col_type in [
-                        ('retest_task_id', 'VARCHAR'),
-                        ('retest_status', 'VARCHAR'),
-                        ('retest_at', 'TIMESTAMP'),
-                        ('retest_result', 'JSON'),
-                    ]:
-                        if col_name not in rem_cols:
-                            with engine.begin() as conn:
-                                conn.execute(text(f"ALTER TABLE remediation_tasks ADD COLUMN {col_name} {col_type}"))
-                            print(f"Migration: added {col_name} to remediation_tasks")
-            except Exception:
-                pass
-            # Migrate: add v3 columns to verify_results if missing
-            try:
-                insp = sa_inspect(engine)
-                if 'verify_results' in insp.get_table_names():
-                    vr_cols = [c['name'] for c in insp.get_columns('verify_results')]
-                    for col_name, col_type in [
-                        ('narrative', 'TEXT'),
-                        ('trust_factors', 'JSON'),
-                        ('signal_explanations', 'JSON'),
-                        ('educational_tips', 'JSON'),
-                        ('problems', 'JSON'),
-                        ('positives', 'JSON'),
-                        ('action', 'TEXT'),
-                        ('immediate_actions', 'JSON'),
-                        ('if_paid_already', 'JSON'),
-                        ('report_to', 'JSON'),
-                    ]:
-                        if col_name not in vr_cols:
-                            with engine.begin() as conn:
-                                conn.execute(text(f"ALTER TABLE verify_results ADD COLUMN {col_name} {col_type}"))
-                            print(f"Migration: added {col_name} to verify_results")
-            except Exception:
-                pass
-            print("Database initialized successfully")
+            alembic_cfg = Config("alembic.ini")
+            alembic_cfg.set_main_option("sqlalchemy.url", str(engine.url))
+            insp = sa_inspect(engine)
+            tables = insp.get_table_names()
+            if "scans" in tables and "alembic_version" not in tables:
+                command.stamp(alembic_cfg, "head")
+                print("Database stamped at head (existing schema)", flush=True)
+            else:
+                command.upgrade(alembic_cfg, "head")
+                print("Database migrated successfully", flush=True)
             return
         except Exception as e:
             if i < retries - 1:
-                print(f"DB not ready, retrying in {delay}s... ({i+1}/{retries})")
+                print(f"DB not ready ({e}), retry {i+1}/{retries}...", flush=True)
                 time.sleep(delay)
             else:
-                raise e
+                raise
 
 def save_scan(task_id: str, target: str, result: dict, scan_type: str = "full", profile: str = "STRAZNIK"):
     db = SessionLocal()

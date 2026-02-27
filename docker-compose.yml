@@ -166,6 +166,8 @@ services:
       - ./backend:/app/backend
       - ./config:/app/config
       - ./knowledge_base:/app/knowledge_base
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
       - evilginx_data:/app/evilginx
 
   worker:
@@ -217,6 +219,8 @@ services:
       - ./backend:/app/backend
       - ./config:/app/config
       - ./knowledge_base:/app/knowledge_base
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
 
   beat:
     build: .
@@ -235,6 +239,10 @@ services:
       redis:
         condition: service_healthy
     restart: on-failure
+    volumes:
+      - ./modules:/app/modules
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
 
   nginx:
     image: nginx:alpine
