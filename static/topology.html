@@ -521,22 +521,29 @@ function esc(s) {
 document.getElementById('scanSelect').addEventListener('change', loadTopology);
 loadScans();
 </script>
+
 <script>
 (function() {
   function initDropdowns() {
-    var navItems = document.querySelectorAll(".nav-item");
-    navItems.forEach(function(item) {
+    var items = document.querySelectorAll(".nav-item");
+    items.forEach(function(item) {
       var trigger = item.querySelector("span");
       var dropdown = item.querySelector(".nav-dropdown");
       if (!trigger || !dropdown) return;
       trigger.style.cursor = "pointer";
+      trigger.style.userSelect = "none";
       trigger.addEventListener("click", function(e) {
         e.stopPropagation();
+        e.preventDefault();
+        var allDD = document.querySelectorAll(".nav-dropdown");
         var isOpen = dropdown.style.display === "block";
-        document.querySelectorAll(".nav-dropdown").forEach(function(d) {
-          d.style.display = "none";
-        });
-        dropdown.style.display = isOpen ? "none" : "block";
+        allDD.forEach(function(d) { d.style.display = "none"; });
+        if (!isOpen) {
+          var rect = trigger.getBoundingClientRect();
+          dropdown.style.display = "block";
+          dropdown.style.left = rect.left + "px";
+          dropdown.style.top = "56px";
+        }
       });
     });
     document.addEventListener("click", function() {
