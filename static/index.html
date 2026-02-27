@@ -385,29 +385,84 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
     <span class="nav-logo-text">CYRBER</span>
   </a>
   <div class="nav-links">
-    <a href="/ui">SCAN</a>
-    <a href="/dashboard">DASHBOARD</a>
-    <a href="/mission-control">MENS</a>
-    <a href="/mirror">MIRROR</a>
-    <a href="/proof">PROOF</a>
-    <a href="/chronicle">CHRONICLE</a>
-    <a href="/hardware">HARDWARE</a>
-    <a href="/phishing">PHISHING</a>
-    <a href="/scheduler">SCHEDULER</a>
-    <a href="/osint">OSINT</a>
-    <a href="/topology">TOPOLOGY</a>
-    <a href="/verify">VERIFY</a>
-    <a href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+    <div class="nav-item missions">
+      <span>MISSIONS &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Operations</div>
+        <a href="/dashboard">&#128202; Dashboard</a>
+        <a href="/mission-control">&#127919; Theatrum Belli</a>
+        <a href="/scheduler">&#128336; Scheduler</a>
+      </div>
+    </div>
+    <div class="nav-item ratio">
+      <span>RATIO &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Infrastructure &middot; Code &middot; CVE</div>
+        <a href="/ui">&#128269; Scan</a>
+        <a href="/topology">&#128506; Topology</a>
+        <a href="/osint">&#127760; OSINT</a>
+        <a href="/verify">&#10003; Verify</a>
+      </div>
+    </div>
+    <div class="nav-item animus">
+      <span>ANIMUS &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">People &middot; Habits &middot; Behaviour</div>
+        <a href="/phishing">&#127907; Phishing</a>
+      </div>
+    </div>
+    <div class="nav-item fatum">
+      <span>FATUM &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">History &middot; Context &middot; Physical</div>
+        <a href="/hardware">&#9889; Hardware Bridge</a>
+      </div>
+    </div>
+    <div class="nav-item mirror">
+      <span>MIRROR &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Organization Intelligence</div>
+        <a href="/mirror">&#129516; Security Genome</a>
+      </div>
+    </div>
+    <div class="nav-item proof">
+      <span>PROOF &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Audit &middot; Compliance &middot; Insurance</div>
+        <a href="/proof">&#128274; Living Proof</a>
+        <a href="/proof#feed">&#128225; Insurance Feed</a>
+      </div>
+    </div>
+    <div class="nav-item chronicle">
+      <span>CHRONICLE &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Probabilistic Future</div>
+        <a href="/chronicle">&#128197; 30/60/90 Forecast</a>
+        <a href="/chronicle#peers">&#128101; Sector Peers <span class="dropdown-badge soon">Q4 2026</span></a>
+        <a href="/chronicle#apt">&#127919; APT Correlation <span class="dropdown-badge soon">Q4 2026</span></a>
+      </div>
+    </div>
   </div>
-  <div class="nav-user">
+  <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0;">
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
-    <span id="nav-username"></span>
-    <a href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red);font-size:12px;text-decoration:none;letter-spacing:.08em;">LOGOUT</a>
+    <span id="nav-username" style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);">&#8212;</span>
+    <a href="/admin" class="nav-admin-icon" id="adminNavLink" title="Admin" style="display:none;">&#9881;</a>
+    <a href="#" onclick="localStorage.removeItem('cyrber_token');localStorage.removeItem('cyrber_user');window.location.href='/login'" style="color:var(--red);font-size:11px;text-decoration:none;letter-spacing:.08em;font-family:'Share Tech Mono',monospace;">LOGOUT</a>
   </div>
 </nav>
 <script>
-document.querySelectorAll('.cyrber-nav .nav-links a').forEach(function(a){if(a.getAttribute('href')===window.location.pathname)a.classList.add('active');});
-(function(){var t=localStorage.getItem('cyrber_token');if(!t)return;fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){var el=document.getElementById('nav-username');if(el)el.textContent=u.username||'';if(u.role==='admin'){var al=document.getElementById('adminNavLink');if(al)al.style.display='';}}).catch(function(){});})();
+(function(){
+  var path=window.location.pathname;
+  var map={'/ui':'ratio','/topology':'ratio','/osint':'ratio','/verify':'ratio','/dashboard':'missions','/mission-control':'missions','/scheduler':'missions','/phishing':'animus','/hardware':'fatum','/mirror':'mirror','/proof':'proof','/chronicle':'chronicle','/admin':'missions'};
+  var s=map[path];
+  if(s){var el=document.querySelector('.nav-item.'+s);if(el)el.classList.add('active');}
+  var t=localStorage.getItem('cyrber_token');if(!t)return;
+  fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){
+    var ne=document.getElementById('nav-username');if(ne)ne.textContent=u.username||'';
+    localStorage.setItem('cyrber_user',u.username||'');
+    if(u.role==='admin'){var al=document.getElementById('adminNavLink');if(al)al.style.display='';}
+  }).catch(function(){});
+})();
 </script>
 
 <div class="wrapper">
