@@ -1000,13 +1000,39 @@ function updateCerberus() {
   }
 }
 
+var _cerberusTimer = null;
+
 function updateCerberusFromIteration(data) {
-  if (data.module) {
-    document.getElementById('ratioValue').textContent = data.module.toUpperCase();
-    document.getElementById('ratioValue').style.color = 'var(--green)';
-    document.getElementById('animusValue').textContent = 'EXECUTING';
-    document.getElementById('animusValue').style.color = 'var(--amber)';
-  }
+  if (!data.module) return;
+
+  // Clear previous timeout
+  if (_cerberusTimer) { clearTimeout(_cerberusTimer); _cerberusTimer = null; }
+
+  var head = (data.head || 'RATIO').toUpperCase();
+  var moduleName = data.module.toUpperCase();
+  var headMap = {
+    RATIO:  { el: 'ratioValue',  color: 'var(--green)' },
+    ANIMUS: { el: 'animusValue', color: 'var(--amber)' },
+    FATUM:  { el: 'fatumValue',  color: 'var(--purple)' }
+  };
+
+  // Reset all heads to IDLE first
+  ['ratioValue', 'animusValue', 'fatumValue'].forEach(function(id) {
+    document.getElementById(id).textContent = 'IDLE';
+    document.getElementById(id).style.color = 'var(--text-muted)';
+  });
+
+  // Activate the target head
+  var target = headMap[head] || headMap.RATIO;
+  document.getElementById(target.el).textContent = moduleName;
+  document.getElementById(target.el).style.color = target.color;
+
+  // Auto-reset to IDLE after 3s
+  _cerberusTimer = setTimeout(function() {
+    document.getElementById(target.el).textContent = 'IDLE';
+    document.getElementById(target.el).style.color = 'var(--text-muted)';
+    _cerberusTimer = null;
+  }, 3000);
 }
 
 function setCerberusIdle() {

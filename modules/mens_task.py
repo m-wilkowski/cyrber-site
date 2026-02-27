@@ -95,6 +95,7 @@ def mens_run_task(self, mission_id: str):
                 module_selected=pending_it.module_selected,
                 module_args=pending_it.module_args,
                 cogitatio=pending_it.cogitatio,
+                head=pending_it.head or "RATIO",
                 approved=True,
             )
             # Execute: act → learn

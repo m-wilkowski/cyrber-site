@@ -124,7 +124,7 @@ def _mock_mission(mission_id=_MISSION_ID, status="pending", mode="comes"):
     return m
 
 
-def _mock_iteration(iteration_id=_ITERATION_ID, approved=None):
+def _mock_iteration(iteration_id=_ITERATION_ID, approved=None, head="RATIO"):
     it = MagicMock()
     it.id = iteration_id
     it.mission_id = _MISSION_ID
@@ -135,6 +135,7 @@ def _mock_iteration(iteration_id=_ITERATION_ID, approved=None):
     it.cogitatio = "Starting with port scan"
     it.result_summary = None
     it.findings_count = 0
+    it.head = head
     it.approved = approved
     it.created_at = "2026-02-27T10:01:00"
     return it
@@ -258,6 +259,7 @@ class TestMissionDetail:
         assert data["id"] == _MISSION_ID
         assert "iterations" in data
         assert len(data["iterations"]) == 1
+        assert data["iterations"][0]["head"] == "RATIO"
 
     def test_get_mission_not_found(self):
         _as_admin()

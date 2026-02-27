@@ -87,6 +87,7 @@ def _iteration_to_dict(row: MensIterationModel) -> dict:
         "cogitatio": row.cogitatio,
         "result_summary": row.result_summary,
         "findings_count": row.findings_count,
+        "head": row.head or "RATIO",
         "approved": row.approved,
         "created_at": str(row.created_at) if row.created_at else None,
     }
@@ -268,7 +269,7 @@ async def mission_stream(mission_id: str, token: str = Query(...)):
                     for it in iterations[last_iteration_count:]:
                         # Cogitatio event
                         if it.cogitatio:
-                            yield f"data: {json.dumps({'type': 'cogitatio', 'iteration_number': it.iteration_number, 'module': it.module_selected, 'cogitatio': it.cogitatio})}\n\n"
+                            yield f"data: {json.dumps({'type': 'cogitatio', 'iteration_number': it.iteration_number, 'module': it.module_selected, 'head': it.head or 'RATIO', 'cogitatio': it.cogitatio})}\n\n"
 
                         # Full iteration event when phase == learn
                         if it.phase == "learn":

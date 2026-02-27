@@ -60,6 +60,32 @@ def get_available_modules() -> list[str]:
     return list(AVAILABLE_MODULES)
 
 
+# ── Three-head routing (Cerberus) ────────────────────────────
+
+RATIO_MODULES: set[str] = {
+    "nmap", "nuclei", "gobuster", "zap", "sqlmap", "testssl",
+    "whatweb", "nikto", "wapiti", "searchsploit", "snmpwalk",
+    "netexec", "enum4linux", "certipy", "trivy", "prowler",
+}
+ANIMUS_MODULES: set[str] = {
+    "harvester", "sherlock", "maigret", "gophish",
+    "evilginx", "beef", "gitleaks", "holehe",
+}
+FATUM_MODULES: set[str] = {
+    "bloodhound", "impacket", "subfinder", "httpx",
+    "fierce", "dnsx", "amass", "netdiscover",
+}
+
+
+def classify_head(module_name: str) -> Literal["RATIO", "ANIMUS", "FATUM"]:
+    """Classify a module into one of the three Cerberus heads."""
+    if module_name in ANIMUS_MODULES:
+        return "ANIMUS"
+    if module_name in FATUM_MODULES:
+        return "FATUM"
+    return "RATIO"
+
+
 # ── Module → scan function mapping ──────────────────────────────
 
 
@@ -114,6 +140,7 @@ class MensIteration(BaseModel):
     cogitatio: Optional[str] = None
     result_summary: Optional[str] = None
     findings_count: int = 0
+    head: Literal["RATIO", "ANIMUS", "FATUM"] = "RATIO"
     approved: Optional[bool] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -172,6 +199,7 @@ class MensIterationModel(Base):
     cogitatio = Column(Text, nullable=True)
     result_summary = Column(Text, nullable=True)
     findings_count = Column(Integer, default=0)
+    head = Column(String(10), default="RATIO")
     approved = Column(Boolean, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -423,6 +451,9 @@ class MensAgent:
             cogitatio=reasoning,
         )
 
+        # Classify into Cerberus head
+        iteration.head = classify_head(module_name) if module_name != "DONE" else "RATIO"
+
         # If DONE — mission complete
         if module_name == "DONE":
             iteration.result_summary = "Agent decided mission objective is achieved."
@@ -640,6 +671,7 @@ class MensAgent:
             cogitatio=iteration.cogitatio,
             result_summary=iteration.result_summary,
             findings_count=iteration.findings_count,
+            head=iteration.head,
             approved=iteration.approved,
             created_at=iteration.created_at,
         )
