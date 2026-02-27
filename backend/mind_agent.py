@@ -411,7 +411,8 @@ class MensAgent:
         if "target" not in args:
             args["target"] = self.mission.target
 
-        iteration_number = len(self.mission.iterations) + 1
+        # Use DB-sourced iteration history for correct numbering
+        iteration_number = len(context.get("iterations", [])) + 1
 
         iteration = MensIteration(
             mission_id=self.mission.id,
@@ -627,7 +628,7 @@ class MensAgent:
     def _save_iteration(self, iteration: MensIteration, db_session) -> None:
         """Persist a MensIteration to the database."""
         args = dict(iteration.module_args or {})
-        args.pop("_fiducia_delta", None)
+        # Keep _fiducia_delta in DB so it survives COMES resume cycles
 
         row = MensIterationModel(
             id=str(iteration.id),
