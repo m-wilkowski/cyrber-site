@@ -106,6 +106,27 @@ celery_app = Celery(
     include=["modules.mens_task"],
 )
 
+# ── Queue routing ──────────────────────────────────────────────
+# 3 queues: scan (scans + retests), intel (sync tasks), mens (agent)
+# Default queue for anything unmatched = "celery" (schedules, agent_scan)
+celery_app.conf.task_routes = {
+    # scan queue — long-running scan tasks
+    "modules.tasks.full_scan_task": {"queue": "scan"},
+    "modules.tasks.osint_scan_task": {"queue": "scan"},
+    "modules.tasks.agent_scan_task": {"queue": "scan"},
+    "modules.tasks.retest_finding": {"queue": "scan"},
+    # intel queue — intelligence sync tasks
+    "modules.tasks.run_intel_sync": {"queue": "intel"},
+    "modules.tasks.run_attack_sync": {"queue": "intel"},
+    "modules.tasks.run_euvd_sync": {"queue": "intel"},
+    "modules.tasks.run_misp_sync": {"queue": "intel"},
+    "modules.tasks.run_urlhaus_sync": {"queue": "intel"},
+    "modules.tasks.run_exploitdb_sync": {"queue": "intel"},
+    "modules.tasks.run_malwarebazaar_sync": {"queue": "intel"},
+    # mens queue — autonomous agent
+    "modules.mens_task.mens_run_task": {"queue": "mens"},
+}
+
 celery_app.conf.beat_schedule = {
     "check-schedules-every-minute": {
         "task": "modules.tasks.run_due_schedules",
@@ -114,30 +135,37 @@ celery_app.conf.beat_schedule = {
     "intel-sync-daily": {
         "task": "modules.tasks.run_intel_sync",
         "schedule": crontab(hour=3, minute=0),
+        "options": {"queue": "intel"},
     },
     "attack-sync-weekly": {
         "task": "modules.tasks.run_attack_sync",
         "schedule": crontab(hour=4, minute=0, day_of_week=0),  # Sunday 04:00
+        "options": {"queue": "intel"},
     },
     "euvd-sync-daily": {
         "task": "modules.tasks.run_euvd_sync",
         "schedule": crontab(hour=3, minute=30),
+        "options": {"queue": "intel"},
     },
     "misp-sync-daily": {
         "task": "modules.tasks.run_misp_sync",
         "schedule": crontab(hour=3, minute=15),
+        "options": {"queue": "intel"},
     },
     "urlhaus-sync-daily": {
         "task": "modules.tasks.run_urlhaus_sync",
         "schedule": crontab(hour=3, minute=45),
+        "options": {"queue": "intel"},
     },
     "exploitdb-sync-weekly": {
         "task": "modules.tasks.run_exploitdb_sync",
         "schedule": crontab(hour=4, minute=30, day_of_week=0),  # Sunday 04:30
+        "options": {"queue": "intel"},
     },
     "malwarebazaar-sync-daily": {
         "task": "modules.tasks.run_malwarebazaar_sync",
         "schedule": crontab(hour=3, minute=50),
+        "options": {"queue": "intel"},
     },
 }
 

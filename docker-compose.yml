@@ -172,7 +172,7 @@ services:
 
   worker:
     build: .
-    command: celery -A modules.tasks worker --loglevel=info
+    command: celery -A modules.tasks worker --loglevel=info -Q celery,scan,intel,mens -c 4
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-cyrber}:${POSTGRES_PASSWORD:-cyrber123}@db/${POSTGRES_DB:-cyrber}
       REDIS_URL: redis://:${REDIS_PASSWORD:-cyrber_redis_2024}@redis:6379/0

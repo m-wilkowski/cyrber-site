@@ -1,11 +1,13 @@
-"""Tests for Celery task configuration — timeouts and soft time limits.
+"""Tests for Celery task configuration — timeouts, time limits, queue routing.
 
 Uses AST parsing to read decorator arguments, bypassing mock pollution
 from other tests that mock modules.tasks at sys.modules level.
+Queue routing tests parse celery_app.conf.task_routes from source.
 """
 
 import ast
 import os
+import re
 import pytest
 
 TASKS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -95,3 +97,67 @@ class TestCeleryTimeouts:
             if info["soft_time_limit"] is None and name in EXPECTED
         ]
         assert missing == [], f"Tasks without soft_time_limit: {missing}"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Queue routing
+# ═══════════════════════════════════════════════════════════════════
+
+
+def _parse_task_routes(filepath: str) -> dict[str, str]:
+    """Parse task_routes config from tasks.py source and return {task_name: queue}."""
+    with open(filepath) as f:
+        source = f.read()
+    # Find the task_routes dict assignment
+    # Pattern: "modules.tasks.xyz": {"queue": "abc"}
+    routes = {}
+    for m in re.finditer(r'"(modules\.\w+\.\w+)":\s*\{"queue":\s*"(\w+)"\}', source):
+        routes[m.group(1)] = m.group(2)
+    return routes
+
+
+_TASK_ROUTES = _parse_task_routes(TASKS_PATH)
+
+EXPECTED_ROUTES = {
+    "modules.tasks.full_scan_task": "scan",
+    "modules.tasks.osint_scan_task": "scan",
+    "modules.tasks.agent_scan_task": "scan",
+    "modules.tasks.retest_finding": "scan",
+    "modules.tasks.run_intel_sync": "intel",
+    "modules.tasks.run_attack_sync": "intel",
+    "modules.tasks.run_euvd_sync": "intel",
+    "modules.tasks.run_misp_sync": "intel",
+    "modules.tasks.run_urlhaus_sync": "intel",
+    "modules.tasks.run_exploitdb_sync": "intel",
+    "modules.tasks.run_malwarebazaar_sync": "intel",
+    "modules.mens_task.mens_run_task": "mens",
+}
+
+
+class TestCeleryQueues:
+    """Every task must be routed to the correct queue."""
+
+    @pytest.mark.parametrize("task_name,expected_queue",
+                             list(EXPECTED_ROUTES.items()),
+                             ids=[n.rsplit(".", 1)[-1] for n in EXPECTED_ROUTES])
+    def test_queue_routing(self, task_name, expected_queue):
+        actual = _TASK_ROUTES.get(task_name)
+        assert actual == expected_queue, (
+            f"{task_name} routed to '{actual}', expected '{expected_queue}'"
+        )
+
+    def test_scan_tasks_not_on_default_queue(self):
+        """Scan tasks must NOT run on the default 'celery' queue."""
+        scan_tasks = [k for k, v in EXPECTED_ROUTES.items() if v == "scan"]
+        on_default = [t for t in scan_tasks if _TASK_ROUTES.get(t) not in ("scan",)]
+        assert on_default == [], f"Scan tasks on wrong queue: {on_default}"
+
+    def test_intel_tasks_not_on_scan_queue(self):
+        """Intel sync tasks must NOT share the scan queue."""
+        intel_tasks = [k for k, v in EXPECTED_ROUTES.items() if v == "intel"]
+        on_scan = [t for t in intel_tasks if _TASK_ROUTES.get(t) == "scan"]
+        assert on_scan == [], f"Intel tasks on scan queue: {on_scan}"
+
+    def test_mens_isolated(self):
+        """MENS task must be on its own dedicated queue."""
+        assert _TASK_ROUTES.get("modules.mens_task.mens_run_task") == "mens"
