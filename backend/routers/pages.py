@@ -59,6 +59,11 @@ async def mission_control_page():
     return FileResponse("static/mission_control.html", headers=_NO_CACHE)
 
 
+@router.get("/mirror")
+async def mirror_page():
+    return FileResponse("static/mirror.html", headers=_NO_CACHE)
+
+
 @router.get("/admin")
 async def admin_page():
     return FileResponse("static/admin.html", headers=_NO_CACHE)

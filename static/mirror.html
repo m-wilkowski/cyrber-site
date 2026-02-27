@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYRBER — MIRROR</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+
+.wrapper {
+  max-width: var(--content-max); margin: 0 auto;
+  padding: var(--sp-8) var(--content-padding) var(--sp-16);
+  position: relative; z-index: 1;
+}
+
+/* ── HEADER ── */
+.page-header { margin-bottom: var(--sp-8); }
+.page-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-base);
+  letter-spacing: .3em;
+  color: var(--accent);
+  margin-bottom: var(--sp-2);
+}
+.page-title-main {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-3xl);
+  font-weight: 900;
+  letter-spacing: .15em;
+  color: var(--red);
+  margin-bottom: var(--sp-1);
+}
+.page-subtitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  letter-spacing: .15em;
+}
+
+/* ── SELECTOR BAR ── */
+.selector-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-6);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--sp-6);
+  flex-wrap: wrap;
+}
+.selector-bar label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: .2em;
+  color: var(--text-secondary);
+}
+.selector-bar select {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-base);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  min-width: 260px;
+  cursor: pointer;
+}
+.selector-bar select:focus { outline: none; border-color: var(--accent); }
+.btn-genome {
+  margin-left: auto;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  letter-spacing: .12em;
+  padding: var(--sp-2) var(--sp-5);
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--red);
+  cursor: pointer;
+  transition: all .2s;
+  display: flex; align-items: center; gap: var(--sp-2);
+}
+.btn-genome:hover { background: rgba(255,68,68,.12); }
+.btn-genome:disabled { opacity: .4; cursor: not-allowed; }
+.btn-genome .spinner {
+  width: 14px; height: 14px;
+  border: 2px solid transparent;
+  border-top-color: var(--red);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: none;
+}
+.btn-genome.loading .spinner { display: inline-block; }
+.btn-genome.loading .btn-text { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty-state {
+  text-align: center;
+  padding: var(--sp-12) var(--sp-6);
+  color: var(--text-muted);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-md);
+  letter-spacing: .08em;
+}
+
+/* ── DNA BARS ── */
+.genome-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-6);
+  margin-bottom: var(--sp-6);
+}
+@media (max-width: 900px) {
+  .genome-grid { grid-template-columns: 1fr; }
+}
+.panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.panel-head {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: .2em;
+  color: var(--text-secondary);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: var(--sp-2);
+}
+.panel-body { padding: var(--sp-5); }
+
+.dna-bar-group { margin-bottom: var(--sp-4); }
+.dna-bar-group:last-child { margin-bottom: 0; }
+.dna-bar-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--sp-1);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.dna-bar-pct {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+.dna-bar-track {
+  width: 100%; height: 22px;
+  background: var(--bg-raised);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.dna-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  width: 0;
+  transition: width 1.2s cubic-bezier(.4, 0, .2, 1);
+}
+.dna-bar-fill.red   { background: linear-gradient(90deg, var(--red), #ff6b6b); }
+.dna-bar-fill.amber { background: linear-gradient(90deg, var(--amber), #ffd93d); }
+.dna-bar-fill.green { background: linear-gradient(90deg, var(--green), #51cf66); }
+
+/* ── PATTERNS ── */
+.pattern-tags {
+  display: flex; flex-wrap: wrap; gap: var(--sp-2);
+}
+.pattern-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: .06em;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: var(--bg-raised);
+}
+.pattern-tag.warn { border-color: var(--amber); color: var(--amber); }
+.pattern-tag.danger { border-color: var(--red); color: var(--red); }
+.pattern-tag.info { border-color: var(--accent); color: var(--accent); }
+.patterns-empty {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* ── METRICS ── */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+@media (max-width: 700px) {
+  .metrics-row { grid-template-columns: repeat(2, 1fr); }
+}
+.metric-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4) var(--sp-5);
+  text-align: center;
+}
+.metric-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-2xl);
+  font-weight: 900;
+  color: var(--text-primary);
+}
+.metric-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: .15em;
+  color: var(--text-muted);
+  margin-top: var(--sp-1);
+}
+
+/* ── GENOME REPORT ── */
+.genome-report {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.genome-report-head {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: .2em;
+  color: var(--text-secondary);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.genome-report-head .timestamp {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  letter-spacing: .06em;
+}
+.genome-report-body {
+  padding: var(--sp-6);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.7;
+  opacity: 1;
+  transition: opacity .5s ease-in;
+}
+.genome-report-body.fade-in {
+  animation: fadeIn .6s ease-in;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.genome-section {
+  margin-bottom: var(--sp-6);
+  padding-left: var(--sp-5);
+  border-left: 3px solid var(--border);
+}
+.genome-section:last-child { margin-bottom: 0; }
+.genome-section.sec-pred   { border-left-color: var(--red); }
+.genome-section.sec-patterns { border-left-color: var(--amber); }
+.genome-section.sec-pheno  { border-left-color: var(--accent); }
+.genome-section.sec-forecast { border-left-color: var(--purple); }
+
+.genome-section h3 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: .18em;
+  color: var(--text-primary);
+  margin-bottom: var(--sp-3);
+}
+.genome-section p {
+  margin: 0 0 var(--sp-2);
+  white-space: pre-wrap;
+}
+.genome-placeholder {
+  text-align: center;
+  padding: var(--sp-10);
+  color: var(--text-muted);
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: .08em;
+}
+.btn-regen {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: .1em;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-regen:hover { border-color: var(--red); color: var(--red); }
+
+</style>
+</head>
+<body>
+<nav>
+  <a class="nav-brand" href="/ui"><div class="nav-ring"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2L8 7H4L7 10.5L6 16L11 13L16 16L15 10.5L18 7H14L11 2Z" fill="#4a8fd4" opacity="0.9"/></svg></div>CYRBER<span>AUTONOMOUS RECON</span></a>
+  <div class="nav-links">
+    <a class="nav-link" href="/ui">SCAN</a>
+    <a class="nav-link" href="/dashboard">DASHBOARD</a>
+    <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="/scheduler">SCHEDULER</a>
+    <a class="nav-link" href="/osint">OSINT</a>
+    <a class="nav-link" href="/topology">TOPOLOGY</a>
+    <a class="nav-link" href="/verify">VERIFY</a>
+    <a class="nav-link" href="/mission-control">MENS</a>
+    <a class="nav-link active" href="/mirror">MIRROR</a>
+    <a class="nav-link" href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
+  </div>
+</nav>
+
+<div class="wrapper">
+
+  <!-- ═══ HEADER ═══ -->
+  <div class="page-header">
+    <div class="page-title">ORGANIZATION MODEL</div>
+    <div class="page-title-main">CYRBER MIRROR</div>
+    <div class="page-subtitle">Speculum — Organization Mirror</div>
+  </div>
+
+  <!-- ═══ SELECTOR BAR ═══ -->
+  <div class="selector-bar">
+    <label>TARGET</label>
+    <select id="targetSelect"><option value="">Loading...</option></select>
+    <button class="btn-genome" id="btnGenome" disabled onclick="generateGenome()">
+      <span class="spinner"></span>
+      <span class="btn-text">GENERATE GENOME</span>
+      <span class="loading-text" style="display:none">GENERATING...</span>
+    </button>
+  </div>
+
+  <div id="emptyState" class="empty-state" style="display:none">
+    No organizations profiled yet. Run a MENS mission first.
+  </div>
+
+  <div id="profileContent" style="display:none">
+
+    <!-- ═══ METRICS ═══ -->
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-value" id="metMissions">0</div>
+        <div class="metric-label">MISSIONS</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="metPatchCycle">--</div>
+        <div class="metric-label">PATCH CYCLE (DAYS)</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="metPhishing">--</div>
+        <div class="metric-label">PHISHING RATE</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="metIncidents">0</div>
+        <div class="metric-label">CREDENTIAL INCIDENTS</div>
+      </div>
+    </div>
+
+    <!-- ═══ DNA BARS + PATTERNS ═══ -->
+    <div class="genome-grid">
+      <div class="panel">
+        <div class="panel-head">&#x1F9EC; PREDISPOSITIONS</div>
+        <div class="panel-body">
+          <div class="dna-bar-group">
+            <div class="dna-bar-label">
+              <span>Ransomware</span>
+              <span class="dna-bar-pct" id="pctRansomware">0%</span>
+            </div>
+            <div class="dna-bar-track"><div class="dna-bar-fill" id="barRansomware"></div></div>
+          </div>
+          <div class="dna-bar-group">
+            <div class="dna-bar-label">
+              <span>Supply Chain</span>
+              <span class="dna-bar-pct" id="pctSupplyChain">0%</span>
+            </div>
+            <div class="dna-bar-track"><div class="dna-bar-fill" id="barSupplyChain"></div></div>
+          </div>
+          <div class="dna-bar-group">
+            <div class="dna-bar-label">
+              <span>Phishing</span>
+              <span class="dna-bar-pct" id="pctPhishing">0%</span>
+            </div>
+            <div class="dna-bar-track"><div class="dna-bar-fill" id="barPhishing"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">&#x1F50D; PATTERNS</div>
+        <div class="panel-body">
+          <div class="pattern-tags" id="patternTags">
+            <span class="patterns-empty">No patterns detected yet</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ GENOME REPORT ═══ -->
+    <div class="genome-report">
+      <div class="genome-report-head">
+        <span>&#x1F9EC; SECURITY GENOME REPORT</span>
+        <span>
+          <span class="timestamp" id="genomeTimestamp"></span>
+          <button class="btn-regen" id="btnRegen" style="display:none" onclick="generateGenome()">REGENERATE</button>
+        </span>
+      </div>
+      <div class="genome-report-body" id="genomeBody">
+        <div class="genome-placeholder">Click "Generate Genome" to create Security Genome Report</div>
+      </div>
+    </div>
+
+  </div><!-- /profileContent -->
+
+</div><!-- /wrapper -->
+
+<script>
+var API = '';
+var currentProfile = null;
+var profiles = [];
+
+// ── Auth ──────────────────────────────────────────────────
+
+function authHeaders(extra) {
+  var token = localStorage.getItem('cyrber_token');
+  if (!token) { window.location.href = '/login'; return {}; }
+  var h = {'Authorization': 'Bearer ' + token};
+  if (extra) Object.assign(h, extra);
+  return h;
+}
+
+async function authFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = authHeaders(opts.headers || {});
+  var r = await fetch(url, opts);
+  if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
+  return r;
+}
+
+// ── Admin nav ─────────────────────────────────────────────
+
+(async function() {
+  try {
+    var r = await authFetch('/auth/me');
+    if (r.ok) {
+      var u = await r.json();
+      if (u.role === 'admin') document.getElementById('adminNavLink').style.display = '';
+    }
+  } catch(e) {}
+})();
+
+// ── Load profiles ─────────────────────────────────────────
+
+async function loadProfiles() {
+  try {
+    var r = await authFetch(API + '/api/mirror/profiles');
+    if (!r.ok) return;
+    profiles = await r.json();
+  } catch(e) {
+    profiles = [];
+  }
+
+  var sel = document.getElementById('targetSelect');
+  sel.innerHTML = '';
+
+  if (profiles.length === 0) {
+    sel.innerHTML = '<option value="">-- no profiles --</option>';
+    document.getElementById('emptyState').style.display = '';
+    document.getElementById('profileContent').style.display = 'none';
+    document.getElementById('btnGenome').disabled = true;
+    return;
+  }
+
+  document.getElementById('emptyState').style.display = 'none';
+
+  profiles.forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.target;
+    opt.textContent = p.target + ' (' + p.missions_count + ' missions)';
+    sel.appendChild(opt);
+  });
+
+  // Restore last selected target
+  var saved = localStorage.getItem('cyrber_mirror_target');
+  if (saved && profiles.find(function(p) { return p.target === saved; })) {
+    sel.value = saved;
+  }
+
+  sel.onchange = function() {
+    localStorage.setItem('cyrber_mirror_target', sel.value);
+    selectProfile(sel.value);
+  };
+
+  selectProfile(sel.value);
+}
+
+// ── Select profile ────────────────────────────────────────
+
+function selectProfile(target) {
+  if (!target) return;
+  currentProfile = profiles.find(function(p) { return p.target === target; });
+  if (!currentProfile) return;
+
+  document.getElementById('profileContent').style.display = '';
+  document.getElementById('btnGenome').disabled = false;
+
+  updateMetrics(currentProfile);
+  updateDNABars(currentProfile.predispositions || {});
+  updatePatterns(currentProfile.patterns || []);
+  updateGenomeReport(currentProfile);
+}
+
+// ── Metrics ───────────────────────────────────────────────
+
+function updateMetrics(p) {
+  document.getElementById('metMissions').textContent = p.missions_count || 0;
+  document.getElementById('metPatchCycle').textContent =
+    p.patch_cycle_days != null ? Math.round(p.patch_cycle_days) : '--';
+  document.getElementById('metPhishing').textContent =
+    p.phishing_click_rate != null ? Math.round(p.phishing_click_rate * 100) + '%' : '--';
+  document.getElementById('metIncidents').textContent = p.credential_reuse_incidents || 0;
+}
+
+// ── DNA Bars ──────────────────────────────────────────────
+
+function updateDNABars(pred) {
+  setBar('Ransomware', pred.ransomware || 0);
+  setBar('SupplyChain', pred.supply_chain || 0);
+  setBar('Phishing', pred.phishing || 0);
+}
+
+function setBar(name, val) {
+  var pct = Math.round(val * 100);
+  var barEl = document.getElementById('bar' + name);
+  var pctEl = document.getElementById('pct' + name);
+
+  pctEl.textContent = pct + '%';
+
+  // Color class
+  barEl.className = 'dna-bar-fill';
+  if (val > 0.7) barEl.classList.add('red');
+  else if (val > 0.4) barEl.classList.add('amber');
+  else barEl.classList.add('green');
+
+  // Color for percentage text
+  if (val > 0.7) pctEl.style.color = 'var(--red)';
+  else if (val > 0.4) pctEl.style.color = 'var(--amber)';
+  else pctEl.style.color = 'var(--green)';
+
+  // Animate: reset to 0, then set width
+  barEl.style.width = '0%';
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      barEl.style.width = pct + '%';
+    });
+  });
+}
+
+// ── Patterns ──────────────────────────────────────────────
+
+function updatePatterns(patterns) {
+  var container = document.getElementById('patternTags');
+  container.innerHTML = '';
+
+  if (!patterns || patterns.length === 0) {
+    container.innerHTML = '<span class="patterns-empty">No patterns detected yet</span>';
+    return;
+  }
+
+  patterns.forEach(function(pat) {
+    var tag = document.createElement('span');
+    tag.className = 'pattern-tag';
+    tag.textContent = pat;
+
+    // Classify tag color
+    var lower = pat.toLowerCase();
+    if (lower.indexOf('slow') !== -1 || lower.indexOf('exposure') !== -1 || lower.indexOf('high') !== -1) {
+      tag.classList.add('danger');
+    } else if (lower.indexOf('social') !== -1 || lower.indexOf('active directory') !== -1) {
+      tag.classList.add('warn');
+    } else {
+      tag.classList.add('info');
+    }
+
+    container.appendChild(tag);
+  });
+}
+
+// ── Genome Report ─────────────────────────────────────────
+
+function updateGenomeReport(profile) {
+  var body = document.getElementById('genomeBody');
+  var timestamp = document.getElementById('genomeTimestamp');
+  var btnRegen = document.getElementById('btnRegen');
+
+  if (!profile.genome_report) {
+    body.innerHTML = '<div class="genome-placeholder">Click "Generate Genome" to create Security Genome Report</div>';
+    timestamp.textContent = '';
+    btnRegen.style.display = 'none';
+    return;
+  }
+
+  btnRegen.style.display = '';
+  timestamp.textContent = 'Generated: ' + (profile.genome_generated_at || '').replace('T', ' ').split('.')[0];
+
+  body.innerHTML = renderGenome(profile.genome_report);
+  body.classList.remove('fade-in');
+  void body.offsetWidth; // Force reflow
+  body.classList.add('fade-in');
+}
+
+function renderGenome(text) {
+  // Split into sections by ## headers
+  var sections = text.split(/^##\s+/m).filter(Boolean);
+  var html = '';
+
+  sections.forEach(function(sec) {
+    var lines = sec.split('\n');
+    var title = lines[0].trim();
+    var content = lines.slice(1).join('\n').trim();
+
+    // Determine section class
+    var cls = 'genome-section';
+    var titleLower = title.toLowerCase();
+    if (titleLower.indexOf('predyspozycje') !== -1 || titleLower.indexOf('predisposition') !== -1) cls += ' sec-pred';
+    else if (titleLower.indexOf('wzorce') !== -1 || titleLower.indexOf('pattern') !== -1) cls += ' sec-patterns';
+    else if (titleLower.indexOf('fenotyp') !== -1 || titleLower.indexOf('phenotype') !== -1) cls += ' sec-pheno';
+    else if (titleLower.indexOf('prognoza') !== -1 || titleLower.indexOf('forecast') !== -1) cls += ' sec-forecast';
+
+    // Simple markdown: bold, paragraphs
+    content = escapeHtml(content);
+    content = content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    content = content.replace(/\n\n/g, '</p><p>');
+
+    html += '<div class="' + cls + '">';
+    html += '<h3>' + escapeHtml(title) + '</h3>';
+    html += '<p>' + content + '</p>';
+    html += '</div>';
+  });
+
+  return html || '<p>' + escapeHtml(text) + '</p>';
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Generate Genome ───────────────────────────────────────
+
+async function generateGenome() {
+  if (!currentProfile) return;
+  var target = currentProfile.target;
+
+  var btn = document.getElementById('btnGenome');
+  var btnRegen = document.getElementById('btnRegen');
+  btn.classList.add('loading');
+  btn.querySelector('.loading-text').style.display = '';
+  btn.querySelector('.btn-text').style.display = 'none';
+  btn.disabled = true;
+  btnRegen.style.display = 'none';
+
+  try {
+    var r = await authFetch(API + '/api/mirror/profiles/' + encodeURIComponent(target) + '/genome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!r.ok) {
+      var err = await r.json().catch(function() { return {}; });
+      alert('Genome generation failed: ' + (err.detail || r.statusText));
+      return;
+    }
+
+    var data = await r.json();
+
+    // Update profile in local cache
+    currentProfile.genome_report = data.genome;
+    currentProfile.genome_generated_at = data.generated_at;
+
+    // Refresh full profile from API (predispositions may have changed)
+    var pr = await authFetch(API + '/api/mirror/profiles/' + encodeURIComponent(target));
+    if (pr.ok) {
+      var fresh = await pr.json();
+      // Update in profiles array
+      for (var i = 0; i < profiles.length; i++) {
+        if (profiles[i].target === target) {
+          profiles[i] = fresh;
+          currentProfile = fresh;
+          break;
+        }
+      }
+      updateMetrics(currentProfile);
+      updateDNABars(currentProfile.predispositions || {});
+      updatePatterns(currentProfile.patterns || []);
+    }
+
+    updateGenomeReport(currentProfile);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.classList.remove('loading');
+    btn.querySelector('.loading-text').style.display = 'none';
+    btn.querySelector('.btn-text').style.display = '';
+    btn.disabled = false;
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────
+
+loadProfiles();
+
+</script>
+</body>
+</html>
