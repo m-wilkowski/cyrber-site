@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYRBER — PROOF</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+
+:root { --gold: #C9A84C; --gold-dim: rgba(201,168,76,.15); --gold-border: rgba(201,168,76,.35); }
+
+.wrapper {
+  max-width: var(--content-max); margin: 0 auto;
+  padding: var(--sp-8) var(--content-padding) var(--sp-16);
+  position: relative; z-index: 1;
+}
+
+/* ── HEADER ── */
+.page-header { margin-bottom: var(--sp-6); }
+.page-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-base);
+  letter-spacing: .3em;
+  color: var(--gold);
+  margin-bottom: var(--sp-2);
+}
+.page-title-main {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-3xl);
+  font-weight: 900;
+  letter-spacing: .15em;
+  color: var(--gold);
+}
+.page-subtitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  letter-spacing: .15em;
+}
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: flex; align-items: center; gap: var(--sp-6);
+  padding: var(--sp-4) var(--sp-6);
+  background: var(--card-bg); border: 1px solid var(--gold-border);
+  border-radius: var(--radius-md); margin-bottom: var(--sp-6);
+  flex-wrap: wrap;
+}
+.stat-chip {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs); font-weight: 700;
+  letter-spacing: .15em; color: var(--gold);
+}
+.stat-chip .num {
+  font-size: var(--text-lg); margin-right: var(--sp-1);
+}
+.root-display {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm); color: var(--gold);
+  letter-spacing: .06em; opacity: .8;
+  flex: 1; text-align: right; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.btn-seal-top {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm); letter-spacing: .1em;
+  padding: var(--sp-2) var(--sp-5);
+  border: 1px solid var(--gold); border-radius: var(--radius-sm);
+  background: transparent; color: var(--gold); cursor: pointer;
+  transition: all .2s;
+}
+.btn-seal-top:hover { background: var(--gold-dim); }
+
+/* ── SEALED CARDS ── */
+.sealed-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: var(--sp-5); margin-bottom: var(--sp-6);
+}
+.sealed-card {
+  background: var(--card-bg); border: 1px solid var(--gold-border);
+  border-radius: var(--radius-md); padding: var(--sp-5);
+  position: relative; overflow: hidden;
+  transition: border-color .2s;
+}
+.sealed-card:hover { border-color: var(--gold); }
+.sealed-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 3px; background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+.seal-icon {
+  position: absolute; top: var(--sp-4); right: var(--sp-4);
+  width: 36px; height: 36px; opacity: .7;
+}
+.seal-icon circle { fill: none; stroke: var(--gold); stroke-width: 2; }
+.seal-icon polyline { fill: none; stroke: var(--gold); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.sc-target {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-md); color: var(--text-primary);
+  margin-bottom: var(--sp-1);
+}
+.sc-scan-id {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs); color: var(--text-muted);
+  letter-spacing: .04em; margin-bottom: var(--sp-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 80%;
+}
+.sc-root {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm); color: var(--gold);
+  letter-spacing: .04em; margin-bottom: var(--sp-3);
+}
+.sc-meta {
+  display: flex; gap: var(--sp-4);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs); color: var(--text-muted);
+  margin-bottom: var(--sp-4);
+}
+.sc-meta span { display: flex; align-items: center; gap: var(--sp-1); }
+.sc-actions { display: flex; gap: var(--sp-3); }
+.sc-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs); letter-spacing: .1em;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-secondary); cursor: pointer;
+  transition: all .2s;
+}
+.sc-btn:hover { border-color: var(--gold); color: var(--gold); }
+.sc-btn.btn-verify { border-color: var(--gold-border); color: var(--gold); }
+
+.empty-state {
+  text-align: center; padding: var(--sp-12);
+  color: var(--text-muted); font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-md); letter-spacing: .08em;
+}
+
+/* ── VERIFY PANEL (slide-in) ── */
+.verify-overlay {
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0;
+  background: rgba(0,0,0,.6); z-index: 100;
+  opacity: 0; pointer-events: none; transition: opacity .3s;
+}
+.verify-overlay.open { opacity: 1; pointer-events: auto; }
+.verify-panel {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 520px; max-width: 90vw;
+  background: var(--bg-primary); border-left: 1px solid var(--gold-border);
+  z-index: 101; transform: translateX(100%);
+  transition: transform .3s ease; overflow-y: auto;
+  padding: var(--sp-6);
+}
+.verify-overlay.open .verify-panel { transform: translateX(0); }
+.vp-close {
+  position: absolute; top: var(--sp-4); right: var(--sp-4);
+  background: none; border: none; color: var(--text-muted);
+  font-size: 24px; cursor: pointer; line-height: 1;
+}
+.vp-close:hover { color: var(--text-primary); }
+.vp-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-sm); font-weight: 700;
+  letter-spacing: .2em; color: var(--gold);
+  margin-bottom: var(--sp-4);
+}
+.vp-root-hash {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm); color: var(--gold);
+  word-break: break-all; padding: var(--sp-3);
+  background: var(--gold-dim); border: 1px solid var(--gold-border);
+  border-radius: var(--radius-sm); margin-bottom: var(--sp-4);
+}
+.vp-status {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-sm); font-weight: 700;
+  letter-spacing: .15em; margin-bottom: var(--sp-5);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-sm); text-align: center;
+}
+.vp-status.valid { background: rgba(81,207,102,.1); color: var(--green); border: 1px solid var(--green); }
+.vp-status.invalid { background: rgba(255,68,68,.1); color: var(--red); border: 1px solid var(--red); }
+.vp-status.pending { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold-border); }
+
+.vp-key-section {
+  margin-bottom: var(--sp-5); padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--border);
+}
+.vp-key-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs); color: var(--text-muted);
+  letter-spacing: .1em; margin-bottom: var(--sp-2);
+}
+.vp-key-input {
+  width: 100%; font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm); padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-raised); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.vp-key-input:focus { outline: none; border-color: var(--gold); }
+.vp-key-hint {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px; color: var(--text-muted); margin-top: var(--sp-1);
+}
+
+.vp-leaves-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs); font-weight: 700;
+  letter-spacing: .15em; color: var(--text-secondary);
+  margin-bottom: var(--sp-3);
+}
+.vp-leaf {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  margin-bottom: var(--sp-2); cursor: pointer; transition: all .2s;
+  font-family: 'Share Tech Mono', monospace; font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.vp-leaf:hover { border-color: var(--gold); }
+.vp-leaf .leaf-id { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vp-leaf .leaf-hash { color: var(--gold); min-width: 70px; }
+.vp-leaf .leaf-status { min-width: 50px; text-align: right; font-weight: 700; }
+.vp-leaf .leaf-status.ok { color: var(--green); }
+.vp-leaf .leaf-status.fail { color: var(--red); }
+.vp-leaf .leaf-status.wait { color: var(--text-muted); }
+
+.vp-merkle-path {
+  margin-top: var(--sp-2); padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-raised); border-radius: var(--radius-sm);
+  font-family: 'Share Tech Mono', monospace; font-size: 10px;
+  color: var(--text-muted); word-break: break-all;
+  display: none;
+}
+.vp-merkle-path.open { display: block; }
+
+/* ── SEAL MODAL ── */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.7); z-index: 200;
+  display: none; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--bg-primary); border: 1px solid var(--gold-border);
+  border-radius: var(--radius-md); padding: var(--sp-6);
+  width: 500px; max-width: 90vw; max-height: 80vh; overflow-y: auto;
+}
+.modal-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-sm); font-weight: 700;
+  letter-spacing: .2em; color: var(--gold); margin-bottom: var(--sp-4);
+}
+.modal-close {
+  float: right; background: none; border: none;
+  color: var(--text-muted); font-size: 20px; cursor: pointer;
+}
+.modal-close:hover { color: var(--text-primary); }
+.scan-list { max-height: 300px; overflow-y: auto; margin-bottom: var(--sp-4); }
+.scan-option {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); margin-bottom: var(--sp-2);
+  cursor: pointer; transition: all .2s;
+  font-family: 'Share Tech Mono', monospace; font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.scan-option:hover { border-color: var(--gold); }
+.scan-option.selected { border-color: var(--gold); background: var(--gold-dim); }
+.scan-option.sealed { opacity: .4; cursor: not-allowed; }
+.scan-option .so-target { flex: 1; color: var(--text-primary); }
+.scan-option .so-date { font-size: var(--text-xs); color: var(--text-muted); }
+.scan-option .so-badge {
+  font-size: 10px; letter-spacing: .1em; padding: 2px 6px;
+  border-radius: 4px; background: var(--gold-dim); color: var(--gold);
+}
+.btn-seal-confirm {
+  width: 100%; font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm); letter-spacing: .12em;
+  padding: var(--sp-3); border: 1px solid var(--gold);
+  border-radius: var(--radius-sm); background: transparent;
+  color: var(--gold); cursor: pointer; transition: all .2s;
+}
+.btn-seal-confirm:hover { background: var(--gold-dim); }
+.btn-seal-confirm:disabled { opacity: .4; cursor: not-allowed; }
+.seal-loading {
+  text-align: center; padding: var(--sp-4);
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--gold); display: none;
+}
+
+/* ── FEED INFO ── */
+.feed-panel {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--sp-5);
+  margin-top: var(--sp-2);
+}
+.feed-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs); font-weight: 700;
+  letter-spacing: .2em; color: var(--text-secondary);
+  margin-bottom: var(--sp-3);
+}
+.feed-row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+.feed-row label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs); color: var(--text-muted);
+  letter-spacing: .08em; min-width: 100px;
+}
+.feed-url {
+  flex: 1; font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm); padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-raised); color: var(--gold);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: text;
+}
+.btn-feed {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs); letter-spacing: .08em;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-secondary); cursor: pointer;
+}
+.btn-feed:hover { border-color: var(--gold); color: var(--gold); }
+.feed-result {
+  display: none; margin-top: var(--sp-3);
+  padding: var(--sp-3); background: var(--bg-raised);
+  border-radius: var(--radius-sm); max-height: 200px; overflow-y: auto;
+  font-family: 'Share Tech Mono', monospace; font-size: 11px;
+  color: var(--text-muted); white-space: pre-wrap; word-break: break-all;
+}
+
+</style>
+</head>
+<body>
+<nav>
+  <a class="nav-brand" href="/ui"><div class="nav-ring"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2L8 7H4L7 10.5L6 16L11 13L16 16L15 10.5L18 7H14L11 2Z" fill="#4a8fd4" opacity="0.9"/></svg></div>CYRBER<span>AUTONOMOUS RECON</span></a>
+  <div class="nav-links">
+    <a class="nav-link" href="/ui">SCAN</a>
+    <a class="nav-link" href="/dashboard">DASHBOARD</a>
+    <a class="nav-link" href="/phishing">PHISHING</a>
+    <a class="nav-link" href="/scheduler">SCHEDULER</a>
+    <a class="nav-link" href="/osint">OSINT</a>
+    <a class="nav-link" href="/topology">TOPOLOGY</a>
+    <a class="nav-link" href="/verify">VERIFY</a>
+    <a class="nav-link" href="/mission-control">MENS</a>
+    <a class="nav-link" href="/mirror">MIRROR</a>
+    <a class="nav-link active" href="/proof">PROOF</a>
+    <a class="nav-link" href="/admin" id="adminNavLink" style="display:none">ADMIN</a>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+    <a class="nav-link" href="#" onclick="localStorage.removeItem('cyrber_token');window.location.href='/login'" style="color:var(--red)">LOGOUT</a>
+  </div>
+</nav>
+
+<div class="wrapper">
+
+  <!-- ═══ HEADER ═══ -->
+  <div class="page-header">
+    <div class="page-title">CRYPTOGRAPHIC AUDIT TRAIL</div>
+    <div class="page-title-main">CYRBER PROOF</div>
+    <div class="page-subtitle">Testimonium — Living Proof</div>
+  </div>
+
+  <!-- ═══ STATS BAR ═══ -->
+  <div class="stats-bar">
+    <div class="stat-chip"><span class="num" id="sealedCount">0</span>SCANS SEALED</div>
+    <div class="stat-chip"><span class="num" id="findingsCount">0</span>FINDINGS VERIFIED</div>
+    <div class="root-display" id="latestRoot"></div>
+    <button class="btn-seal-top" onclick="openSealModal()">SEAL SCAN</button>
+  </div>
+
+  <!-- ═══ SEALED CARDS ═══ -->
+  <div class="sealed-grid" id="sealedGrid"></div>
+  <div class="empty-state" id="emptyState" style="display:none">
+    No sealed scans yet. Seal a scan to create tamper-proof evidence.
+  </div>
+
+  <!-- ═══ FEED INFO ═══ -->
+  <div class="feed-panel">
+    <div class="feed-title">INSURANCE DATA FEED (NIS2 / DORA)</div>
+    <div class="feed-row">
+      <label>ENDPOINT</label>
+      <input class="feed-url" readonly value="/api/proof/feed" onclick="this.select()">
+    </div>
+    <div class="feed-row">
+      <label>AUTH</label>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:var(--text-xs);color:var(--text-muted)">X-Proof-Key header</span>
+      <button class="btn-feed" onclick="testFeed()">TEST FEED</button>
+    </div>
+    <div class="feed-result" id="feedResult"></div>
+  </div>
+
+</div>
+
+<!-- ═══ VERIFY PANEL ═══ -->
+<div class="verify-overlay" id="verifyOverlay" onclick="if(event.target===this)closeVerify()">
+  <div class="verify-panel">
+    <button class="vp-close" onclick="closeVerify()">&times;</button>
+    <div class="vp-title">VERIFY SCAN</div>
+
+    <div class="vp-key-section">
+      <div class="vp-key-label">PROOF API KEY</div>
+      <input class="vp-key-input" type="password" id="proofKeyInput"
+        placeholder="Enter proof API key" oninput="saveProofKey(this.value)">
+      <div class="vp-key-hint">Share this key with auditors for independent verification</div>
+    </div>
+
+    <div class="vp-root-hash" id="vpRootHash"></div>
+    <div class="vp-status pending" id="vpStatus">SELECT A FINDING TO VERIFY</div>
+
+    <div class="vp-leaves-title">FINDINGS (<span id="vpLeavesCount">0</span>)</div>
+    <div id="vpLeavesList"></div>
+  </div>
+</div>
+
+<!-- ═══ SEAL MODAL ═══ -->
+<div class="modal-overlay" id="sealModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeSealModal()">&times;</button>
+    <div class="modal-title">SEAL SCAN</div>
+    <div class="scan-list" id="scanList"></div>
+    <div class="seal-loading" id="sealLoading">Sealing scan... building Merkle Tree...</div>
+    <button class="btn-seal-confirm" id="btnSealConfirm" disabled onclick="sealSelected()">SEAL SELECTED SCAN</button>
+  </div>
+</div>
+
+<script>
+var API = '';
+var trees = [];
+var allScans = [];
+var selectedScanId = null;
+var currentVerifyScanId = null;
+
+// ── Auth ──────────────────────────────────────────────────
+
+function authHeaders(extra) {
+  var token = localStorage.getItem('cyrber_token');
+  if (!token) { window.location.href = '/login'; return {}; }
+  var h = {'Authorization': 'Bearer ' + token};
+  if (extra) Object.assign(h, extra);
+  return h;
+}
+
+async function authFetch(url, opts) {
+  opts = opts || {};
+  opts.headers = authHeaders(opts.headers || {});
+  var r = await fetch(url, opts);
+  if (r.status === 401) { localStorage.removeItem('cyrber_token'); window.location.href = '/login'; }
+  return r;
+}
+
+(async function() {
+  try {
+    var r = await authFetch('/auth/me');
+    if (r.ok) { var u = await r.json(); if (u.role === 'admin') document.getElementById('adminNavLink').style.display = ''; }
+  } catch(e) {}
+})();
+
+// ── Load proof key ────────────────────────────────────────
+
+function getProofKey() { return localStorage.getItem('cyrber_proof_key') || ''; }
+function saveProofKey(v) { localStorage.setItem('cyrber_proof_key', v); }
+
+// ── Load trees ────────────────────────────────────────────
+
+async function loadTrees() {
+  try {
+    var r = await authFetch(API + '/api/proof/trees');
+    if (r.ok) trees = await r.json();
+  } catch(e) { trees = []; }
+  renderTrees();
+}
+
+function renderTrees() {
+  var grid = document.getElementById('sealedGrid');
+  var empty = document.getElementById('emptyState');
+
+  var totalLeaves = 0;
+  trees.forEach(function(t) { totalLeaves += t.leaves_count || 0; });
+  document.getElementById('sealedCount').textContent = trees.length;
+  document.getElementById('findingsCount').textContent = totalLeaves;
+
+  if (trees.length > 0) {
+    document.getElementById('latestRoot').textContent = 'ROOT: ' + trees[0].root_hash.substring(0, 16) + '...';
+  }
+
+  if (trees.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = trees.map(function(t) {
+    var date = (t.created_at || '').replace('T', ' ').split('.')[0];
+    return '<div class="sealed-card">' +
+      '<svg class="seal-icon" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15"/><polyline points="12,18 16,22 24,14"/></svg>' +
+      '<div class="sc-target">' + esc(t.target) + '</div>' +
+      '<div class="sc-scan-id">' + esc(t.scan_id) + '</div>' +
+      '<div class="sc-root">ROOT: ' + t.root_hash.substring(0, 16) + '...</div>' +
+      '<div class="sc-meta">' +
+        '<span>' + t.leaves_count + ' findings</span>' +
+        '<span>' + date + '</span>' +
+      '</div>' +
+      '<div class="sc-actions">' +
+        '<button class="sc-btn btn-verify" onclick="openVerify(\'' + esc(t.scan_id) + '\')">VERIFY</button>' +
+        '<button class="sc-btn" onclick="exportNIS2(\'' + esc(t.scan_id) + '\')">EXPORT NIS2</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function esc(s) {
+  var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+// ── Verify panel ──────────────────────────────────────────
+
+async function openVerify(scanId) {
+  currentVerifyScanId = scanId;
+  document.getElementById('proofKeyInput').value = getProofKey();
+  document.getElementById('vpStatus').className = 'vp-status pending';
+  document.getElementById('vpStatus').textContent = 'SELECT A FINDING TO VERIFY';
+
+  var overlay = document.getElementById('verifyOverlay');
+  overlay.classList.add('open');
+
+  // Load tree detail
+  try {
+    var r = await authFetch(API + '/api/proof/trees/' + encodeURIComponent(scanId));
+    if (!r.ok) return;
+    var data = await r.json();
+
+    document.getElementById('vpRootHash').textContent = data.root_hash;
+    var leaves = data.leaves || [];
+    document.getElementById('vpLeavesCount').textContent = leaves.length;
+
+    var list = document.getElementById('vpLeavesList');
+    list.innerHTML = leaves.map(function(l) {
+      return '<div class="vp-leaf" onclick="verifyLeaf(\'' + esc(scanId) + '\',\'' + esc(l.finding_id) + '\',this)">' +
+        '<span class="leaf-id">' + esc(l.finding_id) + '</span>' +
+        '<span class="leaf-hash">' + l.finding_hash.substring(0, 8) + '...</span>' +
+        '<span class="leaf-status wait">---</span>' +
+      '</div>' +
+      '<div class="vp-merkle-path" id="mp-' + esc(l.id) + '">' +
+        'Merkle path: ' + JSON.stringify(l.merkle_path || []) +
+      '</div>';
+    }).join('');
+  } catch(e) {}
+}
+
+function closeVerify() {
+  document.getElementById('verifyOverlay').classList.remove('open');
+}
+
+async function verifyLeaf(scanId, findingId, el) {
+  var key = getProofKey();
+  if (!key) { alert('Enter Proof API Key first'); return; }
+
+  var statusEl = el.querySelector('.leaf-status');
+  statusEl.textContent = '...';
+  statusEl.className = 'leaf-status wait';
+
+  // Toggle merkle path
+  var nextEl = el.nextElementSibling;
+  if (nextEl && nextEl.classList.contains('vp-merkle-path')) {
+    nextEl.classList.toggle('open');
+  }
+
+  try {
+    var r = await fetch(API + '/api/proof/verify/' + encodeURIComponent(scanId) + '/' + encodeURIComponent(findingId), {
+      headers: { 'X-Proof-Key': key },
+    });
+
+    if (r.status === 403) { alert('Invalid Proof API Key'); statusEl.textContent = 'KEY?'; return; }
+    if (!r.ok) { statusEl.textContent = 'ERR'; statusEl.className = 'leaf-status fail'; return; }
+
+    var data = await r.json();
+    if (data.valid) {
+      statusEl.innerHTML = '&#x2713; VALID';
+      statusEl.className = 'leaf-status ok';
+    } else {
+      statusEl.innerHTML = '&#x2717; INVALID';
+      statusEl.className = 'leaf-status fail';
+    }
+
+    // Update global status
+    var vpStatus = document.getElementById('vpStatus');
+    if (data.valid) {
+      vpStatus.className = 'vp-status valid';
+      vpStatus.innerHTML = 'VERIFIED &#x2713;';
+    } else {
+      vpStatus.className = 'vp-status invalid';
+      vpStatus.innerHTML = 'TAMPERED &#x2717;';
+    }
+  } catch(e) {
+    statusEl.textContent = 'ERR';
+    statusEl.className = 'leaf-status fail';
+  }
+}
+
+// ── Seal modal ────────────────────────────────────────────
+
+async function openSealModal() {
+  document.getElementById('sealModal').classList.add('open');
+  document.getElementById('sealLoading').style.display = 'none';
+  document.getElementById('btnSealConfirm').disabled = true;
+  selectedScanId = null;
+
+  var sealedIds = {};
+  trees.forEach(function(t) { sealedIds[t.scan_id] = true; });
+
+  try {
+    var r = await authFetch(API + '/scans?limit=20');
+    if (r.ok) allScans = await r.json();
+  } catch(e) { allScans = []; }
+
+  var list = document.getElementById('scanList');
+  if (allScans.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:var(--sp-4)">No scans found</div>';
+    return;
+  }
+
+  list.innerHTML = allScans.map(function(s) {
+    var isSealed = sealedIds[s.task_id];
+    var date = (s.created_at || '').replace('T', ' ').split('.')[0];
+    var cls = 'scan-option' + (isSealed ? ' sealed' : '');
+    return '<div class="' + cls + '" data-id="' + esc(s.task_id) + '" onclick="' + (isSealed ? '' : 'selectScanForSeal(this)') + '">' +
+      '<span class="so-target">' + esc(s.target) + '</span>' +
+      (isSealed ? '<span class="so-badge">SEALED</span>' : '') +
+      '<span class="so-date">' + date + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function closeSealModal() {
+  document.getElementById('sealModal').classList.remove('open');
+}
+
+function selectScanForSeal(el) {
+  document.querySelectorAll('.scan-option').forEach(function(o) { o.classList.remove('selected'); });
+  el.classList.add('selected');
+  selectedScanId = el.getAttribute('data-id');
+  document.getElementById('btnSealConfirm').disabled = false;
+}
+
+async function sealSelected() {
+  if (!selectedScanId) return;
+  var btn = document.getElementById('btnSealConfirm');
+  var loading = document.getElementById('sealLoading');
+  btn.disabled = true;
+  loading.style.display = '';
+
+  try {
+    var r = await authFetch(API + '/api/proof/seal/' + encodeURIComponent(selectedScanId), { method: 'POST' });
+    if (!r.ok) {
+      var err = await r.json().catch(function() { return {}; });
+      alert('Seal failed: ' + (err.detail || r.statusText));
+      return;
+    }
+    closeSealModal();
+    await loadTrees();
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+
+// ── Export NIS2 ───────────────────────────────────────────
+
+function exportNIS2(scanId) {
+  var tree = trees.find(function(t) { return t.scan_id === scanId; });
+  if (!tree) return;
+  var blob = new Blob([JSON.stringify(tree, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'nis2-proof-' + scanId.substring(0, 8) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Test feed ─────────────────────────────────────────────
+
+async function testFeed() {
+  var key = getProofKey();
+  if (!key) { alert('Set Proof API Key in the verify panel first'); return; }
+  var el = document.getElementById('feedResult');
+  el.style.display = 'block';
+  el.textContent = 'Loading...';
+
+  try {
+    var r = await fetch(API + '/api/proof/feed', { headers: { 'X-Proof-Key': key } });
+    if (r.status === 403) { el.textContent = 'ERROR: Invalid Proof API Key'; return; }
+    var data = await r.json();
+    el.textContent = JSON.stringify(data, null, 2);
+  } catch(e) {
+    el.textContent = 'ERROR: ' + e.message;
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────
+
+loadTrees();
+
+</script>
+</body>
+</html>
