@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.deps import require_role
+from backend.validators import require_valid_target
 from modules.database import get_scan_by_task_id
 
 # ── Tool imports ──
@@ -66,11 +67,13 @@ router = APIRouter(tags=["scan_tools"])
 
 @router.get("/scan/nmap")
 def run_nmap(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
+    target = require_valid_target(target)
     return nmap_scan(target)
 
 
 @router.get("/scan/nuclei")
 def run_nuclei(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
+    target = require_valid_target(target)
     return nuclei_scan(target)
 
 
@@ -97,6 +100,7 @@ def run_analyze(target: str = Query(...), user: dict = Depends(require_role("adm
 
 @router.get("/scan/gobuster")
 def run_gobuster(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
+    target = require_valid_target(target)
     return gobuster_scan(target)
 
 
@@ -112,11 +116,13 @@ def run_testssl(target: str = Query(...), user: dict = Depends(require_role("adm
 
 @router.get("/scan/sqlmap")
 def run_sqlmap(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
+    target = require_valid_target(target)
     return sqlmap_scan(target)
 
 
 @router.get("/scan/nikto")
 def run_nikto(target: str = Query(...), user: dict = Depends(require_role("admin", "operator"))):
+    target = require_valid_target(target)
     return nikto_scan(target)
 
 

@@ -160,6 +160,12 @@ class LexEngine:
 
         Handles bare IPs, URLs (http://1.2.3.4/path), and host:port formats.
         """
+        from backend.validators import sanitize_target
+        try:
+            target = sanitize_target(target)
+        except ValueError as e:
+            return False, f"target rejected by sanitizer: {e}"
+
         host = _extract_host(target)
 
         # Check excluded_hosts — both raw target and extracted host

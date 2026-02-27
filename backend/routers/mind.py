@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from backend.deps import get_current_user, require_role, audit, _get_user_from_token
 from backend.lex import LexRuleModel
+from backend.validators import require_valid_target
 from backend.mind_agent import (
     MensMissionModel,
     MensIterationModel,
@@ -132,6 +133,7 @@ async def create_mission(
     db=Depends(_get_db),
 ):
     """Create a new MENS mission."""
+    body.target = require_valid_target(body.target)
     # Validate LEX rule exists
     rule = db.query(LexRuleModel).filter(
         LexRuleModel.id == body.lex_rule_id,

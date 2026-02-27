@@ -18,6 +18,7 @@ from backend.deps import (
     _classify_finding, _NO_CACHE,
 )
 from backend.schemas import ScanStartRequest, MultiTargetScan
+from backend.validators import require_valid_target
 from modules.tasks import full_scan_task
 from modules.scan_profiles import get_profiles_list, get_profile
 from modules.database import (
@@ -41,6 +42,7 @@ async def scan_profiles(user: dict = Depends(get_current_user)):
 @router.post("/scan/start")
 @limiter.limit("30/minute")
 async def scan_start_post(request: Request, body: ScanStartRequest, user: dict = Depends(require_role("admin", "operator"))):
+    body.target = require_valid_target(body.target)
     if not get_profile(body.profile):
         raise HTTPException(status_code=400, detail=f"Invalid profile: {body.profile}")
     is_admin = user.get("role") == "admin"
