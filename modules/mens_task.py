@@ -1,8 +1,15 @@
 """Celery task for running MENS autonomous agent iterations."""
 
 import logging
+import os
+import sys
 import uuid
 from datetime import datetime, timezone
+
+# Ensure /app is in sys.path so 'backend.*' imports work inside Celery worker
+_app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _app_dir not in sys.path:
+    sys.path.insert(0, _app_dir)
 
 from celery.exceptions import SoftTimeLimitExceeded
 
@@ -21,8 +28,14 @@ def mens_run_task(self, mission_id: str):
     Each iteration: observe → think → act → learn.
     Max 50 iterations as safety guard.
     """
+    import os as _os, sys as _sys
+    _root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    if _root not in _sys.path:
+        _sys.path.insert(0, _root)
+
     from backend.mind_agent import (
         MensAgent,
+        MensIteration,
         MensMission,
         MensMissionModel,
         MensIterationModel,
@@ -58,6 +71,40 @@ def mens_run_task(self, mission_id: str):
                   mission_id, mission.target, mission.mode)
 
         iteration_count = 0
+
+        # ── Resume: check for approved iterations awaiting execution ──
+        pending_it = (
+            db.query(MensIterationModel)
+            .filter(
+                MensIterationModel.mission_id == mission_id,
+                MensIterationModel.approved == True,  # noqa: E712
+                MensIterationModel.phase == "think",
+            )
+            .order_by(MensIterationModel.iteration_number)
+            .first()
+        )
+        if pending_it:
+            _log.info("[MENS task] resuming approved iteration #%d: %s",
+                      pending_it.iteration_number, pending_it.module_selected)
+            # Rebuild Pydantic iteration from DB row
+            resume_iter = MensIteration(
+                id=uuid.UUID(pending_it.id),
+                mission_id=uuid.UUID(pending_it.mission_id),
+                iteration_number=pending_it.iteration_number,
+                phase="think",
+                module_selected=pending_it.module_selected,
+                module_args=pending_it.module_args,
+                cogitatio=pending_it.cogitatio,
+                approved=True,
+            )
+            # Execute: act → learn
+            result = agent.act(resume_iter, db)
+            if result.get("status") not in ("pending_approval", "rejected"):
+                agent.learn(resume_iter, result, db)
+            iteration_count += 1
+            _log.info("[MENS task] resumed iteration #%d: status=%s fiducia=%.2f",
+                      resume_iter.iteration_number, result.get("status"),
+                      mission.fiducia)
 
         while mission.status == "running" and iteration_count < MAX_ITERATIONS:
             # Refresh mission status from DB (may have been aborted externally)

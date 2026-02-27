@@ -1,6 +1,12 @@
 import os
+import sys
 import logging
 from celery import Celery
+
+# Ensure project root (/app) is in sys.path for backend.* imports
+_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 from celery.exceptions import SoftTimeLimitExceeded
 from celery.schedules import crontab
 
@@ -96,7 +102,8 @@ def publish_progress(task_id: str, module: str, status: str, completed: int, tot
 celery_app = Celery(
     "cyrber",
     broker=REDIS_URL,
-    backend=REDIS_URL
+    backend=REDIS_URL,
+    include=["modules.mens_task"],
 )
 
 celery_app.conf.beat_schedule = {
