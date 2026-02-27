@@ -345,6 +345,14 @@ def save_scan(task_id: str, target: str, result: dict, scan_type: str = "full", 
         scan.raw_data = json.dumps(result, ensure_ascii=False)
         scan.completed_at = datetime.utcnow()
         db.commit()
+
+        # Auto-seal: create cryptographic proof if enabled
+        if os.environ.get("AUTO_SEAL", "").lower() == "true":
+            try:
+                from backend.proof import ProofEngine
+                ProofEngine().seal_scan(task_id, db)
+            except Exception:
+                pass  # Non-critical — operator can seal manually
     finally:
         db.close()
 
