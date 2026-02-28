@@ -220,7 +220,7 @@ async def get_overview(
 # ORGANIZATIONS — lista i CRUD (tylko operator)
 # =========================================================================
 
-@router.get('/organizations', response_model=List[OrganizationOut])
+@router.get('/organizations')
 async def list_organizations(
     current_user=Depends(get_current_user),
     db: Session = Depends(_get_db),
@@ -232,9 +232,23 @@ async def list_organizations(
 
     orgs = db.query(Organization).order_by(Organization.name).all()
 
+    from modules.database import Scan  # local import to avoid circular
+
     # Dla każdej organizacji dodaj aktywny score z ostatniego skanu
     result = []
     for org in orgs:
+        # Security score from latest completed scan
+        last_scan = (
+            db.query(Scan)
+            .filter(Scan.organization_id == org.id, Scan.status == 'completed')
+            .order_by(desc(Scan.created_at))
+            .first()
+        )
+        score = None
+        if last_scan and last_scan.risk_level:
+            _level_map = {'critical': 90, 'high': 70, 'medium': 50, 'low': 25, 'info': 10}
+            score = _level_map.get(last_scan.risk_level.lower(), 0)
+
         org_dict = {
             'id': org.id,
             'name': org.name,
@@ -247,6 +261,7 @@ async def list_organizations(
             'created_at': org.created_at,
             # Rozszerzone dla widoku operatora
             'package': org.active_license.package if org.active_license else None,
+            'security_score': score,
             'last_alert': _get_last_alert(db, org.id),
         }
         result.append(org_dict)

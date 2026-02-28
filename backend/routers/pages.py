@@ -89,6 +89,21 @@ async def hardware_page():
     return FileResponse("static/hardware.html", headers=_NO_CACHE)
 
 
+@router.get("/findings")
+async def findings_page():
+    return FileResponse("static/findings.html", headers=_NO_CACHE)
+
+
+@router.get("/compliance")
+async def compliance_page():
+    return FileResponse("static/compliance.html", headers=_NO_CACHE)
+
+
+@router.get("/organizations")
+async def organizations_page():
+    return FileResponse("static/organizations.html", headers=_NO_CACHE)
+
+
 @router.get("/admin")
 async def admin_page():
     return FileResponse("static/admin.html", headers=_NO_CACHE)

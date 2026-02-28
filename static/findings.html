@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CYRBER — FINDINGS</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+html { font-size: clamp(14px, 1.2vw, 20px); }
+body { background: var(--bg-root); min-height: 100vh; }
+
+.wrapper {
+  position: relative; z-index: 1;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: max(var(--sp-8), 2rem) max(var(--content-padding), 2rem) max(var(--sp-16), 2rem);
+  min-height: 100vh;
+}
+
+.page-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-2xl);
+  font-weight: 900;
+  letter-spacing: .1em;
+  color: var(--text-primary);
+  margin: 0 0 var(--sp-6) 0;
+  animation: fadeInUp .5s ease both;
+}
+
+/* ── FILTERS ── */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  align-items: center;
+  margin-bottom: var(--sp-6);
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
+  animation: fadeInUp .5s ease .05s both;
+}
+.filter-bar select, .filter-bar input[type="text"] {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .85rem;
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  letter-spacing: .04em;
+  min-width: 130px;
+}
+.filter-bar select:focus, .filter-bar input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.filter-bar input[type="text"] { min-width: 200px; }
+.btn-reset {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  cursor: pointer;
+  letter-spacing: .08em;
+  transition: all .15s;
+}
+.btn-reset:hover { border-color: var(--accent); color: var(--accent); }
+.filter-count {
+  margin-left: auto;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  color: var(--text-muted);
+  letter-spacing: .08em;
+}
+
+/* ── TABLE ── */
+.findings-table-wrap {
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
+  overflow-x: auto;
+  animation: fadeInUp .5s ease .1s both;
+}
+table.findings {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: .9rem;
+}
+table.findings thead th {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .75rem;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+  user-select: none;
+}
+table.findings thead th.sortable { cursor: pointer; }
+table.findings thead th.sortable:hover { color: var(--accent); }
+table.findings thead th .sort-arrow { margin-left: 4px; font-size: 10px; }
+table.findings tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background .12s;
+}
+table.findings tbody tr:hover { background: var(--bg-overlay); }
+table.findings tbody td {
+  padding: var(--sp-3) var(--sp-4);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+.sev-badge {
+  display: inline-block;
+  font-family: 'Orbitron', sans-serif;
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.sev-CRITICAL { background: rgba(193,18,31,.15); color: #C1121F; border: 1px solid rgba(193,18,31,.3); }
+.sev-HIGH     { background: rgba(232,93,4,.15);  color: #e85d04; border: 1px solid rgba(232,93,4,.3);  }
+.sev-MEDIUM   { background: rgba(245,158,11,.15); color: #f59e0b; border: 1px solid rgba(245,158,11,.3); }
+.sev-LOW      { background: rgba(74,143,212,.15); color: #4a8fd4; border: 1px solid rgba(74,143,212,.3); }
+.sev-INFO     { background: rgba(148,163,184,.12); color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
+
+.cve-link {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+.cve-link:hover { text-decoration: underline; }
+
+.epss-val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  font-weight: 700;
+}
+.epss-high { color: #C1121F; }
+.epss-med  { color: #f59e0b; }
+.epss-low  { color: #4a8fd4; }
+
+.btn-eye {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all .15s;
+}
+.btn-eye:hover { border-color: var(--accent); color: var(--accent); }
+
+.cell-name {
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.cell-target {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+.cell-module {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .75rem;
+  letter-spacing: .06em;
+  color: var(--accent-blue);
+}
+.cell-date {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+
+.empty-row {
+  text-align: center;
+  padding: var(--sp-12) var(--sp-6) !important;
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--text-muted);
+  letter-spacing: .08em;
+}
+
+/* ── PAGINATION ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-top: 1px solid var(--border);
+}
+.pagination button {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  cursor: pointer;
+  letter-spacing: .06em;
+  transition: all .15s;
+}
+.pagination button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.pagination button:disabled { opacity: .35; cursor: default; }
+.pagination .page-info {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  color: var(--text-muted);
+  letter-spacing: .06em;
+}
+
+/* ── SLIDE-IN PANEL ── */
+.panel-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 900;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+}
+.panel-overlay.open { opacity: 1; pointer-events: auto; }
+.detail-panel {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(40vw, 560px);
+  min-width: 340px;
+  background: var(--bg-root);
+  border-left: 1px solid var(--border);
+  z-index: 910;
+  transform: translateX(100%);
+  transition: transform .3s ease;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.detail-panel.open { transform: translateX(0); }
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-5) var(--sp-6);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.panel-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: .06em;
+}
+.btn-close-panel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all .15s;
+}
+.btn-close-panel:hover { border-color: var(--accent-red); color: var(--accent-red); }
+
+.panel-body {
+  flex: 1;
+  padding: var(--sp-6);
+}
+.panel-section {
+  margin-bottom: var(--sp-6);
+}
+.panel-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .7rem;
+  letter-spacing: .2em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: var(--sp-2);
+}
+.panel-value {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: .95rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+.panel-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.panel-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .75rem;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  letter-spacing: .04em;
+}
+
+/* EPSS bar in panel */
+.epss-bar-wrap {
+  height: 8px;
+  background: var(--bg-overlay);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: var(--sp-2);
+}
+.epss-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .5s ease;
+}
+
+.panel-actions {
+  display: flex;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-6);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.btn-action {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  letter-spacing: .08em;
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+}
+.btn-action:hover { border-color: var(--accent); color: var(--accent); }
+.btn-action.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn-action.primary:hover { opacity: .85; }
+
+/* ── LOADING ── */
+.loading-state {
+  text-align: center;
+  padding: var(--sp-16) 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-md);
+  color: var(--text-muted);
+  letter-spacing: .15em;
+}
+.loading-ring {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin: 0 auto var(--sp-4);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<nav class="cyrber-nav">
+  <a href="/overview" class="nav-logo">
+    <img src="/static/logo.jpg" alt="CYRBER">
+    <span class="nav-logo-text">CYRBER</span>
+  </a>
+  <div class="nav-links">
+    <div class="nav-item missions">
+      <span>MISSIONS &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Operations</div>
+        <a href="/overview">&#9670; Overview</a>
+        <a href="/dashboard">&#128202; Dashboard</a>
+        <a href="/mission-control">&#127919; Theatrum Belli</a>
+        <a href="/scheduler">&#128336; Scheduler</a>
+      </div>
+    </div>
+    <div class="nav-item ratio">
+      <span>RATIO &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Infrastructure &middot; Code &middot; CVE</div>
+        <a href="/ui">&#128269; Scan</a>
+        <a href="/findings">&#128204; Findings</a>
+        <a href="/topology">&#128506; Topology</a>
+        <a href="/osint">&#127760; OSINT</a>
+        <a href="/verify">&#10003; Verify</a>
+      </div>
+    </div>
+    <div class="nav-item animus">
+      <span>ANIMUS &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">People &middot; Habits &middot; Behaviour</div>
+        <a href="/phishing">&#127907; Phishing</a>
+      </div>
+    </div>
+    <div class="nav-item fatum">
+      <span>FATUM &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">History &middot; Context &middot; Physical</div>
+        <a href="/hardware">&#9889; Hardware Bridge</a>
+      </div>
+    </div>
+    <div class="nav-item mirror">
+      <span>MIRROR &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Organization Intelligence</div>
+        <a href="/mirror">&#129516; Security Genome</a>
+      </div>
+    </div>
+    <div class="nav-item proof">
+      <span>PROOF &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Audit &middot; Compliance &middot; Insurance</div>
+        <a href="/proof">&#128274; Living Proof</a>
+        <a href="/compliance">&#9878; Compliance</a>
+        <a href="/proof#feed">&#128225; Insurance Feed</a>
+      </div>
+    </div>
+    <div class="nav-item chronicle">
+      <span>CHRONICLE &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Probabilistic Future</div>
+        <a href="/chronicle">&#128197; 30/60/90 Forecast</a>
+        <a href="/chronicle#peers">&#128101; Sector Peers <span class="dropdown-badge soon">Q4 2026</span></a>
+        <a href="/chronicle#apt">&#127919; APT Correlation <span class="dropdown-badge soon">Q4 2026</span></a>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0;">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+    <span id="nav-username" style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);">&#8212;</span>
+    <a href="/organizations" class="nav-admin-icon" id="operatorNavLink" title="Operator Panel" style="display:none;">&#9881;</a>
+    <a href="/admin" class="nav-admin-icon" id="adminNavLink" title="Admin" style="display:none;">&#9881;</a>
+    <a href="#" onclick="localStorage.removeItem('cyrber_token');localStorage.removeItem('cyrber_user');window.location.href='/login'" style="color:var(--red);font-size:11px;text-decoration:none;letter-spacing:.08em;font-family:'Share Tech Mono',monospace;">LOGOUT</a>
+  </div>
+</nav>
+<script>
+(function(){
+  var path=window.location.pathname;
+  var map={'/overview':'missions','/ui':'ratio','/findings':'ratio','/topology':'ratio','/osint':'ratio','/verify':'ratio','/dashboard':'missions','/mission-control':'missions','/scheduler':'missions','/phishing':'animus','/hardware':'fatum','/mirror':'mirror','/proof':'proof','/compliance':'proof','/chronicle':'chronicle','/admin':'missions'};
+  var s=map[path];
+  if(s){var el=document.querySelector('.nav-item.'+s);if(el)el.classList.add('active');}
+  var t=localStorage.getItem('cyrber_token');if(!t)return;
+  fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){
+    var ne=document.getElementById('nav-username');if(ne)ne.textContent=u.username||'';
+    localStorage.setItem('cyrber_user',u.username||'');
+    if(u.role==='admin'){var al=document.getElementById('adminNavLink');if(al)al.style.display='';}
+    if(u.is_operator||u.role==='admin'){var ol=document.getElementById('operatorNavLink');if(ol)ol.style.display='';}
+  }).catch(function(){});
+})();
+</script>
+
+<!-- OVERLAY + DETAIL PANEL -->
+<div class="panel-overlay" id="panelOverlay"></div>
+<div class="detail-panel" id="detailPanel">
+  <div class="panel-header">
+    <span class="panel-title" id="panelTitle">Finding Detail</span>
+    <button class="btn-close-panel" id="btnClosePanel">&times;</button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+  <div class="panel-actions" id="panelActions"></div>
+</div>
+
+<div class="wrapper">
+
+  <h1 class="page-title">CYRBER FINDINGS</h1>
+
+  <!-- FILTERS -->
+  <div class="filter-bar">
+    <select id="filterSeverity">
+      <option value="">All Severities</option>
+      <option value="CRITICAL">CRITICAL</option>
+      <option value="HIGH">HIGH</option>
+      <option value="MEDIUM">MEDIUM</option>
+      <option value="LOW">LOW</option>
+      <option value="INFO">INFO</option>
+    </select>
+    <select id="filterModule"><option value="">All Modules</option></select>
+    <select id="filterTarget"><option value="">All Targets</option></select>
+    <input type="text" id="filterSearch" placeholder="Search name, CVE...">
+    <button class="btn-reset" id="btnReset">RESET</button>
+    <span class="filter-count" id="filterCount">&#8212;</span>
+  </div>
+
+  <!-- TABLE -->
+  <div class="findings-table-wrap">
+    <table class="findings">
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="severity">SEVERITY <span class="sort-arrow" id="arrowSeverity">&#9660;</span></th>
+          <th>NAME</th>
+          <th>TARGET</th>
+          <th>MODULE</th>
+          <th>CVE</th>
+          <th class="sortable" data-sort="epss">EPSS <span class="sort-arrow" id="arrowEpss"></span></th>
+          <th class="sortable" data-sort="date">DATE <span class="sort-arrow" id="arrowDate"></span></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="findingsBody">
+        <tr><td class="empty-row" colspan="8">LOADING...</td></tr>
+      </tbody>
+    </table>
+    <div class="pagination" id="pagination" style="display:none;">
+      <button id="btnPrev" disabled>&larr; PREV</button>
+      <span class="page-info" id="pageInfo">1 / 1</span>
+      <button id="btnNext" disabled>NEXT &rarr;</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  var TOKEN = localStorage.getItem('cyrber_token');
+  if (!TOKEN) { window.location.href = '/login'; return; }
+
+  var _state = {
+    severity: '', module: '', target: '', search: '',
+    sort: 'severity', order: 'desc', page: 1, limit: 25
+  };
+  var _currentFinding = null;
+
+  // ── Elements ──
+  var filterSev = document.getElementById('filterSeverity');
+  var filterMod = document.getElementById('filterModule');
+  var filterTgt = document.getElementById('filterTarget');
+  var filterSearch = document.getElementById('filterSearch');
+  var btnReset = document.getElementById('btnReset');
+  var filterCount = document.getElementById('filterCount');
+  var tbody = document.getElementById('findingsBody');
+  var pagination = document.getElementById('pagination');
+  var btnPrev = document.getElementById('btnPrev');
+  var btnNext = document.getElementById('btnNext');
+  var pageInfo = document.getElementById('pageInfo');
+  var overlay = document.getElementById('panelOverlay');
+  var panel = document.getElementById('detailPanel');
+  var btnClose = document.getElementById('btnClosePanel');
+
+  // ── Populate dropdowns ──
+  function populateDropdowns() {
+    fetch('/api/findings/targets', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+    .then(function(r) { return r.json(); })
+    .then(function(targets) {
+      for (var i = 0; i < targets.length; i++) {
+        var o = document.createElement('option');
+        o.value = targets[i];
+        o.textContent = targets[i];
+        filterTgt.appendChild(o);
+      }
+    }).catch(function(){});
+
+    fetch('/api/findings/modules', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+    .then(function(r) { return r.json(); })
+    .then(function(modules) {
+      for (var i = 0; i < modules.length; i++) {
+        var o = document.createElement('option');
+        o.value = modules[i];
+        o.textContent = modules[i];
+        filterMod.appendChild(o);
+      }
+    }).catch(function(){});
+  }
+
+  // ── Fetch + render ──
+  function fetchFindings() {
+    var params = new URLSearchParams();
+    if (_state.severity) params.set('severity', _state.severity);
+    if (_state.module) params.set('module', _state.module);
+    if (_state.target) params.set('target', _state.target);
+    if (_state.search) params.set('search', _state.search);
+    params.set('sort', _state.sort);
+    params.set('order', _state.order);
+    params.set('page', _state.page);
+    params.set('limit', _state.limit);
+
+    fetch('/api/findings?' + params.toString(), {
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    })
+    .then(function(r) {
+      if (r.status === 401) { window.location.href = '/login'; return; }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      if (!data) return;
+      renderTable(data);
+    })
+    .catch(function(err) {
+      tbody.innerHTML = '<tr><td class="empty-row" colspan="8">ERROR: ' + escHtml(err.message) + '</td></tr>';
+    });
+  }
+
+  function renderTable(data) {
+    filterCount.textContent = 'Showing ' + data.items.length + ' of ' + data.total;
+
+    if (data.items.length === 0) {
+      tbody.innerHTML = '<tr><td class="empty-row" colspan="8">No findings match your filters.</td></tr>';
+      pagination.style.display = 'none';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < data.items.length; i++) {
+      var f = data.items[i];
+      var sevClass = 'sev-' + f.severity;
+      var cveHtml = f.cve
+        ? '<a class="cve-link" href="https://nvd.nist.gov/vuln/detail/' + escAttr(f.cve) + '" target="_blank" rel="noopener">' + escHtml(f.cve) + '</a>'
+        : '<span style="color:var(--text-muted);">&#8212;</span>';
+      var epssHtml = formatEpss(f.epss);
+      var dateStr = f.created_at ? f.created_at.substring(0, 10) : '';
+
+      html +=
+        '<tr>' +
+        '<td><span class="sev-badge ' + sevClass + '">' + f.severity + '</span></td>' +
+        '<td class="cell-name" title="' + escAttr(f.name) + '">' + escHtml(f.name) + '</td>' +
+        '<td class="cell-target">' + escHtml(f.target) + '</td>' +
+        '<td class="cell-module">' + escHtml(f.module) + '</td>' +
+        '<td>' + cveHtml + '</td>' +
+        '<td>' + epssHtml + '</td>' +
+        '<td class="cell-date">' + escHtml(dateStr) + '</td>' +
+        '<td><button class="btn-eye" data-idx="' + i + '" title="Details">&#128065;</button></td>' +
+        '</tr>';
+    }
+    tbody.innerHTML = html;
+
+    // attach eye buttons
+    var btns = tbody.querySelectorAll('.btn-eye');
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].addEventListener('click', (function(idx) {
+        return function() { openPanel(data.items[idx]); };
+      })(parseInt(btns[j].getAttribute('data-idx'))));
+    }
+
+    // pagination
+    if (data.pages > 1) {
+      pagination.style.display = 'flex';
+      pageInfo.textContent = data.page + ' / ' + data.pages;
+      btnPrev.disabled = data.page <= 1;
+      btnNext.disabled = data.page >= data.pages;
+    } else {
+      pagination.style.display = 'none';
+    }
+  }
+
+  function formatEpss(val) {
+    if (val === null || val === undefined || val === '') return '<span style="color:var(--text-muted);">&#8212;</span>';
+    var n = parseFloat(val);
+    if (isNaN(n)) return '<span style="color:var(--text-muted);">&#8212;</span>';
+    var pct = (n * 100).toFixed(1) + '%';
+    var cls = n >= 0.5 ? 'epss-high' : (n >= 0.1 ? 'epss-med' : 'epss-low');
+    return '<span class="epss-val ' + cls + '">' + pct + '</span>';
+  }
+
+  // ── Sorting ──
+  var sortHeaders = document.querySelectorAll('th.sortable');
+  for (var si = 0; si < sortHeaders.length; si++) {
+    sortHeaders[si].addEventListener('click', function() {
+      var col = this.getAttribute('data-sort');
+      if (_state.sort === col) {
+        _state.order = _state.order === 'desc' ? 'asc' : 'desc';
+      } else {
+        _state.sort = col;
+        _state.order = 'desc';
+      }
+      updateSortArrows();
+      _state.page = 1;
+      fetchFindings();
+    });
+  }
+
+  function updateSortArrows() {
+    document.getElementById('arrowSeverity').innerHTML = '';
+    document.getElementById('arrowEpss').innerHTML = '';
+    document.getElementById('arrowDate').innerHTML = '';
+    var arrowId = 'arrow' + _state.sort.charAt(0).toUpperCase() + _state.sort.slice(1);
+    var el = document.getElementById(arrowId);
+    if (el) el.innerHTML = _state.order === 'desc' ? '&#9660;' : '&#9650;';
+  }
+
+  // ── Filter events ──
+  filterSev.addEventListener('change', function() { _state.severity = this.value; _state.page = 1; fetchFindings(); });
+  filterMod.addEventListener('change', function() { _state.module = this.value; _state.page = 1; fetchFindings(); });
+  filterTgt.addEventListener('change', function() { _state.target = this.value; _state.page = 1; fetchFindings(); });
+
+  var _searchTimer = null;
+  filterSearch.addEventListener('input', function() {
+    clearTimeout(_searchTimer);
+    var val = this.value;
+    _searchTimer = setTimeout(function() { _state.search = val; _state.page = 1; fetchFindings(); }, 300);
+  });
+
+  btnReset.addEventListener('click', function() {
+    _state.severity = ''; _state.module = ''; _state.target = ''; _state.search = '';
+    _state.sort = 'severity'; _state.order = 'desc'; _state.page = 1;
+    filterSev.value = ''; filterMod.value = ''; filterTgt.value = ''; filterSearch.value = '';
+    updateSortArrows();
+    fetchFindings();
+  });
+
+  // ── Pagination ──
+  btnPrev.addEventListener('click', function() { if (_state.page > 1) { _state.page--; fetchFindings(); } });
+  btnNext.addEventListener('click', function() { _state.page++; fetchFindings(); });
+
+  // ── Detail panel ──
+  function openPanel(f) {
+    _currentFinding = f;
+    document.getElementById('panelTitle').textContent = f.name || 'Finding Detail';
+
+    var body = document.getElementById('panelBody');
+    var sevClass = 'sev-' + f.severity;
+
+    var epssBar = '';
+    if (f.epss !== null && f.epss !== undefined && f.epss !== '') {
+      var pct = (parseFloat(f.epss) * 100);
+      var barColor = pct >= 50 ? '#C1121F' : (pct >= 10 ? '#f59e0b' : '#4a8fd4');
+      epssBar =
+        '<div class="panel-section">' +
+        '<div class="panel-label">EPSS SCORE</div>' +
+        '<div class="panel-value">' + pct.toFixed(1) + '% probability of exploitation in next 30 days</div>' +
+        '<div class="epss-bar-wrap"><div class="epss-bar-fill" style="width:' + Math.min(pct, 100) + '%;background:' + barColor + '"></div></div>' +
+        '</div>';
+    }
+
+    var cveSection = '';
+    if (f.cve) {
+      cveSection =
+        '<div class="panel-section">' +
+        '<div class="panel-label">CVE</div>' +
+        '<div class="panel-value"><a class="cve-link" href="https://nvd.nist.gov/vuln/detail/' + escAttr(f.cve) + '" target="_blank" rel="noopener">' + escHtml(f.cve) + '</a></div>' +
+        '</div>';
+    }
+
+    body.innerHTML =
+      '<div class="panel-meta-row">' +
+      '<span class="sev-badge ' + sevClass + '">' + f.severity + '</span>' +
+      '<span class="panel-tag">' + escHtml(f.module) + '</span>' +
+      '<span class="panel-tag">' + escHtml(f.target) + '</span>' +
+      (f.created_at ? '<span class="panel-tag">' + escHtml(f.created_at.substring(0, 10)) + '</span>' : '') +
+      '</div>' +
+      (f.description
+        ? '<div class="panel-section"><div class="panel-label">DESCRIPTION</div><div class="panel-value">' + escHtml(f.description) + '</div></div>'
+        : '') +
+      cveSection +
+      epssBar +
+      (f.remediation
+        ? '<div class="panel-section"><div class="panel-label">REMEDIATION</div><div class="panel-value">' + escHtml(f.remediation) + '</div></div>'
+        : '');
+
+    // Actions
+    var actions = document.getElementById('panelActions');
+    actions.innerHTML =
+      '<button class="btn-action primary" id="btnTrack">TRACK</button>' +
+      '<button class="btn-action" id="btnViewScan">VIEW SCAN</button>' +
+      '<button class="btn-action" id="btnClosePanelBottom">&times; CLOSE</button>';
+
+    document.getElementById('btnTrack').addEventListener('click', function() { trackFinding(f); });
+    document.getElementById('btnViewScan').addEventListener('click', function() {
+      if (f.task_id) window.location.href = '/scan/' + f.task_id + '/detail';
+    });
+    document.getElementById('btnClosePanelBottom').addEventListener('click', closePanel);
+
+    overlay.classList.add('open');
+    panel.classList.add('open');
+  }
+
+  function closePanel() {
+    overlay.classList.remove('open');
+    panel.classList.remove('open');
+    _currentFinding = null;
+  }
+
+  overlay.addEventListener('click', closePanel);
+  btnClose.addEventListener('click', closePanel);
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closePanel(); });
+
+  function trackFinding(f) {
+    if (!f.task_id) return;
+    fetch('/api/scan/' + f.task_id + '/remediation', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        finding_name: f.name,
+        severity: f.severity,
+        status: 'open',
+        notes: 'Tracked from Findings page'
+      })
+    })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function() {
+      var btn = document.getElementById('btnTrack');
+      btn.textContent = 'TRACKED';
+      btn.disabled = true;
+      btn.style.opacity = '.5';
+    })
+    .catch(function(err) {
+      alert('Error: ' + err.message);
+    });
+  }
+
+  // ── Helpers ──
+  function escHtml(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+  function escAttr(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Init ──
+  populateDropdowns();
+  updateSortArrows();
+  fetchFindings();
+
+})();
+</script>
+</body>
+</html>

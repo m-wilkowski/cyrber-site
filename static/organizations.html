@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CYRBER — OPERATOR PANEL</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+html { font-size: clamp(14px, 1.2vw, 20px); }
+body { background: var(--bg-root); min-height: 100vh; }
+
+.wrapper {
+  position: relative; z-index: 1;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: max(var(--sp-8), 2rem) max(var(--content-padding), 2rem) max(var(--sp-16), 2rem);
+  min-height: 100vh;
+}
+
+/* ── TOP BAR ── */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-8);
+  animation: fadeInUp .5s ease both;
+}
+.top-left { display: flex; align-items: baseline; gap: var(--sp-4); }
+.page-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-2xl);
+  font-weight: 900;
+  letter-spacing: .1em;
+  color: var(--text-primary);
+  margin: 0;
+}
+.org-counter {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  letter-spacing: .08em;
+}
+.btn-new-org {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  letter-spacing: .08em;
+  padding: 8px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-new-org:hover { opacity: .85; }
+
+/* ── TABLE ── */
+.org-table-wrap {
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
+  overflow-x: auto;
+  animation: fadeInUp .5s ease .1s both;
+}
+table.orgs {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: .9rem;
+}
+table.orgs thead th {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .72rem;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+table.orgs tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background .12s;
+}
+table.orgs tbody tr:last-child { border-bottom: none; }
+table.orgs tbody tr:hover { background: var(--bg-overlay); }
+table.orgs tbody td {
+  padding: var(--sp-3) var(--sp-4);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.cell-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.cell-domain {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+
+/* Package badges */
+.pkg-badge {
+  display: inline-block;
+  font-family: 'Orbitron', sans-serif;
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: 2px 10px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.pkg-SPECULATOR  { background: rgba(148,163,184,.12); color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
+.pkg-EXCUBITOR   { background: rgba(74,143,212,.15);  color: #4a8fd4; border: 1px solid rgba(74,143,212,.3);  }
+.pkg-HARUSPEX    { background: rgba(245,197,24,.12);   color: #f5c518; border: 1px solid rgba(245,197,24,.3);  }
+.pkg-PRAEFECTUS  { background: rgba(193,18,31,.12);    color: #C1121F; border: 1px solid rgba(193,18,31,.3);   }
+.pkg-NONE        { background: rgba(148,163,184,.08); color: #64748b; border: 1px solid rgba(148,163,184,.15); }
+
+/* Connection mode */
+.mode-badge {
+  display: inline-block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .7rem;
+  letter-spacing: .06em;
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+.mode-CONNECTED { background: rgba(34,197,94,.12); color: #22c55e; border: 1px solid rgba(34,197,94,.25); }
+.mode-SCHEDULED { background: rgba(245,158,11,.12); color: #f59e0b; border: 1px solid rgba(245,158,11,.25); }
+.mode-AIRGAP    { background: rgba(193,18,31,.12); color: #C1121F; border: 1px solid rgba(193,18,31,.25); }
+
+/* Status dot */
+.status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .75rem;
+  letter-spacing: .06em;
+}
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-active   { background: #22c55e; animation: liveDot 1.5s ease-in-out infinite; }
+.dot-inactive { background: #C1121F; }
+
+/* Alert */
+.alert-cell {
+  max-width: 200px;
+}
+.alert-mini {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.alert-sev {
+  font-family: 'Orbitron', sans-serif;
+  font-size: .55rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.alert-sev-CRITICAL { background: rgba(193,18,31,.15); color: #C1121F; }
+.alert-sev-HIGH     { background: rgba(232,93,4,.15);  color: #e85d04; }
+.alert-msg {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: .8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+.alert-time {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .65rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.no-alert {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+
+/* Score */
+.score-val {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.score-high   { color: #C1121F; }
+.score-medium { color: #f59e0b; }
+.score-low    { color: #22c55e; }
+.score-none {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  color: var(--text-muted);
+}
+
+/* Actions */
+.btn-action {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-action:hover { border-color: var(--accent); color: var(--accent); }
+.btn-action.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn-action.primary:hover { opacity: .85; }
+.actions-cell {
+  display: flex;
+  gap: 6px;
+}
+
+.empty-row {
+  text-align: center;
+  padding: var(--sp-12) var(--sp-6) !important;
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--text-muted);
+  letter-spacing: .08em;
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 900;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg-root);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 20px 60px rgba(0,0,0,.4);
+  width: min(480px, 90vw);
+  animation: fadeInUp .3s ease;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-5) var(--sp-6);
+  border-bottom: 1px solid var(--border);
+}
+.modal-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: .06em;
+}
+.btn-close-modal {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all .15s;
+}
+.btn-close-modal:hover { border-color: var(--accent-red); color: var(--accent-red); }
+.modal-body {
+  padding: var(--sp-6);
+}
+.form-group {
+  margin-bottom: var(--sp-5);
+}
+.form-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .72rem;
+  letter-spacing: .15em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: var(--sp-2);
+}
+.form-input, .form-select {
+  width: 100%;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .85rem;
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  letter-spacing: .04em;
+  box-sizing: border-box;
+}
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.form-hint {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .65rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  letter-spacing: .04em;
+}
+.form-error {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .7rem;
+  color: #C1121F;
+  margin-top: 4px;
+  display: none;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-6);
+  border-top: 1px solid var(--border);
+}
+.btn-create {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  letter-spacing: .08em;
+  padding: 8px 24px;
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-create:hover { opacity: .85; }
+.btn-create:disabled { opacity: .4; cursor: default; }
+.btn-cancel {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  letter-spacing: .08em;
+  padding: 8px 18px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-cancel:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── LOADING ── */
+.loading-state {
+  text-align: center;
+  padding: var(--sp-16) 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-md);
+  color: var(--text-muted);
+  letter-spacing: .15em;
+}
+.loading-ring {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin: 0 auto var(--sp-4);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<nav class="cyrber-nav">
+  <a href="/overview" class="nav-logo">
+    <img src="/static/logo.jpg" alt="CYRBER">
+    <span class="nav-logo-text">CYRBER</span>
+  </a>
+  <div class="nav-links">
+    <div class="nav-item missions">
+      <span>MISSIONS &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Operations</div>
+        <a href="/overview">&#9670; Overview</a>
+        <a href="/dashboard">&#128202; Dashboard</a>
+        <a href="/mission-control">&#127919; Theatrum Belli</a>
+        <a href="/scheduler">&#128336; Scheduler</a>
+      </div>
+    </div>
+    <div class="nav-item ratio">
+      <span>RATIO &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Infrastructure &middot; Code &middot; CVE</div>
+        <a href="/ui">&#128269; Scan</a>
+        <a href="/findings">&#128204; Findings</a>
+        <a href="/topology">&#128506; Topology</a>
+        <a href="/osint">&#127760; OSINT</a>
+        <a href="/verify">&#10003; Verify</a>
+      </div>
+    </div>
+    <div class="nav-item animus">
+      <span>ANIMUS &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">People &middot; Habits &middot; Behaviour</div>
+        <a href="/phishing">&#127907; Phishing</a>
+      </div>
+    </div>
+    <div class="nav-item fatum">
+      <span>FATUM &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">History &middot; Context &middot; Physical</div>
+        <a href="/hardware">&#9889; Hardware Bridge</a>
+      </div>
+    </div>
+    <div class="nav-item mirror">
+      <span>MIRROR &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Organization Intelligence</div>
+        <a href="/mirror">&#129516; Security Genome</a>
+      </div>
+    </div>
+    <div class="nav-item proof">
+      <span>PROOF &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Audit &middot; Compliance &middot; Insurance</div>
+        <a href="/proof">&#128274; Living Proof</a>
+        <a href="/compliance">&#9878; Compliance</a>
+        <a href="/proof#feed">&#128225; Insurance Feed</a>
+      </div>
+    </div>
+    <div class="nav-item chronicle">
+      <span>CHRONICLE &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Probabilistic Future</div>
+        <a href="/chronicle">&#128197; 30/60/90 Forecast</a>
+        <a href="/chronicle#peers">&#128101; Sector Peers <span class="dropdown-badge soon">Q4 2026</span></a>
+        <a href="/chronicle#apt">&#127919; APT Correlation <span class="dropdown-badge soon">Q4 2026</span></a>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0;">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+    <span id="nav-username" style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);">&#8212;</span>
+    <a href="/organizations" class="nav-admin-icon" id="operatorNavLink" title="Operator Panel" style="display:none;">&#9881;</a>
+    <a href="/admin" class="nav-admin-icon" id="adminNavLink" title="Admin" style="display:none;">&#9881;</a>
+    <a href="#" onclick="localStorage.removeItem('cyrber_token');localStorage.removeItem('cyrber_user');window.location.href='/login'" style="color:var(--red);font-size:11px;text-decoration:none;letter-spacing:.08em;font-family:'Share Tech Mono',monospace;">LOGOUT</a>
+  </div>
+</nav>
+<script>
+(function(){
+  var path=window.location.pathname;
+  var map={'/overview':'missions','/ui':'ratio','/findings':'ratio','/topology':'ratio','/osint':'ratio','/verify':'ratio','/dashboard':'missions','/mission-control':'missions','/scheduler':'missions','/phishing':'animus','/hardware':'fatum','/mirror':'mirror','/proof':'proof','/compliance':'proof','/chronicle':'chronicle','/admin':'missions'};
+  var s=map[path];
+  if(s){var el=document.querySelector('.nav-item.'+s);if(el)el.classList.add('active');}
+  var t=localStorage.getItem('cyrber_token');if(!t)return;
+  fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){
+    var ne=document.getElementById('nav-username');if(ne)ne.textContent=u.username||'';
+    localStorage.setItem('cyrber_user',u.username||'');
+    if(u.role==='admin'){var al=document.getElementById('adminNavLink');if(al)al.style.display='';}
+    if(u.is_operator||u.role==='admin'){var ol=document.getElementById('operatorNavLink');if(ol)ol.style.display='';}
+  }).catch(function(){});
+})();
+</script>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">NOWA ORGANIZACJA</span>
+      <button class="btn-close-modal" id="btnCloseModal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">NAZWA *</label>
+        <input class="form-input" id="fName" type="text" placeholder="Nazwa organizacji" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">DOMENA</label>
+        <input class="form-input" id="fDomain" type="text" placeholder="example.com" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">SLUG</label>
+        <input class="form-input" id="fSlug" type="text" placeholder="auto-generated" autocomplete="off">
+        <div class="form-hint">Tylko [a-z0-9-], unikalny identyfikator</div>
+        <div class="form-error" id="slugError">Slug moze zawierac tylko male litery, cyfry i myslniki</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">TRYB POLACZENIA</label>
+        <select class="form-select" id="fMode">
+          <option value="CONNECTED">CONNECTED</option>
+          <option value="SCHEDULED">SCHEDULED</option>
+          <option value="AIRGAP">AIRGAP</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="btnCancelModal">ANULUJ</button>
+      <button class="btn-create" id="btnCreate">UTWORZ</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrapper">
+
+  <div id="loadingState" class="loading-state">
+    <div class="loading-ring"></div>
+    LOADING OPERATOR PANEL...
+  </div>
+
+  <div id="mainContent" style="display:none;">
+
+    <div class="top-bar">
+      <div class="top-left">
+        <h1 class="page-title">CYRBER OPERATOR PANEL</h1>
+        <span class="org-counter" id="orgCounter">&#8212;</span>
+      </div>
+      <button class="btn-new-org" id="btnNewOrg">+ NOWA ORGANIZACJA</button>
+    </div>
+
+    <div class="org-table-wrap">
+      <table class="orgs">
+        <thead>
+          <tr>
+            <th>NAZWA</th>
+            <th>DOMENA</th>
+            <th>PAKIET</th>
+            <th>TRYB</th>
+            <th>STATUS</th>
+            <th>OSTATNI ALERT</th>
+            <th>SCORE</th>
+            <th>AKCJE</th>
+          </tr>
+        </thead>
+        <tbody id="orgsBody">
+          <tr><td class="empty-row" colspan="8">LOADING...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function() {
+  var TOKEN = localStorage.getItem('cyrber_token');
+  if (!TOKEN) { window.location.href = '/login'; return; }
+
+  var _isOperator = false;
+
+  // ── Access check ──
+  fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+  .then(function(r) { return r.json(); })
+  .then(function(u) {
+    if (u.is_operator || u.role === 'admin') {
+      _isOperator = true;
+      loadOrganizations();
+    } else {
+      window.location.href = '/overview';
+    }
+  })
+  .catch(function() { window.location.href = '/login'; });
+
+  // ── Elements ──
+  var tbody = document.getElementById('orgsBody');
+  var orgCounter = document.getElementById('orgCounter');
+  var modalOverlay = document.getElementById('modalOverlay');
+  var btnNewOrg = document.getElementById('btnNewOrg');
+  var btnCloseModal = document.getElementById('btnCloseModal');
+  var btnCancelModal = document.getElementById('btnCancelModal');
+  var btnCreate = document.getElementById('btnCreate');
+  var fName = document.getElementById('fName');
+  var fDomain = document.getElementById('fDomain');
+  var fSlug = document.getElementById('fSlug');
+  var fMode = document.getElementById('fMode');
+  var slugError = document.getElementById('slugError');
+
+  // ── Load organizations ──
+  function loadOrganizations() {
+    fetch('/api/organizations', {
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    })
+    .then(function(r) {
+      if (r.status === 401) { window.location.href = '/login'; return; }
+      if (r.status === 403) { window.location.href = '/overview'; return; }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(orgs) {
+      if (!orgs) return;
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('mainContent').style.display = '';
+      renderTable(orgs);
+    })
+    .catch(function(err) {
+      document.getElementById('loadingState').innerHTML =
+        '<div style="color:var(--accent-red);">ERROR: ' + escHtml(err.message) + '</div>';
+    });
+  }
+
+  function renderTable(orgs) {
+    var active = 0;
+    for (var i = 0; i < orgs.length; i++) {
+      if (orgs[i].is_active) active++;
+    }
+    orgCounter.textContent = active + ' organizacji aktywnych';
+
+    if (orgs.length === 0) {
+      tbody.innerHTML = '<tr><td class="empty-row" colspan="8">Brak organizacji. Kliknij + NOWA ORGANIZACJA.</td></tr>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < orgs.length; i++) {
+      var o = orgs[i];
+
+      // Package badge
+      var pkg = o.package || 'NONE';
+      var pkgClass = 'pkg-' + pkg;
+      var pkgHtml = '<span class="pkg-badge ' + pkgClass + '">' + pkg + '</span>';
+
+      // Connection mode
+      var mode = o.connection_mode || 'CONNECTED';
+      var modeHtml = '<span class="mode-badge mode-' + mode + '">' + mode + '</span>';
+
+      // Status
+      var statusHtml = o.is_active
+        ? '<span class="status-dot"><span class="dot dot-active"></span>AKTYWNA</span>'
+        : '<span class="status-dot"><span class="dot dot-inactive"></span>NIEAKTYWNA</span>';
+
+      // Last alert
+      var alertHtml;
+      if (o.last_alert) {
+        var ago = timeAgo(o.last_alert.created_at);
+        var sevClass = 'alert-sev-' + o.last_alert.severity;
+        alertHtml =
+          '<div class="alert-mini">' +
+            '<span class="alert-sev ' + sevClass + '">' + o.last_alert.severity + '</span>' +
+            '<span class="alert-msg" title="' + escAttr(o.last_alert.message) + '">' + escHtml(truncate(o.last_alert.message, 30)) + '</span>' +
+            '<span class="alert-time">' + ago + '</span>' +
+          '</div>';
+      } else {
+        alertHtml = '<span class="no-alert">&#8212;</span>';
+      }
+
+      // Score
+      var scoreHtml;
+      if (o.security_score !== null && o.security_score !== undefined) {
+        var sc = o.security_score;
+        var scClass = sc > 60 ? 'score-high' : (sc > 40 ? 'score-medium' : 'score-low');
+        scoreHtml = '<span class="score-val ' + scClass + '">' + sc + '</span>';
+      } else {
+        scoreHtml = '<span class="score-none">&#8212;</span>';
+      }
+
+      // Actions
+      var actionsHtml =
+        '<div class="actions-cell">' +
+          '<a class="btn-action primary" href="/overview?org_id=' + o.id + '">WEJDZ</a>' +
+          '<a class="btn-action" href="/api/organizations/' + o.id + '" target="_blank">EDYTUJ</a>' +
+        '</div>';
+
+      html +=
+        '<tr>' +
+          '<td class="cell-name">' + escHtml(o.brand_name || o.name) + '</td>' +
+          '<td class="cell-domain">' + escHtml(o.domain || '&#8212;') + '</td>' +
+          '<td>' + pkgHtml + '</td>' +
+          '<td>' + modeHtml + '</td>' +
+          '<td>' + statusHtml + '</td>' +
+          '<td class="alert-cell">' + alertHtml + '</td>' +
+          '<td>' + scoreHtml + '</td>' +
+          '<td>' + actionsHtml + '</td>' +
+        '</tr>';
+    }
+    tbody.innerHTML = html;
+  }
+
+  // ── Modal ──
+  btnNewOrg.addEventListener('click', function() { openModal(); });
+  btnCloseModal.addEventListener('click', function() { closeModal(); });
+  btnCancelModal.addEventListener('click', function() { closeModal(); });
+  modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) closeModal(); });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+  function openModal() {
+    fName.value = '';
+    fDomain.value = '';
+    fSlug.value = '';
+    fMode.value = 'CONNECTED';
+    slugError.style.display = 'none';
+    btnCreate.disabled = false;
+    btnCreate.textContent = 'UTWORZ';
+    modalOverlay.classList.add('open');
+    fName.focus();
+  }
+
+  function closeModal() {
+    modalOverlay.classList.remove('open');
+  }
+
+  // Auto-generate slug from name
+  fName.addEventListener('input', function() {
+    if (!fSlug.dataset.manual) {
+      fSlug.value = slugify(this.value);
+    }
+  });
+  fSlug.addEventListener('input', function() {
+    fSlug.dataset.manual = '1';
+    validateSlug();
+  });
+
+  function slugify(s) {
+    return s.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  function validateSlug() {
+    var val = fSlug.value;
+    var valid = /^[a-z0-9-]+$/.test(val) && val.length > 0;
+    slugError.style.display = valid || val.length === 0 ? 'none' : 'block';
+    return valid;
+  }
+
+  // Create organization
+  btnCreate.addEventListener('click', function() {
+    var name = fName.value.trim();
+    if (!name) { fName.focus(); return; }
+
+    var slug = fSlug.value.trim() || slugify(name);
+    fSlug.value = slug;
+
+    if (!validateSlug()) return;
+
+    btnCreate.disabled = true;
+    btnCreate.textContent = 'TWORZENIE...';
+
+    fetch('/api/organizations', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: name,
+        domain: fDomain.value.trim() || null,
+        slug: slug,
+        connection_mode: fMode.value
+      })
+    })
+    .then(function(r) {
+      if (r.status === 400) {
+        return r.json().then(function(d) { throw new Error(d.detail || 'Slug already exists'); });
+      }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function() {
+      closeModal();
+      loadOrganizations();
+    })
+    .catch(function(err) {
+      slugError.textContent = err.message;
+      slugError.style.display = 'block';
+      btnCreate.disabled = false;
+      btnCreate.textContent = 'UTWORZ';
+    });
+  });
+
+  // ── Helpers ──
+  function escHtml(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+  function escAttr(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function truncate(s, n) {
+    if (!s) return '';
+    return s.length > n ? s.substring(0, n) + '...' : s;
+  }
+  function timeAgo(iso) {
+    if (!iso) return '';
+    var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (diff < 60) return Math.floor(diff) + 's';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+    return Math.floor(diff / 86400) + 'd';
+  }
+
+})();
+</script>
+</body>
+</html>
