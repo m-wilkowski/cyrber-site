@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CYRBER — MISSIONS</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* ── HiDPI BASE ── */
+html { font-size: clamp(14px, 1.2vw, 20px); }
+body { background: var(--bg-root); min-height: 100vh; }
+
+/* ── LAYOUT ── */
+.wrapper {
+  position: relative; z-index: 1;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: max(var(--sp-6), 2rem) max(var(--content-padding), 2rem) max(var(--sp-16), 2rem);
+  min-height: 100vh;
+}
+.page-header {
+  margin-bottom: var(--sp-6);
+}
+.page-title-main {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-2xl);
+  font-weight: 900;
+  letter-spacing: .1em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* ── THREE COLUMNS ── */
+.grid-3 {
+  display: grid;
+  grid-template-columns: 320px 1fr 320px;
+  gap: var(--sp-5);
+  align-items: stretch;
+}
+@media (max-width: 1200px) {
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+  .col-pulse { grid-column: 1 / -1; }
+}
+@media (max-width: 800px) {
+  .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ── CARDS ── */
+.panel {
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+.panel-head {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: .2em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.panel-body {
+  padding: max(var(--sp-5), 1.5rem);
+}
+
+/* ═══════════════════════════
+   LEFT — NEW MISSION
+   ═══════════════════════════ */
+.target-input-wrap {
+  position: relative;
+  margin-bottom: var(--sp-5);
+}
+.target-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1rem;
+  height: 3rem;
+  padding: 0 var(--sp-4);
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color .2s;
+}
+.target-input:focus { border-color: var(--accent); }
+.target-input.invalid { border-color: var(--accent-red); }
+.target-input.valid { border-color: #22c55e; }
+.input-hint {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: var(--sp-1);
+  letter-spacing: .06em;
+}
+.input-hint.error { color: var(--accent-red); }
+
+/* Profile cards */
+.profiles-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: .2em;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-3);
+}
+.profile-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+.profile-card {
+  padding: max(var(--sp-4), 1rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .2s;
+  background: var(--bg-raised);
+  position: relative;
+  overflow: hidden;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.profile-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 3px;
+  background: var(--pc-color);
+}
+.profile-card:hover { border-color: var(--pc-color); }
+.profile-card.active {
+  border-color: var(--pc-color);
+  background: var(--bg-overlay);
+  box-shadow: 0 0 12px rgba(var(--pc-rgb), .15);
+}
+.pc-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.pc-meta {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  letter-spacing: .06em;
+}
+.pc-meta b { color: var(--pc-color); }
+
+/* Launch button */
+.btn-launch {
+  width: 100%;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  height: 3.5rem;
+  padding: 0 2rem;
+  white-space: nowrap;
+  border: 2px solid var(--accent-red);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-red);
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+}
+.btn-launch:hover:not(:disabled) {
+  background: rgba(193,18,31,.12);
+  box-shadow: 0 0 20px rgba(193,18,31,.2);
+}
+.btn-launch:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+.btn-launch .spinner {
+  width: 16px; height: 16px;
+  border: 2px solid transparent;
+  border-top-color: var(--accent-red);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: none;
+}
+.btn-launch.loading .spinner { display: inline-block; }
+.btn-launch.loading .btn-text { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════
+   CENTER — ACTIVE & RECENT
+   ═══════════════════════════ */
+
+/* Active scan */
+.active-scan {
+  display: none;
+  margin-bottom: var(--sp-5);
+  animation: fadeInUp .4s ease;
+}
+.active-scan.show { display: block; }
+
+.active-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+}
+.active-target {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  letter-spacing: .06em;
+}
+.active-profile {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+.active-body { padding: var(--sp-5); }
+
+.progress-wrap {
+  margin-bottom: var(--sp-4);
+}
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--sp-2);
+}
+.progress-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  letter-spacing: .08em;
+}
+.progress-pct {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--accent);
+}
+.progress-bar {
+  height: 6px;
+  background: var(--bg-overlay);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-blue));
+  transition: width .4s ease;
+  width: 0%;
+}
+.active-module {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  color: var(--accent);
+  letter-spacing: .06em;
+  min-height: 16px;
+}
+.active-elapsed {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: var(--sp-2);
+}
+
+.btn-abort {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  letter-spacing: .1em;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--accent-red);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent-red);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-abort:hover { background: rgba(193,18,31,.15); }
+
+/* Terminal log */
+.terminal {
+  background: var(--bg-root);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-3);
+  max-height: 160px;
+  overflow-y: auto;
+  margin-top: var(--sp-3);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.terminal .t-done { color: #22c55e; }
+.terminal .t-skip { color: var(--text-muted); }
+.terminal .t-err { color: var(--accent-red); }
+.terminal .t-run { color: var(--accent); }
+
+/* Recent table */
+.recent-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.recent-table th {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9rem;
+  letter-spacing: .12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-strong);
+}
+.recent-table td {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.recent-table tr:hover td { background: var(--bg-overlay); }
+.recent-table a {
+  color: var(--accent);
+  text-decoration: none;
+  letter-spacing: .06em;
+}
+.recent-table a:hover { text-decoration: underline; }
+
+.risk-badge {
+  display: inline-block;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.risk-CRITICAL { background: rgba(193,18,31,.2); color: #C1121F; }
+.risk-HIGH { background: rgba(232,93,4,.2); color: #e85d04; }
+.risk-MEDIUM { background: rgba(245,158,11,.2); color: #f59e0b; }
+.risk-LOW { background: rgba(34,197,94,.2); color: #22c55e; }
+.risk-NONE { background: rgba(74,143,212,.15); color: var(--accent); }
+
+.empty-row {
+  text-align: center;
+  padding: var(--sp-8) var(--sp-4);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* ═══════════════════════════
+   RIGHT — PULSE FEED
+   ═══════════════════════════ */
+.pulse-body {
+  max-height: 520px;
+  overflow-y: auto;
+}
+.pulse-event {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.pulse-event:hover { background: var(--bg-overlay); }
+.pulse-event:last-child { border-bottom: none; }
+.pulse-sev { width: 18px; text-align: center; flex-shrink: 0; font-size: 12px; padding-top: 1px; }
+.pulse-content { flex: 1; min-width: 0; }
+.pulse-msg {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+.pulse-meta {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  display: flex;
+  gap: var(--sp-3);
+}
+.pulse-empty {
+  text-align: center;
+  padding: var(--sp-8) var(--sp-4);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.pulse-days {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: center;
+  padding: 1.5rem 1rem 0.5rem;
+  letter-spacing: .05em;
+}
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: liveDot 1.5s ease-in-out infinite;
+  display: inline-block;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ NAVBAR ═══ -->
+<nav class="cyrber-nav">
+  <a href="/overview" class="nav-logo">
+    <img src="/static/logo.jpg" alt="CYRBER">
+    <span class="nav-logo-text">CYRBER</span>
+  </a>
+  <div class="nav-links">
+    <div class="nav-item missions">
+      <span>MISSIONS &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Operations</div>
+        <a href="/overview">&#9670; Overview</a>
+        <a href="/missions">&#9733; Missions</a>
+        <a href="/dashboard">&#128202; Dashboard</a>
+        <a href="/mission-control">&#127919; Theatrum Belli</a>
+        <a href="/scheduler">&#128336; Scheduler</a>
+      </div>
+    </div>
+    <div class="nav-item ratio">
+      <span>RATIO &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Infrastructure &middot; Code &middot; CVE</div>
+        <a href="/ui">&#128269; Scan</a>
+        <a href="/topology">&#128506; Topology</a>
+        <a href="/osint">&#127760; OSINT</a>
+        <a href="/verify">&#10003; Verify</a>
+      </div>
+    </div>
+    <div class="nav-item animus">
+      <span>ANIMUS &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">People &middot; Habits &middot; Behaviour</div>
+        <a href="/phishing">&#127907; Phishing</a>
+      </div>
+    </div>
+    <div class="nav-item fatum">
+      <span>FATUM &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">History &middot; Context &middot; Physical</div>
+        <a href="/hardware">&#9889; Hardware Bridge</a>
+      </div>
+    </div>
+    <div class="nav-item mirror">
+      <span>MIRROR &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Organization Intelligence</div>
+        <a href="/mirror">&#129516; Security Genome</a>
+      </div>
+    </div>
+    <div class="nav-item proof">
+      <span>PROOF &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Audit &middot; Compliance &middot; Insurance</div>
+        <a href="/proof">&#128274; Living Proof</a>
+        <a href="/proof#feed">&#128225; Insurance Feed</a>
+      </div>
+    </div>
+    <div class="nav-item chronicle">
+      <span>CHRONICLE &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Probabilistic Future</div>
+        <a href="/chronicle">&#128197; 30/60/90 Forecast</a>
+        <a href="/chronicle#peers">&#128101; Sector Peers <span class="dropdown-badge soon">Q4 2026</span></a>
+        <a href="/chronicle#apt">&#127919; APT Correlation <span class="dropdown-badge soon">Q4 2026</span></a>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0;">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+    <span id="nav-username" style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);">&#8212;</span>
+    <a href="/admin" class="nav-admin-icon" id="adminNavLink" title="Admin" style="display:none;">&#9881;</a>
+    <a href="#" onclick="localStorage.removeItem('cyrber_token');localStorage.removeItem('cyrber_user');window.location.href='/login'" style="color:var(--red);font-size:11px;text-decoration:none;letter-spacing:.08em;font-family:'Share Tech Mono',monospace;">LOGOUT</a>
+  </div>
+</nav>
+<script>
+(function(){
+  var path=window.location.pathname;
+  var map={'/overview':'missions','/missions':'missions','/ui':'ratio','/topology':'ratio','/osint':'ratio','/verify':'ratio','/dashboard':'missions','/mission-control':'missions','/scheduler':'missions','/phishing':'animus','/hardware':'fatum','/mirror':'mirror','/proof':'proof','/chronicle':'chronicle','/admin':'missions'};
+  var s=map[path];
+  if(s){var el=document.querySelector('.nav-item.'+s);if(el)el.classList.add('active');}
+  var t=localStorage.getItem('cyrber_token');if(!t)return;
+  fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){
+    var ne=document.getElementById('nav-username');if(ne)ne.textContent=u.username||'';
+    localStorage.setItem('cyrber_user',u.username||'');
+    if(u.role==='admin'){var al=document.getElementById('adminNavLink');if(al)al.style.display='';}
+  }).catch(function(){});
+})();
+</script>
+
+<!-- ═══ MAIN ═══ -->
+<div class="wrapper">
+
+  <div class="page-header">
+    <h1 class="page-title-main">CYRBER MISSIONS</h1>
+  </div>
+
+  <div class="grid-3">
+
+    <!-- ════════ LEFT: NEW MISSION ════════ -->
+    <div class="col-launch">
+      <div class="panel" style="animation:fadeInUp .4s ease both;">
+        <div class="panel-head">&#127919; NEW MISSION</div>
+        <div class="panel-body">
+
+          <div class="target-input-wrap">
+            <input type="text" class="target-input" id="targetInput"
+                   placeholder="domain.com / 10.0.0.1 / 192.168.1.0/24"
+                   autocomplete="off" spellcheck="false">
+            <div class="input-hint" id="inputHint">Wpisz cel: domena, IP lub CIDR</div>
+          </div>
+
+          <div class="profiles-label">PROFIL MISJI</div>
+          <div class="profile-cards">
+            <div class="profile-card" data-profile="SZCZENIAK"
+                 style="--pc-color:#22c55e;--pc-rgb:34,197,94;"
+                 onclick="selectProfile(this)">
+              <div class="pc-name">SZCZENIAK</div>
+              <div class="pc-meta"><b>20</b> modulow &middot; ~15 min</div>
+            </div>
+            <div class="profile-card active" data-profile="STRAZNIK"
+                 style="--pc-color:#f59e0b;--pc-rgb:245,158,11;"
+                 onclick="selectProfile(this)">
+              <div class="pc-name">STRAZNIK</div>
+              <div class="pc-meta"><b>38</b> modulow &middot; ~2h</div>
+            </div>
+            <div class="profile-card" data-profile="CERBER"
+                 style="--pc-color:#C1121F;--pc-rgb:193,18,31;"
+                 onclick="selectProfile(this)">
+              <div class="pc-name">CERBER</div>
+              <div class="pc-meta"><b>52</b> moduly &middot; ~4h+</div>
+            </div>
+          </div>
+
+          <button class="btn-launch" id="btnLaunch" disabled onclick="launchMission()">
+            <span class="spinner"></span>
+            <span class="btn-text">&#9733; LAUNCH MISSION</span>
+          </button>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ CENTER: ACTIVE & RECENT ════════ -->
+    <div class="col-center">
+
+      <!-- Active scan -->
+      <div class="panel active-scan" id="activeScan" style="animation:fadeInUp .4s ease .05s both;">
+        <div class="active-header">
+          <div>
+            <span class="live-dot"></span>
+            <span class="active-target" id="activeTarget">&#8212;</span>
+            <span class="active-profile" id="activeProfile"></span>
+          </div>
+          <button class="btn-abort" id="btnAbort" onclick="abortScan()">ABORT</button>
+        </div>
+        <div class="active-body">
+          <div class="progress-wrap">
+            <div class="progress-info">
+              <span class="progress-label" id="activeModule">Initializing...</span>
+              <span class="progress-pct" id="activePct">0%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          </div>
+          <div class="active-elapsed" id="activeElapsed"></div>
+          <div class="terminal" id="terminal"></div>
+        </div>
+      </div>
+
+      <!-- Recent missions -->
+      <div class="panel" style="animation:fadeInUp .4s ease .1s both;">
+        <div class="panel-head">&#128202; RECENT MISSIONS</div>
+        <div class="panel-body" style="padding:0;">
+          <table class="recent-table">
+            <thead><tr>
+              <th>TARGET</th>
+              <th>PROFIL</th>
+              <th>RISK</th>
+              <th>DATA</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="recentBody">
+              <tr><td colspan="5" class="empty-row">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ════════ RIGHT: PULSE ════════ -->
+    <div class="col-pulse" style="min-width:280px;">
+      <div class="panel" style="animation:fadeInUp .4s ease .15s both;">
+        <div class="panel-head">
+          <span class="live-dot"></span> CYRBER PULSE
+        </div>
+        <div class="pulse-days" id="pulseCounter"></div>
+        <div class="pulse-body" id="pulseBody" style="padding:1.5rem;">
+          <div class="pulse-empty">Brak aktywnosci</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /grid-3 -->
+</div><!-- /wrapper -->
+
+<script>
+(function() {
+  var TOKEN = localStorage.getItem('cyrber_token');
+  if (!TOKEN) { window.location.href = '/login'; return; }
+
+  // ── State ──
+  var _profile = 'STRAZNIK';
+  var _targetValid = false;
+  var _taskId = null;
+  var _scanSSE = null;
+  var _pulseSSE = null;
+  var _scanStart = null;
+  var _elapsedTimer = null;
+
+  // ── Regex ──
+  var _domainRe = /^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(:\d{1,5})?$/;
+  var _ipRe = /^(\d{1,3}\.){3}\d{1,3}(:\d{1,5})?$/;
+  var _cidrRe = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
+
+  // ── Elements ──
+  var inp = document.getElementById('targetInput');
+  var hint = document.getElementById('inputHint');
+  var btn = document.getElementById('btnLaunch');
+
+  // ── Target validation ──
+  inp.addEventListener('input', function() {
+    var v = inp.value.trim();
+    if (!v) {
+      inp.className = 'target-input';
+      hint.textContent = 'Wpisz cel: domena, IP lub CIDR';
+      hint.className = 'input-hint';
+      _targetValid = false;
+    } else if (_domainRe.test(v) || _ipRe.test(v) || _cidrRe.test(v)) {
+      inp.className = 'target-input valid';
+      hint.textContent = '\u2713 Cel poprawny';
+      hint.className = 'input-hint';
+      _targetValid = true;
+    } else {
+      inp.className = 'target-input invalid';
+      hint.textContent = 'Niepoprawny format (oczekiwano: domain, IP, CIDR)';
+      hint.className = 'input-hint error';
+      _targetValid = false;
+    }
+    updateLaunchBtn();
+  });
+
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && _targetValid && !btn.disabled) launchMission();
+  });
+
+  function updateLaunchBtn() {
+    btn.disabled = !_targetValid || btn.classList.contains('loading');
+  }
+
+  // ── Profile select ──
+  window.selectProfile = function(el) {
+    document.querySelectorAll('.profile-card').forEach(function(c) { c.classList.remove('active'); });
+    el.classList.add('active');
+    _profile = el.dataset.profile;
+  };
+
+  // ── Launch ──
+  window.launchMission = function() {
+    if (!_targetValid) return;
+    var target = inp.value.trim();
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    authFetch('/scan/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: target, profile: _profile })
+    })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Error ' + r.status); });
+      return r.json();
+    })
+    .then(function(data) {
+      _taskId = data.task_id;
+      _scanStart = Date.now();
+      btn.classList.remove('loading');
+      showActiveScan(target, data.profile || _profile);
+      connectScanSSE(_taskId);
+      // Reload recent after short delay
+      setTimeout(loadRecent, 2000);
+    })
+    .catch(function(err) {
+      btn.classList.remove('loading');
+      updateLaunchBtn();
+      alert('Launch failed: ' + err.message);
+    });
+  };
+
+  // ── Active scan UI ──
+  function showActiveScan(target, profile) {
+    var el = document.getElementById('activeScan');
+    el.classList.add('show');
+    document.getElementById('activeTarget').textContent = target;
+    var pEl = document.getElementById('activeProfile');
+    pEl.textContent = profile;
+    var colors = { SZCZENIAK: '#22c55e', STRAZNIK: '#f59e0b', CERBER: '#C1121F' };
+    pEl.style.color = colors[profile] || 'var(--accent)';
+    document.getElementById('terminal').innerHTML = '';
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('activePct').textContent = '0%';
+    document.getElementById('activeModule').textContent = 'Initializing...';
+
+    if (_elapsedTimer) clearInterval(_elapsedTimer);
+    _elapsedTimer = setInterval(function() {
+      if (!_scanStart) return;
+      var s = Math.floor((Date.now() - _scanStart) / 1000);
+      var m = Math.floor(s / 60);
+      var ss = s % 60;
+      document.getElementById('activeElapsed').textContent =
+        'Elapsed: ' + (m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss;
+    }, 1000);
+  }
+
+  function hideActiveScan() {
+    if (_elapsedTimer) { clearInterval(_elapsedTimer); _elapsedTimer = null; }
+  }
+
+  // ── SSE scan stream ──
+  function connectScanSSE(taskId) {
+    if (_scanSSE) _scanSSE.close();
+    _scanSSE = new EventSource('/scan/stream/' + taskId + '?token=' + TOKEN);
+    _scanSSE.onmessage = function(e) {
+      try {
+        var d = JSON.parse(e.data);
+        var pct = d.total > 0 ? Math.round((d.completed / d.total) * 100) : 0;
+        document.getElementById('progressFill').style.width = pct + '%';
+        document.getElementById('activePct').textContent = pct + '%';
+
+        // Module labels
+        var labels = {
+          nmap: 'Port scanning', nuclei: 'Vulnerability detection', zap: 'DAST scan',
+          testssl: 'TLS/SSL check', sqlmap: 'SQL injection', nikto: 'Web scan',
+          whatweb: 'Fingerprinting', gobuster: 'Directory brute', masscan: 'Fast port scan',
+          ai_analysis: 'AI analysis', exploit_chains: 'Exploit chains',
+          hacker_narrative: 'Attack narrative', mitre: 'MITRE mapping',
+          save: 'Saving results', complete: 'Mission complete'
+        };
+        var label = labels[d.module] || d.module;
+        if (d.status === 'started') label += '...';
+
+        document.getElementById('activeModule').textContent = label;
+
+        // Terminal line
+        var term = document.getElementById('terminal');
+        var cls = 't-run';
+        if (d.status === 'done') cls = 't-done';
+        else if (d.status === 'skipped') cls = 't-skip';
+        else if (d.status === 'error') cls = 't-err';
+        var line = document.createElement('div');
+        line.className = cls;
+        var ts = new Date().toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        line.textContent = '[' + ts + '] ' + d.module + ' \u2192 ' + d.status + (d.message ? ' (' + d.message + ')' : '');
+        term.appendChild(line);
+        term.scrollTop = term.scrollHeight;
+
+        if (d.module === 'complete') {
+          if (_scanSSE) _scanSSE.close();
+          _scanSSE = null;
+          hideActiveScan();
+          document.getElementById('activeModule').textContent = 'MISSION COMPLETE';
+          document.getElementById('activePct').textContent = '100%';
+          document.getElementById('progressFill').style.width = '100%';
+          loadRecent();
+        }
+      } catch (err) {}
+    };
+    _scanSSE.onerror = function() {
+      if (_scanSSE) _scanSSE.close();
+      _scanSSE = null;
+    };
+  }
+
+  // ── Abort ──
+  window.abortScan = function() {
+    if (!_taskId) return;
+    if (!confirm('Abort running scan?')) return;
+    // Celery revoke not exposed via API — close SSE and hide
+    if (_scanSSE) _scanSSE.close();
+    _scanSSE = null;
+    hideActiveScan();
+    document.getElementById('activeScan').classList.remove('show');
+    _taskId = null;
+  };
+
+  // ── Load recent scans ──
+  function loadRecent() {
+    authFetch('/scans?limit=10')
+    .then(function(r) { return r.json(); })
+    .then(function(scans) {
+      var tbody = document.getElementById('recentBody');
+      if (!scans || scans.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-row">Brak historii. Uruchom pierwsza misje.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = '';
+      scans.forEach(function(s) {
+        var tr = document.createElement('tr');
+        var risk = (s.risk_level || 'NONE').toUpperCase();
+        var dt = s.created_at ? new Date(s.created_at) : null;
+        var dateStr = dt ? dt.toLocaleDateString('pl-PL', {day:'2-digit',month:'2-digit'}) : '';
+        tr.innerHTML =
+          '<td title="' + esc(s.target) + '">' + esc(s.target) + '</td>' +
+          '<td>' + esc(s.profile || s.scan_type || '?') + '</td>' +
+          '<td><span class="risk-badge risk-' + risk + '">' + risk + '</span></td>' +
+          '<td>' + dateStr + '</td>' +
+          '<td><a href="/scan/' + esc(s.task_id) + '/detail">&rarr;</a></td>';
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(function() {});
+  }
+
+  // ── PULSE ──
+  function loadPulseInitial() {
+    authFetch('/api/overview')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data || !data.pulse) return;
+      var days = data.pulse.protection_days || 0;
+      document.getElementById('pulseCounter').textContent = days + ' DNI OCHRONY';
+      renderPulseEvents(data.pulse.recent_events || []);
+    })
+    .catch(function() {});
+  }
+
+  function renderPulseEvents(events) {
+    var body = document.getElementById('pulseBody');
+    if (!events || events.length === 0) {
+      body.innerHTML = '<div class="pulse-empty">Brak aktywnosci</div>';
+      return;
+    }
+    body.innerHTML = '';
+    events.forEach(function(ev) { body.appendChild(makePulseEl(ev)); });
+  }
+
+  function makePulseEl(ev) {
+    var icons = { CRITICAL: '\uD83D\uDD34', HIGH: '\uD83D\uDFE1', MEDIUM: '\uD83D\uDFE1', LOW: '\uD83D\uDFE2', INFO: '\uD83D\uDD35' };
+    var icon = icons[ev.severity] || icons.INFO;
+    var time = '';
+    if (ev.created_at) {
+      var dt = new Date(ev.created_at);
+      time = dt.toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit'});
+    }
+    var div = document.createElement('div');
+    div.className = 'pulse-event';
+    div.innerHTML =
+      '<div class="pulse-sev">' + icon + '</div>' +
+      '<div class="pulse-content">' +
+        '<div class="pulse-msg">' + esc(ev.message) + '</div>' +
+        '<div class="pulse-meta"><span>' + (ev.head || '') + '</span><span>' + time + '</span></div>' +
+      '</div>';
+    return div;
+  }
+
+  function connectPulseSSE() {
+    if (!window.EventSource) return;
+    _pulseSSE = new EventSource('/api/pulse/stream?token=' + TOKEN);
+    _pulseSSE.onmessage = function(e) {
+      try {
+        var ev = JSON.parse(e.data);
+        var body = document.getElementById('pulseBody');
+        var empty = body.querySelector('.pulse-empty');
+        if (empty) empty.remove();
+        body.insertBefore(makePulseEl(ev), body.firstChild);
+        while (body.children.length > 15) body.removeChild(body.lastChild);
+      } catch (err) {}
+    };
+    _pulseSSE.onerror = function() {
+      if (_pulseSSE) _pulseSSE.close();
+      setTimeout(connectPulseSSE, 5000);
+    };
+  }
+
+  // ── Helpers ──
+  function authFetch(url, opts) {
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    opts.headers['Authorization'] = 'Bearer ' + TOKEN;
+    return fetch(url, opts);
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ── Init ──
+  loadRecent();
+  loadPulseInitial();
+  connectPulseSSE();
+
+})();
+</script>
+</body>
+</html>

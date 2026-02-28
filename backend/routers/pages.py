@@ -19,6 +19,16 @@ async def command_center():
     return FileResponse("static/command_center.html", headers=_NO_CACHE)
 
 
+@router.get("/overview")
+async def overview_page():
+    return FileResponse("static/overview.html", headers=_NO_CACHE)
+
+
+@router.get("/missions")
+async def missions_page():
+    return FileResponse("static/missions.html", headers=_NO_CACHE)
+
+
 @router.get("/ui")
 async def ui():
     return FileResponse("static/index.html", headers=_NO_CACHE)

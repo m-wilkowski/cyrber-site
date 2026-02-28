@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, Float, ForeignKey, event
 from sqlalchemy.types import JSON
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.pool import Pool
 from datetime import datetime
 import os
@@ -58,6 +58,7 @@ class Scan(Base):
     profile = Column(String, default="STRAZNIK")
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, server_default="1")
 
 class User(Base):
     __tablename__ = "users"
@@ -71,6 +72,8 @@ class User(Base):
     created_at    = Column(DateTime, default=datetime.utcnow)
     last_login    = Column(DateTime, nullable=True)
     notes         = Column(Text, nullable=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, server_default="1")
+    is_operator   = Column(Boolean, default=False, server_default="false")
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
@@ -594,6 +597,8 @@ def _user_to_dict(u: "User") -> dict:
         "created_at": u.created_at.isoformat() if u.created_at else None,
         "last_login": u.last_login.isoformat() if u.last_login else None,
         "notes": u.notes,
+        "organization_id": u.organization_id,
+        "is_operator": u.is_operator,
     }
 
 def get_user_by_username(username: str) -> dict | None:

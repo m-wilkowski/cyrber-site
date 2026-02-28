@@ -253,6 +253,27 @@ def _execute_full_scan(target: str, profile: str, task_id: str, total: int):
     completed = 0
     pp = lambda mod, st, msg="": publish_progress(task_id, mod, st, completed, total, msg)
 
+    # ── PULSE: scan started ──
+    try:
+        from modules.organizations import create_pulse_event
+        from modules.database import SessionLocal, Scan
+        _pulse_db = SessionLocal()
+        _scan_row = _pulse_db.query(Scan).filter(Scan.task_id == task_id).first()
+        _pulse_org_id = _scan_row.organization_id if _scan_row else 1
+        create_pulse_event(
+            db=_pulse_db,
+            organization_id=_pulse_org_id,
+            head='RATIO',
+            event_type='scan_started',
+            message_human=f'Misja bezpieczenstwa rozpoczeta dla {target}',
+            severity='INFO',
+            scan_id=task_id,
+            target=target,
+        )
+        _pulse_db.close()
+    except Exception as _pe:
+        logger.debug("PULSE scan_started event failed: %s", _pe)
+
     # ── Fundamentals (always run) ──
     pp("nmap", "started")
     nmap = nmap_scan(target)
@@ -448,6 +469,82 @@ def _execute_full_scan(target: str, profile: str, task_id: str, total: int):
         "abuseipdb": abuseipdb,
         "otx": otx,
     }
+    # ── PULSE: emit events for CRITICAL/HIGH findings ──
+    try:
+        from modules.organizations import create_pulse_event
+        from modules.database import SessionLocal, Scan
+        _pulse_db2 = SessionLocal()
+        _scan_row2 = _pulse_db2.query(Scan).filter(Scan.task_id == task_id).first()
+        _pulse_org2 = _scan_row2.organization_id if _scan_row2 else 1
+        # nuclei findings
+        for _f in scan_data.get("nuclei", {}).get("findings", []):
+            _sev = (_f.get("info", {}).get("severity") or "info").upper()
+            if _sev in ("CRITICAL", "HIGH"):
+                _fname = _f.get("info", {}).get("name") or _f.get("template-id", "unknown")
+                create_pulse_event(
+                    db=_pulse_db2,
+                    organization_id=_pulse_org2,
+                    head='RATIO',
+                    event_type='finding_detected',
+                    message_human=f'Wykryto {_fname}',
+                    severity=_sev,
+                    message_technical=f'nuclei \u2192 {target}',
+                    scan_id=task_id,
+                    finding_name=_fname,
+                    target=target,
+                )
+        # ZAP alerts
+        for _a in scan_data.get("zap", {}).get("alerts", []):
+            _risk = (_a.get("risk") or "Informational").upper()
+            if _risk == "HIGH":
+                _aname = _a.get("alert") or _a.get("name", "unknown")
+                create_pulse_event(
+                    db=_pulse_db2,
+                    organization_id=_pulse_org2,
+                    head='RATIO',
+                    event_type='finding_detected',
+                    message_human=f'Wykryto {_aname}',
+                    severity='HIGH',
+                    message_technical=f'zap \u2192 {target}',
+                    scan_id=task_id,
+                    finding_name=_aname,
+                    target=target,
+                )
+        # testssl critical/high
+        for _f in scan_data.get("testssl", {}).get("findings", []):
+            _sev = (_f.get("severity") or "info").upper()
+            if _sev in ("CRITICAL", "HIGH"):
+                _fname = _f.get("id") or "testssl-finding"
+                create_pulse_event(
+                    db=_pulse_db2,
+                    organization_id=_pulse_org2,
+                    head='RATIO',
+                    event_type='finding_detected',
+                    message_human=f'Wykryto {_fname}',
+                    severity=_sev,
+                    message_technical=f'testssl \u2192 {target}',
+                    scan_id=task_id,
+                    finding_name=_fname,
+                    target=target,
+                )
+        # sqlmap
+        if scan_data.get("sqlmap", {}).get("vulnerable"):
+            create_pulse_event(
+                db=_pulse_db2,
+                organization_id=_pulse_org2,
+                head='RATIO',
+                event_type='finding_detected',
+                message_human='Wykryto SQL Injection',
+                severity='CRITICAL',
+                message_technical=f'sqlmap \u2192 {target}',
+                scan_id=task_id,
+                finding_name='SQL Injection',
+                target=target,
+            )
+        _pulse_db2.close()
+    except Exception as _pe2:
+        logger.debug("PULSE finding events failed: %s", _pe2)
+
     edb = exploitdb_scan(scan_data)
     nvd = nvd_scan(scan_data)
     if is_ci:
@@ -615,6 +712,33 @@ def _execute_full_scan(target: str, profile: str, task_id: str, total: int):
     pp("save", "started", "Saving results")
     save_scan(task_id, target, result, profile=profile)
     send_scan_notification(target, task_id, result)
+
+    # ── PULSE: scan completed ──
+    try:
+        from modules.organizations import create_pulse_event
+        from modules.database import SessionLocal, Scan
+        _pulse_db3 = SessionLocal()
+        _scan_row3 = _pulse_db3.query(Scan).filter(Scan.task_id == task_id).first()
+        _pulse_org3 = _scan_row3.organization_id if _scan_row3 else 1
+        _fc = result.get("findings_count", 0) or (result.get("ai_analysis") or {}).get("findings_count", 0)
+        _rl = result.get("analysis", {}).get("risk_level") or (result.get("ai_analysis") or {}).get("risk_level", "?")
+        _level_map = {'critical': 90, 'high': 70, 'medium': 50, 'low': 25, 'none': 0}
+        _rs = _level_map.get(str(_rl).lower(), 0)
+        create_pulse_event(
+            db=_pulse_db3,
+            organization_id=_pulse_org3,
+            head='MENS',
+            event_type='scan_completed',
+            message_human=f'Misja zakonczona. Findings: {_fc}. Risk score: {_rs}/100.',
+            severity='INFO',
+            message_technical=f'profile={profile} target={target} risk_level={_rl}',
+            scan_id=task_id,
+            target=target,
+        )
+        _pulse_db3.close()
+    except Exception as _pe3:
+        logger.debug("PULSE scan_completed event failed: %s", _pe3)
+
     publish_progress(task_id, "complete", "done", completed, total, "Scan complete")
     return result
 
