@@ -165,43 +165,10 @@ class MensMission(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── SQLAlchemy models ────────────────────────────────────────────
+# ── SQLAlchemy models (v2 — imported from modules/mind_agent.py) ──
+# Old v1 models removed; new Integer-PK models live in modules/mind_agent.py
 
-
-class MensMissionModel(Base):
-    """Persistent storage for MENS missions."""
-
-    __tablename__ = "mens_missions"
-
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    target = Column(String, nullable=False)
-    objective = Column(Text, nullable=False)
-    lex_rule_id = Column(String, nullable=False, index=True)
-    mode = Column(String, default="comes")
-    status = Column(String, default="pending")
-    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    completed_at = Column(DateTime, nullable=True)
-    created_by = Column(String, default="system")
-    fiducia = Column(Float, default=0.0)
-
-
-class MensIterationModel(Base):
-    """Persistent storage for MENS iteration steps."""
-
-    __tablename__ = "mens_iterations"
-
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    mission_id = Column(String, nullable=False, index=True)
-    iteration_number = Column(Integer, default=0)
-    phase = Column(String, default="observe")
-    module_selected = Column(String, nullable=True)
-    module_args = Column(JSON, nullable=True)
-    cogitatio = Column(Text, nullable=True)
-    result_summary = Column(Text, nullable=True)
-    findings_count = Column(Integer, default=0)
-    head = Column(String(10), default="RATIO")
-    approved = Column(Boolean, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+from modules.mind_agent import MensMissionModel, MensIterationModel  # noqa: F401, E402
 
 
 # ── Claude prompt ────────────────────────────────────────────────

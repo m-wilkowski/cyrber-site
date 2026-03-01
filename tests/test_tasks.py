@@ -65,7 +65,7 @@ EXPECTED = {
     "run_exploitdb_sync": (1800, 1860),
     "run_malwarebazaar_sync": (1800, 1860),
     "retest_finding": (600, 660),
-    "mens_run_task": (28800, 28860),
+    "run_mens_mission": (28800, 28860),
 }
 
 
@@ -130,7 +130,7 @@ EXPECTED_ROUTES = {
     "modules.tasks.run_urlhaus_sync": "intel",
     "modules.tasks.run_exploitdb_sync": "intel",
     "modules.tasks.run_malwarebazaar_sync": "intel",
-    "modules.mens_task.mens_run_task": "mens",
+    "modules.mens_task.run_mens_mission": "mens",
 }
 
 
@@ -160,4 +160,4 @@ class TestCeleryQueues:
 
     def test_mens_isolated(self):
         """MENS task must be on its own dedicated queue."""
-        assert _TASK_ROUTES.get("modules.mens_task.mens_run_task") == "mens"
+        assert _TASK_ROUTES.get("modules.mens_task.run_mens_mission") == "mens"

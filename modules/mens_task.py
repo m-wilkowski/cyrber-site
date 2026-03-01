@@ -1,9 +1,8 @@
-"""Celery task for running MENS autonomous agent iterations."""
+"""Celery task for running MENS v2 autonomous agent missions."""
 
 import logging
 import os
 import sys
-import uuid
 from datetime import datetime, timezone
 
 # Ensure /app is in sys.path so 'backend.*' imports work inside Celery worker
@@ -18,215 +17,140 @@ from modules.database import SessionLocal
 
 _log = logging.getLogger("cyrber.mens_task")
 
-MAX_ITERATIONS = 50
-
 
 @celery_app.task(bind=True, soft_time_limit=28800, time_limit=28860)
-def mens_run_task(self, mission_id: str):
-    """Run MENS reasoning loop until completion, abort, or iteration limit.
+def run_mens_mission(self, mission_db_id: int, target: str, policy_dict: dict, org_id: int):
+    """Run MENS v2 reasoning loop until completion, abort, or iteration limit.
 
-    Each iteration: observe → think → act → learn.
-    Max 50 iterations as safety guard.
+    Args:
+        mission_db_id: Integer PK of the mens_missions row.
+        target: Target to scan.
+        policy_dict: Serialized LexPolicy fields.
+        org_id: Organization ID.
     """
+    # sys.path inside function body — Celery prefork pattern
     import os as _os, sys as _sys
     _root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
     if _root not in _sys.path:
         _sys.path.insert(0, _root)
 
-    from backend.mind_agent import (
-        MensAgent,
-        MensIteration,
-        MensMission,
-        MensMissionModel,
-        MensIterationModel,
-    )
-    from backend.lex import LexEngine
+    from modules.mind_agent import MensAgent, MensMissionModel
+    from modules.lex import LexPolicy
 
     db = SessionLocal()
     try:
+        # Load mission row
         row = db.query(MensMissionModel).filter(
-            MensMissionModel.id == mission_id
+            MensMissionModel.id == mission_db_id
         ).first()
         if not row:
-            _log.error("[MENS task] mission %s not found", mission_id)
+            _log.error("[MENS task] mission id=%d not found", mission_db_id)
             return {"status": "error", "message": "Mission not found"}
 
-        # Build Pydantic mission from DB row
-        mission = MensMission(
-            id=uuid.UUID(row.id),
-            target=row.target,
-            objective=row.objective,
-            lex_rule_id=uuid.UUID(row.lex_rule_id),
-            mode=row.mode,
-            status=row.status,
-            started_at=row.started_at or datetime.now(timezone.utc),
-            created_by=row.created_by or "system",
-            fiducia=row.fiducia or 0.0,
+        # Mark as running
+        row.status = "running"
+        db.commit()
+
+        # Reconstruct LexPolicy from dict
+        policy = LexPolicy(
+            mission_id=policy_dict.get("mission_id", ""),
+            organization_id=policy_dict.get("organization_id", org_id),
+            scope_cidrs=policy_dict.get("scope_cidrs", []),
+            excluded_hosts=policy_dict.get("excluded_hosts", []),
+            allowed_modules=policy_dict.get("allowed_modules", []),
+            excluded_modules=policy_dict.get("excluded_modules", []),
+            time_windows=policy_dict.get("time_windows", []),
+            require_approval_cvss=policy_dict.get("require_approval_cvss", 9.0),
+            max_duration_seconds=policy_dict.get("max_duration_seconds", 28800),
+            max_targets=policy_dict.get("max_targets", 50),
+            mode=policy_dict.get("mode", "COMES"),
         )
 
-        lex_engine = LexEngine()
-        agent = MensAgent(mission, lex_engine)
-
-        _log.info("[MENS task] starting mission %s, target=%s, mode=%s",
-                  mission_id, mission.target, mission.mode)
-
-        iteration_count = 0
-
-        # ── Resume: check for approved iterations awaiting execution ──
-        pending_it = (
-            db.query(MensIterationModel)
-            .filter(
-                MensIterationModel.mission_id == mission_id,
-                MensIterationModel.approved == True,  # noqa: E712
-                MensIterationModel.phase == "think",
-            )
-            .order_by(MensIterationModel.iteration_number)
-            .first()
+        agent = MensAgent(
+            mission_id=row.mission_id,
+            policy=policy,
+            db=db,
         )
-        if pending_it:
-            _log.info("[MENS task] resuming approved iteration #%d: %s",
-                      pending_it.iteration_number, pending_it.module_selected)
-            # Rebuild Pydantic iteration from DB row
-            resume_iter = MensIteration(
-                id=uuid.UUID(pending_it.id),
-                mission_id=uuid.UUID(pending_it.mission_id),
-                iteration_number=pending_it.iteration_number,
-                phase="think",
-                module_selected=pending_it.module_selected,
-                module_args=pending_it.module_args,
-                cogitatio=pending_it.cogitatio,
-                head=pending_it.head or "RATIO",
-                approved=True,
-            )
-            # Execute: act → learn
-            result = agent.act(resume_iter, db)
-            if result.get("status") not in ("pending_approval", "rejected"):
-                agent.learn(resume_iter, result, db)
-            iteration_count += 1
-            _log.info("[MENS task] resumed iteration #%d: status=%s fiducia=%.2f",
-                      resume_iter.iteration_number, result.get("status"),
-                      mission.fiducia)
 
-        while mission.status == "running" and iteration_count < MAX_ITERATIONS:
-            # Refresh mission status from DB (may have been aborted externally)
-            db.expire_all()
-            db_row = db.query(MensMissionModel).filter(
-                MensMissionModel.id == mission_id
-            ).first()
-            if not db_row or db_row.status != "running":
-                _log.info("[MENS task] mission %s no longer running (status=%s)",
-                          mission_id, db_row.status if db_row else "deleted")
-                break
+        _log.info(
+            "[MENS task] starting mission id=%d mission_id=%s target=%s mode=%s",
+            mission_db_id, row.mission_id, target, policy.mode,
+        )
 
-            iteration = agent.run_iteration(db)
-            iteration_count += 1
+        result = agent.run(target)
 
-            _log.info(
-                "[MENS task] iteration #%d: module=%s phase=%s fiducia=%.2f",
-                iteration.iteration_number,
-                iteration.module_selected,
-                iteration.phase,
-                mission.fiducia,
-            )
+        _log.info(
+            "[MENS task] mission %s finished: %d iterations, %d findings, status=%s",
+            row.mission_id, result.iterations, result.findings_count, result.status,
+        )
 
-            # COMES mode: pause for approval
-            if mission.mode == "comes" and iteration.approved is None:
-                _log.info("[MENS task] COMES: pausing for approval on iteration #%d",
-                          iteration.iteration_number)
-                db_row.status = "paused"
-                db.commit()
-                break
-
-            # Agent decided DONE
-            if iteration.module_selected == "DONE":
-                break
-
-        # Final status update
-        db.expire_all()
-        final_row = db.query(MensMissionModel).filter(
-            MensMissionModel.id == mission_id
-        ).first()
-        if final_row and final_row.status == "running":
-            if iteration_count >= MAX_ITERATIONS:
-                final_row.status = "completed"
-                final_row.completed_at = datetime.now(timezone.utc)
-                _log.warning("[MENS task] mission %s hit iteration limit (%d)",
-                             mission_id, MAX_ITERATIONS)
-            db.commit()
-
-        _log.info("[MENS task] mission %s finished: %d iterations, status=%s",
-                  mission_id, iteration_count,
-                  final_row.status if final_row else "unknown")
-
-        # ── MIRROR: update organization profile on completion ────
-        if final_row and final_row.status == "completed":
+        # MIRROR hook on completion
+        if result.status == "completed":
             try:
-                _update_mirror_profile(mission_id, mission.target, db)
+                _update_mirror_profile(row.mission_id, target, db)
             except Exception as exc:
                 _log.warning("[MENS task] MIRROR update failed: %s", exc)
 
         return {
-            "status": "ok",
-            "mission_id": mission_id,
-            "iterations": iteration_count,
+            "status": result.status,
+            "mission_id": row.mission_id,
+            "iterations": result.iterations,
+            "findings_count": result.findings_count,
         }
 
     except SoftTimeLimitExceeded:
-        _log.warning("[MENS task] mission %s hit time limit", mission_id)
-        _abort_mission(db, mission_id, "Time limit exceeded (8h)")
-        return {"status": "timeout", "mission_id": mission_id}
+        _log.warning("[MENS task] mission id=%d hit time limit", mission_db_id)
+        _abort_mission(db, mission_db_id, "Time limit exceeded (8h)")
+        return {"status": "timeout", "mission_db_id": mission_db_id}
     except Exception as exc:
-        _log.exception("[MENS task] mission %s failed: %s", mission_id, exc)
-        _abort_mission(db, mission_id, str(exc))
-        return {"status": "error", "mission_id": mission_id, "message": str(exc)}
+        _log.exception("[MENS task] mission id=%d failed: %s", mission_db_id, exc)
+        _abort_mission(db, mission_db_id, str(exc))
+        return {"status": "error", "mission_db_id": mission_db_id, "message": str(exc)}
     finally:
         db.close()
 
 
-def _abort_mission(db, mission_id: str, error_msg: str):
-    """Mark mission as aborted and store error in last iteration."""
-    from backend.mind_agent import MensMissionModel, MensIterationModel
+def _abort_mission(db, mission_db_id: int, error_msg: str):
+    """Mark mission as aborted."""
+    from modules.mind_agent import MensMissionModel
 
     try:
         row = db.query(MensMissionModel).filter(
-            MensMissionModel.id == mission_id
+            MensMissionModel.id == mission_db_id
         ).first()
         if row:
             row.status = "aborted"
             row.completed_at = datetime.now(timezone.utc)
-
-        # Store error in the last iteration
-        last_it = (
-            db.query(MensIterationModel)
-            .filter(MensIterationModel.mission_id == mission_id)
-            .order_by(MensIterationModel.iteration_number.desc())
-            .first()
-        )
-        if last_it:
-            last_it.result_summary = f"[ERROR] {error_msg}"
-        db.commit()
+            row.summary = f"[ERROR] {error_msg}"
+            db.commit()
     except Exception:
-        _log.exception("[MENS task] failed to abort mission %s", mission_id)
+        _log.exception("[MENS task] failed to abort mission id=%d", mission_db_id)
 
 
 def _update_mirror_profile(mission_id: str, target: str, db):
     """Build mission summary and feed it to MIRROR engine."""
-    from backend.mind_agent import MensIterationModel
+    from modules.mind_agent import MensMissionModel, MensIterationModel
     from backend.mirror import MirrorEngine
+
+    mission_row = db.query(MensMissionModel).filter(
+        MensMissionModel.mission_id == mission_id
+    ).first()
+    if not mission_row:
+        return
 
     iter_rows = (
         db.query(MensIterationModel)
-        .filter(MensIterationModel.mission_id == mission_id)
+        .filter(MensIterationModel.mission_id == mission_row.id)
         .order_by(MensIterationModel.iteration_number)
         .all()
     )
 
     iterations_data = [
         {
-            "module": r.module_selected,
-            "findings_count": r.findings_count or 0,
+            "module": r.module_used,
+            "findings_count": 0,
             "result_summary": r.result_summary,
-            "head": r.head or "RATIO",
+            "head": classify_head_safe(r.module_used),
         }
         for r in iter_rows
     ]
@@ -239,3 +163,14 @@ def _update_mirror_profile(mission_id: str, target: str, db):
     engine = MirrorEngine()
     engine.update_profile(target, mission_summary, db)
     _log.info("[MENS task] MIRROR profile updated for target=%s", target)
+
+
+def classify_head_safe(module_name: str) -> str:
+    """Classify head, handling None module names."""
+    if not module_name:
+        return "RATIO"
+    try:
+        from modules.mind_agent import classify_head
+        return classify_head(module_name)
+    except Exception:
+        return "RATIO"

@@ -73,12 +73,13 @@ from backend.routers.verify import router as verify_router
 from backend.routers.intelligence import router as intelligence_router
 from backend.routers.remediation import router as remediation_router
 from backend.routers.dashboard import router as dashboard_router
-from backend.routers.mind import router as mind_router
+from backend.routers.mens import router as mens_router
 from backend.routers.mirror import router as mirror_router
 from backend.routers.proof import router as proof_router
 from backend.routers.findings import router as findings_router
 from backend.routers.compliance import router as compliance_router
 from backend.routers.organizations import router as organizations_router
+from backend.routers.lex import router as lex_router
 
 app.include_router(pages_router)
 app.include_router(auth_router)
@@ -93,9 +94,10 @@ app.include_router(verify_router)
 app.include_router(intelligence_router)
 app.include_router(remediation_router)
 app.include_router(dashboard_router)
-app.include_router(mind_router)
+app.include_router(mens_router)
 app.include_router(mirror_router)
 app.include_router(proof_router)
 app.include_router(findings_router)
 app.include_router(compliance_router)
 app.include_router(organizations_router)
+app.include_router(lex_router)

@@ -124,7 +124,7 @@ celery_app.conf.task_routes = {
     "modules.tasks.run_exploitdb_sync": {"queue": "intel"},
     "modules.tasks.run_malwarebazaar_sync": {"queue": "intel"},
     # mens queue — autonomous agent
-    "modules.mens_task.mens_run_task": {"queue": "mens"},
+    "modules.mens_task.run_mens_mission": {"queue": "mens"},
 }
 
 celery_app.conf.beat_schedule = {
