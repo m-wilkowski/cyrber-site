@@ -34,8 +34,9 @@ def run_mens_mission(self, mission_db_id: int, target: str, policy_dict: dict, o
     if _root not in _sys.path:
         _sys.path.insert(0, _root)
 
+    from modules.organizations import Organization  # noqa: F401 — register FK target
+    from modules.lex import LexPolicy, LexPolicyModel  # noqa: F401
     from modules.mind_agent import MensAgent, MensMissionModel
-    from modules.lex import LexPolicy
 
     db = SessionLocal()
     try:
@@ -112,6 +113,7 @@ def run_mens_mission(self, mission_db_id: int, target: str, policy_dict: dict, o
 
 def _abort_mission(db, mission_db_id: int, error_msg: str):
     """Mark mission as aborted."""
+    from modules.organizations import Organization  # noqa: F401
     from modules.mind_agent import MensMissionModel
 
     try:
@@ -129,6 +131,7 @@ def _abort_mission(db, mission_db_id: int, error_msg: str):
 
 def _update_mirror_profile(mission_id: str, target: str, db):
     """Build mission summary and feed it to MIRROR engine."""
+    from modules.organizations import Organization  # noqa: F401
     from modules.mind_agent import MensMissionModel, MensIterationModel
     from backend.mirror import MirrorEngine
 
