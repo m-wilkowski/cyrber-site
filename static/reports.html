@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CYRBER — RAPORTY</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+html { font-size: clamp(14px, 1.2vw, 20px); }
+body { background: var(--bg-root); min-height: 100vh; }
+.wrapper {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: max(var(--sp-8), 2rem) max(var(--content-padding), 2rem) max(var(--sp-16), 2rem);
+}
+.page-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-2xl);
+  font-weight: 900;
+  letter-spacing: .1em;
+  color: var(--text-primary);
+  margin: 0 0 var(--sp-2) 0;
+}
+.page-subtitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  letter-spacing: .08em;
+}
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-6); margin-top: var(--sp-8); }
+.report-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-8);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.report-card:hover {
+  border-color: var(--accent-red);
+  box-shadow: 0 4px 24px rgba(193,18,31,0.12);
+}
+.report-card h3 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--sp-3) 0;
+}
+.report-card p {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 var(--sp-4) 0;
+}
+.badge-soon {
+  display: inline-block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: var(--accent-gold);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+.report-icon {
+  font-size: 2rem;
+  margin-bottom: var(--sp-3);
+}
+</style>
+</head>
+<body>
+
+<div id="cyrber-nav-root"></div>
+<script src="/static/nav.js"></script>
+
+<div class="wrapper">
+  <h1 class="page-title">RAPORTY</h1>
+  <p class="page-subtitle">GENEROWANIE RAPORTOW &middot; EKSPORT &middot; PODSUMOWANIA</p>
+
+  <div class="cards">
+    <div class="report-card">
+      <div class="report-icon">&#128196;</div>
+      <h3>PDF Export</h3>
+      <p>Eksportuj wyniki skanowania, topologi&#281; i timeline ataków do dokumentu PDF gotowego do wydruku.</p>
+      <span class="badge-soon">PHASE 2</span>
+    </div>
+
+    <div class="report-card">
+      <div class="report-icon">&#128200;</div>
+      <h3>Executive Summary</h3>
+      <p>Jednostronicowe podsumowanie ryzyka, najwa&#380;niejsze znaleziska i rekomendacje &#8212; dla zarz&#261;du.</p>
+      <span class="badge-soon">PHASE 2</span>
+    </div>
+
+    <div class="report-card">
+      <div class="report-icon">&#128736;</div>
+      <h3>Technical Report</h3>
+      <p>Pe&#322;ny raport techniczny z detalami CVE, &#322;a&#324;cuchami exploit&#243;w, dowodami i krokami remediacji.</p>
+      <span class="badge-soon">PHASE 2</span>
+    </div>
+  </div>
+</div>
+
+<script>
+var API='';
+function getToken(){return localStorage.getItem('cyrber_token')}
+if(!getToken())window.location.href='/login';
+</script>
+</body>
+</html>

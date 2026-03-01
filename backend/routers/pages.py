@@ -109,6 +109,11 @@ async def organizations_page():
     return FileResponse("static/organizations.html", headers=_NO_CACHE)
 
 
+@router.get("/reports")
+async def reports_page():
+    return FileResponse("static/reports.html", headers=_NO_CACHE)
+
+
 @router.get("/admin")
 async def admin_page():
     return FileResponse("static/admin.html", headers=_NO_CACHE)
