@@ -1032,6 +1032,10 @@ html[data-theme="light"] .nav-dropdown a:hover {
   .cyrber-nav .nav-user span { display: none; }
 }
 
+/* ── Package display names ── */
+.pkg-name { font-weight: 700; letter-spacing: 0.1em; }
+.pkg-subtitle { font-size: 0.7em; opacity: 0.6; font-style: italic; margin-left: 0.3em; }
+
 /* ── CLIENT NAV mode ── */
 .cyrber-nav-client .nav-links { gap: 0; }
 .cyrber-nav-client .nav-item.client-item > a {

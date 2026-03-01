@@ -473,6 +473,7 @@ table.orgs tbody td {
 <body>
 
 <div id="cyrber-nav-root"></div>
+<script src="/static/cyrber-config.js"></script>
 <script src="/static/nav.js"></script>
 <!-- MODAL -->
 <div class="modal-overlay" id="modalOverlay">
@@ -690,7 +691,7 @@ table.orgs tbody td {
       // Package badge
       var pkg = o.package || 'NONE';
       var pkgClass = 'pkg-' + pkg;
-      var pkgHtml = '<span class="pkg-badge ' + pkgClass + '">' + pkg + '</span>';
+      var pkgHtml = '<span class="pkg-badge ' + pkgClass + '">' + renderPackageBadge(pkg) + '</span>';
 
       // Connection mode
       var mode = o.connection_mode || 'CONNECTED';

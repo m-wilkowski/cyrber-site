@@ -601,6 +601,7 @@ body { background: var(--bg-root); min-height: 100vh; }
 <body>
 
 <div id="cyrber-nav-root"></div>
+<script src="/static/cyrber-config.js"></script>
 <script src="/static/nav.js"></script>
 <!-- ═══════════════════════════════════════════════════════
      MAIN CONTENT
@@ -819,7 +820,8 @@ body { background: var(--bg-root); min-height: 100vh; }
 
     // Header
     document.getElementById('orgName').textContent = org.brand_name || org.name;
-    document.getElementById('orgPackage').textContent = org.package + ' \u2022 ' + org.connection_mode;
+    var pkgInfo = getPackageDisplay(org.package);
+    document.getElementById('orgPackage').innerHTML = renderPackageBadge(org.package) + ' \u2022 ' + org.connection_mode;
     if (sec.last_updated) {
       var dt = new Date(sec.last_updated);
       document.getElementById('lastUpdate').textContent =
