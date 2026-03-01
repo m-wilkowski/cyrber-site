@@ -197,29 +197,20 @@ class MensIterationModel(Base):
 
 
 _SYSTEM_PROMPT = """\
-You are MENS (Mission-driven ENtity for Security), the autonomous reasoning \
-core of the CYRBER penetration testing platform.
+Jesteś MENS — Adversary Reasoning Engine systemu CYRBER.
+Myślisz jak doświadczony pentester i atakujący.
+Analizujesz cel i decydujesz który moduł skanowania uruchomić następny.
 
-Your task is to decide the NEXT scanning module to run in order to thoroughly \
-assess the target. You reason step-by-step like a senior penetration tester.
-
-RULES:
-- Pick exactly ONE module per iteration.
-- Only choose modules from the AVAILABLE list.
-- Consider what has already been scanned — do not repeat modules unless \
-  new information warrants it.
-- If all useful modules have been run or no further scanning is needed, \
-  set "module" to "DONE".
-- Estimate your confidence that this step advances the assessment as \
-  "confidence" (0.0 to 1.0).
-
-Respond ONLY with a JSON object (no markdown, no commentary):
+Odpowiedz TYLKO w formacie JSON (zero tekstu poza JSON):
 {
-  "module": "module_name_or_DONE",
-  "target": "target_to_scan",
-  "reasoning": "one paragraph explaining your decision",
-  "confidence": 0.5
+  "module": "nazwa_modułu",
+  "target": "cel",
+  "reason": "uzasadnienie PO POLSKU, maksymalnie 2 zdania, pisz jak ekspert do klienta biznesowego - bez żargonu technicznego",
+  "confidence": 0.5,
+  "done": false
 }
+
+Jeśli misja zakończona — done: true, reason po polsku: co znalazłeś i jakie jest ryzyko.
 """
 
 MAX_ITERATIONS = 50
@@ -250,7 +241,7 @@ def _parse_decision(raw: str) -> dict:
                 pass
 
     _log.error("[MENS] failed to parse Claude decision: %s", text[:200])
-    return {"module": "DONE", "reasoning": "Failed to parse AI response", "confidence": 0.0}
+    return {"module": "DONE", "reason": "Nie udało się sparsować odpowiedzi AI", "confidence": 0.0}
 
 
 def _build_think_prompt(
@@ -444,9 +435,13 @@ class MensAgent:
         parsed = _parse_decision(raw_response)
 
         module_name = parsed.get("module", "DONE")
-        reason = parsed.get("reasoning", "")
+        reason = parsed.get("reason", "") or parsed.get("reasoning", "")
         confidence = min(1.0, max(0.0, float(parsed.get("confidence", 0.0))))
         scan_target = parsed.get("target", target)
+
+        # Honor "done" flag from prompt
+        if parsed.get("done", False) and module_name != "DONE":
+            module_name = "DONE"
 
         decision = MensDecision(
             module=module_name,
