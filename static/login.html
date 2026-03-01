@@ -302,9 +302,9 @@ body::before {
 </div>
 
 <script>
-// If already authenticated, redirect to /ui
+// If already authenticated, redirect to /overview
 if (localStorage.getItem('cyrber_token')) {
-  window.location.href = '/ui';
+  window.location.href = '/overview';
 }
 
 async function doLogin(e) {
@@ -344,7 +344,7 @@ async function doLogin(e) {
           localStorage.setItem('cyrber_user', u.username || '');
         }
       } catch (_) {}
-      window.location.href = '/ui';
+      window.location.href = '/overview';
       return;
     } else if (r.status === 429) {
       errEl.textContent = 'Too many attempts. Try again later.';

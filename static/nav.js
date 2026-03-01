@@ -16,7 +16,7 @@
     ]},
     { id: 'ratio', label: 'RATIO', items: [
       { label: 'Infrastructure \u00B7 Code \u00B7 CVE', type: 'label' },
-      { href: '/ui',       text: '\uD83D\uDD0D Scan' },
+      { href: '/scan',     text: '\uD83D\uDD0D Scan' },
       { href: '/findings', text: '\uD83D\uDCCC Findings' },
       { href: '/topology', text: '\uD83D\uDDFA Topology' },
       { href: '/osint',    text: '\uD83C\uDF10 OSINT' },
@@ -52,7 +52,7 @@
     '/overview': 'missions', '/missions': 'missions', '/dashboard': 'missions',
     '/theatrum': 'missions', '/scheduler': 'missions', '/mission-control': 'missions',
     '/command-center': 'missions', '/admin': 'missions', '/organizations': 'missions',
-    '/ui': 'ratio', '/findings': 'ratio', '/topology': 'ratio',
+    '/ui': 'ratio', '/scan': 'ratio', '/findings': 'ratio', '/topology': 'ratio',
     '/osint': 'ratio', '/verify': 'ratio',
     '/phishing': 'animus',
     '/hardware': 'fatum',

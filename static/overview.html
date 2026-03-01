@@ -519,6 +519,65 @@ body { background: var(--bg-root); min-height: 100vh; }
   background: rgba(74,143,212,.06);
 }
 
+/* ── ONBOARDING ── */
+.onboarding-card {
+  background: var(--card-bg);
+  border: 1px solid rgba(193,18,31,0.25);
+  border-radius: var(--radius-md);
+  padding: max(var(--sp-10), 2.5rem) max(var(--sp-8), 2rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(193,18,31,0.08);
+  backdrop-filter: blur(12px);
+  animation: fadeInUp .6s ease both;
+}
+.onboarding-wolf {
+  font-size: 3.5rem;
+  margin-bottom: var(--sp-4);
+  filter: drop-shadow(0 0 12px rgba(193,18,31,0.3));
+}
+.onboarding-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-xl);
+  font-weight: 900;
+  letter-spacing: .12em;
+  color: var(--text-primary);
+  margin: 0 0 var(--sp-4);
+}
+.onboarding-text {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: var(--text-md);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 420px;
+  margin: 0 0 var(--sp-8);
+}
+.onboarding-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 14px 32px;
+  background: var(--accent-red);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all .2s;
+}
+.onboarding-btn:hover {
+  background: #9a0e17;
+  box-shadow: 0 0 24px rgba(193,18,31,0.4);
+  transform: translateY(-1px);
+}
+
 /* ── LOADING ── */
 .loading-state {
   text-align: center;
@@ -567,9 +626,23 @@ body { background: var(--bg-root); min-height: 100vh; }
       </div>
     </div>
 
+    <!-- ══ ONBOARDING (hidden by default) ══ -->
+    <div id="onboardingPanel" style="display:none;">
+      <div class="onboarding-card">
+        <div class="onboarding-wolf">&#128058;</div>
+        <h2 class="onboarding-title">Witaj w CYRBER</h2>
+        <p class="onboarding-text">
+          Cerberus jest gotowy do pracy.<br>
+          Uruchom pierwsz&#261; misj&#281; &#380;eby zobaczy&#263;
+          stan bezpiecze&#324;stwa Twojej organizacji.
+        </p>
+        <a href="/missions" class="onboarding-btn">&rarr; URUCHOM PIERWSZ&#260; MISJ&#280;</a>
+      </div>
+    </div>
+
     <!-- ══ SEKCJA 1: CEO ══ -->
-    <div class="section-label">POZIOM 1 &mdash; EXECUTIVE SUMMARY</div>
-    <div class="ceo-section">
+    <div class="section-label" id="ceoLabel">POZIOM 1 &mdash; EXECUTIVE SUMMARY</div>
+    <div class="ceo-section" id="ceoSection">
 
       <!-- Gauge -->
       <div class="gauge-card">
@@ -735,6 +808,14 @@ body { background: var(--bg-root); min-height: 100vh; }
     var sec = d.security;
     var met = d.metrics;
     var pulse = d.pulse;
+
+    // Onboarding: no scans yet
+    var noScans = !met.last_mission || met.last_mission.scan_id === null;
+    if (noScans) {
+      document.getElementById('onboardingPanel').style.display = '';
+      document.getElementById('ceoLabel').style.display = 'none';
+      document.getElementById('ceoSection').style.display = 'none';
+    }
 
     // Header
     document.getElementById('orgName').textContent = org.brand_name || org.name;

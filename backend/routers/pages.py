@@ -29,14 +29,19 @@ async def missions_page():
     return FileResponse("static/missions.html", headers=_NO_CACHE)
 
 
+@router.get("/scan")
+async def scan_page():
+    return FileResponse("static/index.html", headers=_NO_CACHE)
+
+
 @router.get("/ui")
 async def ui():
-    return FileResponse("static/index.html", headers=_NO_CACHE)
+    return RedirectResponse(url="/overview", status_code=301)
 
 
 @router.get("/dashboard")
 async def dashboard():
-    return FileResponse("static/dashboard.html", headers=_NO_CACHE)
+    return RedirectResponse(url="/overview", status_code=301)
 
 
 @router.get("/scheduler")
@@ -163,4 +168,4 @@ async def db_health():
 
 @router.get("/")
 async def root():
-    return RedirectResponse(url="/ui")
+    return RedirectResponse(url="/overview")
