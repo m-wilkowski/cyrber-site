@@ -338,10 +338,10 @@ class MensAgent:
         self._target_model: dict = {}  # accumulated target knowledge
 
     def _get_provider(self):
-        """Lazy-init the Claude provider."""
+        """Lazy-init the LLM provider via task routing."""
         if self._provider is None:
-            from modules.llm_provider import ClaudeProvider
-            self._provider = ClaudeProvider(model="claude-opus-4-20250514")
+            from modules.llm_provider import get_provider
+            self._provider = get_provider(task="mens")
         return self._provider
 
     # ── Phase: OBSERVE ───────────────────────────────────────────
@@ -572,8 +572,8 @@ class MensAgent:
         snippet = json.dumps(scan_result, ensure_ascii=False, default=str)[:2000]
 
         try:
-            from modules.llm_provider import ClaudeProvider
-            haiku = ClaudeProvider(model="claude-haiku-4-5-20251001")
+            from modules.llm_provider import get_provider
+            haiku = get_provider(task="summary")
             summary = haiku.chat(
                 f"Summarize this {module_name} scan result in one sentence "
                 f"(max 100 tokens). Focus on key findings and risk.\n\n{snippet}",

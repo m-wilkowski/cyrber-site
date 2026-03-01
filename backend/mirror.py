@@ -272,8 +272,8 @@ class MirrorEngine:
     ) -> str:
         """Generate a Security Genome Report via Claude Opus."""
 
-        from modules.llm_provider import ClaudeProvider
-        provider = ClaudeProvider(model="claude-opus-4-20250514")
+        from modules.llm_provider import get_provider
+        provider = get_provider(task="reasoning")
 
         prompt = _build_genome_prompt(profile)
         _log.info("[MIRROR] generating genome for target=%s", profile.target)

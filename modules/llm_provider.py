@@ -2,11 +2,12 @@
 Unified LLM provider abstraction for CYRBER.
 
 Supports:
-  - claude  (Anthropic API)
-  - ollama  (local Ollama — Mistral, Llama, etc.)
+  - claude   (Anthropic API — native SDK)
+  - ollama   (local Ollama — Mistral, Llama, etc.)
+  - litellm  (LiteLLM universal proxy — any provider)
 
 Config via .env:
-  LLM_PROVIDER=claude          # or: ollama
+  LLM_PROVIDER=claude          # or: ollama, litellm
   ANTHROPIC_API_KEY=sk-...
   CLAUDE_MODEL=claude-sonnet-4-20250514
   OLLAMA_URL=http://localhost:11434
@@ -341,6 +342,99 @@ class OllamaProvider(LLMProvider):
         ]
 
 
+# ── LiteLLM (universal proxy) ─────────────────────────────────
+
+class LiteLLMProvider(LLMProvider):
+    """LLM provider using LiteLLM — supports any model via unified API."""
+
+    def __init__(self, model: str | None = None, api_base: str | None = None):
+        self._model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+        self._api_base = api_base
+
+    @property
+    def name(self):
+        return "litellm"
+
+    def chat(self, prompt, system=None, max_tokens=1024):
+        import litellm
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
+        kwargs = {"model": self._model, "messages": messages,
+                  "max_tokens": max_tokens}
+        if self._api_base:
+            kwargs["api_base"] = self._api_base
+
+        resp = litellm.completion(**kwargs)
+        return resp.choices[0].message.content or ""
+
+    def chat_with_tools(self, messages, tools, system=None, max_tokens=4096):
+        import litellm
+        # Convert Anthropic tool schema → OpenAI format
+        openai_tools = OllamaProvider._convert_tools(tools)
+
+        all_msgs = list(messages)
+        if system:
+            all_msgs.insert(0, {"role": "system", "content": system})
+
+        kwargs = {"model": self._model, "messages": all_msgs,
+                  "max_tokens": max_tokens, "tools": openai_tools}
+        if self._api_base:
+            kwargs["api_base"] = self._api_base
+
+        resp = litellm.completion(**kwargs)
+        choice = resp.choices[0]
+        msg = choice.message
+
+        tool_calls = []
+        for tc in (msg.tool_calls or []):
+            args = tc.function.arguments
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except json.JSONDecodeError:
+                    args = {}
+            tool_calls.append(ToolCall(
+                id=tc.id or f"call_{len(tool_calls)}",
+                name=tc.function.name,
+                input=args if isinstance(args, dict) else {},
+            ))
+
+        return LLMResponse(
+            text=msg.content or None,
+            tool_calls=tool_calls,
+            stop_reason="tool_use" if tool_calls else "end_turn",
+            _raw=resp,
+        )
+
+    # ── message helpers (OpenAI format) ──
+
+    def make_user_msg(self, content):
+        return {"role": "user", "content": content}
+
+    def make_assistant_msgs(self, response):
+        msg = {"role": "assistant", "content": response.text or ""}
+        if response.tool_calls:
+            msg["tool_calls"] = [
+                {"id": tc.id, "type": "function",
+                 "function": {"name": tc.name,
+                              "arguments": json.dumps(tc.input)}}
+                for tc in response.tool_calls
+            ]
+        return [msg]
+
+    def make_tool_result_msgs(self, results):
+        return [
+            {"role": "tool", "content": content, "tool_call_id": tid}
+            for tid, content in results
+        ]
+
+    def is_available(self):
+        return True
+
+
 # ── Factory ───────────────────────────────────────────────────
 
 _provider_cache: dict[str, LLMProvider] = {}
@@ -349,7 +443,7 @@ _provider_cache: dict[str, LLMProvider] = {}
 def get_provider(force: str | None = None, task: str | None = None) -> LLMProvider:
     """Return the configured LLM provider.
 
-    force: override provider type ("claude" or "ollama") — bypasses cache.
+    force: override provider type ("claude", "ollama", "litellm") — bypasses cache.
     task:  task identifier for model routing via config/models.yaml.
            Different tasks can use different Claude models.
     """
@@ -359,6 +453,18 @@ def get_provider(force: str | None = None, task: str | None = None) -> LLMProvid
     if choice == "ollama":
         prov = OllamaProvider()
         log.info("LLM provider: %s (force=%s)", prov.name, force)
+        return prov
+
+    # LiteLLM: per-task model routing with cache
+    if choice == "litellm":
+        cache_key = f"litellm:{task}" if task else "litellm:_default_"
+        if force is None and cache_key in _provider_cache:
+            return _provider_cache[cache_key]
+        model = _resolve_model_for_task(task)
+        prov = LiteLLMProvider(model=model)
+        log.info("LLM provider: %s model=%s task=%s", prov.name, model, task)
+        if force is None:
+            _provider_cache[cache_key] = prov
         return prov
 
     # Claude: per-task model routing with cache

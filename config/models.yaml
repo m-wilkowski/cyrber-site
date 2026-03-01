@@ -4,10 +4,14 @@
 tasks:
   exploit_chains: "claude-opus-4-20250514"           # Krytyczne - najlepsza jakość
   hacker_narrative: "claude-opus-4-20250514"          # Krytyczne - jakość narracji
+  mens: "claude-opus-4-20250514"                     # MENS autonomous agent
+  reasoning: "claude-opus-4-20250514"                # MIRROR genome, deep analysis
   ai_analysis: "claude-sonnet-4-20250514"             # Główna analiza - balans
-  false_positive_filter: "claude-haiku-4-5-20251001"  # Proste - najtańszy
-  llm_analyze: "claude-haiku-4-5-20251001"            # Proste - najtańszy
   agent: "claude-sonnet-4-20250514"                   # Agent - balans
   phishing_email: "claude-sonnet-4-20250514"           # Generowanie emaili phishingowych
+  classify: "claude-haiku-4-5-20251001"              # Classification, verdict, explain
+  summary: "claude-haiku-4-5-20251001"               # MENS result summarization
+  false_positive_filter: "claude-haiku-4-5-20251001"  # Proste - najtańszy
+  llm_analyze: "claude-haiku-4-5-20251001"            # Proste - najtańszy
 
 default: "claude-sonnet-4-20250514"

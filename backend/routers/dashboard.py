@@ -136,7 +136,7 @@ async def scan_agent(
     body: ScanAgentRequest,
     user: dict = Depends(get_current_user),
 ):
-    from modules.llm_provider import ClaudeProvider
+    from modules.llm_provider import get_provider
 
     scan = get_scan_by_task_id(body.task_id)
     if not scan:
@@ -192,7 +192,7 @@ async def scan_agent(
     )
 
     try:
-        provider = ClaudeProvider(model="claude-haiku-4-5-20251001")
+        provider = get_provider(task="classify")
         prompt_parts = []
         for msg in (body.history or [])[-8:]:
             role = msg.get("role", "user")

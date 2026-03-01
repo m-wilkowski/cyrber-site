@@ -80,6 +80,7 @@ from backend.routers.findings import router as findings_router
 from backend.routers.compliance import router as compliance_router
 from backend.routers.organizations import router as organizations_router
 from backend.routers.lex import router as lex_router
+from backend.routers.llm import router as llm_router
 
 app.include_router(pages_router)
 app.include_router(auth_router)
@@ -101,3 +102,48 @@ app.include_router(findings_router)
 app.include_router(compliance_router)
 app.include_router(organizations_router)
 app.include_router(lex_router)
+app.include_router(llm_router)
+
+
+# ── LLM Status Banner ──
+def _print_llm_status():
+    """Print LLM provider status at startup."""
+    try:
+        from modules.llm_router import cyrber_llm
+        from modules.database import SessionLocal
+        from modules.organizations import Organization
+
+        providers = cyrber_llm.get_active_providers()
+        active = [
+            f"{n} (P{info['priority']})"
+            for n, info in sorted(providers.items(), key=lambda x: x[1]["priority"])
+            if info["enabled"] and info["available"]
+        ]
+
+        banner = "\n" + "-" * 60
+        banner += "\n  CYRBER LLM STATUS"
+        banner += "\n" + "-" * 60
+        banner += f"\n  Active providers: {', '.join(active) if active else 'NONE'}"
+
+        # Per-org settings
+        try:
+            db = SessionLocal()
+            orgs = db.query(Organization).filter(Organization.is_active == True).all()
+            if orgs:
+                banner += f"\n  Organizations ({len(orgs)}):"
+                for org in orgs:
+                    mode = (org.llm_mode or "cloud").upper()
+                    provider = org.preferred_provider or "anthropic"
+                    custom_url = f" ({org.ollama_base_url})" if org.ollama_base_url else ""
+                    banner += f"\n    {org.name:<30} {mode:<8} {provider}{custom_url}"
+            db.close()
+        except Exception:
+            pass
+
+        banner += "\n" + "-" * 60
+        print(banner, flush=True)
+    except Exception as exc:
+        print(f"LLM status: unavailable ({exc})", flush=True)
+
+
+_print_llm_status()

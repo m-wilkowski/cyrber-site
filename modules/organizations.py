@@ -33,6 +33,14 @@ class Organization(Base):
     connection_mode = Column(String(20), nullable=False, default='CONNECTED')
     # Wartości: CONNECTED / SCHEDULED / AIRGAP
 
+    # LLM configuration per org
+    llm_mode = Column(String(20), nullable=False, default='cloud')
+    # Wartości: cloud / local / airgap
+    preferred_provider = Column(String(50), nullable=False, default='anthropic')
+    # Wartości: anthropic / openai / deepseek
+    ollama_base_url = Column(String(255), nullable=True)
+    # Custom Ollama endpoint (jeśli klient ma własny)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(),
                         onupdate=func.now())

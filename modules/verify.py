@@ -1332,8 +1332,8 @@ def generate_verdict(risk_score: int, signals: dict, query: str) -> dict:
 
     # Try AI-enhanced verdict
     try:
-        from modules.llm_provider import ClaudeProvider
-        provider = ClaudeProvider(model="claude-haiku-4-5-20251001")
+        from modules.llm_provider import get_provider
+        provider = get_provider(task="classify")
 
         signals_summary = json.dumps(signals, ensure_ascii=False, default=str)
         if len(signals_summary) > 2000:

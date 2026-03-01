@@ -110,7 +110,7 @@ async def explain_finding(
     except Exception:
         pass
 
-    from modules.llm_provider import ClaudeProvider
+    from modules.llm_provider import get_provider
     prompt = (
         "You are a cybersecurity expert. Explain this finding to a business owner "
         "in plain English, without technical jargon.\n\n"
@@ -124,7 +124,7 @@ async def explain_finding(
         '"fix": "How to fix it - 2-3 sentences"}'
     )
     try:
-        provider = ClaudeProvider(model="claude-haiku-4-5-20251001")
+        provider = get_provider(task="classify")
         response_text = provider.chat(prompt, max_tokens=600)
         clean = response_text.strip()
         if clean.startswith("```"):

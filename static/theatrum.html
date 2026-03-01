@@ -373,6 +373,163 @@ body { background: var(--bg-root); min-height: 100vh; margin: 0; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── MISSION LIST ── */
+.mission-list-wrap {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--content-padding) var(--sp-8);
+  display: none;
+}
+.ml-top-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--sp-5);
+  animation: fadeInUp .4s ease both;
+}
+.ml-title {
+  font-family: 'Orbitron', sans-serif; font-size: var(--text-xl);
+  font-weight: 900; letter-spacing: .1em; color: var(--text-primary);
+}
+.btn-new-mission {
+  font-family: 'Share Tech Mono', monospace; font-size: .8rem;
+  letter-spacing: .08em; padding: 10px 22px;
+  background: var(--accent); color: #fff;
+  border: 1px solid var(--accent); border-radius: var(--radius-sm);
+  cursor: pointer; transition: opacity .15s;
+}
+.btn-new-mission:hover { opacity: .85; }
+.ml-table-wrap {
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--radius-md); box-shadow: var(--card-shadow);
+  overflow-x: auto;
+  animation: fadeInUp .4s ease .08s both;
+}
+table.ml-table {
+  width: 100%; border-collapse: collapse;
+  font-family: 'Rajdhani', sans-serif; font-size: .9rem;
+}
+table.ml-table thead th {
+  font-family: 'Share Tech Mono', monospace; font-size: .7rem;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text-muted); padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap;
+}
+table.ml-table tbody tr {
+  border-bottom: 1px solid var(--border); transition: background .12s;
+}
+table.ml-table tbody tr:last-child { border-bottom: none; }
+table.ml-table tbody tr:hover { background: var(--bg-overlay); }
+table.ml-table tbody td {
+  padding: var(--sp-3) var(--sp-4); color: var(--text-secondary); vertical-align: middle;
+}
+.ml-target {
+  font-family: 'Share Tech Mono', monospace; font-size: .82rem;
+  color: var(--text-primary); font-weight: 600;
+}
+.ml-mode {
+  font-family: 'Orbitron', sans-serif; font-size: .6rem;
+  font-weight: 700; letter-spacing: .08em; padding: 2px 10px;
+  border-radius: 3px; display: inline-block;
+}
+.ml-status-badge {
+  font-family: 'Share Tech Mono', monospace; font-size: .72rem;
+  font-weight: 700; letter-spacing: .06em; padding: 3px 10px;
+  border-radius: 3px; display: inline-flex; align-items: center; gap: 6px;
+}
+.ml-status-completed { background: rgba(0,200,83,.12); color: #00c853; border: 1px solid rgba(0,200,83,.25); }
+.ml-status-aborted   { background: rgba(193,18,31,.12); color: #C1121F; border: 1px solid rgba(193,18,31,.25); }
+.ml-status-running   { background: rgba(74,143,212,.12); color: #4a8fd4; border: 1px solid rgba(74,143,212,.25); }
+.ml-status-running .ml-pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #4a8fd4; animation: liveDot 1.5s ease-in-out infinite;
+}
+.ml-status-pending   { background: rgba(148,163,184,.1); color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
+.ml-status-paused    { background: rgba(245,158,11,.12); color: #f59e0b; border: 1px solid rgba(245,158,11,.25); }
+.ml-num {
+  font-family: 'Share Tech Mono', monospace; font-size: .82rem;
+}
+.ml-time {
+  font-family: 'Share Tech Mono', monospace; font-size: .78rem;
+  color: var(--text-muted);
+}
+.btn-detail {
+  font-family: 'Share Tech Mono', monospace; font-size: .72rem;
+  letter-spacing: .06em; padding: 4px 12px;
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: all .15s; border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted); text-decoration: none;
+}
+.btn-detail:hover { border-color: var(--accent); color: var(--accent); }
+.btn-detail.primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.btn-detail.primary:hover { opacity: .85; }
+
+/* ── MISSION DETAIL PANEL ── */
+.detail-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.55); z-index: 900;
+  display: none; align-items: flex-start; justify-content: center;
+  padding-top: 60px; overflow-y: auto;
+}
+.detail-overlay.open { display: flex; }
+.detail-panel {
+  background: var(--bg-root); border: 1px solid var(--border);
+  border-radius: var(--radius-md); box-shadow: 0 20px 60px rgba(0,0,0,.4);
+  width: min(720px, 92vw); max-height: 80vh; overflow-y: auto;
+  animation: fadeInUp .25s ease;
+}
+.detail-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--sp-4) var(--sp-6); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--bg-root); z-index: 1;
+}
+.detail-title {
+  font-family: 'Orbitron', sans-serif; font-size: var(--text-md);
+  font-weight: 700; color: var(--text-primary); letter-spacing: .06em;
+}
+.detail-close {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-muted); border-radius: var(--radius-sm);
+  width: 30px; height: 30px; display: flex; align-items: center;
+  justify-content: center; cursor: pointer; font-size: 16px; transition: all .15s;
+}
+.detail-close:hover { border-color: var(--accent-red); color: var(--accent-red); }
+.detail-meta {
+  display: flex; flex-wrap: wrap; gap: var(--sp-3) var(--sp-6);
+  padding: var(--sp-4) var(--sp-6);
+  font-family: 'Share Tech Mono', monospace; font-size: .78rem;
+  color: var(--text-muted); border-bottom: 1px solid var(--border);
+}
+.detail-meta strong { color: var(--text-primary); }
+.detail-body { padding: var(--sp-4) var(--sp-6) var(--sp-6); }
+.detail-section-label {
+  font-family: 'Share Tech Mono', monospace; font-size: .68rem;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: var(--sp-3);
+}
+table.iter-table {
+  width: 100%; border-collapse: collapse; font-size: .82rem;
+}
+table.iter-table th {
+  font-family: 'Share Tech Mono', monospace; font-size: .65rem;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--text-muted); padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border); text-align: left;
+}
+table.iter-table td {
+  padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border);
+  color: var(--text-secondary); vertical-align: top;
+}
+table.iter-table tr:last-child td { border-bottom: none; }
+.iter-module {
+  font-family: 'Share Tech Mono', monospace; font-size: .78rem;
+  color: var(--accent-blue); font-weight: 700;
+}
+.iter-reason {
+  font-family: 'Rajdhani', sans-serif; font-size: .82rem;
+  line-height: 1.4; max-width: 280px;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 1024px) {
   .theatrum-grid { grid-template-columns: 1fr; }
@@ -516,6 +673,42 @@ body { background: var(--bg-root); min-height: 100vh; margin: 0; }
   </div>
 </div>
 
+<!-- MISSION LIST -->
+<div class="mission-list-wrap" id="missionListWrap">
+  <div class="ml-top-bar">
+    <span class="ml-title">MISJE</span>
+    <button class="btn-new-mission" id="btnNewMissionList">+ NOWA MISJA</button>
+  </div>
+  <div class="ml-table-wrap">
+    <table class="ml-table">
+      <thead>
+        <tr>
+          <th>TARGET</th>
+          <th>MODE</th>
+          <th>STATUS</th>
+          <th>ITERACJE</th>
+          <th>FINDINGS</th>
+          <th>CZAS</th>
+          <th>AKCJA</th>
+        </tr>
+      </thead>
+      <tbody id="mlBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MISSION DETAIL OVERLAY -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-panel">
+    <div class="detail-header">
+      <span class="detail-title" id="detailTitle">MISSION DETAIL</span>
+      <button class="detail-close" id="detailClose">&times;</button>
+    </div>
+    <div class="detail-meta" id="detailMeta"></div>
+    <div class="detail-body" id="detailBody"></div>
+  </div>
+</div>
+
 <!-- MAIN GRID -->
 <div class="theatrum-grid" id="mainGrid" style="display:none;">
 
@@ -634,6 +827,8 @@ body { background: var(--bg-root); min-height: 100vh; margin: 0; }
   var newMissionWrap = document.getElementById('newMissionWrap');
   var mainGrid = document.getElementById('mainGrid');
   var missionBar = document.getElementById('missionBar');
+  var missionListWrap = document.getElementById('missionListWrap');
+  var detailOverlay = document.getElementById('detailOverlay');
 
   // ── Escape helpers ──
   function escHtml(s) {
@@ -654,7 +849,7 @@ body { background: var(--bg-root); min-height: 100vh; margin: 0; }
     }).then(function(missions) {
       loadingState.style.display = 'none';
 
-      // Find active mission (running or paused first, then most recent)
+      // Find active mission (running or paused first)
       var active = null;
       for (var i = 0; i < missions.length; i++) {
         var s = missions[i].status;
@@ -663,13 +858,11 @@ body { background: var(--bg-root); min-height: 100vh; margin: 0; }
           break;
         }
       }
-      // Fallback to most recent completed
-      if (!active && missions.length > 0) {
-        active = missions[0];
-      }
 
       if (active) {
         loadMissionDetail(active.mission_id);
+      } else if (missions.length > 0) {
+        showMissionList(missions);
       } else {
         showNewMissionForm();
       }
@@ -686,9 +879,176 @@ body { background: var(--bg-root); min-height: 100vh; margin: 0; }
     loadingState.style.display = 'none';
     mainGrid.style.display = 'none';
     missionBar.style.display = 'none';
+    missionListWrap.style.display = 'none';
     newMissionWrap.style.display = 'flex';
     loadPolicies();
   }
+
+  // ════════════════════════════════════════════════════════════
+  // MISSION LIST (recent missions table)
+  // ════════════════════════════════════════════════════════════
+
+  function showMissionList(missions) {
+    loadingState.style.display = 'none';
+    mainGrid.style.display = 'none';
+    missionBar.style.display = 'none';
+    newMissionWrap.style.display = 'none';
+    missionListWrap.style.display = 'block';
+    renderMissionList(missions);
+  }
+
+  function renderMissionList(missions) {
+    var tbody = document.getElementById('mlBody');
+    var list = missions.slice(0, 10);
+
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:var(--sp-8);font-family:\'Share Tech Mono\',monospace;color:var(--text-muted);">Brak misji</td></tr>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < list.length; i++) {
+      var m = list[i];
+
+      // Status badge
+      var statusClass = 'ml-status-' + (m.status || 'pending');
+      var statusContent = (m.status || 'pending').toUpperCase();
+      if (m.status === 'running') {
+        statusContent = '<span class="ml-pulse"></span>' + statusContent;
+      }
+
+      // Mode badge
+      var modeClass = 'mode-' + (m.mode || 'COMES');
+
+      // Duration
+      var duration = '—';
+      if (m.started_at) {
+        var start = new Date(m.started_at);
+        var end = m.completed_at ? new Date(m.completed_at) : new Date();
+        var diff = Math.max(0, Math.floor((end - start) / 1000));
+        var dh = Math.floor(diff / 3600);
+        var dm = Math.floor((diff % 3600) / 60);
+        var ds = diff % 60;
+        duration = (dh > 0 ? pad(dh) + ':' : '') + pad(dm) + ':' + pad(ds);
+      }
+
+      // Action buttons
+      var actionHtml = '<button class="btn-detail" onclick="viewMissionDetail(' + m.id + ')">SZCZEGOLY</button>';
+      if (m.status === 'running' || m.status === 'paused' || m.status === 'pending') {
+        actionHtml = '<button class="btn-detail primary" onclick="resumeMissionView(\'' + escHtml(m.mission_id) + '\')">LIVE</button>';
+      }
+
+      html +=
+        '<tr>' +
+        '<td class="ml-target">' + escHtml(m.target) + '</td>' +
+        '<td><span class="ml-mode ' + modeClass + '">' + escHtml(m.mode || 'COMES') + '</span></td>' +
+        '<td><span class="ml-status-badge ' + statusClass + '">' + statusContent + '</span></td>' +
+        '<td class="ml-num">' + (m.iterations_count || 0) + '</td>' +
+        '<td class="ml-num">' + (m.findings_count || 0) + '</td>' +
+        '<td class="ml-time">' + duration + '</td>' +
+        '<td>' + actionHtml + '</td>' +
+        '</tr>';
+    }
+    tbody.innerHTML = html;
+  }
+
+  // Exposed for onclick
+  window.viewMissionDetail = function(missionDbId) {
+    authFetch('/api/mens/missions/' + missionDbId).then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function(data) {
+      showDetailPanel(data);
+    }).catch(function(err) {
+      alert('Error: ' + err.message);
+    });
+  };
+
+  window.resumeMissionView = function(missionId) {
+    missionListWrap.style.display = 'none';
+    loadMissionDetail(missionId);
+  };
+
+  // ════════════════════════════════════════════════════════════
+  // DETAIL PANEL (slide-in overlay)
+  // ════════════════════════════════════════════════════════════
+
+  function showDetailPanel(m) {
+    document.getElementById('detailTitle').textContent = 'MISSION #' + m.id + ' — ' + (m.target || '');
+
+    // Meta row
+    var statusClass = 'ml-status-' + (m.status || 'pending');
+    var meta = document.getElementById('detailMeta');
+    var duration = '—';
+    if (m.started_at) {
+      var start = new Date(m.started_at);
+      var end = m.completed_at ? new Date(m.completed_at) : new Date();
+      var diff = Math.max(0, Math.floor((end - start) / 1000));
+      var dh = Math.floor(diff / 3600);
+      var dm = Math.floor((diff % 3600) / 60);
+      var ds = diff % 60;
+      duration = (dh > 0 ? pad(dh) + ':' : '') + pad(dm) + ':' + pad(ds);
+    }
+    meta.innerHTML =
+      '<span>Status: <span class="ml-status-badge ' + statusClass + '">' + (m.status || 'pending').toUpperCase() + '</span></span>' +
+      '<span>Mode: <strong>' + escHtml(m.mode || '') + '</strong></span>' +
+      '<span>Iterations: <strong>' + (m.iterations_count || (m.iterations ? m.iterations.length : 0)) + '</strong></span>' +
+      '<span>Findings: <strong>' + (m.findings_count || 0) + '</strong></span>' +
+      '<span>Duration: <strong>' + duration + '</strong></span>';
+
+    // Iterations table
+    var body = document.getElementById('detailBody');
+    var iters = m.iterations || [];
+    if (iters.length === 0) {
+      body.innerHTML = '<div class="detail-section-label">ITERATIONS</div><div style="font-family:\'Share Tech Mono\',monospace;font-size:.8rem;color:var(--text-muted);padding:var(--sp-4) 0;">Brak iteracji</div>';
+    } else {
+      var html = '<div class="detail-section-label">ITERATIONS (' + iters.length + ')</div>';
+      html += '<table class="iter-table"><thead><tr><th>#</th><th>MODULE</th><th>REASON</th><th>CONF</th><th>RESULT</th></tr></thead><tbody>';
+      for (var i = 0; i < iters.length; i++) {
+        var it = iters[i];
+        var conf = it.confidence || 0;
+        var confPct = (conf * 100).toFixed(0) + '%';
+        var confLabel = conf >= 0.8 ? 'high' : (conf >= 0.5 ? 'med' : 'low');
+        html +=
+          '<tr>' +
+          '<td class="ml-num">' + (it.iteration_number || (i + 1)) + '</td>' +
+          '<td class="iter-module">' + escHtml(it.module_used || '—') + '</td>' +
+          '<td class="iter-reason">' + escHtml(it.reason || '—') + '</td>' +
+          '<td><span class="conf-badge ' + confLabel + '">' + confPct + '</span></td>' +
+          '<td style="font-size:.78rem;max-width:200px;">' + escHtml(truncateStr(it.result_summary || '—', 80)) + '</td>' +
+          '</tr>';
+      }
+      html += '</tbody></table>';
+
+      // Summary
+      if (m.summary) {
+        html += '<div class="detail-section-label" style="margin-top:var(--sp-5);">SUMMARY</div>';
+        html += '<div style="font-family:\'Rajdhani\',sans-serif;font-size:.88rem;color:var(--text-secondary);line-height:1.5;">' + escHtml(m.summary) + '</div>';
+      }
+      body.innerHTML = html;
+    }
+
+    detailOverlay.classList.add('open');
+  }
+
+  function truncateStr(s, n) {
+    if (!s) return '';
+    return s.length > n ? s.substring(0, n) + '...' : s;
+  }
+
+  document.getElementById('detailClose').addEventListener('click', function() {
+    detailOverlay.classList.remove('open');
+  });
+  detailOverlay.addEventListener('click', function(e) {
+    if (e.target === detailOverlay) detailOverlay.classList.remove('open');
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') detailOverlay.classList.remove('open');
+  });
+
+  document.getElementById('btnNewMissionList').addEventListener('click', function() {
+    showNewMissionForm();
+  });
 
   function loadPolicies() {
     authFetch('/api/lex/policies').then(function(r) {
@@ -846,9 +1206,10 @@ body { background: var(--bg-root); min-height: 100vh; margin: 0; }
 
     // Fiducia progress
     var maxIter = 20; // default max iterations
-    var progress = iters.length > 0 ? Math.min((iters.length / maxIter) * 100, 100) : 0;
-    document.getElementById('fiduciaFill').style.width = progress.toFixed(0) + '%';
-    document.getElementById('fiduciaText').textContent = progress.toFixed(0) + '%';
+    var progress = m.status === 'completed' ? 100 : Math.round((iters.length / maxIter) * 100);
+    if (progress > 100) progress = 100;
+    document.getElementById('fiduciaFill').style.width = progress + '%';
+    document.getElementById('fiduciaText').textContent = progress + '%';
   }
 
   // ════════════════════════════════════════════════════════════

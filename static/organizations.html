@@ -371,6 +371,85 @@ table.orgs tbody td {
 }
 .btn-cancel:hover { border-color: var(--accent); color: var(--accent); }
 
+/* ── LLM mode badges ── */
+.llm-badge {
+  display: inline-block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .7rem;
+  letter-spacing: .06em;
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+.llm-cloud  { background: rgba(74,143,212,.12); color: #4a8fd4; border: 1px solid rgba(74,143,212,.25); }
+.llm-local  { background: rgba(245,158,11,.12); color: #f59e0b; border: 1px solid rgba(245,158,11,.25); }
+.llm-airgap { background: rgba(193,18,31,.12);  color: #C1121F; border: 1px solid rgba(193,18,31,.25); }
+
+/* ── Edit modal extras ── */
+.section-divider {
+  font-family: 'Orbitron', sans-serif;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--text-muted);
+  padding: var(--sp-4) 0 var(--sp-2);
+  border-top: 1px solid var(--border);
+  margin-top: var(--sp-4);
+}
+.radio-group {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+.radio-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem;
+  color: var(--text-secondary);
+}
+.radio-card:hover { border-color: var(--accent); }
+.radio-card.selected {
+  border-color: var(--accent);
+  background: rgba(193,18,31,.06);
+  color: var(--text-primary);
+}
+.radio-card input[type="radio"] { margin: 0; accent-color: var(--accent); }
+.llm-conditional { display: none; margin-top: var(--sp-3); }
+.llm-conditional.visible { display: block; }
+.test-result {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .75rem;
+  margin-top: var(--sp-2);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  display: none;
+}
+.test-result.ok { display: block; background: rgba(34,197,94,.1); color: #22c55e; border: 1px solid rgba(34,197,94,.2); }
+.test-result.fail { display: block; background: rgba(193,18,31,.1); color: #C1121F; border: 1px solid rgba(193,18,31,.2); }
+.test-result.loading { display: block; background: rgba(148,163,184,.08); color: var(--text-muted); border: 1px solid var(--border); }
+.btn-test {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  padding: 6px 16px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .15s;
+  margin-top: var(--sp-2);
+}
+.btn-test:hover { border-color: var(--accent); color: var(--accent); }
+.btn-test:disabled { opacity: .4; cursor: default; }
+
 /* ── LOADING ── */
 .loading-state {
   text-align: center;
@@ -522,6 +601,67 @@ table.orgs tbody td {
   </div>
 </div>
 
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModalOverlay">
+  <div class="modal" style="width:min(540px,92vw);">
+    <div class="modal-header">
+      <span class="modal-title">EDYTUJ ORGANIZACJE</span>
+      <button class="btn-close-modal" id="btnCloseEdit">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editOrgId">
+      <div class="form-group">
+        <label class="form-label">NAZWA</label>
+        <input class="form-input" id="editName" type="text" readonly style="opacity:.6;">
+      </div>
+
+      <div class="section-divider">LLM CONFIGURATION</div>
+
+      <div class="form-group">
+        <label class="form-label">LLM MODE</label>
+        <div class="radio-group" id="llmModeGroup">
+          <label class="radio-card" data-mode="cloud">
+            <input type="radio" name="llmMode" value="cloud">
+            &#9729; Cloud
+          </label>
+          <label class="radio-card" data-mode="local">
+            <input type="radio" name="llmMode" value="local">
+            &#128421; Local
+          </label>
+          <label class="radio-card" data-mode="airgap">
+            <input type="radio" name="llmMode" value="airgap">
+            &#128274; AIRGAP
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group llm-conditional" id="cloudOptions">
+        <label class="form-label">PREFERRED PROVIDER</label>
+        <select class="form-select" id="editProvider">
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="openai">OpenAI (GPT)</option>
+          <option value="deepseek">DeepSeek</option>
+        </select>
+      </div>
+
+      <div class="form-group llm-conditional" id="ollamaOptions">
+        <label class="form-label">OLLAMA URL</label>
+        <input class="form-input" id="editOllamaUrl" type="text" placeholder="http://ollama:11434">
+        <div class="form-hint">Domyslnie: http://ollama:11434 (kontener Docker)</div>
+      </div>
+
+      <div class="form-group">
+        <button class="btn-test" id="btnTestLLM">TEST CONNECTION</button>
+        <div class="test-result" id="testResult"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="btnCancelEdit">ANULUJ</button>
+      <button class="btn-create" id="btnSaveEdit">ZAPISZ</button>
+    </div>
+  </div>
+</div>
+
 <div class="wrapper">
 
   <div id="loadingState" class="loading-state">
@@ -547,6 +687,7 @@ table.orgs tbody td {
             <th>DOMENA</th>
             <th>PAKIET</th>
             <th>TRYB</th>
+            <th>LLM</th>
             <th>STATUS</th>
             <th>OSTATNI ALERT</th>
             <th>SCORE</th>
@@ -554,7 +695,7 @@ table.orgs tbody td {
           </tr>
         </thead>
         <tbody id="orgsBody">
-          <tr><td class="empty-row" colspan="8">LOADING...</td></tr>
+          <tr><td class="empty-row" colspan="9">LOADING...</td></tr>
         </tbody>
       </table>
     </div>
@@ -627,7 +768,7 @@ table.orgs tbody td {
     orgCounter.textContent = active + ' organizacji aktywnych';
 
     if (orgs.length === 0) {
-      tbody.innerHTML = '<tr><td class="empty-row" colspan="8">Brak organizacji. Kliknij + NOWA ORGANIZACJA.</td></tr>';
+      tbody.innerHTML = '<tr><td class="empty-row" colspan="9">Brak organizacji. Kliknij + NOWA ORGANIZACJA.</td></tr>';
       return;
     }
 
@@ -674,11 +815,16 @@ table.orgs tbody td {
         scoreHtml = '<span class="score-none">&#8212;</span>';
       }
 
+      // LLM mode badge
+      var llmMode = o.llm_mode || 'cloud';
+      var llmLabel = llmMode.toUpperCase();
+      var llmHtml = '<span class="llm-badge llm-' + llmMode + '">' + llmLabel + '</span>';
+
       // Actions
       var actionsHtml =
         '<div class="actions-cell">' +
           '<a class="btn-action primary" href="/overview?org_id=' + o.id + '">WEJDZ</a>' +
-          '<a class="btn-action" href="/api/organizations/' + o.id + '" target="_blank">EDYTUJ</a>' +
+          '<button class="btn-action" onclick="openEditModal(' + o.id + ')">EDYTUJ</button>' +
         '</div>';
 
       html +=
@@ -687,6 +833,7 @@ table.orgs tbody td {
           '<td class="cell-domain">' + escHtml(o.domain || '&#8212;') + '</td>' +
           '<td>' + pkgHtml + '</td>' +
           '<td>' + modeHtml + '</td>' +
+          '<td>' + llmHtml + '</td>' +
           '<td>' + statusHtml + '</td>' +
           '<td class="alert-cell">' + alertHtml + '</td>' +
           '<td>' + scoreHtml + '</td>' +
@@ -787,6 +934,175 @@ table.orgs tbody td {
       slugError.style.display = 'block';
       btnCreate.disabled = false;
       btnCreate.textContent = 'UTWORZ';
+    });
+  });
+
+  // ── Edit Modal ──
+  var editOverlay = document.getElementById('editModalOverlay');
+  var btnCloseEdit = document.getElementById('btnCloseEdit');
+  var btnCancelEdit = document.getElementById('btnCancelEdit');
+  var btnSaveEdit = document.getElementById('btnSaveEdit');
+  var btnTestLLM = document.getElementById('btnTestLLM');
+  var testResult = document.getElementById('testResult');
+  var llmModeGroup = document.getElementById('llmModeGroup');
+  var cloudOptions = document.getElementById('cloudOptions');
+  var ollamaOptions = document.getElementById('ollamaOptions');
+
+  btnCloseEdit.addEventListener('click', function() { closeEditModal(); });
+  btnCancelEdit.addEventListener('click', function() { closeEditModal(); });
+  editOverlay.addEventListener('click', function(e) { if (e.target === editOverlay) closeEditModal(); });
+
+  function closeEditModal() {
+    editOverlay.classList.remove('open');
+    testResult.className = 'test-result';
+    testResult.textContent = '';
+  }
+
+  // LLM mode radio selection
+  var radioCards = llmModeGroup.querySelectorAll('.radio-card');
+  radioCards.forEach(function(card) {
+    card.addEventListener('click', function() {
+      var radio = card.querySelector('input[type="radio"]');
+      radio.checked = true;
+      radioCards.forEach(function(c) { c.classList.remove('selected'); });
+      card.classList.add('selected');
+      updateLLMVisibility(radio.value);
+    });
+  });
+
+  function updateLLMVisibility(mode) {
+    if (mode === 'cloud') {
+      cloudOptions.classList.add('visible');
+      ollamaOptions.classList.remove('visible');
+    } else {
+      cloudOptions.classList.remove('visible');
+      ollamaOptions.classList.add('visible');
+    }
+  }
+
+  // Expose globally for onclick
+  window.openEditModal = function(orgId) {
+    document.getElementById('editOrgId').value = orgId;
+    testResult.className = 'test-result';
+    testResult.textContent = '';
+    btnSaveEdit.disabled = false;
+    btnSaveEdit.textContent = 'ZAPISZ';
+
+    // Fetch org details
+    fetch('/api/organizations/' + orgId, {
+      headers: { 'Authorization': 'Bearer ' + TOKEN }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(org) {
+      document.getElementById('editName').value = org.name;
+      var mode = org.llm_mode || 'cloud';
+      var provider = org.preferred_provider || 'anthropic';
+      var ollamaUrl = org.ollama_base_url || '';
+
+      // Set radio
+      radioCards.forEach(function(c) {
+        c.classList.remove('selected');
+        var r = c.querySelector('input[type="radio"]');
+        if (r.value === mode) { r.checked = true; c.classList.add('selected'); }
+      });
+      document.getElementById('editProvider').value = provider;
+      document.getElementById('editOllamaUrl').value = ollamaUrl;
+      updateLLMVisibility(mode);
+      editOverlay.classList.add('open');
+    })
+    .catch(function(err) {
+      alert('Blad ladowania organizacji: ' + err.message);
+    });
+  };
+
+  // Save LLM settings
+  btnSaveEdit.addEventListener('click', function() {
+    var orgId = document.getElementById('editOrgId').value;
+    var selectedMode = document.querySelector('input[name="llmMode"]:checked');
+    if (!selectedMode) return;
+
+    var mode = selectedMode.value;
+    var provider = document.getElementById('editProvider').value;
+    var ollamaUrl = document.getElementById('editOllamaUrl').value.trim();
+
+    btnSaveEdit.disabled = true;
+    btnSaveEdit.textContent = 'ZAPISYWANIE...';
+
+    fetch('/api/organizations/' + orgId + '/llm-settings', {
+      method: 'PATCH',
+      headers: {
+        'Authorization': 'Bearer ' + TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        llm_mode: mode,
+        preferred_provider: provider,
+        ollama_base_url: (mode !== 'cloud' && ollamaUrl) ? ollamaUrl : null
+      })
+    })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail || 'Error'); });
+      return r.json();
+    })
+    .then(function() {
+      closeEditModal();
+      loadOrganizations();
+    })
+    .catch(function(err) {
+      alert('Blad: ' + err.message);
+      btnSaveEdit.disabled = false;
+      btnSaveEdit.textContent = 'ZAPISZ';
+    });
+  });
+
+  // Test LLM connection
+  btnTestLLM.addEventListener('click', function() {
+    var selectedMode = document.querySelector('input[name="llmMode"]:checked');
+    if (!selectedMode) return;
+
+    var mode = selectedMode.value;
+    var orgId = document.getElementById('editOrgId').value;
+    var provider;
+
+    if (mode === 'cloud') {
+      provider = document.getElementById('editProvider').value;
+    } else {
+      provider = 'ollama';
+    }
+
+    btnTestLLM.disabled = true;
+    testResult.className = 'test-result loading';
+    testResult.textContent = 'TESTING ' + provider.toUpperCase() + '...';
+
+    fetch('/api/llm/test', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + TOKEN,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        provider: provider,
+        org_id: parseInt(orgId) || null
+      })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      btnTestLLM.disabled = false;
+      if (data.detail) {
+        testResult.className = 'test-result fail';
+        testResult.textContent = 'FAIL: ' + data.detail;
+      } else if (data.error) {
+        testResult.className = 'test-result fail';
+        testResult.textContent = 'FAIL: ' + data.error;
+      } else {
+        testResult.className = 'test-result ok';
+        testResult.textContent = 'OK: ' + data.model + ' — ' + data.latency_ms + 'ms — "' + truncate(data.response, 40) + '"';
+      }
+    })
+    .catch(function(err) {
+      btnTestLLM.disabled = false;
+      testResult.className = 'test-result fail';
+      testResult.textContent = 'ERROR: ' + err.message;
     });
   });
 

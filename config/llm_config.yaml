@@ -1,0 +1,61 @@
+# CYRBER LLM Provider Configuration
+# Providers are tried in priority order (1 = highest).
+# Set enabled: false to skip a provider.
+# API keys are read from environment variables specified in api_key_env.
+
+providers:
+  anthropic:
+    enabled: true
+    models:
+      reasoning: claude-opus-4-5
+      analysis: claude-sonnet-4-20250514
+      fast: claude-haiku-4-5-20251001
+    api_key_env: ANTHROPIC_API_KEY
+    priority: 1
+
+  openai:
+    enabled: false
+    models:
+      reasoning: gpt-4o
+      analysis: gpt-4o
+      fast: gpt-4o-mini
+    api_key_env: OPENAI_API_KEY
+    priority: 2
+
+  deepseek:
+    enabled: false
+    models:
+      reasoning: deepseek/deepseek-chat
+      analysis: deepseek/deepseek-chat
+      fast: deepseek/deepseek-chat
+    api_key_env: DEEPSEEK_API_KEY
+    priority: 3
+
+  ollama:
+    enabled: true
+    models:
+      reasoning: ollama/dolphin3
+      analysis: ollama/dolphin3
+      fast: ollama/dolphin3
+    base_url: http://ollama:11434
+    priority: 4
+
+# Task → tier mapping
+# Each task maps to a tier (reasoning/analysis/fast/airgap).
+# The tier determines which model is selected from the active provider.
+task_routing:
+  reasoning: reasoning
+  exploit_chain: reasoning
+  mens: reasoning
+  hacker_narrative: reasoning
+  analysis: analysis
+  report: analysis
+  ai_analysis: analysis
+  agent: analysis
+  phishing_email: analysis
+  classify: fast
+  filter: fast
+  summary: fast
+  false_positive_filter: fast
+  llm_analyze: fast
+  airgap: airgap

@@ -48,6 +48,15 @@ class OrganizationCreate(BaseModel):
     brand_name: Optional[str] = None
     brand_color: Optional[str] = None
     notes: Optional[str] = None
+    llm_mode: str = 'cloud'
+    preferred_provider: str = 'anthropic'
+    ollama_base_url: Optional[str] = None
+
+
+class LLMSettingsUpdate(BaseModel):
+    llm_mode: str  # cloud / local / airgap
+    preferred_provider: str = 'anthropic'
+    ollama_base_url: Optional[str] = None
 
 
 class OrganizationOut(BaseModel):
@@ -263,6 +272,10 @@ async def list_organizations(
             'package': org.active_license.package if org.active_license else None,
             'security_score': score,
             'last_alert': _get_last_alert(db, org.id),
+            # LLM settings
+            'llm_mode': org.llm_mode,
+            'preferred_provider': org.preferred_provider,
+            'ollama_base_url': org.ollama_base_url,
         }
         result.append(org_dict)
 
@@ -294,6 +307,9 @@ async def create_organization(
         brand_color=data.brand_color,
         notes=data.notes,
         is_active=True,
+        llm_mode=data.llm_mode,
+        preferred_provider=data.preferred_provider,
+        ollama_base_url=data.ollama_base_url,
     )
     db.add(org)
     db.commit()
@@ -330,12 +346,54 @@ async def get_organization(
         'is_active': org.is_active,
         'created_at': org.created_at,
         'notes': org.notes,
+        'llm_mode': org.llm_mode,
+        'preferred_provider': org.preferred_provider,
+        'ollama_base_url': org.ollama_base_url,
         'active_license': {
             'package': org.active_license.package,
             'model': org.active_license.model,
             'valid_until': org.active_license.valid_until,
             'max_targets': org.active_license.max_targets,
         } if org.active_license else None,
+    }
+
+
+# =========================================================================
+# LLM SETTINGS — per-org LLM configuration
+# =========================================================================
+
+@router.patch('/organizations/{org_id}/llm-settings')
+async def update_llm_settings(
+    org_id: int,
+    data: LLMSettingsUpdate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(_get_db),
+):
+    """Update LLM settings for an organization. Admin/operator only."""
+    if not current_user.get('is_operator'):
+        if current_user['role'] != 'admin':
+            raise HTTPException(status_code=403, detail='Admin or operator required')
+
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail='Organization not found')
+
+    if data.llm_mode not in ('cloud', 'local', 'airgap'):
+        raise HTTPException(status_code=400, detail='llm_mode must be cloud, local, or airgap')
+
+    if data.preferred_provider not in ('anthropic', 'openai', 'deepseek'):
+        raise HTTPException(status_code=400, detail='preferred_provider must be anthropic, openai, or deepseek')
+
+    org.llm_mode = data.llm_mode
+    org.preferred_provider = data.preferred_provider
+    org.ollama_base_url = data.ollama_base_url if data.llm_mode in ('local', 'airgap') else None
+    db.commit()
+
+    return {
+        'id': org.id,
+        'llm_mode': org.llm_mode,
+        'preferred_provider': org.preferred_provider,
+        'ollama_base_url': org.ollama_base_url,
     }
 
 
