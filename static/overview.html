@@ -552,6 +552,7 @@ body { background: var(--bg-root); min-height: 100vh; }
       <div class="nav-dropdown">
         <div class="dropdown-label">Operations</div>
         <a href="/overview">&#9670; Overview</a>
+        <a href="/missions">&#9733; Missions</a>
         <a href="/dashboard">&#128202; Dashboard</a>
         <a href="/theatrum">&#127919; Theatrum</a>
         <a href="/scheduler">&#128336; Scheduler</a>
@@ -619,7 +620,7 @@ body { background: var(--bg-root); min-height: 100vh; }
 <script>
 (function(){
   var path=window.location.pathname;
-  var map={'/overview':'missions','/ui':'ratio','/findings':'ratio','/topology':'ratio','/osint':'ratio','/verify':'ratio','/dashboard':'missions','/mission-control':'missions','/theatrum':'missions','/scheduler':'missions','/phishing':'animus','/hardware':'fatum','/mirror':'mirror','/proof':'proof','/compliance':'proof','/chronicle':'chronicle','/admin':'missions'};
+  var map={'/overview':'missions','/missions':'missions','/ui':'ratio','/findings':'ratio','/topology':'ratio','/osint':'ratio','/verify':'ratio','/dashboard':'missions','/mission-control':'missions','/theatrum':'missions','/scheduler':'missions','/phishing':'animus','/hardware':'fatum','/mirror':'mirror','/proof':'proof','/compliance':'proof','/chronicle':'chronicle','/admin':'missions'};
   var s=map[path];
   if(s){var el=document.querySelector('.nav-item.'+s);if(el)el.classList.add('active');}
   var t=localStorage.getItem('cyrber_token');if(!t)return;

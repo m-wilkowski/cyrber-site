@@ -258,7 +258,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
 <body>
 
 <nav class="cyrber-nav">
-  <a href="/ui" class="nav-logo">
+  <a href="/overview" class="nav-logo">
     <img src="/static/logo.jpg" alt="CYRBER">
     <span class="nav-logo-text">CYRBER</span>
   </a>
@@ -267,6 +267,8 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
       <span>MISSIONS &#9662;</span>
       <div class="nav-dropdown">
         <div class="dropdown-label">Operations</div>
+        <a href="/overview">&#9670; Overview</a>
+        <a href="/missions">&#9733; Missions</a>
         <a href="/dashboard">&#128202; Dashboard</a>
         <a href="/theatrum">&#127919; Theatrum</a>
         <a href="/scheduler">&#128336; Scheduler</a>
@@ -334,7 +336,7 @@ footer{text-align:center;margin-top:var(--sp-12);padding-top:var(--sp-5);border-
 <script>
 (function(){
   var path=window.location.pathname;
-  var map={'/ui':'ratio','/findings':'ratio','/topology':'ratio','/osint':'ratio','/verify':'ratio','/dashboard':'missions','/mission-control':'missions','/theatrum':'missions','/scheduler':'missions','/phishing':'animus','/hardware':'fatum','/mirror':'mirror','/proof':'proof','/compliance':'proof','/chronicle':'chronicle','/admin':'missions'};
+  var map={'/overview':'missions','/missions':'missions','/ui':'ratio','/findings':'ratio','/topology':'ratio','/osint':'ratio','/verify':'ratio','/dashboard':'missions','/mission-control':'missions','/theatrum':'missions','/scheduler':'missions','/phishing':'animus','/hardware':'fatum','/mirror':'mirror','/proof':'proof','/compliance':'proof','/chronicle':'chronicle','/admin':'missions'};
   var s=map[path];
   if(s){var el=document.querySelector('.nav-item.'+s);if(el)el.classList.add('active');}
   var t=localStorage.getItem('cyrber_token');if(!t)return;
