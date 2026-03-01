@@ -81,6 +81,7 @@ from backend.routers.compliance import router as compliance_router
 from backend.routers.organizations import router as organizations_router
 from backend.routers.lex import router as lex_router
 from backend.routers.llm import router as llm_router
+from backend.routers.integrations import router as integrations_router
 
 app.include_router(pages_router)
 app.include_router(auth_router)
@@ -103,6 +104,7 @@ app.include_router(compliance_router)
 app.include_router(organizations_router)
 app.include_router(lex_router)
 app.include_router(llm_router)
+app.include_router(integrations_router)
 
 
 # ── LLM Status Banner ──

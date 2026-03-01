@@ -557,7 +557,29 @@ class MensAgent:
             decision.module, findings_count, decision.confidence,
         )
 
+        # Notify integrations for high-severity findings
+        self._notify_findings(scan_result, mission_db_id)
+
         return findings_count
+
+    def _notify_findings(self, scan_result, mission_db_id):
+        """Send high-severity findings to active integrations."""
+        if not isinstance(scan_result, dict):
+            return
+        findings = scan_result.get("findings", [])
+        if not isinstance(findings, list) or not findings:
+            return
+
+        try:
+            from modules.integrations import IntegrationManager
+            manager = IntegrationManager()
+            org_id = self.policy.organization_id if hasattr(self.policy, "organization_id") else 0
+            for f in findings:
+                sev = (f.get("severity") or "").upper()
+                if sev in ("CRITICAL", "HIGH"):
+                    manager.notify_finding(f, org_id, self.mission_id)
+        except Exception as exc:
+            _log.debug("[MENS] integration notify failed: %s", exc)
 
     def _summarize_result(self, module_name: str, scan_result) -> str:
         """Generate a short summary of scan results via Claude Haiku."""
@@ -596,6 +618,9 @@ class MensAgent:
         mission_db_id = mission_row.id
         total_findings = 0
         iteration_count = 0
+
+        # Notify integrations: mission start
+        self._notify_mission_event(target, mission_row, "mission_start")
 
         while iteration_count < MAX_ITERATIONS:
             # Check duration
@@ -670,6 +695,10 @@ class MensAgent:
                 final_row.summary = f"{iteration_count} iterations, {total_findings} findings in {elapsed:.0f}s"
                 self.db.commit()
 
+        # Notify integrations: mission complete/abort
+        event = "mission_abort" if status == "aborted" else "mission_complete"
+        self._notify_mission_event(target, final_row or mission_row, event)
+
         return MensMissionResult(
             mission_id=self.mission_id,
             iterations=iteration_count,
@@ -678,3 +707,19 @@ class MensAgent:
             duration_seconds=elapsed,
             summary=f"{iteration_count} iterations, {total_findings} findings",
         )
+
+    def _notify_mission_event(self, target, mission_row, event_type):
+        """Send mission lifecycle event to integrations."""
+        try:
+            from modules.integrations import IntegrationManager
+            manager = IntegrationManager()
+            org_id = self.policy.organization_id if hasattr(self.policy, "organization_id") else 0
+            mission_dict = {
+                "mission_id": self.mission_id,
+                "target": target,
+                "organization_id": org_id,
+                "status": getattr(mission_row, "status", ""),
+            }
+            manager.notify_mission(mission_dict, event_type)
+        except Exception as exc:
+            _log.debug("[MENS] integration mission event failed: %s", exc)

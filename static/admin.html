@@ -500,6 +500,7 @@ tbody tr:last-child td { border-bottom: none; }
     <button class="tab-btn active" onclick="switchTab('users')">USERS</button>
     <button class="tab-btn" onclick="switchTab('license')">LICENSE</button>
     <button class="tab-btn" onclick="switchTab('intel')">INTEL SYNC</button>
+    <button class="tab-btn" onclick="switchTab('integrations')">INTEGRACJE</button>
   </div>
 
   <!-- ═══ USERS TAB ═══ -->
@@ -723,6 +724,72 @@ tbody tr:last-child td { border-bottom: none; }
 
   </div>
 
+  <!-- ═══ INTEGRATIONS TAB ═══ -->
+  <div class="tab-panel" id="tabIntegrations">
+    <div class="stats-row" id="intCardsRow" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--sp-4);">
+
+      <!-- ELS SIEM -->
+      <div class="stat-card" id="intCardEls" style="padding:var(--sp-6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-4);">
+          <div style="font-family:'Orbitron',sans-serif;font-size:var(--text-md);font-weight:700;letter-spacing:.1em;color:var(--text-primary);">ENERGY LOGSERVER</div>
+          <span class="int-badge" id="intElsBadge" style="display:none;">AKTYWNA</span>
+        </div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:var(--text-xs);color:var(--text-muted);margin-bottom:var(--sp-3);">CEF SYSLOG + ELASTICSEARCH</div>
+        <div style="display:flex;flex-direction:column;gap:var(--sp-2);">
+          <input id="intElsSyslogHost" placeholder="Syslog Host (127.0.0.1)" style="background:var(--bg-overlay);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text-primary);font-family:'Share Tech Mono',monospace;font-size:12px;">
+          <div style="display:flex;gap:var(--sp-2);">
+            <input id="intElsSyslogPort" placeholder="Port (514)" style="flex:1;background:var(--bg-overlay);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text-primary);font-family:'Share Tech Mono',monospace;font-size:12px;">
+            <select id="intElsProtocol" style="background:var(--bg-overlay);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text-primary);font-family:'Share Tech Mono',monospace;font-size:12px;">
+              <option value="udp">UDP</option>
+              <option value="tcp">TCP</option>
+            </select>
+          </div>
+          <input id="intElsEsHost" placeholder="ES Host (opcjonalnie)" style="background:var(--bg-overlay);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text-primary);font-family:'Share Tech Mono',monospace;font-size:12px;">
+        </div>
+        <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-4);">
+          <button class="btn" onclick="saveIntegration('els')" style="flex:1;">ZAPISZ</button>
+          <button class="btn" onclick="testIntegration('els')" style="flex:1;border-color:var(--accent-blue);color:var(--accent-blue);">TEST</button>
+          <button class="btn" onclick="toggleIntegration('els')" id="intElsToggle" style="border-color:var(--green);color:var(--green);">ON</button>
+        </div>
+        <div id="intElsStatus" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:var(--sp-2);min-height:14px;"></div>
+      </div>
+
+      <!-- Webhook -->
+      <div class="stat-card" id="intCardWebhook" style="padding:var(--sp-6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-4);">
+          <div style="font-family:'Orbitron',sans-serif;font-size:var(--text-md);font-weight:700;letter-spacing:.1em;color:var(--text-primary);">WEBHOOK</div>
+          <span class="int-badge" id="intWebhookBadge" style="display:none;">AKTYWNA</span>
+        </div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:var(--text-xs);color:var(--text-muted);margin-bottom:var(--sp-3);">SLACK / TEAMS / DISCORD / CUSTOM</div>
+        <div style="display:flex;flex-direction:column;gap:var(--sp-2);">
+          <input id="intWebhookUrl" placeholder="Webhook URL (https://...)" style="background:var(--bg-overlay);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text-primary);font-family:'Share Tech Mono',monospace;font-size:12px;">
+          <input id="intWebhookSecret" placeholder="HMAC Secret (opcjonalnie)" type="password" style="background:var(--bg-overlay);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text-primary);font-family:'Share Tech Mono',monospace;font-size:12px;">
+        </div>
+        <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-4);">
+          <button class="btn" onclick="saveIntegration('webhook')" style="flex:1;">ZAPISZ</button>
+          <button class="btn" onclick="testIntegration('webhook')" style="flex:1;border-color:var(--accent-blue);color:var(--accent-blue);">TEST</button>
+          <button class="btn" onclick="toggleIntegration('webhook')" id="intWebhookToggle" style="border-color:var(--green);color:var(--green);">ON</button>
+        </div>
+        <div id="intWebhookStatus" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-muted);margin-top:var(--sp-2);min-height:14px;"></div>
+      </div>
+
+      <!-- Jira placeholder -->
+      <div class="stat-card" style="padding:var(--sp-6);opacity:.5;">
+        <div style="font-family:'Orbitron',sans-serif;font-size:var(--text-md);font-weight:700;letter-spacing:.1em;color:var(--text-primary);margin-bottom:var(--sp-4);">JIRA</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:var(--text-xs);color:var(--text-muted);">TWORZENIE TICKETOW Z FINDINGS</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:var(--text-xs);color:var(--accent-gold);margin-top:var(--sp-4);letter-spacing:.1em;">DOSTEPNE W SPRINT 2</div>
+      </div>
+
+      <!-- GitLab placeholder -->
+      <div class="stat-card" style="padding:var(--sp-6);opacity:.5;">
+        <div style="font-family:'Orbitron',sans-serif;font-size:var(--text-md);font-weight:700;letter-spacing:.1em;color:var(--text-primary);margin-bottom:var(--sp-4);">GITLAB</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:var(--text-xs);color:var(--text-muted);">ISSUE TRACKER + CI/CD PIPELINE</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:var(--text-xs);color:var(--accent-gold);margin-top:var(--sp-4);letter-spacing:.1em;">DOSTEPNE W SPRINT 2</div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 <!-- Toast container -->
@@ -912,6 +979,7 @@ function switchTab(name) {
   document.getElementById('headerActions').style.display = name === 'users' ? '' : 'none';
   if (name === 'license') loadLicense();
   if (name === 'intel') loadIntelStatus();
+  if (name === 'integrations') loadIntegrations();
 }
 
 /* ── USERS ── */
@@ -1313,6 +1381,142 @@ authFetch('/auth/me').then(r => r.json()).then(me => {
 }).catch(() => {
   window.location.href = '/login';
 });
+
+/* ── INTEGRATIONS ── */
+var _intData = {};  // type -> {id, config, is_active}
+
+async function loadIntegrations() {
+  try {
+    var r = await authFetch('/api/integrations?organization_id=1');
+    if (!r.ok) return;
+    var data = await r.json();
+    _intData = {};
+    (data.integrations || []).forEach(function(i) {
+      _intData[i.integration_type] = i;
+    });
+    renderIntCard('els');
+    renderIntCard('webhook');
+  } catch(e) {}
+}
+
+function renderIntCard(type) {
+  var d = _intData[type];
+  var badge = document.getElementById('intBadge_' + type) || document.getElementById('int' + type.charAt(0).toUpperCase() + type.slice(1) + 'Badge');
+  var toggle = document.getElementById('int' + type.charAt(0).toUpperCase() + type.slice(1) + 'Toggle');
+
+  if (!d) {
+    if (badge) badge.style.display = 'none';
+    if (toggle) { toggle.textContent = 'ON'; toggle.style.borderColor = 'var(--green)'; toggle.style.color = 'var(--green)'; }
+    return;
+  }
+
+  var active = d.is_active;
+  if (badge) {
+    badge.style.display = active ? '' : 'none';
+    badge.style.background = 'rgba(34,197,94,.15)';
+    badge.style.color = '#22c55e';
+    badge.style.border = '1px solid rgba(34,197,94,.3)';
+    badge.style.borderRadius = '4px';
+    badge.style.padding = '2px 8px';
+    badge.style.fontFamily = "'Share Tech Mono',monospace";
+    badge.style.fontSize = '10px';
+    badge.style.letterSpacing = '.1em';
+  }
+  if (toggle) {
+    toggle.textContent = active ? 'OFF' : 'ON';
+    toggle.style.borderColor = active ? 'var(--accent-red)' : 'var(--green)';
+    toggle.style.color = active ? 'var(--accent-red)' : 'var(--green)';
+  }
+
+  // Fill form fields
+  var cfg = d.config || {};
+  if (type === 'els') {
+    document.getElementById('intElsSyslogHost').value = cfg.syslog_host || '';
+    document.getElementById('intElsSyslogPort').value = cfg.syslog_port || '';
+    document.getElementById('intElsProtocol').value = cfg.syslog_protocol || 'udp';
+    document.getElementById('intElsEsHost').value = cfg.es_host || '';
+  } else if (type === 'webhook') {
+    document.getElementById('intWebhookUrl').value = cfg.webhook_url || '';
+    document.getElementById('intWebhookSecret').value = cfg.webhook_secret || '';
+  }
+}
+
+async function saveIntegration(type) {
+  var config = {};
+  var name = '';
+  if (type === 'els') {
+    name = 'Energy Logserver';
+    config = {
+      syslog_host: document.getElementById('intElsSyslogHost').value || '127.0.0.1',
+      syslog_port: document.getElementById('intElsSyslogPort').value || '514',
+      syslog_protocol: document.getElementById('intElsProtocol').value || 'udp',
+      es_host: document.getElementById('intElsEsHost').value || '',
+    };
+  } else if (type === 'webhook') {
+    name = 'Webhook';
+    config = {
+      webhook_url: document.getElementById('intWebhookUrl').value || '',
+      webhook_secret: document.getElementById('intWebhookSecret').value || '',
+    };
+  }
+
+  var statusEl = document.getElementById('int' + type.charAt(0).toUpperCase() + type.slice(1) + 'Status');
+  try {
+    var existing = _intData[type];
+    var r;
+    if (existing) {
+      r = await authFetch('/api/integrations/' + existing.id, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({config: config, name: name}),
+      });
+    } else {
+      r = await authFetch('/api/integrations', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({organization_id: 1, integration_type: type, name: name, config: config}),
+      });
+    }
+    if (r.ok) {
+      if (statusEl) statusEl.textContent = 'ZAPISANO';
+      if (statusEl) statusEl.style.color = 'var(--green)';
+      loadIntegrations();
+    } else {
+      if (statusEl) statusEl.textContent = 'BLAD: ' + r.status;
+      if (statusEl) statusEl.style.color = 'var(--accent-red)';
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = 'BLAD: ' + e.message;
+  }
+}
+
+async function testIntegration(type) {
+  var existing = _intData[type];
+  var statusEl = document.getElementById('int' + type.charAt(0).toUpperCase() + type.slice(1) + 'Status');
+  if (!existing) {
+    if (statusEl) { statusEl.textContent = 'NAJPIERW ZAPISZ'; statusEl.style.color = 'var(--accent-amber)'; }
+    return;
+  }
+  try {
+    var r = await authFetch('/api/integrations/' + existing.id + '/test', {method: 'POST'});
+    var data = await r.json();
+    if (statusEl) {
+      statusEl.textContent = 'TEST: ' + JSON.stringify(data.result);
+      statusEl.style.color = 'var(--accent-blue)';
+    }
+  } catch(e) {
+    if (statusEl) { statusEl.textContent = 'TEST BLAD: ' + e.message; statusEl.style.color = 'var(--accent-red)'; }
+  }
+}
+
+async function toggleIntegration(type) {
+  var existing = _intData[type];
+  if (!existing) return;
+  try {
+    await authFetch('/api/integrations/' + existing.id + '/toggle', {method: 'POST'});
+    loadIntegrations();
+  } catch(e) {}
+}
 </script>
 
 
