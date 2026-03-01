@@ -69,6 +69,11 @@ async def mission_control_page():
     return FileResponse("static/mission_control.html", headers=_NO_CACHE)
 
 
+@router.get("/theatrum")
+async def theatrum_page():
+    return FileResponse("static/theatrum.html", headers=_NO_CACHE)
+
+
 @router.get("/mirror")
 async def mirror_page():
     return FileResponse("static/mirror.html", headers=_NO_CACHE)

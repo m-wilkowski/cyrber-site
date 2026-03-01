@@ -190,7 +190,7 @@
       <div class="nav-dropdown">
         <div class="dropdown-label">Operations</div>
         <a href="/dashboard">&#128202; Dashboard</a>
-        <a href="/mission-control">&#127919; Theatrum Belli</a>
+        <a href="/theatrum">&#127919; Theatrum</a>
         <a href="/scheduler">&#128336; Scheduler</a>
       </div>
     </div>
@@ -256,7 +256,7 @@
 <script>
 (function(){
   var path=window.location.pathname;
-  var map={'/ui':'ratio','/findings':'ratio','/topology':'ratio','/osint':'ratio','/verify':'ratio','/dashboard':'missions','/mission-control':'missions','/scheduler':'missions','/phishing':'animus','/hardware':'fatum','/mirror':'mirror','/proof':'proof','/compliance':'proof','/chronicle':'chronicle','/admin':'missions'};
+  var map={'/ui':'ratio','/findings':'ratio','/topology':'ratio','/osint':'ratio','/verify':'ratio','/dashboard':'missions','/mission-control':'missions','/theatrum':'missions','/scheduler':'missions','/phishing':'animus','/hardware':'fatum','/mirror':'mirror','/proof':'proof','/compliance':'proof','/chronicle':'chronicle','/admin':'missions'};
   var s=map[path];
   if(s){var el=document.querySelector('.nav-item.'+s);if(el)el.classList.add('active');}
   var t=localStorage.getItem('cyrber_token');if(!t)return;

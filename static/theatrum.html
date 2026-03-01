@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/static/theme.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CYRBER — THEATRUM BELLI</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+html { font-size: clamp(14px, 1.2vw, 20px); }
+body { background: var(--bg-root); min-height: 100vh; margin: 0; }
+
+/* ── MISSION HEADER BAR ── */
+.mission-bar {
+  position: sticky; top: 56px; z-index: 50;
+  display: flex; align-items: center; gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-6);
+  background: var(--card-bg); border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  flex-wrap: wrap;
+}
+.mission-bar-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: var(--text-lg); font-weight: 900;
+  letter-spacing: .12em; color: var(--text-primary);
+  display: flex; align-items: center; gap: var(--sp-3);
+}
+.live-dot {
+  width: 10px; height: 10px; background: var(--green);
+  border-radius: 50%; animation: liveDot 1.5s ease-in-out infinite;
+}
+.live-dot.paused { background: var(--yellow); animation: none; }
+.live-dot.idle { background: var(--text-muted); animation: none; }
+.bar-meta {
+  font-family: 'Share Tech Mono', monospace; font-size: .8rem;
+  color: var(--text-muted); letter-spacing: .06em;
+}
+.bar-meta strong { color: var(--text-primary); }
+.bar-status {
+  margin-left: auto; font-family: 'Share Tech Mono', monospace;
+  font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+}
+.bar-status.running { color: var(--green); }
+.bar-status.paused { color: var(--yellow); }
+.bar-status.completed { color: var(--accent-blue); }
+.bar-status.aborted { color: var(--accent-red); }
+.bar-status.pending { color: var(--text-muted); }
+
+/* ── MAIN GRID ── */
+.theatrum-grid {
+  display: grid; grid-template-columns: 60% 40%;
+  gap: var(--sp-4);
+  max-width: var(--content-max); margin: 0 auto;
+  padding: var(--sp-4) var(--content-padding) var(--sp-8);
+  min-height: calc(100vh - 120px);
+}
+
+/* ── LEFT COLUMN ── */
+.left-col {
+  display: grid; grid-template-rows: 1fr 1fr; gap: var(--sp-4);
+}
+
+/* TERRAIN */
+.terrain-card {
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--radius-md); box-shadow: var(--card-shadow);
+  overflow: hidden; display: flex; flex-direction: column;
+  animation: fadeInUp .5s ease both;
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--sp-3) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+}
+.card-label {
+  font-family: 'Share Tech Mono', monospace; font-size: .7rem;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted);
+}
+.terrain-viewport {
+  flex: 1; position: relative; overflow: hidden;
+  background: var(--bg-raised);
+  background-image:
+    linear-gradient(rgba(74,143,212,.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74,143,212,.06) 1px, transparent 1px);
+  background-size: 30px 30px;
+  display: flex; align-items: center; justify-content: center;
+}
+.terrain-placeholder {
+  font-family: 'Share Tech Mono', monospace; font-size: .85rem;
+  color: var(--text-muted); letter-spacing: .08em; text-align: center;
+  padding: var(--sp-6);
+}
+.terrain-node {
+  position: absolute; width: 12px; height: 12px;
+  border-radius: 50%; border: 2px solid var(--accent-blue);
+  background: rgba(74,143,212,.2);
+}
+.terrain-node.active {
+  background: var(--accent-blue);
+  box-shadow: 0 0 8px var(--accent-blue);
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+.terrain-node-label {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  font-family: 'Share Tech Mono', monospace; font-size: 9px;
+  color: var(--text-muted); white-space: nowrap;
+}
+.terrain-edge {
+  position: absolute; height: 1px; background: rgba(74,143,212,.3);
+  transform-origin: left center;
+}
+
+/* COGITATIO */
+.cogitatio-card {
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--radius-md); box-shadow: var(--card-shadow);
+  overflow: hidden; display: flex; flex-direction: column;
+  animation: fadeInUp .5s ease .1s both;
+}
+.cogitatio-terminal {
+  flex: 1; overflow-y: auto; padding: var(--sp-4) var(--sp-5);
+  background: #0a0a0a; font-family: 'Share Tech Mono', monospace;
+  font-size: .8rem; line-height: 1.6; color: #4af04a;
+  min-height: 200px; max-height: 400px;
+}
+.cog-line { margin-bottom: 2px; word-break: break-word; }
+.cog-line .ts { color: #666; }
+.cog-line .src { color: #4af04a; font-weight: 700; }
+.cog-line .msg { color: #ccc; }
+.cog-line.error .msg { color: #ff5555; }
+.cog-line.decision .msg { color: #f1fa8c; }
+.cogitatio-controls {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+.cog-btn {
+  font-family: 'Share Tech Mono', monospace; font-size: .7rem;
+  letter-spacing: .1em; padding: 4px 12px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-muted); border-radius: var(--radius-sm);
+  cursor: pointer; transition: all .15s;
+}
+.cog-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cog-btn.active { border-color: var(--yellow); color: var(--yellow); }
+
+/* ── RIGHT COLUMN ── */
+.right-col {
+  display: flex; flex-direction: column; gap: var(--sp-4);
+}
+
+/* CERBERUS STATUS */
+.cerberus-card {
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--radius-md); box-shadow: var(--card-shadow);
+  animation: fadeInUp .5s ease .15s both;
+}
+.heads-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+}
+.head-card {
+  text-align: center; padding: var(--sp-3);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  transition: border-color .2s;
+}
+.head-card.ratio { border-top: 3px solid var(--accent-blue); }
+.head-card.animus { border-top: 3px solid var(--accent-amber); }
+.head-card.fatum { border-top: 3px solid var(--accent-purple); }
+.head-card.active { background: var(--bg-overlay); }
+.head-icon { font-size: 1.4rem; margin-bottom: var(--sp-1); }
+.head-name {
+  font-family: 'Orbitron', sans-serif; font-size: .6rem;
+  font-weight: 700; letter-spacing: .15em; color: var(--text-primary);
+  margin-bottom: var(--sp-1);
+}
+.head-count {
+  font-family: 'Share Tech Mono', monospace; font-size: .7rem;
+  color: var(--text-muted);
+}
+.fiducia-wrap {
+  padding: 0 var(--sp-5) var(--sp-4);
+}
+.fiducia-label {
+  font-family: 'Share Tech Mono', monospace; font-size: .65rem;
+  letter-spacing: .15em; color: var(--text-muted);
+  margin-bottom: var(--sp-1);
+}
+.fiducia-bar {
+  height: 6px; background: var(--bg-overlay);
+  border-radius: 3px; overflow: hidden;
+}
+.fiducia-fill {
+  height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--green));
+  transition: width .5s ease;
+}
+
+/* ATTACK TIMELINE */
+.timeline-card {
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--radius-md); box-shadow: var(--card-shadow);
+  flex: 1; overflow: hidden; display: flex; flex-direction: column;
+  animation: fadeInUp .5s ease .2s both;
+}
+.timeline-body {
+  flex: 1; overflow-y: auto; padding: var(--sp-4) var(--sp-5);
+  max-height: 400px;
+}
+.tl-empty {
+  font-family: 'Share Tech Mono', monospace; font-size: .8rem;
+  color: var(--text-muted); text-align: center; padding: var(--sp-8);
+  letter-spacing: .08em;
+}
+.tl-item {
+  display: flex; gap: var(--sp-3); position: relative;
+  padding-bottom: var(--sp-4); margin-left: 12px;
+}
+.tl-item::before {
+  content: ''; position: absolute; left: -12px; top: 6px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-muted); border: 2px solid var(--bg-root);
+  z-index: 1;
+}
+.tl-item::after {
+  content: ''; position: absolute; left: -9px; top: 14px; bottom: -4px;
+  width: 2px; background: var(--border);
+}
+.tl-item:last-child::after { display: none; }
+.tl-item.conf-high::before { background: var(--green); }
+.tl-item.conf-med::before { background: var(--yellow); }
+.tl-item.conf-low::before { background: var(--text-muted); }
+.tl-content { flex: 1; min-width: 0; }
+.tl-module {
+  font-family: 'Share Tech Mono', monospace; font-size: .75rem;
+  letter-spacing: .06em; color: var(--accent-blue); font-weight: 700;
+}
+.tl-target {
+  font-family: 'Share Tech Mono', monospace; font-size: .7rem;
+  color: var(--text-muted); margin-top: 2px;
+}
+.tl-reason {
+  font-family: 'Rajdhani', sans-serif; font-size: .8rem;
+  color: var(--text-secondary); margin-top: 4px; line-height: 1.4;
+}
+.tl-meta {
+  display: flex; align-items: center; gap: var(--sp-2); margin-top: 4px;
+}
+.tl-time {
+  font-family: 'Share Tech Mono', monospace; font-size: .65rem;
+  color: var(--text-muted);
+}
+.conf-badge {
+  font-family: 'Share Tech Mono', monospace; font-size: .6rem;
+  font-weight: 700; letter-spacing: .06em; padding: 1px 6px;
+  border-radius: 3px;
+}
+.conf-badge.high { background: rgba(0,200,83,.15); color: #00c853; border: 1px solid rgba(0,200,83,.3); }
+.conf-badge.med { background: rgba(245,158,11,.15); color: #f59e0b; border: 1px solid rgba(245,158,11,.3); }
+.conf-badge.low { background: rgba(148,163,184,.12); color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
+
+/* KONTROLA MISJI */
+.control-card {
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--radius-md); box-shadow: var(--card-shadow);
+  padding: var(--sp-5);
+  animation: fadeInUp .5s ease .25s both;
+}
+.mode-badge {
+  display: inline-block;
+  font-family: 'Orbitron', sans-serif; font-size: .7rem;
+  font-weight: 700; letter-spacing: .12em; padding: 4px 14px;
+  border-radius: var(--radius-sm); margin-bottom: var(--sp-4);
+}
+.mode-COMES { background: rgba(245,158,11,.15); color: #f59e0b; border: 1px solid rgba(245,158,11,.3); }
+.mode-LIBER { background: rgba(0,200,83,.15); color: #00c853; border: 1px solid rgba(0,200,83,.3); }
+.mode-ITERUM { background: rgba(74,143,212,.15); color: #4a8fd4; border: 1px solid rgba(74,143,212,.3); }
+.control-actions {
+  display: flex; gap: var(--sp-3); flex-wrap: wrap;
+}
+.btn-control {
+  font-family: 'Share Tech Mono', monospace; font-size: .8rem;
+  letter-spacing: .08em; padding: 8px 18px;
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: all .15s; border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted);
+}
+.btn-control:hover { border-color: var(--accent); color: var(--accent); }
+.btn-control.approve {
+  background: rgba(0,200,83,.1); border-color: #00c853; color: #00c853;
+}
+.btn-control.approve:hover { background: rgba(0,200,83,.2); }
+.btn-control.reject {
+  background: rgba(193,18,31,.1); border-color: #C1121F; color: #C1121F;
+}
+.btn-control.reject:hover { background: rgba(193,18,31,.2); }
+.btn-control.abort {
+  background: rgba(193,18,31,.1); border-color: #C1121F; color: #C1121F;
+}
+.btn-control.abort:hover { background: rgba(193,18,31,.2); }
+.btn-control.primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.btn-control.primary:hover { opacity: .85; }
+
+/* ── NEW MISSION FORM ── */
+.new-mission-wrap {
+  display: flex; align-items: center; justify-content: center;
+  min-height: calc(100vh - 160px);
+  padding: var(--sp-8) var(--content-padding);
+}
+.new-mission-card {
+  background: var(--card-bg); border: var(--card-border);
+  border-radius: var(--radius-md); box-shadow: var(--card-shadow);
+  padding: var(--sp-8); width: 100%; max-width: 520px;
+  animation: fadeInUp .5s ease both;
+}
+.new-mission-title {
+  font-family: 'Orbitron', sans-serif; font-size: var(--text-xl);
+  font-weight: 900; letter-spacing: .1em;
+  color: var(--text-primary); text-align: center;
+  margin-bottom: var(--sp-6);
+}
+.form-group {
+  margin-bottom: var(--sp-5);
+}
+.form-label {
+  display: block;
+  font-family: 'Share Tech Mono', monospace; font-size: .7rem;
+  letter-spacing: .15em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: var(--sp-2);
+}
+.form-input, .form-select {
+  width: 100%; box-sizing: border-box;
+  font-family: 'Share Tech Mono', monospace; font-size: .85rem;
+  background: var(--bg-raised); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 14px; letter-spacing: .04em;
+}
+.form-input:focus, .form-select:focus {
+  outline: none; border-color: var(--accent);
+}
+.btn-start {
+  display: block; width: 100%;
+  font-family: 'Orbitron', sans-serif; font-size: var(--text-md);
+  font-weight: 700; letter-spacing: .12em;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  padding: 14px; cursor: pointer; transition: opacity .15s;
+  margin-top: var(--sp-6);
+}
+.btn-start:hover { opacity: .85; }
+.btn-start:disabled { opacity: .5; cursor: default; }
+
+/* ── LOADING ── */
+.loading-state {
+  text-align: center; padding: var(--sp-16) 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: var(--text-md); color: var(--text-muted);
+  letter-spacing: .15em;
+}
+.loading-ring {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .8s linear infinite;
+  margin: 0 auto var(--sp-4);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1024px) {
+  .theatrum-grid { grid-template-columns: 1fr; }
+  .left-col { grid-template-rows: auto auto; }
+}
+</style>
+</head>
+<body>
+
+<nav class="cyrber-nav">
+  <a href="/overview" class="nav-logo">
+    <img src="/static/logo.jpg" alt="CYRBER">
+    <span class="nav-logo-text">CYRBER</span>
+  </a>
+  <div class="nav-links">
+    <div class="nav-item missions">
+      <span>MISSIONS &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Operations</div>
+        <a href="/overview">&#9670; Overview</a>
+        <a href="/dashboard">&#128202; Dashboard</a>
+        <a href="/theatrum">&#127919; Theatrum</a>
+        <a href="/scheduler">&#128336; Scheduler</a>
+      </div>
+    </div>
+    <div class="nav-item ratio">
+      <span>RATIO &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Infrastructure &middot; Code &middot; CVE</div>
+        <a href="/ui">&#128269; Scan</a>
+        <a href="/findings">&#128204; Findings</a>
+        <a href="/topology">&#128506; Topology</a>
+        <a href="/osint">&#127760; OSINT</a>
+        <a href="/verify">&#10003; Verify</a>
+      </div>
+    </div>
+    <div class="nav-item animus">
+      <span>ANIMUS &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">People &middot; Habits &middot; Behaviour</div>
+        <a href="/phishing">&#127907; Phishing</a>
+      </div>
+    </div>
+    <div class="nav-item fatum">
+      <span>FATUM &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">History &middot; Context &middot; Physical</div>
+        <a href="/hardware">&#9889; Hardware Bridge</a>
+      </div>
+    </div>
+    <div class="nav-item mirror">
+      <span>MIRROR &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Organization Intelligence</div>
+        <a href="/mirror">&#129516; Security Genome</a>
+      </div>
+    </div>
+    <div class="nav-item proof">
+      <span>PROOF &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Audit &middot; Compliance &middot; Insurance</div>
+        <a href="/proof">&#128274; Living Proof</a>
+        <a href="/compliance">&#9878; Compliance</a>
+        <a href="/proof#feed">&#128225; Insurance Feed</a>
+      </div>
+    </div>
+    <div class="nav-item chronicle">
+      <span>CHRONICLE &#9662;</span>
+      <div class="nav-dropdown">
+        <div class="dropdown-label">Probabilistic Future</div>
+        <a href="/chronicle">&#128197; 30/60/90 Forecast</a>
+        <a href="/chronicle#peers">&#128101; Sector Peers <span class="dropdown-badge soon">Q4 2026</span></a>
+        <a href="/chronicle#apt">&#127919; APT Correlation <span class="dropdown-badge soon">Q4 2026</span></a>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0;">
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme"><span class="theme-toggle-icon"></span></button>
+    <span id="nav-username" style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-muted);">&#8212;</span>
+    <a href="/organizations" class="nav-admin-icon" id="operatorNavLink" title="Operator Panel" style="display:none;">&#9881;</a>
+    <a href="/admin" class="nav-admin-icon" id="adminNavLink" title="Admin" style="display:none;">&#9881;</a>
+    <a href="#" onclick="localStorage.removeItem('cyrber_token');localStorage.removeItem('cyrber_user');window.location.href='/login'" style="color:var(--red);font-size:11px;text-decoration:none;letter-spacing:.08em;font-family:'Share Tech Mono',monospace;">LOGOUT</a>
+  </div>
+</nav>
+<script>
+(function(){
+  var path=window.location.pathname;
+  var map={'/overview':'missions','/ui':'ratio','/findings':'ratio','/topology':'ratio','/osint':'ratio','/verify':'ratio','/dashboard':'missions','/mission-control':'missions','/theatrum':'missions','/scheduler':'missions','/phishing':'animus','/hardware':'fatum','/mirror':'mirror','/proof':'proof','/compliance':'proof','/chronicle':'chronicle','/admin':'missions'};
+  var s=map[path];
+  if(s){var el=document.querySelector('.nav-item.'+s);if(el)el.classList.add('active');}
+  var t=localStorage.getItem('cyrber_token');if(!t)return;
+  fetch('/auth/me',{headers:{'Authorization':'Bearer '+t}}).then(function(r){return r.json()}).then(function(u){
+    var ne=document.getElementById('nav-username');if(ne)ne.textContent=u.username||'';
+    localStorage.setItem('cyrber_user',u.username||'');
+    if(u.role==='admin'){var al=document.getElementById('adminNavLink');if(al)al.style.display='';}
+    if(u.is_operator||u.role==='admin'){var ol=document.getElementById('operatorNavLink');if(ol)ol.style.display='';}
+  }).catch(function(){});
+})();
+</script>
+
+<!-- MISSION BAR -->
+<div class="mission-bar" id="missionBar" style="display:none;">
+  <div class="mission-bar-title">
+    CYRBER <span class="live-dot" id="liveDot"></span> LIVE
+  </div>
+  <span class="bar-meta" id="barTarget"></span>
+  <span class="bar-meta" id="barMode"></span>
+  <span class="bar-meta" id="barElapsed"></span>
+  <span class="bar-status" id="barStatus"></span>
+</div>
+
+<!-- LOADING -->
+<div class="loading-state" id="loadingState">
+  <div class="loading-ring"></div>
+  LOADING MISSIONS...
+</div>
+
+<!-- NEW MISSION FORM -->
+<div class="new-mission-wrap" id="newMissionWrap" style="display:none;">
+  <div class="new-mission-card">
+    <div class="new-mission-title">NOWA MISJA</div>
+    <div class="form-group">
+      <label class="form-label">TARGET</label>
+      <input type="text" class="form-input" id="inputTarget" placeholder="e.g. 192.168.1.0/24 or example.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">LEX POLICY</label>
+      <select class="form-select" id="selectPolicy">
+        <option value="">Loading policies...</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">MODE</label>
+      <select class="form-select" id="selectMode">
+        <option value="COMES">COMES — human approval per step</option>
+        <option value="LIBER">LIBER — fully autonomous</option>
+        <option value="ITERUM">ITERUM — resume previous</option>
+      </select>
+    </div>
+    <button class="btn-start" id="btnStart">START MISSION</button>
+  </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="theatrum-grid" id="mainGrid" style="display:none;">
+
+  <!-- LEFT COLUMN -->
+  <div class="left-col">
+
+    <!-- TERRAIN MAP -->
+    <div class="terrain-card">
+      <div class="card-header">
+        <span class="card-label">TERRAIN MAP</span>
+      </div>
+      <div class="terrain-viewport" id="terrainViewport">
+        <div class="terrain-placeholder" id="terrainPlaceholder">
+          Brak danych topologii. Uruchom misj&#281;.
+        </div>
+      </div>
+    </div>
+
+    <!-- COGITATIO -->
+    <div class="cogitatio-card">
+      <div class="card-header">
+        <span class="card-label">COGITATIO</span>
+      </div>
+      <div class="cogitatio-terminal" id="cogTerminal"></div>
+      <div class="cogitatio-controls">
+        <button class="cog-btn" id="btnPauseSSE">PAUSE</button>
+        <button class="cog-btn" id="btnClearCog">CLEAR</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-col">
+
+    <!-- CERBERUS STATUS -->
+    <div class="cerberus-card">
+      <div class="card-header">
+        <span class="card-label">CERBERUS STATUS</span>
+      </div>
+      <div class="heads-grid">
+        <div class="head-card ratio" id="headRatio">
+          <div class="head-icon">&#128269;</div>
+          <div class="head-name">RATIO</div>
+          <div class="head-count" id="ratioCount">0 ops</div>
+        </div>
+        <div class="head-card animus" id="headAnimus">
+          <div class="head-icon">&#127907;</div>
+          <div class="head-name">ANIMUS</div>
+          <div class="head-count" id="animusCount">0 ops</div>
+        </div>
+        <div class="head-card fatum" id="headFatum">
+          <div class="head-icon">&#9889;</div>
+          <div class="head-name">FATUM</div>
+          <div class="head-count" id="fatumCount">0 ops</div>
+        </div>
+      </div>
+      <div class="fiducia-wrap">
+        <div class="fiducia-label">FIDUCIA &#8212; <span id="fiduciaText">0%</span></div>
+        <div class="fiducia-bar">
+          <div class="fiducia-fill" id="fiduciaFill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ATTACK TIMELINE -->
+    <div class="timeline-card">
+      <div class="card-header">
+        <span class="card-label">ATTACK TIMELINE</span>
+      </div>
+      <div class="timeline-body" id="timelineBody">
+        <div class="tl-empty">Awaiting iterations...</div>
+      </div>
+    </div>
+
+    <!-- KONTROLA MISJI -->
+    <div class="control-card" id="controlCard">
+      <div class="card-header" style="padding:0;border:none;margin-bottom:var(--sp-3);">
+        <span class="card-label">KONTROLA MISJI</span>
+      </div>
+      <div id="modeBadgeWrap"></div>
+      <div class="control-actions" id="controlActions"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function() {
+  var TOKEN = localStorage.getItem('cyrber_token');
+  if (!TOKEN) { window.location.href = '/login'; return; }
+
+  // ── Auth helpers ──
+  function authHeaders() {
+    return { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };
+  }
+  function authFetch(url, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign(authHeaders(), opts.headers || {});
+    return fetch(url, opts).then(function(r) {
+      if (r.status === 401) { window.location.href = '/login'; }
+      return r;
+    });
+  }
+
+  // ── State ──
+  var _mission = null;
+  var _sse = null;
+  var _ssePaused = false;
+  var _timerInterval = null;
+  var _refreshInterval = null;
+  var _missionStartTime = null;
+
+  // ── Elements ──
+  var loadingState = document.getElementById('loadingState');
+  var newMissionWrap = document.getElementById('newMissionWrap');
+  var mainGrid = document.getElementById('mainGrid');
+  var missionBar = document.getElementById('missionBar');
+
+  // ── Escape helpers ──
+  function escHtml(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // LOAD MISSIONS
+  // ════════════════════════════════════════════════════════════
+
+  function loadMissions() {
+    authFetch('/api/mens/missions').then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function(missions) {
+      loadingState.style.display = 'none';
+
+      // Find active mission (running or paused first, then most recent)
+      var active = null;
+      for (var i = 0; i < missions.length; i++) {
+        var s = missions[i].status;
+        if (s === 'running' || s === 'paused' || s === 'pending') {
+          active = missions[i];
+          break;
+        }
+      }
+      // Fallback to most recent completed
+      if (!active && missions.length > 0) {
+        active = missions[0];
+      }
+
+      if (active) {
+        loadMissionDetail(active.mission_id);
+      } else {
+        showNewMissionForm();
+      }
+    }).catch(function(err) {
+      loadingState.innerHTML = 'ERROR: ' + escHtml(err.message);
+    });
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // NEW MISSION FORM
+  // ════════════════════════════════════════════════════════════
+
+  function showNewMissionForm() {
+    loadingState.style.display = 'none';
+    mainGrid.style.display = 'none';
+    missionBar.style.display = 'none';
+    newMissionWrap.style.display = 'flex';
+    loadPolicies();
+  }
+
+  function loadPolicies() {
+    authFetch('/api/lex/policies').then(function(r) {
+      if (!r.ok) return;
+      return r.json();
+    }).then(function(policies) {
+      if (!policies) return;
+      var sel = document.getElementById('selectPolicy');
+      sel.innerHTML = '';
+      if (policies.length === 0) {
+        sel.innerHTML = '<option value="">No active policies</option>';
+        return;
+      }
+      for (var i = 0; i < policies.length; i++) {
+        var o = document.createElement('option');
+        o.value = policies[i].id;
+        o.textContent = policies[i].name || ('Policy #' + policies[i].id);
+        sel.appendChild(o);
+      }
+    }).catch(function() {
+      document.getElementById('selectPolicy').innerHTML = '<option value="">Error loading policies</option>';
+    });
+  }
+
+  document.getElementById('btnStart').addEventListener('click', function() {
+    var target = document.getElementById('inputTarget').value.trim();
+    var policyId = document.getElementById('selectPolicy').value;
+    var mode = document.getElementById('selectMode').value;
+    if (!target) { alert('Target is required'); return; }
+    if (!policyId) { alert('Select a LEX policy'); return; }
+
+    var btn = document.getElementById('btnStart');
+    btn.disabled = true;
+    btn.textContent = 'STARTING...';
+
+    authFetch('/api/mens/missions', {
+      method: 'POST',
+      body: JSON.stringify({
+        target: target,
+        policy_id: parseInt(policyId),
+        mode: mode
+      })
+    }).then(function(r) {
+      if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Error'); });
+      return r.json();
+    }).then(function(mission) {
+      newMissionWrap.style.display = 'none';
+      loadMissionDetail(mission.mission_id);
+    }).catch(function(err) {
+      alert('Error: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'START MISSION';
+    });
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // MISSION DETAIL
+  // ════════════════════════════════════════════════════════════
+
+  function loadMissionDetail(missionId) {
+    authFetch('/api/mens/missions/' + missionId).then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function(data) {
+      _mission = data;
+      loadingState.style.display = 'none';
+      newMissionWrap.style.display = 'none';
+      mainGrid.style.display = 'grid';
+      missionBar.style.display = 'flex';
+
+      renderMissionBar(data);
+      renderCerberus(data);
+      renderTimeline(data.iterations || []);
+      renderControl(data);
+      startTimer(data);
+      connectSSE(missionId);
+
+      // Auto-refresh every 5s
+      clearInterval(_refreshInterval);
+      _refreshInterval = setInterval(function() {
+        refreshMission(missionId);
+      }, 5000);
+    }).catch(function(err) {
+      loadingState.innerHTML = 'ERROR: ' + escHtml(err.message);
+    });
+  }
+
+  function refreshMission(missionId) {
+    authFetch('/api/mens/missions/' + missionId).then(function(r) {
+      if (!r.ok) return;
+      return r.json();
+    }).then(function(data) {
+      if (!data) return;
+      _mission = data;
+      renderMissionBar(data);
+      renderCerberus(data);
+      renderTimeline(data.iterations || []);
+      renderControl(data);
+
+      // Stop refresh if terminal state
+      if (data.status === 'completed' || data.status === 'aborted') {
+        clearInterval(_refreshInterval);
+        disconnectSSE();
+      }
+    }).catch(function() {});
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // RENDER: Mission Bar
+  // ════════════════════════════════════════════════════════════
+
+  function renderMissionBar(m) {
+    document.getElementById('barTarget').innerHTML = '<strong>' + escHtml(m.target) + '</strong>';
+    document.getElementById('barMode').innerHTML = 'Mode: <strong>' + escHtml(m.mode) + '</strong>';
+
+    var dot = document.getElementById('liveDot');
+    dot.className = 'live-dot';
+    if (m.status === 'paused') dot.classList.add('paused');
+    else if (m.status !== 'running' && m.status !== 'pending') dot.classList.add('idle');
+
+    var bs = document.getElementById('barStatus');
+    bs.textContent = m.status.toUpperCase();
+    bs.className = 'bar-status ' + m.status;
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // RENDER: Cerberus
+  // ════════════════════════════════════════════════════════════
+
+  function classifyHead(module) {
+    if (!module) return 'ratio';
+    var m = module.toLowerCase();
+    if (m.indexOf('phishing') >= 0 || m.indexOf('beef') >= 0 || m.indexOf('evilginx') >= 0 || m.indexOf('social') >= 0) return 'animus';
+    if (m.indexOf('hardware') >= 0 || m.indexOf('physical') >= 0 || m.indexOf('tiro') >= 0 || m.indexOf('venator') >= 0) return 'fatum';
+    return 'ratio';
+  }
+
+  function renderCerberus(m) {
+    var counts = { ratio: 0, animus: 0, fatum: 0 };
+    var iters = m.iterations || [];
+    for (var i = 0; i < iters.length; i++) {
+      var head = classifyHead(iters[i].module_used);
+      counts[head]++;
+    }
+    document.getElementById('ratioCount').textContent = counts.ratio + ' ops';
+    document.getElementById('animusCount').textContent = counts.animus + ' ops';
+    document.getElementById('fatumCount').textContent = counts.fatum + ' ops';
+
+    // Active head highlight
+    var heads = ['ratio', 'animus', 'fatum'];
+    for (var h = 0; h < heads.length; h++) {
+      var el = document.getElementById('head' + heads[h].charAt(0).toUpperCase() + heads[h].slice(1));
+      if (el) el.classList.toggle('active', counts[heads[h]] > 0);
+    }
+
+    // Fiducia progress
+    var maxIter = 20; // default max iterations
+    var progress = iters.length > 0 ? Math.min((iters.length / maxIter) * 100, 100) : 0;
+    document.getElementById('fiduciaFill').style.width = progress.toFixed(0) + '%';
+    document.getElementById('fiduciaText').textContent = progress.toFixed(0) + '%';
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // RENDER: Timeline
+  // ════════════════════════════════════════════════════════════
+
+  function renderTimeline(iterations) {
+    var body = document.getElementById('timelineBody');
+    if (!iterations || iterations.length === 0) {
+      body.innerHTML = '<div class="tl-empty">Awaiting iterations...</div>';
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < iterations.length; i++) {
+      var it = iterations[i];
+      var conf = it.confidence || 0;
+      var confClass = conf >= 0.8 ? 'conf-high' : (conf >= 0.5 ? 'conf-med' : 'conf-low');
+      var confLabel = conf >= 0.8 ? 'high' : (conf >= 0.5 ? 'med' : 'low');
+      var confPct = (conf * 100).toFixed(0) + '%';
+      var timeStr = it.created_at ? it.created_at.substring(11, 19) : '';
+
+      html +=
+        '<div class="tl-item ' + confClass + '">' +
+        '<div class="tl-content">' +
+        '<div class="tl-module">' + escHtml(it.module_used || 'unknown') + '</div>' +
+        '<div class="tl-target">' + escHtml(it.target || '') + '</div>' +
+        '<div class="tl-reason">' + escHtml(it.reason || it.result_summary || '') + '</div>' +
+        '<div class="tl-meta">' +
+        '<span class="tl-time">' + escHtml(timeStr) + '</span>' +
+        '<span class="conf-badge ' + confLabel + '">' + confPct + '</span>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
+    }
+    body.innerHTML = html;
+    body.scrollTop = body.scrollHeight;
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // RENDER: Control
+  // ════════════════════════════════════════════════════════════
+
+  function renderControl(m) {
+    var wrap = document.getElementById('modeBadgeWrap');
+    wrap.innerHTML = '<span class="mode-badge mode-' + escHtml(m.mode) + '">' + escHtml(m.mode) + '</span>';
+
+    var actions = document.getElementById('controlActions');
+
+    if (m.status === 'paused') {
+      actions.innerHTML =
+        '<button class="btn-control approve" id="btnApprove">&#10003; APPROVE</button>' +
+        '<button class="btn-control reject" id="btnReject">&#10007; REJECT</button>';
+      document.getElementById('btnApprove').addEventListener('click', function() { approveMission(m.mission_id); });
+      document.getElementById('btnReject').addEventListener('click', function() { abortMission(m.mission_id); });
+    } else if (m.status === 'running' || m.status === 'pending') {
+      actions.innerHTML = '<button class="btn-control abort" id="btnAbort">&#9632; ABORT</button>';
+      document.getElementById('btnAbort').addEventListener('click', function() { abortMission(m.mission_id); });
+    } else if (m.status === 'completed') {
+      actions.innerHTML =
+        '<button class="btn-control primary" id="btnNewMission">&#43; NOWA MISJA</button>';
+      document.getElementById('btnNewMission').addEventListener('click', function() {
+        clearInterval(_refreshInterval);
+        disconnectSSE();
+        showNewMissionForm();
+      });
+    } else {
+      actions.innerHTML =
+        '<button class="btn-control primary" id="btnNewMission2">&#43; NOWA MISJA</button>';
+      document.getElementById('btnNewMission2').addEventListener('click', function() {
+        clearInterval(_refreshInterval);
+        disconnectSSE();
+        showNewMissionForm();
+      });
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // ACTIONS
+  // ════════════════════════════════════════════════════════════
+
+  function approveMission(missionId) {
+    authFetch('/api/mens/missions/' + missionId + '/approve', { method: 'POST' })
+      .then(function(r) {
+        if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Error'); });
+        return r.json();
+      })
+      .then(function() {
+        appendCogLine('OPERATOR', 'Mission APPROVED — resuming', 'decision');
+        refreshMission(missionId);
+      })
+      .catch(function(err) { alert('Error: ' + err.message); });
+  }
+
+  function abortMission(missionId) {
+    if (!confirm('Abort this mission?')) return;
+    authFetch('/api/mens/missions/' + missionId + '/abort', { method: 'POST' })
+      .then(function(r) {
+        if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || 'Error'); });
+        return r.json();
+      })
+      .then(function() {
+        appendCogLine('OPERATOR', 'Mission ABORTED', 'error');
+        refreshMission(missionId);
+      })
+      .catch(function(err) { alert('Error: ' + err.message); });
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // SSE
+  // ════════════════════════════════════════════════════════════
+
+  function connectSSE(missionId) {
+    disconnectSSE();
+    if (!_mission || (_mission.status !== 'running' && _mission.status !== 'paused' && _mission.status !== 'pending')) return;
+
+    var url = '/api/mens/missions/' + missionId + '/stream?token=' + encodeURIComponent(TOKEN);
+    _sse = new EventSource(url);
+
+    _sse.onmessage = function(ev) {
+      if (_ssePaused) return;
+      try {
+        var data = JSON.parse(ev.data);
+        appendCogLine('MENS', data.reason || data.result_summary || data.module_used || 'iteration', data.confidence < 0.5 ? 'error' : '');
+
+        // Refresh panels
+        if (_mission) refreshMission(_mission.mission_id);
+      } catch (e) {
+        appendCogLine('MENS', ev.data, '');
+      }
+    };
+
+    _sse.onerror = function() {
+      appendCogLine('SYSTEM', 'SSE connection lost — reconnecting...', 'error');
+    };
+  }
+
+  function disconnectSSE() {
+    if (_sse) { _sse.close(); _sse = null; }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // COGITATIO Terminal
+  // ════════════════════════════════════════════════════════════
+
+  function appendCogLine(src, msg, cls) {
+    var term = document.getElementById('cogTerminal');
+    var now = new Date();
+    var ts = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    var div = document.createElement('div');
+    div.className = 'cog-line' + (cls ? ' ' + cls : '');
+    div.innerHTML = '<span class="ts">[' + ts + ']</span> <span class="src">' + escHtml(src) + ':</span> <span class="msg">' + escHtml(msg) + '</span>';
+    term.appendChild(div);
+    term.scrollTop = term.scrollHeight;
+  }
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  // Pause/Clear
+  document.getElementById('btnPauseSSE').addEventListener('click', function() {
+    _ssePaused = !_ssePaused;
+    this.textContent = _ssePaused ? 'RESUME' : 'PAUSE';
+    this.classList.toggle('active', _ssePaused);
+  });
+  document.getElementById('btnClearCog').addEventListener('click', function() {
+    document.getElementById('cogTerminal').innerHTML = '';
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // TIMER
+  // ════════════════════════════════════════════════════════════
+
+  function startTimer(m) {
+    clearInterval(_timerInterval);
+    if (!m.started_at) return;
+
+    _missionStartTime = new Date(m.started_at);
+    updateElapsed();
+    _timerInterval = setInterval(updateElapsed, 1000);
+  }
+
+  function updateElapsed() {
+    if (!_missionStartTime) return;
+    var end = (_mission && (_mission.status === 'completed' || _mission.status === 'aborted') && _mission.completed_at)
+      ? new Date(_mission.completed_at)
+      : new Date();
+    var diff = Math.max(0, Math.floor((end - _missionStartTime) / 1000));
+    var h = Math.floor(diff / 3600);
+    var m = Math.floor((diff % 3600) / 60);
+    var s = diff % 60;
+    document.getElementById('barElapsed').innerHTML = 'Elapsed: <strong>' + pad(h) + ':' + pad(m) + ':' + pad(s) + '</strong>';
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // INIT
+  // ════════════════════════════════════════════════════════════
+
+  appendCogLine('SYSTEM', 'Theatrum Belli v2 initialized', '');
+  loadMissions();
+
+})();
+</script>
+</body>
+</html>

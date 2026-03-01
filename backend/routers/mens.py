@@ -1,13 +1,16 @@
 """MENS v2 — missions API (observe/think/act/learn)."""
 
+import asyncio
+import json
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from backend.deps import get_current_user, require_role
+from backend.deps import get_current_user, require_role, JWT_SECRET, JWT_ALGORITHM
 from backend.validators import require_valid_target
 from modules.database import SessionLocal
 from modules.lex import LexPolicyModel, LexPolicy
@@ -236,3 +239,71 @@ async def abort_mission(
     mission.completed_at = datetime.now(timezone.utc)
     db.commit()
     return {"status": "aborted", "mission_id": mission.mission_id}
+
+
+# ═════════════════════════════════════════════════════════════════
+# SSE Stream
+# ═════════════════════════════════════════════════════════════════
+
+
+@router.get("/missions/{mission_id}/stream")
+async def mission_stream(
+    mission_id: str,
+    token: str = Query(None),
+):
+    """SSE stream of mission iterations. Auth via query param token (JWT)."""
+    if not token:
+        raise HTTPException(status_code=401, detail="Token required")
+    try:
+        from jose import jwt as _jwt
+        _jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    async def event_generator():
+        last_id = 0
+        while True:
+            db = SessionLocal()
+            try:
+                mission = db.query(MensMissionModel).filter(
+                    MensMissionModel.mission_id == mission_id
+                ).first()
+                if not mission:
+                    yield f'data: {json.dumps({"error": "mission not found"})}\n\n'
+                    return
+
+                query = (
+                    db.query(MensIterationModel)
+                    .filter(MensIterationModel.mission_id == mission.id)
+                    .order_by(MensIterationModel.id)
+                )
+                if last_id > 0:
+                    query = query.filter(MensIterationModel.id > last_id)
+
+                iterations = query.limit(20).all()
+
+                for it in iterations:
+                    last_id = it.id
+                    data = _iteration_to_dict(it)
+                    yield f'data: {json.dumps(data, ensure_ascii=False, default=str)}\n\n'
+
+                if not iterations:
+                    yield ': heartbeat\n\n'
+
+                # Stop streaming if mission is done
+                if mission.status in ('completed', 'aborted'):
+                    yield f'data: {json.dumps({"status": mission.status, "done": True})}\n\n'
+                    return
+            finally:
+                db.close()
+
+            await asyncio.sleep(2)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+        }
+    )
